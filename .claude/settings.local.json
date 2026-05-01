@@ -1,4 +1,10 @@
 {
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem *)",
+      "PowerShell(chcp 65001 *)"
+    ]
+  },
   "hooks": {
     "SessionStart": [
       {

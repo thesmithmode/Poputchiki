@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "Poputchiki",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "prd_source": "docs/PRD-Poputchiki-v0.1.md",
     "spec_source": "docs/SPEC-Architecture-v0.1.md",
     "phase": "full-mvp-with-prod-deploy",
@@ -69,12 +69,12 @@
       "category": "infrastructure",
       "priority": "critical",
       "phase": "mvp",
-      "description": "Vitest setup в корне с coverage gate ≥90%",
+      "description": "Vitest setup в корне с coverage gate ≥95% (target 100%)",
       "acceptance_criteria": [
         "vitest и @vitest/coverage-v8 в devDependencies",
         "vitest.config.ts в корне с coverage providers v8, reporter json + text + html",
-        "Coverage threshold lines: 90, branches: 85, functions: 90, statements: 90",
-        "Скрипт coverage:check в package.json парсит coverage/coverage-summary.json и фейлит если ниже",
+        "Coverage threshold lines: 95, branches: 90, functions: 95, statements: 95 (target — 100% для всех 4)",
+        "Скрипт coverage:check в package.json парсит coverage/coverage-summary.json и фейлит если ниже 95%",
         "Один пример unit-теста в packages/shared/tests/sanity.test.ts (1+1=2) — для проверки что vitest запускается"
       ],
       "test_steps": [
@@ -2142,9 +2142,9 @@
     {
       "id": "TASK-101",
       "category": "security",
-      "priority": "medium",
+      "priority": "critical",
       "phase": "mvp",
-      "description": "Postgres connection pool + transaction isolation defaults",
+      "description": "Postgres connection pool + transaction isolation defaults (фундамент для TASK-012 identity-guard и TASK-114 sentinel — должен идти до auth/RLS chain)",
       "acceptance_criteria": [
         "apps/api/src/db/index.ts: postgres-js клиент с pool max=20, idle_timeout=20s, connect_timeout=5s",
         "Default isolation READ COMMITTED (стандарт)",
@@ -2238,9 +2238,9 @@
       "category": "documentation",
       "priority": "medium",
       "phase": "mvp",
-      "description": "Финальная синхронизация SPEC v0.5 / PRD v0.4 / OPEN-QUESTIONS v0.4 после имплементации",
+      "description": "Финальная синхронизация SPEC v0.5 / PRD v0.4 / OPEN-QUESTIONS v0.4 после имплементации (последняя mvp-задача — выполняется когда все остальные mvp = done)",
       "acceptance_criteria": [
-        "После выполнения TASK-001..105, 107..114 — пройтись по SPEC §4-§11 и сверить с реально реализованным кодом, обновить любые расхождения",
+        "После выполнения ВСЕХ mvp-задач (TASK-001..105, 107..114, 117, 123, 126..129) — пройтись по SPEC §4-§11 и сверить с реально реализованным кодом, обновить любые расхождения",
         "OPEN-QUESTIONS — пометить все RESOLVED по факту имплементации",
         "В PRD CHANGELOG — добавить v0.5 с реальными расхождениями (если они есть)",
         "В SPEC §13 (новый, опц.) — короткая ссылка на TASK-IDs где имплементировано каждое security/concurrency требование (для аудита)"
@@ -2250,7 +2250,7 @@
         "Все упомянутые TASK-IDs существуют",
         "Грep по докам не находит auth.uid() / auth.jwt() / Supabase / Cloudflare Pages / Fly.io"
       ],
-      "dependencies": ["TASK-114"],
+      "dependencies": ["TASK-114", "TASK-117", "TASK-123", "TASK-126", "TASK-127", "TASK-128", "TASK-129"],
       "status": "pending"
     },
     {
@@ -2609,21 +2609,19 @@
       "category": "ui",
       "priority": "medium",
       "phase": "mvp",
-      "description": "i18n init + accessibility пройдено WCAG 2.1 AA на критичных flows",
+      "description": "i18n init: i18next infra + ru-locale структура + lint extraction (без других языков, ru-only MVP)",
       "acceptance_criteria": [
-        "web: i18next init, default/fallback locale 'ru', структура web/src/locales/ru/*.json",
-        "Все строковые литералы UI извлечены в i18next ключи (lint правило @intlify/eslint-plugin)",
-        "Accessibility: jsx-a11y eslint plugin enabled, нет ошибок",
-        "Критичные flows (онбординг, создание поездки, лента, детальная карточка, лайк/отзыв) проверены через axe-core (web/tests/a11y/*.spec.ts) — 0 violations",
-        "Контраст ≥4.5:1 для обычного текста, ≥3:1 для крупного",
-        "Aria-labels на все интерактивные элементы (кнопки без текста, иконки)",
-        "Клавиатурная навигация: tab-order логичный, focus-ring видимый",
-        "Sentinel test в CI: axe-playwright на главных маршрутах"
+        "web: i18next + react-i18next установлены, init в web/src/i18n/index.ts",
+        "default/fallback locale 'ru', структура web/src/locales/ru/{common,onboarding,rides,profile,reviews,errors}.json",
+        "Все строковые литералы UI извлечены в i18next ключи через хук useTranslation",
+        "Lint правило @intlify/eslint-plugin-vue-i18n или eslint-plugin-i18next enabled — 0 hardcoded строк в JSX",
+        "Helper t() работает в тестах (web/tests/i18n/setup.ts mock)",
+        "Other locales (en/tt) — TODO в README.md, не имплементируются в MVP"
       ],
       "test_steps": [
-        "bun run test:a11y — 0 violations",
-        "Manual: переключение языка работает (хотя один MVP — ru, проверка инфраструктуры)",
-        "Lighthouse Accessibility ≥90 на /rides и /profile/me"
+        "bun run lint — 0 ошибок i18next",
+        "bun run typecheck — зелёный",
+        "Smoke: web/tests/i18n/load.spec.ts грузит ru-bundle, t('common.cancel') === 'Отмена'"
       ],
       "dependencies": ["TASK-039", "TASK-040", "TASK-041", "TASK-044"],
       "status": "pending"
@@ -2664,6 +2662,93 @@
         "go-live.md протестирован на staging-домене"
       ],
       "dependencies": ["TASK-061", "TASK-062", "TASK-115", "TASK-116", "TASK-118", "TASK-119", "TASK-120", "TASK-121", "TASK-122", "TASK-060"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-126",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "A11y semantic: jsx-a11y eslint + aria-labels + landmark roles",
+      "acceptance_criteria": [
+        "eslint-plugin-jsx-a11y enabled с recommended preset, 0 ошибок",
+        "Все интерактивные элементы (button/a/input) имеют доступное имя: либо текст, либо aria-label, либо aria-labelledby",
+        "Иконочные кнопки (без видимого текста) — aria-label из i18n ключа",
+        "Landmark roles: <main>, <nav>, <header>, <footer> расставлены по всем layout-компонентам",
+        "Skip-link 'Перейти к содержимому' на главных страницах",
+        "Headings hierarchy: один h1 на страницу, иерархия без пропусков"
+      ],
+      "test_steps": [
+        "bun run lint — 0 jsx-a11y ошибок",
+        "Unit-тест: render каждой страницы → getByRole('button') возвращает все кнопки с accessibleName",
+        "Sentinel: web/tests/a11y/semantic.spec.ts проверяет landmark/heading-инварианты"
+      ],
+      "dependencies": ["TASK-039", "TASK-040", "TASK-041", "TASK-044", "TASK-123"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-127",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "A11y visual: контраст WCAG AA + focus-ring + клавиатурная навигация",
+      "acceptance_criteria": [
+        "Цветовая палитра проверена через @adobe/leonardo-contrast-colors или вручную: контраст ≥4.5:1 для обычного текста, ≥3:1 для крупного (≥18px) и UI компонентов",
+        "Все интерактивные элементы имеют видимый :focus-visible стиль (outline 2px solid + offset)",
+        "Tab-order логичный (соответствует визуальному порядку), нет ловушек фокуса",
+        "Esc закрывает модалки/overlay; Enter/Space активируют кнопки",
+        "Touch-targets ≥44×44 px (TG MiniApp требование)",
+        "prefers-reduced-motion respected — анимации отключаются"
+      ],
+      "test_steps": [
+        "Sentinel: web/tests/a11y/contrast.spec.ts парсит CSS токены, проверяет каждую пару fg/bg против WCAG AA",
+        "E2E: Playwright keyboard-only прохождение онбординга → создания поездки → лайка отзыва без мыши",
+        "Manual: Lighthouse Accessibility ≥95 на /rides и /profile/me"
+      ],
+      "dependencies": ["TASK-123", "TASK-126"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-128",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "A11y sentinel: axe-playwright на критичных flows (онбординг / создание поездки / лента / карточка / лайк / отзыв)",
+      "acceptance_criteria": [
+        "@axe-core/playwright установлен",
+        "web/tests/a11y/critical-flows.spec.ts: 6 кейсов (onboarding, create-ride, feed, ride-detail, like, review)",
+        "Каждый кейс выполняет minimal flow → injectAxe → checkA11y → 0 violations серьёзности 'serious' и 'critical'",
+        "Допустимые исключения зафиксированы в коде с комментарием WHY (например, leaflet map контейнер — известно)",
+        "В CI отдельный job 'a11y' — падает PR если violations появились"
+      ],
+      "test_steps": [
+        "bun run test:a11y — все 6 flows зелёные",
+        "Намеренно сломать contrast в одном компоненте → axe ловит → CI красный (доказательство sentinel работает)"
+      ],
+      "dependencies": ["TASK-123", "TASK-126", "TASK-127"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-129",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Integration test infra: vitest projects + helper для свежей schema на dev-postgres (фундамент для всех integration tests)",
+      "acceptance_criteria": [
+        "vitest.config.ts с projects: 'unit' (default) и 'integration' (отдельный pool, separate timeout)",
+        "Скрипт test:integration требует DATABASE_URL_TEST (отдельная БД poputchiki_test в dev-контейнере)",
+        "Helper apps/api/tests/integration/setup.ts: beforeEach — TRUNCATE ... CASCADE всех таблиц + reset sequences; либо BEGIN/ROLLBACK transaction-per-test (предпочтительно)",
+        "Helper withTestUser(tg_id, role) выставляет GUC app.current_user_* через set_config(..., true) в той же транзакции",
+        "Sentinel: tests/integration/sanity.spec.ts — создаёт user через прямой SQL, читает через handler с RLS, видит свою запись, не видит чужую",
+        "CI: GHA job 'integration' поднимает services.postgres + накатывает миграции через TASK-005 + запускает test:integration",
+        "README.md: секция 'Integration tests' — как поднять локально (bun run db:up:test → bun run test:integration)"
+      ],
+      "test_steps": [
+        "bun run test:integration — sanity зелёный",
+        "Запуск дважды подряд — второй прогон не падает на дубликатах (rollback или truncate работают)",
+        "Параллельный запуск 4 worker'ов — нет race на shared schema"
+      ],
+      "dependencies": ["TASK-004", "TASK-005", "TASK-101"],
       "status": "pending"
     }
   ]

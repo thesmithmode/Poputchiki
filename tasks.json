@@ -443,6 +443,919 @@
       ],
       "dependencies": ["TASK-018"],
       "status": "pending"
+    },
+    {
+      "id": "TASK-020",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "pgcrypto: шифрование phone/apt_number в users",
+      "acceptance_criteria": [
+        "Расширение pgcrypto активировано в миграции",
+        "Helpers encrypt(text)/decrypt(bytea) на уровне Postgres функций (pgp_sym_encrypt/decrypt) с ключом из настройки",
+        "Application-уровень helper в apps/api/src/db/crypto.ts использует SET LOCAL pgcrypto.key",
+        "Запрет SELECT phone_enc/apt_number_enc через RLS — только через RPC функцию decrypt_user_pii(user_id) которая проверяет auth.uid()=user_id"
+      ],
+      "test_steps": [
+        "Integration: encrypt → decrypt round-trip даёт исходный текст",
+        "Integration: чужой юзер decrypt_user_pii → 0 rows (RLS)",
+        "Integration: SELECT phone_enc как bytea возвращает шифр-блок, не plaintext"
+      ],
+      "dependencies": ["TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-021",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Триггеры: users.likes_received_count и users.rides_*_count обновляются автоматически",
+      "acceptance_criteria": [
+        "AFTER INSERT/DELETE на likes → UPDATE users SET likes_received_count = ... WHERE id = NEW.target_id",
+        "AFTER UPDATE rides.status='completed' → UPDATE users SET rides_completed_count++",
+        "AFTER INSERT rides → rides_total_count++ для driver",
+        "Триггер-функции иммунны к recursion (не triggers on users)"
+      ],
+      "test_steps": [
+        "Integration: вставка лайка → счётчик target+1",
+        "Integration: удаление лайка → счётчик target-1",
+        "Integration: ride.status='completed' → counter+1",
+        "Integration: 100 одновременных INSERT → счётчик =100 без race"
+      ],
+      "dependencies": ["TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-022",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Materialized view user_stats + cron refresh каждые 5 минут (cron worker apps/cron)",
+      "acceptance_criteria": [
+        "Миграция CREATE MATERIALIZED VIEW user_stats (см. SPEC §4.2)",
+        "UNIQUE INDEX на user_stats(user_id) для CONCURRENTLY refresh",
+        "apps/cron/src/refresh-user-stats.ts — REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats",
+        "Cron-расписание: каждые 5 минут (через node-cron или setInterval с lock через Postgres advisory lock)",
+        "Health-чек: метрика last_refresh_at в логах"
+      ],
+      "test_steps": [
+        "Integration: после INSERT в reviews и ручного refresh → user_stats показывает новые цифры",
+        "Integration: refresh CONCURRENTLY не блокирует SELECT в это время"
+      ],
+      "dependencies": ["TASK-021", "TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-023",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Audit log middleware: каждое state-changing API-действие → запись в audit_log",
+      "acceptance_criteria": [
+        "apps/api/src/middleware/audit-log.ts — Hono middleware для POST/PUT/PATCH/DELETE",
+        "Записывает: actor_id (из JWT), action (HTTP method + path), target_id (из path-параметров), payload (sha256 hash тела), ip, ua",
+        "Не пишет в audit_log при 4xx/5xx — только успешные изменения",
+        "Не блокирует request если audit_log INSERT упал — log error и продолжить"
+      ],
+      "test_steps": [
+        "Integration: POST /api/rides → запись в audit_log с action='POST /api/rides', payload_hash=sha256",
+        "Integration: GET (read) → запись НЕ создаётся",
+        "Integration: 422 (валидация упала) → запись НЕ создаётся"
+      ],
+      "dependencies": ["TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-024",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "CSP/HSTS/X-Frame-Options/X-Content-Type-Options middleware + secure-headers",
+      "acceptance_criteria": [
+        "apps/api/src/middleware/secure-headers.ts применяет: Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy",
+        "CSP: script-src 'self' 'wasm-unsafe-eval' https://telegram.org; frame-ancestors https://web.telegram.org",
+        "HSTS: max-age=31536000; includeSubDomains",
+        "X-Frame-Options: SAMEORIGIN (но allow для Telegram через CSP frame-ancestors)"
+      ],
+      "test_steps": [
+        "Integration: GET /health → response заголовки содержат CSP, HSTS, X-Content-Type-Options",
+        "Integration: проверка значений каждого заголовка"
+      ],
+      "dependencies": ["TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-025",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "CSRF protection (double-submit token + Origin check) на state-changing endpoints",
+      "acceptance_criteria": [
+        "apps/api/src/middleware/csrf.ts: для POST/PUT/PATCH/DELETE проверять header X-CSRF-Token и cookie csrf_token совпадают",
+        "Для SSR/SPA — токен генерится при /auth/telegram и кладётся в cookie + возвращается в response",
+        "Origin/Referer check: разрешён только origin DOMAIN из env",
+        "GET-запросы — без проверки"
+      ],
+      "test_steps": [
+        "Integration: POST с правильным CSRF → 200",
+        "Integration: POST с подменённым Origin → 403",
+        "Integration: POST без X-CSRF-Token → 403"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-026",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Idempotency middleware: header Idempotency-Key для всех POST",
+      "acceptance_criteria": [
+        "Таблица idempotency_keys (key, user_id, response_hash, response_body, status_code, expires_at) уже в миграции из TASK-008",
+        "apps/api/src/middleware/idempotency.ts: при наличии Idempotency-Key — INSERT с ON CONFLICT, если key уже существует — вернуть закэшированный ответ",
+        "TTL 24 часа",
+        "Cron очистки expired keys раз в день"
+      ],
+      "test_steps": [
+        "Integration: повторный POST с тем же Idempotency-Key → возвращает первый ответ, БД не меняется",
+        "Integration: разные ключи — независимые операции",
+        "Integration: после 24h key expires"
+      ],
+      "dependencies": ["TASK-008", "TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-027",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "POST /api/rides/:id/mark-participants — водитель отмечает фактических пассажиров",
+      "acceptance_criteria": [
+        "Body: { passenger_ids: string[] }",
+        "Только driver_id == auth.uid() может вызвать",
+        "Только после departure_at",
+        "Создаёт записи в ride_participation с driver_marked=true",
+        "Триггерит TG-уведомление пассажирам с просьбой подтвердить (через notification_preferences)"
+      ],
+      "test_steps": [
+        "Integration: водитель отмечает 2 пассажиров → 2 записи ride_participation",
+        "Integration: пассажир-не-водитель → 403",
+        "Integration: до departure_at → 422"
+      ],
+      "dependencies": ["TASK-014", "TASK-022"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-028",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "POST /api/rides/:id/confirm-participation — пассажир подтверждает участие",
+      "acceptance_criteria": [
+        "Только passenger_id == auth.uid()",
+        "Только если ride_participation.driver_marked=true и passenger_confirmed=false",
+        "В пределах 48 часов от departure_at — иначе 410 Gone",
+        "Устанавливает passenger_confirmed=true, confirmed_at=now()",
+        "После подтверждения — открывает возможность лайка/отзыва (см. TASK-029, 030)"
+      ],
+      "test_steps": [
+        "Integration: успешное подтверждение → запись обновлена",
+        "Integration: подтверждение без driver_marked → 422",
+        "Integration: 49 часов после ride → 410"
+      ],
+      "dependencies": ["TASK-027"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-029",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "POST /api/likes — симметричный лайк после подтверждения поездки",
+      "acceptance_criteria": [
+        "Body: { ride_id, target_user_id }",
+        "Предусловие: ride_participation подтверждено обеими сторонами для пары (auth.uid, target)",
+        "UNIQUE (subject_id, target_id, ride_id) — дубль 409",
+        "Триггер обновляет users.likes_received_count у target (TASK-021)",
+        "DELETE /api/likes/:id в течение 24 часов от created_at",
+        "RLS: видеть лайки можно всем; INSERT только от своего имени"
+      ],
+      "test_steps": [
+        "Integration: лайк после подтверждения → 201",
+        "Integration: лайк без подтверждения → 403",
+        "Integration: дубль → 409",
+        "Integration: DELETE через 25 часов → 410"
+      ],
+      "dependencies": ["TASK-028", "TASK-021"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-030",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "POST /api/reviews — отзыв (1-5 звёзд + текст ≤300) после подтверждения поездки",
+      "acceptance_criteria": [
+        "Body: { ride_id, target_user_id, stars, text? }",
+        "Предусловие: ride_participation подтверждено обеими сторонами",
+        "UNIQUE (ride_id, subject_id, target_id) — дубль 409",
+        "Запрет редактирования через 24 часа после публикации",
+        "GET /api/reviews?driver_id=... — публичная лента отзывов с пагинацией"
+      ],
+      "test_steps": [
+        "Integration: 1-5 stars + text → 201",
+        "Integration: 0 stars → 422",
+        "Integration: text >300 — 422",
+        "Integration: PATCH через 25 часов → 410"
+      ],
+      "dependencies": ["TASK-028"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-031",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "F-FAVORITE endpoints: POST/DELETE /api/favorites + GET /api/favorites/me",
+      "acceptance_criteria": [
+        "POST /api/favorites { target_id } — добавить в избранное (PRIMARY KEY user_id+target_id)",
+        "DELETE /api/favorites/:target_id — удалить",
+        "GET /api/favorites/me — список с детальной инфой о target (имя, лайки, рейтинг)",
+        "PATCH /api/favorites/:target_id { notify: boolean } — toggle уведомлений о новых поездках избранного",
+        "RLS: видеть только свои избранные"
+      ],
+      "test_steps": [
+        "Integration: добавить → запись",
+        "Integration: повтор → 409 (PRIMARY KEY)",
+        "Integration: добавить себя самого → 422 (CHECK)",
+        "Integration: GET /me — только мои"
+      ],
+      "dependencies": ["TASK-008", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-032",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "F-COMPLAINT endpoints: POST /api/complaints + автоблок при пороге",
+      "acceptance_criteria": [
+        "POST /api/complaints { target_user_id, target_ride_id?, reason_code, text? }",
+        "reason_code IN ('spam','fraud','offense','other')",
+        "Антиспам: UNIQUE (reporter_id, target_user_id, target_ride_id, week) — 1 в неделю на пару",
+        "После INSERT триггер проверяет: если у target ≥5 жалоб от ≥5 разных reporter за 7 дней → users.is_banned=true + audit_log + admin TG-alert"
+      ],
+      "test_steps": [
+        "Integration: жалоба → 201",
+        "Integration: повторная жалоба от того же на того же в той же неделе → 409",
+        "Integration: 5 жалоб от 5 разных юзеров за 7 дней → таргет банится"
+      ],
+      "dependencies": ["TASK-008", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-033",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "F-SUPPORT endpoints: POST /api/support/messages (user) + admin reply",
+      "acceptance_criteria": [
+        "POST /api/support/messages { text } — создать тикет",
+        "GET /api/support/messages/me — мои тикеты",
+        "GET /api/admin/support/messages?status=open — admin-only (role==admin)",
+        "POST /api/admin/support/messages/:id/reply { reply_text } — admin отвечает; status→resolved",
+        "После reply триггерит TG-уведомление user в категории support_reply"
+      ],
+      "test_steps": [
+        "Integration: user создаёт тикет → 201",
+        "Integration: user GET admin endpoint → 403",
+        "Integration: admin reply → reply_text заполнен, replied_at, status=resolved",
+        "Integration: триггер уведомления (мокаем notify) — был вызван"
+      ],
+      "dependencies": ["TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-034",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "apps/notifier: Bun worker — рассылка push через Telegram Bot API + notification_preferences",
+      "acceptance_criteria": [
+        "apps/notifier/src/index.ts — слушает в notifications очередь (Postgres LISTEN/NOTIFY на канал notify_user)",
+        "Категория проверяется против users.notify_disabled и notification_preferences (если category=='system' — не учитывается preferences)",
+        "Шлёт через POST https://api.telegram.org/bot<TOKEN>/sendMessage",
+        "Деduplication: hash(user_id+category+target_id+date) хранится в memory кеше 5 мин",
+        "При 403 (bot заблокирован) — устанавливает users.notify_disabled=true",
+        "При 429 — sleep 60 + retry"
+      ],
+      "test_steps": [
+        "Unit: формирование payload по категории",
+        "Integration: NOTIFY notify_user → worker обрабатывает (мок TG API)",
+        "Integration: notification_preferences enabled=false → skip"
+      ],
+      "dependencies": ["TASK-008", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-035",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Endpoint /api/notifications/preferences — GET/PUT настройки категорий",
+      "acceptance_criteria": [
+        "GET /api/notifications/preferences — текущие настройки юзера (8 категорий)",
+        "PUT /api/notifications/preferences { ride_request: boolean, ... } — обновить",
+        "system всегда true, попытка PUT system=false → 422",
+        "При первом обращении создаются дефолты (всё true)"
+      ],
+      "test_steps": [
+        "Integration: GET без записей → дефолты (всё true)",
+        "Integration: PUT отключает категорию",
+        "Integration: PUT system=false → 422"
+      ],
+      "dependencies": ["TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-036",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "ride_templates CRUD: POST/GET/PATCH/DELETE для регулярных рейсов",
+      "acceptance_criteria": [
+        "POST /api/ride-templates — создать шаблон (driver_id=auth.uid)",
+        "GET /api/ride-templates/me — мои шаблоны",
+        "PATCH /api/ride-templates/:id — обновить (RLS: только owner)",
+        "DELETE /api/ride-templates/:id — soft delete (is_active=false)",
+        "weekdays — массив 0-6"
+      ],
+      "test_steps": [
+        "Integration: создать → запись",
+        "Integration: чужой PATCH → 403",
+        "Integration: weekdays=[1,2,3,4,5] (Пн-Пт) — валидно"
+      ],
+      "dependencies": ["TASK-007", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-037",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "apps/cron: разворачивание ride_templates в rides на 14 дней вперёд (ежедневно в 03:00)",
+      "acceptance_criteria": [
+        "apps/cron/src/expand-templates.ts — для каждого active template на ближайшие 14 дней по weekdays создаёт rides если ещё нет на эту дату",
+        "Idempotent: повторный запуск не дублирует",
+        "Не создаёт если active_to <= today",
+        "Cron 03:00 UTC через node-cron"
+      ],
+      "test_steps": [
+        "Integration: template Пн-Пт → создаются 10 rides на 14 дней",
+        "Integration: повторный запуск — 0 новых",
+        "Integration: active_to=прошлая дата → 0 rides"
+      ],
+      "dependencies": ["TASK-036", "TASK-022"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-038",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "SSE realtime endpoint: GET /api/realtime/rides (Server-Sent Events для ленты)",
+      "acceptance_criteria": [
+        "Hono streaming endpoint, Content-Type: text/event-stream",
+        "При INSERT/UPDATE/DELETE на rides (Postgres LISTEN/NOTIFY канал rides_changed) — пушит event клиенту",
+        "Cache-Control: no-cache, X-Accel-Buffering: no",
+        "heartbeat каждые 15 сек",
+        "При закрытии соединения — отписка"
+      ],
+      "test_steps": [
+        "Integration: client подключается, новый ride INSERT → событие приходит",
+        "Integration: heartbeat за 30 сек > 1 событие пришло",
+        "Integration: 100 одновременных клиентов — нагрузка стабильна"
+      ],
+      "dependencies": ["TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-039",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web: ride detail screen — карточка поездки (по дизайну screens-detail.jsx)",
+      "acceptance_criteria": [
+        "Маршрут /rides/:id",
+        "Header: название направления + время отправления",
+        "Карточка водителя: аватар, имя, бейджи (новый-участник, верифицированный когда будет), большой счётчик лайков, рейтинг (звёзды + число)",
+        "Список passengers (TASK-027) с аватарами и переходом в их профиль",
+        "Парные кнопки: «Написать в Telegram» (tg://user?id=...) + «Лайк» (если eligible)",
+        "Realtime обновление при изменении ride (через SSE из TASK-038)",
+        "Loading/error/not-found состояния",
+        "Адаптация по дизайну: docs/design/project/src/screens-detail.jsx"
+      ],
+      "test_steps": [
+        "Unit: рендер с моком ride",
+        "Unit: TG-кнопка ведёт на правильный tg:// URL",
+        "Unit: лайк disabled когда not eligible",
+        "E2E: открыть карточку → нажать «Написать» → новая вкладка"
+      ],
+      "dependencies": ["TASK-017", "TASK-029", "TASK-038"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-040",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web: profile screen — публичный профиль водителя/пассажира (по дизайну screens-profile.jsx)",
+      "acceptance_criteria": [
+        "Маршрут /profile/:user_id (или /me для своего)",
+        "Hero card: аватар, имя, роль (Водитель и пассажир / Пассажир)",
+        "3 больших цифры: лайки / рейтинг / поездки (из user_stats)",
+        "Public stats grid 2x2: % состоявшихся, среднее время ответа, в сервисе N мес, регулярных поездок",
+        "Вкладки: Расписание (для водителя — регулярные рейсы), Отзывы (с гистограммой 5★/4★/3★/2★/1★), Поездки",
+        "В моём профиле: кнопки «Редактировать», «Настройки уведомлений»",
+        "По дизайну: docs/design/project/src/screens-profile.jsx"
+      ],
+      "test_steps": [
+        "Unit: рендер с user-data",
+        "Unit: гистограмма правильно отображает распределение",
+        "Unit: расписание для водителя с регулярными рейсами"
+      ],
+      "dependencies": ["TASK-017", "TASK-022", "TASK-030", "TASK-036"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-041",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web: create ride form (single + recurring) с address picker (по дизайну screens-create.jsx + address.jsx)",
+      "acceptance_criteria": [
+        "Маршрут /rides/new",
+        "Поля: from (картой+автокомплит), to (картой+автокомплит), departure_at (date+time picker), price_rub (или 'договорная'), seats_total (1-4), comment (≤200)",
+        "Чекбокс «Регулярный» → раскрывает поля weekdays multiselect, exceptions dates, active_from/to",
+        "Submit одной кнопкой — single → POST /api/rides, recurring → POST /api/ride-templates",
+        "Telegram MainButton привязан к submit"
+      ],
+      "test_steps": [
+        "Unit: валидация (negative seats, прошедшая дата) — формы зеркалят backend zod",
+        "Unit: переключение recurring — поля раскрываются",
+        "E2E: создать single → видим в ленте",
+        "E2E: создать recurring Пн-Пт → видим schedule в профиле"
+      ],
+      "dependencies": ["TASK-017", "TASK-014", "TASK-036"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-042",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web: map screen — карта со всеми активными поездками + маркеры + маршрутные линии (по дизайну screens-map.jsx)",
+      "acceptance_criteria": [
+        "Leaflet + OpenStreetMap tiles (без API key)",
+        "leaflet.markercluster при ≥50 точек в области",
+        "Маркеры на from_lat/lng, при клике — миниатюра карточки",
+        "Линии from→to (straight line), цвет по статусу/доверию водителя",
+        "Bbox-фильтрация запросов к /api/rides по viewport",
+        "Tap маркер → /rides/:id",
+        "По дизайну: docs/design/project/src/screens-map.jsx"
+      ],
+      "test_steps": [
+        "Unit: рендер пустой карты, маркеры из mock",
+        "Unit: clustering включается при >50 точек",
+        "E2E: pan карты → запрос с bbox-фильтром"
+      ],
+      "dependencies": ["TASK-017", "TASK-015"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-043",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web: filters panel (фильтры доверия + поиск + сохранение в localStorage)",
+      "acceptance_criteria": [
+        "Чекбокс trustMinAccountAgeDays (slider 0-30), trustMinLikes (slider 0-10), favoritesOnly, verifiedOnly (на будущее)",
+        "Поиск direction (free text)",
+        "Slider price_max, seats_min",
+        "Сохранение в localStorage (key: poputchiki:filters)",
+        "Применяется и в ленте и на карте",
+        "По дизайну: docs/design/project/src/filters.jsx"
+      ],
+      "test_steps": [
+        "Unit: state восстанавливается из localStorage",
+        "Unit: применение фильтра шлёт правильный query в /api/rides",
+        "E2E: установка фильтра → reload → состояние сохранено"
+      ],
+      "dependencies": ["TASK-017"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-044",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "web: onboarding flow при первом входе (имя, опц. кв. номер, согласие на ПД)",
+      "acceptance_criteria": [
+        "Триггер: первый успешный /auth/telegram (флаг users.onboarded=false)",
+        "Шаг 1: имя (предзаполнено из TG)",
+        "Шаг 2: опц. номер квартиры (зашифровано на бэке через TASK-020)",
+        "Шаг 3: согласие на ПД (checkbox)",
+        "После — users.onboarded=true, переход на /rides"
+      ],
+      "test_steps": [
+        "Unit: рендер по шагам",
+        "Unit: skip опционального шага",
+        "E2E: первый login → onboarding → лента"
+      ],
+      "dependencies": ["TASK-016", "TASK-020"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-045",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "web: notification preferences UI + global mute (settings screen)",
+      "acceptance_criteria": [
+        "Маршрут /settings/notifications",
+        "Список 8 категорий с toggle (system disabled — нельзя отключить)",
+        "Глобальный mute toggle — отключает все кроме system",
+        "Сохранение через PUT /api/notifications/preferences (TASK-035)"
+      ],
+      "test_steps": [
+        "Unit: toggle категорий",
+        "Unit: system всегда on",
+        "E2E: отключить like_received → новый лайк не вызывает notify (мок)"
+      ],
+      "dependencies": ["TASK-016", "TASK-035"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-046",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "web: favorites screen + favorite toggle на карточке/в профиле",
+      "acceptance_criteria": [
+        "Маршрут /favorites — список любимых юзеров с переходом в профиль",
+        "Toggle ⭐ на карточке поездки и в профиле — POST/DELETE /api/favorites",
+        "Toggle 🔔 «уведомлять о новых поездках» (PATCH notify=true)",
+        "Опция favoritesOnly в фильтрах ленты"
+      ],
+      "test_steps": [
+        "Unit: optimistic update toggle ⭐",
+        "Unit: список с N favorite пользователей",
+        "E2E: добавить → виден в /favorites"
+      ],
+      "dependencies": ["TASK-031", "TASK-040"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-047",
+      "category": "ui",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "web: complaint flow + support form",
+      "acceptance_criteria": [
+        "Кнопка «Пожаловаться» в карточке поездки и в профиле → bottom sheet с radio reason_code + опц. text",
+        "Submit → POST /api/complaints",
+        "Маршрут /support — список своих тикетов + кнопка «Написать в поддержку» → форма (text ≤2000)",
+        "При получении support_reply (через notification) — открыть свой тикет"
+      ],
+      "test_steps": [
+        "Unit: bottom sheet с радио reason",
+        "Unit: текстарея ≤2000 символов",
+        "E2E: пожаловаться → запись в complaints"
+      ],
+      "dependencies": ["TASK-032", "TASK-033", "TASK-040"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-048",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "web: confirmation flow — пассажир подтверждает участие через push deep-link",
+      "acceptance_criteria": [
+        "Маршрут /rides/:id/confirm",
+        "Открывается из push-уведомления (TASK-027 mark-participants)",
+        "Кнопка подтвердить → POST /api/rides/:id/confirm-participation",
+        "После подтверждения — модалка «Спасибо! Оставить лайк/отзыв?» с переходом в форму"
+      ],
+      "test_steps": [
+        "Unit: button → API call (мок)",
+        "E2E: открыть deep-link → подтверждение → модалка"
+      ],
+      "dependencies": ["TASK-028", "TASK-029", "TASK-030"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-049",
+      "category": "ui",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "web: admin dashboard — список support-тикетов + жалоб + ban/unban (только для admin tg_id)",
+      "acceptance_criteria": [
+        "Маршрут /admin (доступ только когда users.role==admin)",
+        "Вкладки: Тикеты (open), Жалобы (open), Пользователи",
+        "Open ticket → форма ответа → POST /api/admin/support/messages/:id/reply",
+        "Жалоба → resolve/dismiss (PATCH)",
+        "User row: ban/unban (PATCH /api/admin/users/:id { is_banned })"
+      ],
+      "test_steps": [
+        "Unit: non-admin → редирект /rides",
+        "Unit: admin видит вкладки",
+        "E2E: ответ на тикет → user получает support_reply (мок notify)"
+      ],
+      "dependencies": ["TASK-033", "TASK-032"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-050",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "web: Telegram theming — light/dark + accent color из Telegram.WebApp.themeParams",
+      "acceptance_criteria": [
+        "Глобальный CSS переменные --tg-bg, --tg-text, --tg-accent, --tg-button-text заполняются из Telegram.WebApp.themeParams",
+        "Tailwind theme.extend.colors привязан к этим переменным",
+        "Подписка на event 'themeChanged' — обновление CSS переменных",
+        "Fallback на light scheme если SDK недоступен"
+      ],
+      "test_steps": [
+        "Unit: переменные применяются",
+        "Unit: themeChanged → переключение",
+        "E2E mock: SDK light → fonts/bg light"
+      ],
+      "dependencies": ["TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-051",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "web: Telegram WebApp SDK интеграция — BackButton, MainButton, HapticFeedback, viewport",
+      "acceptance_criteria": [
+        "BackButton показывается на всех не-root страницах, скрыт на /rides",
+        "MainButton привязан к primary action на каждой странице (форма submit, карточка детали — Написать)",
+        "HapticFeedback на ключевых действиях (отправил поездку, поставил лайк, ошибка)",
+        "viewport.expand() при старте",
+        "Disable swipe-to-close на критичных формах (settings.disable_swipe_close)"
+      ],
+      "test_steps": [
+        "Unit: BackButton API мок — вызывается на page change",
+        "Unit: MainButton text меняется по странице",
+        "E2E: hapticFeedback импульс на лайк (мок)"
+      ],
+      "dependencies": ["TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-052",
+      "category": "ui",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "web: error boundaries + универсальные loading/empty/error states",
+      "acceptance_criteria": [
+        "<ErrorBoundary> на root + страницах",
+        "Skeleton для loading state в ленте, профиле, карточке",
+        "Empty state с иллюстрацией",
+        "Error state с retry button",
+        "Все страницы используют унифицированные компоненты <Loading/>, <Empty/>, <ErrorView/>"
+      ],
+      "test_steps": [
+        "Unit: ErrorBoundary ловит throw из child",
+        "Unit: Skeleton рендерится при isLoading",
+        "Unit: Empty с правильным текстом"
+      ],
+      "dependencies": ["TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-053",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Anti-bot serverside правила в /api/rides POST",
+      "acceptance_criteria": [
+        "Аккаунт <24h может иметь max 1 active ride — проверка в handler перед INSERT",
+        "Аккаунт без лайков max 3 ride/сутки",
+        "При нарушении → 403 { error: 'too_new'/'unverified_daily_limit' }",
+        "Проверка через query на rides + users",
+        "Не блокирует админа"
+      ],
+      "test_steps": [
+        "Integration: новый юзер 2-я поездка → 403 too_new",
+        "Integration: 0 лайков 4-я в сутки → 403 daily_limit",
+        "Integration: admin без ограничений"
+      ],
+      "dependencies": ["TASK-014", "TASK-021"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-054",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Pre-commit hook + CI: dependency audit (bun audit + osv-scanner)",
+      "acceptance_criteria": [
+        ".husky/pre-commit или lefthook.yml: bun audit (warn-only локально)",
+        "В .github/workflows/ci.yml шаг audit: bun audit + osv-scanner --recursive",
+        "Fail CI на высоких/критических уязвимостях",
+        "Allowlist через .github/dependency-allowlist.json для known false-positives"
+      ],
+      "test_steps": [
+        "Локально: добавить deprecated пакет → CI падает",
+        "Allowlist: пакет в списке → CI проходит"
+      ],
+      "dependencies": ["TASK-019"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-055",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Pre-commit secrets scan (gitleaks)",
+      "acceptance_criteria": [
+        ".husky/pre-commit запускает gitleaks scan",
+        "Конфиг .gitleaks.toml — кастомные правила для BOT_TOKEN, JWT_SECRET, POSTGRES_PASSWORD",
+        "В CI отдельный шаг gitleaks (с history scan)",
+        "Fail на найденных секретах"
+      ],
+      "test_steps": [
+        "Локально: попытаться commit с фейк-токеном → отклоняется",
+        "CI: пуш с секретом в истории → fail"
+      ],
+      "dependencies": ["TASK-019"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-056",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Test suite: deny-by-default RLS — анонимный/чужой доступ ко всем таблицам = 0 rows",
+      "acceptance_criteria": [
+        "apps/api/tests/security/rls-deny.test.ts: для каждой таблицы (users, rides, likes, reviews, favorites, complaints, support_messages, ride_participation, audit_log)",
+        "Анонимный SELECT/INSERT/UPDATE/DELETE → отказ (0 rows или error)",
+        "Авторизованный, но чужой ресурс → отказ",
+        "Bun test:security как отдельный test:script"
+      ],
+      "test_steps": [
+        "bun run test:security — все зелёные (≥9 таблиц проверены)",
+        "Удалить policy на любой таблице → тест краснеет"
+      ],
+      "dependencies": ["TASK-008", "TASK-006", "TASK-007"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-057",
+      "category": "security",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Replay attack тесты для /auth/telegram (HMAC + auth_date + nonce)",
+      "acceptance_criteria": [
+        "tests/security/replay.test.ts: подменённый hash → 401",
+        "auth_date в прошлом >5min → 401",
+        "auth_date в будущем >5min → 401",
+        "Один и тот же initData дважды → второй 401 (replay)",
+        "Случайный nonce между двумя — оба проходят (не false-positive replay)"
+      ],
+      "test_steps": [
+        "bun run test:security — все 5 кейсов зелёные"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-058",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Hooks .claude/settings.json — auto lint/typecheck PostToolUse(Edit|Write) + блок push в main",
+      "acceptance_criteria": [
+        ".claude/settings.json содержит:",
+        "- PreToolUse(Bash:git push origin main): exit 1 с сообщением",
+        "- PostToolUse(Edit|Write): bun run lint:staged + bun run typecheck:staged",
+        "- Stop: bun run test:fast (если он определён)",
+        "Хуки не падают при отсутствии команд (graceful)"
+      ],
+      "test_steps": [
+        "В Claude Code попытаться git push origin main → блок",
+        "Edit файла → автоматом lint",
+        "Stop сессии → fast test suite"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-059",
+      "category": "infrastructure",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "Bun script: db:reset — снос локальной БД и пересоздание с миграциями + сидами",
+      "acceptance_criteria": [
+        "scripts/db-reset.sh: docker compose down -v && docker compose up -d postgres && wait healthy && bun run db:migrate up && bun run db:seed",
+        "db:seed создаёт 5 mock пользователей + 10 поездок + лайки/отзывы для разработки",
+        "bun run db:reset",
+        "Не работает в production (проверка NODE_ENV)"
+      ],
+      "test_steps": [
+        "bun run db:reset — успех, чистая БД с сидами",
+        "NODE_ENV=production bun run db:reset → отказ"
+      ],
+      "dependencies": ["TASK-005", "TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-060",
+      "category": "integration",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "E2E полный happy-path: онбординг → создание поездки → отклик → подтверждение → лайк/отзыв",
+      "acceptance_criteria": [
+        "tests/e2e/full-cycle.spec.ts моделирует двух юзеров через mock initData",
+        "User A: онбординг → создаёт поездку",
+        "User B: видит в ленте → откликается → пишет в TG (мок)",
+        "User A: помечает участие B → push (мок)",
+        "User B: открывает confirm-link → подтверждает → ставит лайк A",
+        "User A: видит лайк в профиле + получает push (мок)"
+      ],
+      "test_steps": [
+        "bun run test:e2e tests/e2e/full-cycle.spec.ts — зелёный",
+        "Запуск с docker compose up postgres + apps/api dev"
+      ],
+      "dependencies": ["TASK-039", "TASK-041", "TASK-044", "TASK-048", "TASK-029"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-061",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "post-mvp-deploy",
+      "description": "scripts/backup-db.sh + restore-test.sh + cron расписание",
+      "acceptance_criteria": [
+        "backup-db.sh: pg_dump --format=custom + zstd + gpg --symmetric --passphrase $BACKUP_KEY",
+        "Файлы в ./backups/poputchiki-YYYY-MM-DD.dump.zst.gpg",
+        "Retention в скрипте: daily 30 / weekly 12 / monthly 24",
+        "restore-test.sh: разворачивает в temp Postgres контейнер, запускает smoke",
+        "Расписание для cron worker: backup ежедневно 03:00 UTC, restore-test раз в неделю",
+        "В MVP local — добавлены скрипты, не запускаются автоматически (phase: post-mvp-deploy)"
+      ],
+      "test_steps": [
+        "bash scripts/backup-db.sh — файл создан + зашифрован",
+        "bash scripts/restore-test.sh последний-файл — Postgres временный поднимается, smoke зелёный",
+        "Manual cron schedule check"
+      ],
+      "dependencies": ["TASK-005"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-062",
+      "category": "infrastructure",
+      "priority": "low",
+      "phase": "post-mvp-deploy",
+      "description": "Production docker-compose.yml + Traefik labels + GitHub Actions deploy job",
+      "acceptance_criteria": [
+        "infra/docker-compose.yml: api, notifier, cron, web (через caddy/nginx), Traefik labels (Host=api.${DOMAIN}, app.${DOMAIN}), TLS resolver letsencrypt",
+        "Traefik не разворачивается заново — используется существующий на сервере",
+        "Networks: traefik-public (external), poputchiki-internal",
+        ".github/workflows/deploy.yml: build images → push → SSH on host → docker compose pull && up -d → smoke /health → rollback при fail"
+      ],
+      "test_steps": [
+        "docker compose -f infra/docker-compose.yml config — валидный",
+        "Manual deploy run — все сервисы up + Traefik routes работают (на staging)"
+      ],
+      "dependencies": ["TASK-019", "TASK-061"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-063",
+      "category": "documentation",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Обновить PRD до v0.4 — расширения из дизайна (schedule, public stats grid, гистограмма, passenger list, парные кнопки)",
+      "acceptance_criteria": [
+        "docs/PRD-Poputchiki-v0.1.md → version 0.4",
+        "F-PROFILE расширен: hero card 3 цифр, public stats grid 2x2, schedule tab для регулярных, гистограмма рейтинга на reviews tab",
+        "F-RIDE детальная карточка: passenger list + переходы в профиль",
+        "F-RIDE: парные кнопки 'Написать в Telegram' + 'Лайк'",
+        "Roadmap не меняется",
+        "CHANGELOG секция v0.4 с пунктами"
+      ],
+      "test_steps": [
+        "Файл валидно отображается markdown",
+        "Ссылки внутри (на SPEC, OPEN-QUESTIONS) валидны"
+      ],
+      "dependencies": [],
+      "status": "pending"
     }
   ]
 }

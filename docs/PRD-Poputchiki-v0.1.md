@@ -1,11 +1,11 @@
 # PRD: Попутчики Царёво (Poputchiki)
 
-**Версия:** 0.3 (черновик)
+**Версия:** 0.4 (черновик)
 **Дата:** 2026-05-01
 **Автор:** Anton (заказчик) + Claude Code (драфт)
-**Статус:** Draft — основные продуктовые решения зафиксированы, остаются технические уточнения по бесплатной инфраструктуре
+**Статус:** Draft — продуктовые решения зафиксированы, инфраструктура self-hosted, MVP включает деплой в прод.
 
-> Изменения 0.1 → 0.2 (по итогам ответов заказчика 2026-05-01) перечислены в конце документа.
+> Изменения по версиям — в конце документа.
 > Любые изменения архитектуры, моделей данных, ролевой модели сначала фиксируются здесь, потом в `tasks.json`.
 
 ---
@@ -117,7 +117,7 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 
 **Flow A: онбординг**
 1. Житель открывает MiniApp по ссылке из Telegram-группы или директ-линка `t.me/<bot>?startapp`.
-2. Telegram передаёт `initData`; backend верифицирует HMAC + `auth_date` + nonce; создаёт/находит юзера в Supabase.
+2. Telegram передаёт `initData`; backend верифицирует HMAC + `auth_date` + nonce; upsert юзера в self-hosted Postgres `users(tg_id)`.
 3. Первый вход: короткий онбординг — имя (предзаполнено из TG), номер квартиры (опционально), согласие на ПД.
 4. Главный экран — лента активных поездок.
 
@@ -129,7 +129,7 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
    - цена (число или «договорная»);
    - количество мест (1–4);
    - комментарий (текст ≤ 200 символов).
-2. Submit → запись в БД (с `from_lat/from_lng/to_lat/to_lng`) → лента обновлена через realtime (Supabase Realtime).
+2. Submit → запись в БД (с `from_lat/from_lng/to_lat/to_lng`) → Postgres `NOTIFY rides_changed` → SSE-эндпоинт пушит событие подписчикам ленты.
 
 **Flow C: водитель публикует регулярный рейс**
 1. Та же форма + чекбокс «Регулярный».
@@ -175,7 +175,7 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 - Модели: `ride`, `ride_template` (для регулярных), `ride_request` (отклики), `ride_participation` (подтверждённые участники).
 - CRUD: создание, редактирование (до `departure_at`), отмена (с уведомлением откликнувшимся).
 - Список: сортировка по времени, фильтры (направление, время, цена, места, доверие, избранное).
-- Realtime обновление списка (Supabase Realtime channel).
+- Realtime обновление списка через SSE (`GET /api/realtime/rides`), источник — Postgres `LISTEN/NOTIFY`. Fallback на 30s polling при reconnect-failure.
 - Геополя: `from_lat/lng`, `to_lat/lng`, `from_label`, `to_label`.
 
 ### 4.3 F-MAP: Карта
@@ -224,7 +224,7 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 - Обработка `bot_blocked`-события → пометка `notify_disabled=true` в `users`.
 
 **Админ-алерты** (отдельный чат `ADMIN_TG_CHAT_ID` в env):
-- Технические: error rate >1%, p95 latency >1s, бэкап failed, restore drill failed, Supabase quota >80%.
+- Технические: error rate >1%, p95 latency >1s, бэкап failed, restore drill failed, Postgres disk usage >80%, Postgres connection pool >80%, RAM/CPU host >85%, deploy failed/rolled-back.
 - Продуктовые: новое обращение в техподдержку, авто-блок пользователя по жалобам, подозрительная активность (10+ поездок от свежего аккаунта за час).
 - Не слать спам: thresholds + cooldown 5 мин на одну категорию.
 
@@ -266,15 +266,15 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 
 ### 5.1 Безопасность (top priority — threat model «every user is hostile»)
 - **Deny-by-default**: каждая таблица — RLS с явным `USING/WITH CHECK`; новый эндпоинт без явной auth/authz-проверки → fail в CI (lint-rule).
-- **RLS на ВСЁМ**: ни одна таблица Supabase не доступна без RLS-политики. Тест `deny_by_default_test` гоняется в CI и проверяет, что без auth токена все select/insert/update возвращают 0 rows.
-- **JWT**: backend выдаёт Supabase-совместимый JWT с custom claim `tg_id` после Telegram-верификации.
+- **RLS на ВСЁМ**: ни одна таблица self-hosted Postgres не доступна без RLS-политики. Identity берётся из GUC `app.current_user_id` (см. SPEC §3.4). Тест `deny_by_default_test` гоняется в CI и проверяет, что без `set_config` все select/insert/update возвращают 0 rows.
+- **JWT**: backend выдаёт собственный JWT (HS256, секрет `JWT_SECRET` в env) с claims `{ sub, tg_id, role, typ, jti, iat, exp }` после Telegram-верификации. Refresh-токен (TTL 30d) ротируется и трекается в `revoked_tokens`.
 - **Шифрование персональных данных**: телефон / номер квартиры — pgcrypto `pgp_sym_encrypt` (ключ в env); никогда не в plaintext колонке.
 - **Бэкапы**: ежедневный snapshot БД через `pg_dump` локально в папку `./backups/` внутри проекта, сжатие zstd, шифрование GPG (ключ в env). Retention: 30 daily / 12 weekly / 24 monthly. Тест восстановления раз в неделю (cron) — поднимаем временный Postgres из последнего бэкапа, гоняем smoke. Нерабочий бэкап → блокирующий алерт.
 - **Аудит-лог**: каждое state-changing API-действие → таблица `audit_log` (actor_id, action, target_id, payload_hash, ip, ua, ts).
 - **Rate limiting**: 100 req/min на user-id, 1000 req/min на ip; 429 при превышении. Хранилище — Postgres (`rate_limit_buckets`) или Cloudflare Workers KV если деплой через CF.
 - **Валидация на входе**: zod-схемы на КАЖДОМ Hono endpoint; ошибки → 422 + structured payload.
 - **Secrets**: только в env файла `.env.local` или платформенный secret store. Никогда не в репо. Pre-commit hook сканирует на утечки (gitleaks).
-- **HTTPS-only**: см. SPEC раздел про развёртывание (Cloudflare Tunnel или DuckDNS+LE).
+- **HTTPS-only**: Traefik + Let's Encrypt на личном сервере, публичный 443. См. SPEC §10.
 - **CSP + HSTS + X-Frame-Options**: фронт за Hono с правильными заголовками.
 - **Identity guard (paranoid)**: cookie `tg_uid` HttpOnly=false (для клиентского сравнения с initDataUnsafe) + server-side проверка cookie ↔ JWT при каждом запросе. Mismatch → инвалидация сессии + force re-auth.
 - **CSRF**: double-submit token + Origin/Referer check на каждом state-changing эндпоинте.
@@ -285,7 +285,7 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 - p95 API < 200ms на чтение, < 500ms на запись.
 - Лента поездок: индекс на `(status, departure_at)`; LIMIT 50 + cursor pagination.
 - N+1 запрещён: review-агрегаты — materialized view `user_stats`, refresh каждые 5 минут.
-- Realtime: WebSocket через Supabase, fallback на polling раз в 30 сек.
+- Realtime: SSE через Hono + Postgres `LISTEN/NOTIFY`, fallback на polling раз в 30 сек после 5 reconnect-failure подряд.
 - Карта: clustering при ≥50 точках в области (Leaflet markercluster).
 
 ### 5.3 Надёжность
@@ -309,32 +309,38 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 
 ---
 
-## 6. Технический стек (с учётом бюджета $0)
+## 6. Технический стек (self-hosted, домашний сервер)
 
-| Слой | Технология | Free tier / стоимость | Обоснование |
-|------|-----------|------------------------|-------------|
-| Backend | TypeScript + Hono + Bun | бесплатно | Утверждено; Hono-Web Standards совместим с Cloudflare Workers как fallback |
-| Frontend | TypeScript + Vite + React (SPA) | бесплатно | Утверждено |
-| БД | Supabase (PostgreSQL) | free tier 500MB БД, 2GB transfer, 50k MAU Auth, 1GB storage | достаточно для MVP в одном ЖК |
-| Деплой backend | Docker Compose на личном сервере + Cloudflare Tunnel | бесплатно | без домена — туннель CF даёт `*.cfargotunnel.com` HTTPS; альтернатива: Fly.io free (3×256MB VMs) |
-| Деплой frontend | Cloudflare Pages | бесплатно (unlimited bandwidth) | SPA + edge cache |
-| HTTPS/Domain | Cloudflare Tunnel или DuckDNS поддомен + Let's Encrypt | бесплатно | TG MiniApp требует валидный TLS на домене; bare IP не работает |
-| Карта | Leaflet + OpenStreetMap | бесплатно, без квот | без API-ключей |
-| Auth | Supabase Auth + Telegram initData (custom JWT) | бесплатно (входит в Supabase free) | |
-| Аналитика | PostHog Cloud free tier (1M events/мес) | бесплатно | managed, не нагружаем сервер |
-| AI чат / Whisper | Anthropic / OpenAI | пост-MVP | заложено в стек, в MVP не используется |
+| Слой | Технология | Стоимость | Обоснование |
+|------|-----------|-----------|-------------|
+| Backend | TypeScript + Hono + Bun | $0 | Утверждено |
+| Frontend | TypeScript + Vite + React (SPA) | $0 | Утверждено |
+| БД | self-hosted PostgreSQL 16 в Docker (`postgres:16-alpine`) | $0 (использует ресурс сервера) | Полный контроль, RLS, pgcrypto, LISTEN/NOTIFY, advisory locks. Нет зависимости от чужого free-tier лимита |
+| Auth | Собственный JWT (HS256) после HMAC-проверки Telegram initData | $0 | TCB в нашем коде; полная аудируемость; identity-guard cookie↔JWT |
+| Realtime | SSE через Hono + Postgres LISTEN/NOTIFY | $0 | Без отдельного брокера; fallback на 30s polling |
+| Хостинг (backend + БД + фронт) | Docker Compose на личном сервере заказчика, Traefik + Let's Encrypt | $0 (свой сервер уже работает) | Публичный 443 + Traefik уже настроен. Контейнеры: `api`, `notifier`, `cron`, `webhook`, `web-server` (Caddy с SPA dist), `postgres`, `nominatim` |
+| Frontend hosting | Caddy-контейнер за Traefik (`app.${DOMAIN}`) | $0 | Один атомарный deploy фронта+бэка через docker tag |
+| HTTPS / Domain | свой домен заказчика, поддомены `app/api/webhook.${DOMAIN}` | $0 (домен уже куплен) | Если домена нет — DuckDNS поддомен с DNS-challenge через Traefik |
+| Карта | Leaflet + OpenStreetMap tiles | $0, без API-key, без квот | |
+| Geocoding | self-hosted Nominatim (`mediagis/nominatim`) с импортом региона Татарстан (~50MB osm) | $0 | Без внешних квот, в той же docker-сети |
+| Логи | pino JSON → файл с rotation, монтируется как volume | $0 | Loki/ELK — пост-MVP при росте |
+| Метрики | postgres_exporter + node_exporter + cadvisor → Prometheus → Grafana (опц. compose) | $0 | На том же сервере, basic-auth через Traefik |
+| Uptime / blackbox | Uptime Kuma (опц. compose) | $0 | Локальный мониторинг `/health` |
+| Error tracking | self-hosted Sentry (план A) ИЛИ собственный `error_log` table + admin TG-alert (план B) | $0 | План B без зависимостей, выбор за объёмом ошибок |
+| Аналитика | отложено в фазу 2 | — | В MVP не нужна — продукт для одного ЖК; решения принимаются по обратной связи в TG, не по дашбордам |
+| AI чат / Whisper | пост-MVP | — | Не используется |
 
-**Платные альтернативы в roadmap при росте**:
-- Supabase Pro ($25/мес) при превышении 500MB / 50k MAU.
-- Railway / Fly.io paid при превышении free часов.
-- PostHog paid при >1M events/мес.
-- Yandex Maps API при необходимости routing/geocoding.
+**Платные альтернативы в roadmap при росте** (когда домашний сервер перестанет тянуть):
+- Managed Postgres (Neon / RDS / Hetzner Cloud Postgres) — при необходимости HA.
+- Cloudflare Pages для статики — при росте трафика SPA.
+- Yandex Maps API при необходимости routing/geocoding (free до 25k/день).
+- PostHog Cloud free tier — при появлении продуктовой аналитики.
 
 ---
 
 ## 7. Метрики, мониторинг, логирование
 
-- **Метрики**: PostHog product events (`ride_created`, `ride_match`, `like_given`, `review_left`, `complaint_submitted`).
+- **Метрики продукта**: счётчики событий пишутся в `audit_log` (action+actor+target+ts) — `ride_created`, `ride_request`, `like_given`, `review_left`, `complaint_submitted`. Для агрегатов — SQL-запросы к `audit_log` (опц. materialized view `product_metrics_daily`). PostHog Cloud — пост-MVP.
 - **Логи**: structured JSON через `pino`, агрегация в локальные файлы с ротацией; upgrade на Loki при росте.
 - **Алерты**: error rate > 1%, p95 latency > 1s, бэкап failed — Telegram-бот алертов админу.
 
@@ -374,6 +380,19 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 ---
 
 ## CHANGELOG
+
+### v0.4 (2026-05-01)
+
+**Self-hosted всё** (заказчик подтвердил: домашний сервер + Docker + микросервисы):
+- §6 таблица стека переписана. Удалены: Supabase, Cloudflare Pages, Cloudflare Tunnel, Fly.io, PostHog Cloud. Добавлены: self-hosted Postgres 16, Caddy за Traefik, self-hosted Nominatim, Prometheus+Grafana+Uptime Kuma stack (опц.).
+- §3.5 Flow A: «upsert юзера в Supabase» → «upsert в self-hosted Postgres».
+- §3.5 Flow B/D и §4.2: «Supabase Realtime channel» → «SSE через Hono + Postgres LISTEN/NOTIFY».
+- §4.8 админ-алерты: убран «Supabase quota», добавлены метрики self-hosted (disk usage, connection pool, RAM/CPU host, deploy status).
+- §5.1: «RLS на Supabase» → «RLS через GUC `app.current_user_id`», JWT — собственный HS256 с refresh+rotation.
+- §5.2: realtime fallback на 30s polling после 5 reconnect-failure.
+- §5.1: HTTPS — Traefik+LE на личном сервере, без CF Tunnel.
+- §7: метрики продукта пишутся в `audit_log` + опц. materialized view; PostHog отложен.
+- Готовность к prod: tasks.json расширен задачами TASK-107..125 (см. SPEC §13 changelog).
 
 ### v0.3 (2026-05-01)
 - Деплой пересмотрен: домашний сервер с **Traefik + Let's Encrypt** (CF Tunnel отвергнут как избыточный при наличии публичного 443).

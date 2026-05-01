@@ -1,7 +1,21 @@
-# Только секреты — всё остальное коммитим (правило проекта).
+# Только секреты и runtime data volumes — всё остальное коммитим (правило проекта).
 .env
 .env.local
 .env.*.local
+.env.prod
 *.pem
 *.key
 secrets/
+
+# Runtime data внутри проекта (см. CLAUDE.md, договорено 2026-05-01)
+.docker-data/
+backups/*.dump
+backups/*.dump.zst
+backups/*.dump.zst.gpg
+backups/wal/
+backups/base-*
+
+# .memory (claude-memory-compiler — local-only state)
+.memory/scripts/__pycache__/
+.memory/scripts/*.log
+.memory/scripts/session-flush-*.md

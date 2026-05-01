@@ -1,19 +1,29 @@
 {
   "project": {
     "name": "Poputchiki",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "prd_source": "docs/PRD-Poputchiki-v0.1.md",
     "spec_source": "docs/SPEC-Architecture-v0.1.md",
-    "phase": "code-only-local",
-    "created_at": "2026-05-01"
+    "phase": "full-mvp-with-prod-deploy",
+    "phases_order": ["mvp", "prod-deploy"],
+    "infrastructure_decisions": {
+      "db": "self-hosted PostgreSQL 16 в Docker (контейнер postgres:16-alpine). НЕ Supabase, НЕ Neon, НЕ managed.",
+      "auth_rls_identity": "GUC app.current_user_id / app.current_user_tg_id / app.current_user_role через set_config(..., true) в каждой транзакции. НЕТ auth.uid()/auth.jwt() — это Supabase, у нас их нет. См. SPEC §3.4.",
+      "realtime": "SSE через Hono + Postgres LISTEN/NOTIFY, fallback на 30s polling",
+      "frontend_hosting": "Caddy-контейнер за Traefik (app.${DOMAIN}). НЕ Cloudflare Pages",
+      "deploy": "Docker Compose на личном сервере, GHA → SSH → deploy.sh → smoke → rollback"
+    },
+    "created_at": "2026-05-01",
+    "updated_at": "2026-05-01"
   },
   "agent_instructions": {
     "before_start": [
-      "Прочитай этот файл, progress.txt, CLAUDE.md, ralph-tick.md",
-      "Просмотри docs/PRD-Poputchiki-v0.1.md и docs/SPEC-Architecture-v0.1.md",
+      "Прочитай этот файл, progress.txt, CLAUDE.md",
+      "Просмотри docs/PRD-Poputchiki-v0.1.md (v0.4) и docs/SPEC-Architecture-v0.1.md (v0.5)",
       "Проверь git log --oneline -10",
       "Выбери ОДНУ pending-задачу с max priority, у которой все dependencies = done",
-      "Не бери задачи с phase: post-mvp-deploy"
+      "Phase порядок: сначала ВСЕ phase=mvp задачи, потом phase=prod-deploy. Из prod-deploy не бери пока есть pending mvp",
+      "Никаких внешних managed сервисов (Supabase / Neon / Vercel / CF Pages / Fly.io / PostHog Cloud)"
     ],
     "during_work": [
       "Работай только над выбранной задачей",
@@ -147,18 +157,28 @@
       "category": "functional",
       "priority": "critical",
       "phase": "mvp",
-      "description": "Миграция 001: таблица users + RLS deny-by-default",
+      "description": "Миграция 000: SQL identity helpers + миграция 001: таблица users + RLS deny-by-default",
       "acceptance_criteria": [
+        "db/migrations/000_app_identity.sql: CREATE SCHEMA app; функции app.current_user_id() RETURNS uuid, app.current_user_tg_id() RETURNS bigint, app.current_user_role() RETURNS text, app.is_admin() RETURNS boolean — читают current_setting('app.current_user_id', true) и т.д. (см. SPEC §3.4)",
         "db/migrations/001_users.sql соответствует схеме SPEC §4.1",
-        "ALTER TABLE users ENABLE/FORCE ROW LEVEL SECURITY",
-        "policy users_read_self: USING (id = (auth.jwt() ->> 'sub')::uuid)",
-        "Никаких policy без auth — deny-by-default",
-        "Поля apt_number_enc, phone_enc как bytea (для pgcrypto)"
+        "ALTER TABLE users ENABLE ROW LEVEL SECURITY; ALTER TABLE users FORCE ROW LEVEL SECURITY",
+        "policy users_read_public: FOR SELECT USING (app.current_user_id() IS NOT NULL) — любой авторизованный видит публичные поля",
+        "policy users_update_self: FOR UPDATE USING (id = app.current_user_id()) WITH CHECK (id = app.current_user_id())",
+        "policy users_insert_self_only: FOR INSERT WITH CHECK (id = app.current_user_id() OR app.is_admin()) — обычно upsert делается api с admin-bypass через явную функцию",
+        "ВАЖНО: НЕТ auth.uid() / auth.jwt() — это Supabase, у нас их не существует",
+        "Поля apt_number_enc, phone_enc как bytea (для pgcrypto в TASK-020)",
+        "deleted_at timestamptz nullable (для soft-delete TASK-076)",
+        "onboarded boolean NOT NULL DEFAULT false (для onboarding TASK-044)",
+        "Парные _down миграции: 000_app_identity_down.sql (DROP FUNCTION app.*; DROP SCHEMA app CASCADE), 001_users_down.sql (DROP TABLE users CASCADE) — для node-pg-migrate down. Up→down→up идемпотентен (TASK-114 sentinel)"
       ],
       "test_steps": [
-        "bun run db:migrate up — миграция применилась",
-        "Integration test: анонимный select из users возвращает 0 rows",
-        "Integration test: с JWT юзер видит только свою запись"
+        "bun run db:migrate up — обе миграции применились",
+        "bun run db:migrate down 2 — обе откатились без ошибок",
+        "bun run db:migrate up — повторно применились (idempotent)",
+        "Integration test: транзакция БЕЗ set_config app.current_user_id → SELECT users возвращает 0 rows",
+        "Integration test: SET LOCAL app.current_user_id = '<uuid>' → SELECT users WHERE id=<uuid> возвращает свою запись",
+        "Integration test: чужой UPDATE users → 0 rows updated",
+        "Integration test: app.current_user_id() в новой connection из pool без set_config — возвращает NULL (identity не утекает между транзакциями)"
       ],
       "dependencies": ["TASK-005", "TASK-003"],
       "status": "pending"
@@ -168,17 +188,28 @@
       "category": "functional",
       "priority": "critical",
       "phase": "mvp",
-      "description": "Миграция 002: таблицы rides, ride_templates, ride_requests, ride_participation",
+      "description": "Миграция 002: таблицы rides, ride_templates, ride_requests, ride_participation + RLS",
       "acceptance_criteria": [
         "Таблицы по SPEC §4.1 (геополя from_lat/lng/to_lat/lng/from_label/to_label)",
-        "RLS на каждой: deny-by-default + явные политики",
+        "RLS на каждой: ENABLE + FORCE ROW LEVEL SECURITY",
+        "rides_read: USING (app.current_user_id() IS NOT NULL)",
+        "rides_insert: WITH CHECK (driver_id = app.current_user_id())",
+        "rides_update: USING (driver_id = app.current_user_id()) WITH CHECK (driver_id = app.current_user_id())",
+        "rides_delete: USING (driver_id = app.current_user_id() AND departure_at > now())",
+        "ride_templates_*: аналогично через app.current_user_id() = driver_id",
+        "ride_requests_*: passenger видит свои; driver видит requests на свои rides; INSERT WITH CHECK (passenger_id = app.current_user_id())",
+        "ride_participation_*: участники могут SELECT свои записи",
+        "ВАЖНО: НИКАКИХ auth.uid() / auth.jwt()",
         "Индексы: idx_rides_status_dep, idx_rides_driver, idx_rides_geo_from",
-        "CHECK constraints: seats_taken <= seats_total"
+        "CHECK constraints: seats_taken <= seats_total, seats_total BETWEEN 1 AND 4",
+        "Парный _down файл 002_*_down.sql: DROP TABLE ride_participation, ride_requests, ride_templates, rides CASCADE — обратный порядок"
       ],
       "test_steps": [
         "bun run db:migrate up — успех",
-        "Integration test deny-by-default: анонимный INSERT/UPDATE/DELETE — отказ",
-        "Integration test: водитель может INSERT свою поездку, не может чужую"
+        "Integration test deny-by-default (без set_config): анонимный INSERT/UPDATE/DELETE — отказ или 0 rows",
+        "Integration test: SET LOCAL app.current_user_id=<userA>, INSERT ride с driver_id=<userA> → ОК; INSERT с driver_id=<userB> → отказ (CHECK)",
+        "Integration test: <userA> UPDATE чужой ride → 0 rows",
+        "Integration test: ride_request от passenger=<userA> → ОК; от чужого имени → отказ"
       ],
       "dependencies": ["TASK-006"],
       "status": "pending"
@@ -188,20 +219,29 @@
       "category": "functional",
       "priority": "high",
       "phase": "mvp",
-      "description": "Миграция 003: likes, reviews, favorites, private_notes, complaints, support_messages, notification_preferences",
+      "description": "Миграция 003: likes, reviews, favorites, private_notes, complaints, support_messages, notification_preferences + RLS",
       "acceptance_criteria": [
         "Все таблицы по SPEC §4.1",
-        "UNIQUE на (subject_id, target_id, ride_id) для likes и reviews",
-        "Триггер на likes INSERT/DELETE → users.likes_received_count",
-        "RLS на всех + deny-by-default",
-        "complaints антиспам — PARTIAL UNIQUE INDEX (НЕ UNIQUE constraint!) с COALESCE(target_ride_id, zero-uuid) и date_trunc('week', created_at). См. SPEC §4.1.",
-        "updated_at default+trigger на support_messages и notification_preferences"
+        "UNIQUE (subject_id, target_id, ride_id) для likes и reviews; CHECK (subject_id <> target_id)",
+        "Триггер likes_count_trigger AFTER INSERT/DELETE на likes → UPDATE users SET likes_received_count = ... WHERE id=NEW.target_id (с FOR NO KEY UPDATE против lost-update — см. TASK-086)",
+        "RLS на всех таблицах: ENABLE + FORCE",
+        "likes/reviews: SELECT для всех авторизованных; INSERT WITH CHECK (subject_id = app.current_user_id()); DELETE USING (subject_id = app.current_user_id() AND created_at > now() - interval '24 hours')",
+        "favorites/private_notes: SELECT/INSERT/DELETE только свои (user_id = app.current_user_id())",
+        "complaints: INSERT WITH CHECK (reporter_id = app.current_user_id()); SELECT — только свои + admin (app.is_admin())",
+        "support_messages: SELECT (user_id = app.current_user_id() OR app.is_admin()); INSERT WITH CHECK (user_id = app.current_user_id())",
+        "notification_preferences: SELECT/UPDATE/INSERT WITH CHECK (user_id = app.current_user_id())",
+        "ВАЖНО: НИКАКИХ auth.uid() / auth.jwt() — везде app.current_user_id()",
+        "complaints антиспам — CREATE UNIQUE INDEX complaints_unique_per_week_idx ON complaints(reporter_id, target_user_id, COALESCE(target_ride_id, '00000000-0000-0000-0000-000000000000'::uuid), date_trunc('week', created_at)) — partial UNIQUE INDEX, НЕ UNIQUE constraint (TASK-068)",
+        "updated_at default+trigger на support_messages и notification_preferences (см. TASK-091)",
+        "Парный _down файл 003_*_down.sql: DROP TRIGGER, DROP INDEX complaints_unique_per_week_idx, DROP TABLE notification_preferences, support_messages, complaints, private_notes, favorites, reviews, likes — в обратном порядке"
       ],
       "test_steps": [
         "bun run db:migrate up — успех",
-        "Integration: дубль лайка отвергается",
+        "Integration: дубль лайка отвергается (UNIQUE)",
         "Integration: триггер лайка обновляет счётчик у target",
-        "Integration: 2 жалобы за неделю от одной пары — вторая отвергается"
+        "Integration: 2 жалобы за неделю от одной пары — вторая отвергается (partial UNIQUE INDEX)",
+        "Integration: попытка INSERT favorite с user_id чужим → отказ",
+        "Integration: admin SELECT support_messages → видит все; user SELECT — только свои"
       ],
       "dependencies": ["TASK-007"],
       "status": "pending"
@@ -281,21 +321,25 @@
       "category": "security",
       "priority": "critical",
       "phase": "mvp",
-      "description": "Identity-guard middleware: cookie tg_uid ↔ jwt.tg_id check на каждом /api/**",
+      "description": "Identity-guard middleware + withIdentity DB helper (cookie tg_uid ↔ jwt.tg_id + Postgres GUC propagation)",
       "acceptance_criteria": [
-        "Middleware читает Authorization Bearer + cookie tg_uid",
-        "Mismatch → 401 + Set-Cookie tg_uid=; Max-Age=0",
-        "Отсутствие любого из двух → 401",
-        "Передаёт user в context для handler'ов"
+        "apps/api/src/middleware/identity-guard.ts: читает Authorization Bearer + cookie tg_uid",
+        "Mismatch (cookie.tg_uid !== jwt.tg_id) → 401 + Set-Cookie tg_uid=; Max-Age=0",
+        "Отсутствие любого из двух (cookie ИЛИ Authorization) → 401",
+        "Передаёт `user: {id, tgId, role}` в Hono context (c.set('user', user))",
+        "apps/api/src/db/with-identity.ts: helper withIdentity(user, fn) — db.begin(async tx => { await tx`SELECT set_config('app.current_user_id', ${user.id}::text, true), set_config('app.current_user_tg_id', ${user.tgId}::text, true), set_config('app.current_user_role', ${user.role}::text, true)`; return fn(tx); }). Используется ВСЕМИ /api/** handlers ПЕРЕД любым SQL-запросом, чтобы RLS app.current_user_id() работал.",
+        "Анонимные хелперы (для /auth/telegram до выдачи JWT, не для /api/**) — withSystem(fn) без set_config, идёт от admin role с явным комментарием WHY",
+        "Sentinel-test: handler без withIdentity → запрос к users возвращает 0 rows (RLS deny — доказательство что хелпер обязателен)"
       ],
       "test_steps": [
         "Integration: cookie+JWT согласованы → 200",
         "Integration: cookie от другого юзера → 401",
         "Integration: нет cookie → 401",
         "Integration: нет Authorization → 401",
-        "Coverage 100% middleware"
+        "Integration: handler внутри withIdentity видит свои users-rows; вне — 0 rows",
+        "Coverage 100% middleware + helper"
       ],
-      "dependencies": ["TASK-011"],
+      "dependencies": ["TASK-011", "TASK-101"],
       "status": "pending"
     },
     {
@@ -327,7 +371,7 @@
       "acceptance_criteria": [
         "Zod-валидация тела по схеме из packages/shared",
         "Auth + identity-guard + rate-limit обязательны",
-        "RLS гарантирует driver_id == auth.uid()",
+        "RLS гарантирует driver_id == app.current_user_id()",
         "departure_at в будущем и ≤ +30 дней",
         "Anti-bot: аккаунт <24h может иметь только 1 активную поездку",
         "Anti-bot: аккаунт без лайков ограничен 3 поездками в сутки",
@@ -458,7 +502,7 @@
         "Расширение pgcrypto активировано в миграции",
         "Helpers encrypt(text)/decrypt(bytea) на уровне Postgres функций (pgp_sym_encrypt/decrypt) с ключом из настройки",
         "Application-уровень helper в apps/api/src/db/crypto.ts использует SET LOCAL pgcrypto.key",
-        "Запрет SELECT phone_enc/apt_number_enc через RLS — только через RPC функцию decrypt_user_pii(user_id) которая проверяет auth.uid()=user_id"
+        "Запрет SELECT phone_enc/apt_number_enc через RLS — только через RPC функцию decrypt_user_pii(user_id) которая проверяет app.current_user_id()=user_id"
       ],
       "test_steps": [
         "Integration: encrypt → decrypt round-trip даёт исходный текст",
@@ -597,7 +641,7 @@
       "description": "POST /api/rides/:id/mark-participants — водитель отмечает фактических пассажиров",
       "acceptance_criteria": [
         "Body: { passenger_ids: string[] }",
-        "Только driver_id == auth.uid() может вызвать",
+        "Только driver_id == app.current_user_id() может вызвать",
         "Только после departure_at",
         "Создаёт записи в ride_participation с driver_marked=true",
         "Триггерит TG-уведомление пассажирам с просьбой подтвердить (через notification_preferences)"
@@ -617,7 +661,7 @@
       "phase": "mvp",
       "description": "POST /api/rides/:id/confirm-participation — пассажир подтверждает участие",
       "acceptance_criteria": [
-        "Только passenger_id == auth.uid()",
+        "Только passenger_id == app.current_user_id()",
         "Только если ride_participation.driver_marked=true и passenger_confirmed=false",
         "В пределах 48 часов от departure_at — иначе 410 Gone",
         "Устанавливает passenger_confirmed=true, confirmed_at=now()",
@@ -639,7 +683,7 @@
       "description": "POST /api/likes — симметричный лайк после подтверждения поездки",
       "acceptance_criteria": [
         "Body: { ride_id, target_user_id }",
-        "Предусловие: ride_participation подтверждено обеими сторонами для пары (auth.uid, target)",
+        "Предусловие: ride_participation подтверждено обеими сторонами для пары (app.current_user_id(), target)",
         "UNIQUE (subject_id, target_id, ride_id) — дубль 409",
         "Триггер обновляет users.likes_received_count у target (TASK-021)",
         "DELETE /api/likes/:id в течение 24 часов от created_at",
@@ -789,7 +833,7 @@
       "phase": "mvp",
       "description": "ride_templates CRUD: POST/GET/PATCH/DELETE для регулярных рейсов",
       "acceptance_criteria": [
-        "POST /api/ride-templates — создать шаблон (driver_id=auth.uid)",
+        "POST /api/ride-templates — создать шаблон (driver_id=app.current_user_id())",
         "GET /api/ride-templates/me — мои шаблоны",
         "PATCH /api/ride-templates/:id — обновить (RLS: только owner)",
         "DELETE /api/ride-templates/:id — soft delete (is_active=false)",
@@ -1062,7 +1106,7 @@
     {
       "id": "TASK-049",
       "category": "ui",
-      "priority": "low",
+      "priority": "medium",
       "phase": "mvp",
       "description": "web: admin dashboard — список support-тикетов + жалоб + ban/unban (только для admin tg_id)",
       "acceptance_criteria": [
@@ -1124,7 +1168,7 @@
     {
       "id": "TASK-052",
       "category": "ui",
-      "priority": "low",
+      "priority": "high",
       "phase": "mvp",
       "description": "web: error boundaries + универсальные loading/empty/error states",
       "acceptance_criteria": [
@@ -1303,16 +1347,18 @@
     {
       "id": "TASK-061",
       "category": "infrastructure",
-      "priority": "medium",
-      "phase": "post-mvp-deploy",
-      "description": "scripts/backup-db.sh + restore-test.sh + cron расписание",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "scripts/backup-db.sh + restore-test.sh + WAL archive + cron расписание (PITR-ready)",
       "acceptance_criteria": [
-        "backup-db.sh: pg_dump --format=custom + zstd + gpg --symmetric --passphrase $BACKUP_KEY",
+        "backup-db.sh: pg_dump --format=custom --jobs=1 + zstd -19 + gpg --symmetric --cipher-algo AES256 --batch --passphrase $BACKUP_KEY",
         "Файлы в ./backups/poputchiki-YYYY-MM-DD.dump.zst.gpg",
-        "Retention в скрипте: daily 30 / weekly 12 / monthly 24",
-        "restore-test.sh: разворачивает в temp Postgres контейнер, запускает smoke",
-        "Расписание для cron worker: backup ежедневно 03:00 UTC, restore-test раз в неделю",
-        "В MVP local — добавлены скрипты, не запускаются автоматически (phase: post-mvp-deploy)"
+        "Retention в скрипте: daily 30 / weekly 12 / monthly 24, автоудаление старых",
+        "Postgres WAL archiving: archive_mode=on, archive_command='test ! -f /backups/wal/%f && cp %p /backups/wal/%f && gpg ...' — для PITR (см. SPEC §9)",
+        "pg_basebackup еженедельно (воскресенье 04:00 UTC) → ./backups/base-YYYY-WW.tar.zst.gpg",
+        "restore-test.sh: разворачивает временный Postgres контейнер, restore last dump, запускает smoke (несколько SELECT, проверка row count > 0)",
+        "Cron worker apps/cron: backup ежедневно 03:00 UTC, base-backup воскресенье 04:00 UTC, restore-test воскресенье 05:00 UTC. Через advisory lock (TASK-089)",
+        "Failed backup ИЛИ failed restore-test → admin TG-alert немедленно (notify-admin.sh)"
       ],
       "test_steps": [
         "bash scripts/backup-db.sh — файл создан + зашифрован",
@@ -1325,20 +1371,29 @@
     {
       "id": "TASK-062",
       "category": "infrastructure",
-      "priority": "low",
-      "phase": "post-mvp-deploy",
-      "description": "Production docker-compose.yml + Traefik labels + GitHub Actions deploy job",
+      "priority": "critical",
+      "phase": "prod-deploy",
+      "description": "Production docker-compose.prod.yml + Traefik labels (api/webhook/web-server/postgres/nominatim/cron/notifier)",
       "acceptance_criteria": [
-        "infra/docker-compose.yml: api, notifier, cron, web (через caddy/nginx), Traefik labels (Host=api.${DOMAIN}, app.${DOMAIN}), TLS resolver letsencrypt",
-        "Traefik не разворачивается заново — используется существующий на сервере",
-        "Networks: traefik-public (external), poputchiki-internal",
-        ".github/workflows/deploy.yml: build images → push → SSH on host → docker compose pull && up -d → smoke /health → rollback при fail"
+        "infra/docker-compose.prod.yml содержит сервисы: api, notifier, cron, webhook, web-server, postgres, nominatim",
+        "Traefik labels на api/webhook/web-server (Host=api.${DOMAIN}, webhook.${DOMAIN}, app.${DOMAIN}, entrypoints=websecure, certresolver=letsencrypt)",
+        "postgres/nominatim/notifier/cron — internal-only (без Traefik labels)",
+        "Networks: traefik-public (external, существующий на хосте), poputchiki-internal (свой)",
+        "Traefik НЕ разворачивается заново — использует существующий контейнер на сервере",
+        "Volumes: postgres data → /opt/poputchiki/postgres-data; backups → /opt/poputchiki/backups; nominatim data → /opt/poputchiki/nominatim-data; logs → /opt/poputchiki/logs",
+        "depends_on: api/notifier/cron/webhook/web-server depend on postgres healthy",
+        "Healthchecks для каждого сервиса (curl /health, pg_isready)",
+        "restart: unless-stopped",
+        "logging driver: json-file, max-size=10m, max-file=10",
+        "Resource limits: postgres 1GB RAM, остальные 256MB"
       ],
       "test_steps": [
-        "docker compose -f infra/docker-compose.yml config — валидный",
-        "Manual deploy run — все сервисы up + Traefik routes работают (на staging)"
+        "docker compose -f infra/docker-compose.prod.yml config — валидный (проходит)",
+        "На staging-окружении поднять полный stack — все сервисы healthy",
+        "curl https://api.<staging-domain>/health → 200; https://app.<staging-domain>/ → 200",
+        "Внутренний postgres недоступен снаружи docker network"
       ],
-      "dependencies": ["TASK-019", "TASK-061"],
+      "dependencies": ["TASK-019", "TASK-061", "TASK-099"],
       "status": "pending"
     },
     {
@@ -1469,7 +1524,7 @@
       "acceptance_criteria": [
         "POST /api/rides/:id/request: BEGIN; UPDATE rides SET seats_taken=seats_taken+1 WHERE id=:id AND status='active' AND seats_taken < seats_total RETURNING *; INSERT ride_requests; COMMIT;",
         "Если UPDATE вернул 0 строк → 409 'no_seats' (rollback)",
-        "PASSENGER_id == auth.uid()",
+        "passenger_id == app.current_user_id()",
         "UNIQUE (ride_id, passenger_id) — повтор → 409",
         "Транзакция isolation REPEATABLE READ",
         "Триггерит push драйверу через notification (category=ride_request)"
@@ -1511,7 +1566,7 @@
       "description": "PATCH /api/rides/:id — редактирование поездки водителем (до departure_at)",
       "acceptance_criteria": [
         "Редактируемые поля: from_label/lat/lng, to_*, departure_at, price_rub, comment, seats_total (только увеличение)",
-        "Только driver_id == auth.uid() (RLS)",
+        "Только driver_id == app.current_user_id() (RLS)",
         "Только если now() < departure_at",
         "Если уменьшается seats_total ниже seats_taken → 422",
         "Push пассажирам с принятыми requests при изменении departure_at/from/to (category=ride_changed)",
@@ -1593,7 +1648,7 @@
         "Body: { display_name?, phone?, apt_number? }",
         "phone/apt_number шифруются через TASK-020 helper",
         "display_name 1..50 chars, не пустой",
-        "RLS: только свой row (auth.uid()=id)",
+        "RLS: только свой row (app.current_user_id()=id)",
         "audit_log запись (payload — sha256, plain не пишется)"
       ],
       "test_steps": [
@@ -2068,8 +2123,8 @@
     },
     {
       "id": "TASK-100",
-      "category": "ui",
-      "priority": "low",
+      "category": "security",
+      "priority": "high",
       "phase": "mvp",
       "description": "Banned-user UI: баннер + ограничение routes; backend 403 на /api/** для is_banned",
       "acceptance_criteria": [
@@ -2183,21 +2238,432 @@
       "category": "documentation",
       "priority": "medium",
       "phase": "mvp",
-      "description": "Обновить SPEC до v0.4 + OPEN-QUESTIONS — отразить все FIX-задачи",
+      "description": "Финальная синхронизация SPEC v0.5 / PRD v0.4 / OPEN-QUESTIONS v0.4 после имплементации",
       "acceptance_criteria": [
-        "docs/SPEC-Architecture-v0.1.md → version 0.4",
-        "Раздел §3 — JWT 24h + refresh 30d, /auth/refresh, /auth/logout, cookie SameSite=None",
-        "Раздел §4 — complaints partial UNIQUE INDEX, revoked_tokens table, deleted_at в users, audit_log partitioning",
-        "Раздел §5 — все новые endpoints (/api/users/me, /:id, schedule, /api/rides/:id/cancel, /api/ride-requests/*)",
-        "Раздел §11 — полная CSP, CORS, trustProxy, /auth IP rate-limit",
-        "OPEN-QUESTIONS — phone OTP отложить в RESOLVED (без верификации в MVP, документировано в TASK-103)",
-        "CHANGELOG v0.4 со всеми пунктами"
+        "После выполнения TASK-001..105, 107..114 — пройтись по SPEC §4-§11 и сверить с реально реализованным кодом, обновить любые расхождения",
+        "OPEN-QUESTIONS — пометить все RESOLVED по факту имплементации",
+        "В PRD CHANGELOG — добавить v0.5 с реальными расхождениями (если они есть)",
+        "В SPEC §13 (новый, опц.) — короткая ссылка на TASK-IDs где имплементировано каждое security/concurrency требование (для аудита)"
       ],
       "test_steps": [
-        "Файлы валидно отображаются",
-        "Все ссылки live"
+        "Файлы валидно отображаются markdown",
+        "Все упомянутые TASK-IDs существуют",
+        "Грep по докам не находит auth.uid() / auth.jwt() / Supabase / Cloudflare Pages / Fly.io"
       ],
-      "dependencies": [],
+      "dependencies": ["TASK-114"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-107",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "apps/webhook: TG Bot webhook receiver — bot_blocked, my_chat_member, /start, /help",
+      "acceptance_criteria": [
+        "apps/webhook/src/index.ts: Hono сервер на отдельном порту, endpoint POST /tg/webhook",
+        "Верификация заголовка X-Telegram-Bot-Api-Secret-Token === BOT_WEBHOOK_SECRET (env), иначе 401",
+        "Обработка update.my_chat_member: если new_chat_member.status='kicked' → UPDATE users SET notify_disabled=true WHERE tg_id=...",
+        "Обработка /start, /help команд — отправка приветственного сообщения с deep-link на MiniApp",
+        "Идемпотентность: update_id в short-TTL таблице processed_updates (или in-memory LRU 24h)",
+        "Setup: scripts/setup-tg-webhook.sh вызывает setWebhook с url=https://webhook.${DOMAIN}/tg/webhook + secret_token=${BOT_WEBHOOK_SECRET} + allowed_updates=['my_chat_member','message']",
+        "Logging: каждый update в pino с redaction (см. TASK-082)"
+      ],
+      "test_steps": [
+        "Integration: POST /tg/webhook без X-Telegram-Bot-Api-Secret-Token → 401",
+        "Integration: my_chat_member kicked update → users.notify_disabled=true",
+        "Integration: /start → sendMessage вызвана (мок)",
+        "Integration: дубль update_id → skip"
+      ],
+      "dependencies": ["TASK-008", "TASK-082", "TASK-081"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-108",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Cron: ride status transitions (departure_at+24h → completed, departure_at+72h → archived)",
+      "acceptance_criteria": [
+        "apps/cron/src/finalize-rides.ts: каждый час, под advisory lock (TASK-089)",
+        "UPDATE rides SET status='completed' WHERE status='active' AND departure_at < now() - interval '24 hours' RETURNING id, driver_id",
+        "Для каждого ride пересчёт rides_completed_count (триггер из TASK-021)",
+        "UPDATE rides SET status='archived' WHERE status='completed' AND departure_at < now() - interval '72 hours'",
+        "audit_log: action='ride_status_transition', payload={from, to, reason='time'}",
+        "При completed → notify драйверу с deep-link на /rides/:id/mark-participants (если ещё не отмечал)"
+      ],
+      "test_steps": [
+        "Integration: ride с departure_at=25h назад → после run status=completed, counter+1",
+        "Integration: ride с departure_at=73h назад → status=archived",
+        "Integration: cancelled rides не трогаются",
+        "Integration: 2 параллельных запуска — каждая транзиция ровно 1 раз (advisory lock)"
+      ],
+      "dependencies": ["TASK-022", "TASK-089", "TASK-027"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-109",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Cron: confirmation push после departure_at — пассажирам с driver_marked=true",
+      "acceptance_criteria": [
+        "apps/cron/src/confirm-participation-push.ts: каждые 30 минут под advisory lock",
+        "SELECT ride_participation WHERE driver_marked=true AND passenger_confirmed=false AND marked_at > now() - interval '47 hours' AND notified_at IS NULL",
+        "Миграция: ALTER TABLE ride_participation ADD COLUMN notified_at timestamptz",
+        "Для каждой записи: NOTIFY notify_user с payload {user_id, category='confirm_participation', ride_id, deep_link=/rides/:id/confirm}",
+        "После NOTIFY → UPDATE ride_participation SET notified_at=now()",
+        "Re-notification: один раз через 24 часа после первого если ещё не подтверждено (notified_at < now() - 24h, но > 47h окна)"
+      ],
+      "test_steps": [
+        "Integration: marked_at=2 часа назад, не подтверждено → push отправлен (мок), notified_at заполнен",
+        "Integration: уже notified — повторно не шлёт",
+        "Integration: marked_at=48 часов → не шлёт (окно прошло, см. TASK-028 410 Gone)"
+      ],
+      "dependencies": ["TASK-027", "TASK-028", "TASK-034", "TASK-089"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-110",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Notifier idempotency: дедупликация TG push на 5 минут (notification_id, sent_at)",
+      "acceptance_criteria": [
+        "Миграция: notification_log (notification_id text PRIMARY KEY, user_id uuid, category text, sent_at timestamptz, status text CHECK IN ('sent','failed','skipped_dup','skipped_disabled'))",
+        "apps/notifier: перед каждой отправкой — INSERT INTO notification_log ... ON CONFLICT (notification_id) DO NOTHING RETURNING — если null → skip (дубль)",
+        "notification_id формула: sha256(user_id || ':' || category || ':' || target_id || ':' || floor(epoch/300)) — окно 5 минут",
+        "Retry на 429 от TG → пересчитывает notification_id с новым окном (новая попытка не считается дублем после 5 мин)",
+        "Cleanup: cron job удаляет notification_log >7 дней старые"
+      ],
+      "test_steps": [
+        "Integration: 2 NOTIFY с одинаковыми (user_id, category, target_id) в течение 5 мин → 1 sendMessage вызов, 2-й skip",
+        "Integration: после 5 мин — повторная notification отправляется",
+        "Integration: 429 → exponential backoff retry, метрика retries_count"
+      ],
+      "dependencies": ["TASK-034"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-111",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Contract tests: Zod schema parity api↔web (packages/shared)",
+      "acceptance_criteria": [
+        "apps/api/tests/contract/: для каждого endpoint, описанного в SPEC §5 — тест что zod-схема из packages/shared совпадает с тем, что API реально принимает/возвращает",
+        "Snapshot тесты JSON-схем (`zod-to-json-schema`) — committed в repo, изменение схемы требует update snapshot",
+        "Web side: web/tests/contract/ — fetch helpers используют точно те же схемы для типизации response",
+        "Test gate: bun run test:contract — отдельный скрипт; в CI до e2e",
+        "Покрытие: 100% endpoints из SPEC §5"
+      ],
+      "test_steps": [
+        "bun run test:contract — все endpoints проверены",
+        "Изменение схемы в packages/shared без обновления snapshot → красный",
+        "Backend handler принимает поле, отсутствующее в shared schema → красный"
+      ],
+      "dependencies": ["TASK-014", "TASK-015", "TASK-029", "TASK-030"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-112",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Trigger users.avg_stars + reviews_count при INSERT/UPDATE/DELETE на reviews",
+      "acceptance_criteria": [
+        "Миграция: ALTER TABLE users ADD COLUMN avg_stars numeric(3,2) NULL, ADD COLUMN reviews_count int NOT NULL DEFAULT 0",
+        "AFTER INSERT/UPDATE/DELETE on reviews FOR EACH ROW → пересчёт у target_id (FOR NO KEY UPDATE на users row для атомарности)",
+        "Триггер использует подзапрос: AVG(stars), COUNT(*) WHERE target_id=...",
+        "Sentinel race-test: 100 параллельных INSERT reviews → users.reviews_count=100 точно (как TASK-086 для likes)"
+      ],
+      "test_steps": [
+        "Integration: вставка 5 reviews со звёздами 5,4,3,4,5 → avg_stars=4.20, reviews_count=5",
+        "Integration: DELETE одного → пересчёт",
+        "Integration: 100 concurrent INSERT → reviews_count=100"
+      ],
+      "dependencies": ["TASK-008", "TASK-030", "TASK-021"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-113",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Production lifecycle: /readiness endpoint + graceful shutdown + DB retry-backoff + circuit breaker TG Bot API",
+      "acceptance_criteria": [
+        "GET /readiness в apps/api: проверяет SELECT 1 FROM postgres + LISTEN/NOTIFY канал live; 200 если всё ок, 503 если деградация (отдельно от /health который всегда 200 при работающем процессе)",
+        "Graceful shutdown: SIGTERM → перестаёт принимать новые соединения → drain in-flight requests до 30s timeout → close DB pool → exit",
+        "Применяется к api, notifier, cron, webhook",
+        "DB retry: помощник withRetry(fn, {maxAttempts: 5, baseMs: 100, factor: 2}) — для transient errors (connection lost, deadlock)",
+        "Circuit breaker для TG Bot API в notifier: после 5 подряд 5xx → open circuit на 30s, fallback в notification_log status='deferred'; после window — half-open (1 пробный); success → close, fail → re-open",
+        "Метрики: /metrics endpoint (Prometheus format) с up, db_connections_in_use, tg_circuit_state, in_flight_requests"
+      ],
+      "test_steps": [
+        "Integration: SIGTERM в середине POST → запрос завершается, новый получает 503 при /readiness",
+        "Integration: убить postgres → /readiness 503, /health 200; вернуть → /readiness 200 в течение retry window",
+        "Integration: симулировать 5x 5xx от TG mock → circuit open → следующий push в notification_log status=deferred",
+        "Unit: withRetry — exponential backoff, MAX_ATTEMPTS соблюдается"
+      ],
+      "dependencies": ["TASK-009", "TASK-034", "TASK-101"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-114",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Sentinel: migration down + RLS identity isolation между транзакциями",
+      "acceptance_criteria": [
+        "apps/api/tests/integration/migrations.test.ts: для каждой миграции — applies up, applies down (без ошибок), затем re-applies up — БД в идентичном состоянии (через pg_dump --schema-only сравнение)",
+        "apps/api/tests/security/rls-identity-leak.test.ts: открыть 1 connection из pool, выполнить транзакцию A с set_config app.current_user_id=<userA>, COMMIT, в той же connection транзакция B без set_config → app.current_user_id() возвращает NULL (не utечка <userA>)",
+        "Sentinel: попытка SELECT users в B без identity → 0 rows (RLS deny)",
+        "Тесты в CI test:security gate"
+      ],
+      "test_steps": [
+        "bun run test:integration migrations — все миграции up→down→up чистые",
+        "bun run test:security rls-identity-leak — identity не утекает между транзакциями pool",
+        "Удалить set_config local=true → тест краснеет (identity бы утёк)"
+      ],
+      "dependencies": ["TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-101"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-115",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "prod-deploy",
+      "description": "GHA workflow deploy.yml: build images → push GHCR → trivy scan → SSH deploy → smoke → rollback",
+      "acceptance_criteria": [
+        ".github/workflows/deploy.yml triggers: push to main, workflow_dispatch",
+        "Job build-and-push: для каждого apps/{api,notifier,cron,webhook,web-server} — docker buildx → push ghcr.io/thesmithmode/poputchiki-<service>:${SHA} + :latest",
+        "Job trivy-scan: aquasecurity/trivy-action на каждом образе, fail на CRITICAL/HIGH (allowlist через .trivyignore)",
+        "Job deploy: needs build-and-push + trivy-scan; SSH через webfactory/ssh-agent на ${SSH_HOST}; запускает scripts/deploy.sh ${SHA}",
+        "Job smoke: curl https://api.${DOMAIN}/health → 200; https://app.${DOMAIN}/ → 200; повторить 3 раза с интервалом 5s",
+        "Job rollback-on-fail: если smoke red → SSH scripts/rollback.sh + admin TG-alert",
+        "Concurrency group=production-deploy, cancel-in-progress=false (параллельные deploy запрещены)",
+        "Permissions: contents:read, packages:write"
+      ],
+      "test_steps": [
+        "Manual workflow_dispatch на dev → все jobs зелёные на staging-окружении",
+        "Симулировать broken /health endpoint в коде → smoke red → rollback запущен → admin TG получает alert",
+        "Trivy на заведомо vulnerable image → fail"
+      ],
+      "dependencies": ["TASK-019", "TASK-062", "TASK-099"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-116",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "prod-deploy",
+      "description": "scripts/deploy.sh + scripts/rollback.sh: атомарный deploy с pre-deploy backup и docker tag rollback",
+      "acceptance_criteria": [
+        "scripts/deploy.sh ${SHA}: bash, fail-fast (set -euo pipefail)",
+        "Шаг 1: scripts/backup-db.sh (pre-deploy snapshot, помечается тегом pre-${SHA})",
+        "Шаг 2: docker compose -f infra/docker-compose.prod.yml pull",
+        "Шаг 3: docker compose -f ... run --rm api bun run db:migrate up (миграции в одноразовом контейнере; pre-deploy backup защищает от плохой миграции)",
+        "Шаг 4: docker compose -f ... up -d --no-deps api notifier cron webhook web-server (без перезапуска postgres)",
+        "Шаг 5: ждать healthcheck контейнеров до 60s, fail если не healthy",
+        "Шаг 6: записать /opt/poputchiki/last-good-tag = previous tag, /opt/poputchiki/current-tag = ${SHA}",
+        "Шаг 7: cleanup старых docker images >5 предыдущих версий",
+        "scripts/rollback.sh [tag?]: если tag не указан — read /opt/poputchiki/last-good-tag",
+        "rollback: docker compose с переопределением tag → up -d → smoke → admin TG"
+      ],
+      "test_steps": [
+        "На staging: deploy.sh ${SHA1} → up; deploy.sh ${SHA2} → up; rollback.sh → возврат на SHA1",
+        "Сломать миграцию намеренно → deploy fail на шаге 3, контейнеры не перезапущены, pre-deploy backup есть",
+        "ShellCheck pass на скриптах"
+      ],
+      "dependencies": ["TASK-061", "TASK-062"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-117",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Avatar fallback: identicon из tg_id при 404 от TG photo url",
+      "acceptance_criteria": [
+        "web/src/components/Avatar.tsx: <img src={photoUrl} onError={handleError}/>; при error → SVG identicon из tg_id (детерминистический pattern, цвета из TG colorScheme)",
+        "Реализация identicon — собственный pixel-grid (5x5, mirrored) + 3 цвета из TG palette, без npm-зависимости",
+        "Sentinel test: Mock fetch 404 на photo url → identicon рендерится с alt=display_name"
+      ],
+      "test_steps": [
+        "Unit: photoUrl=null → identicon",
+        "Unit: photoUrl=невалид → onError → identicon",
+        "Unit: одинаковый tg_id → одинаковый identicon"
+      ],
+      "dependencies": ["TASK-016", "TASK-050"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-118",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "prod-deploy",
+      "description": "Observability stack (опц.): Prometheus + Grafana + Uptime Kuma + postgres_exporter + node_exporter + cadvisor",
+      "acceptance_criteria": [
+        "infra/docker-compose.prod.yml профиль observability (--profile observability) с сервисами: prometheus, grafana, uptime-kuma, postgres_exporter, node_exporter, cadvisor",
+        "Traefik labels: metrics.${DOMAIN} (prometheus с basic-auth), grafana.${DOMAIN}, status.${DOMAIN} (Uptime Kuma)",
+        "infra/prometheus/prometheus.yml: scrape api /metrics, postgres_exporter, node_exporter, cadvisor",
+        "infra/prometheus/alerts.yml: error_rate>1% за 5m, p95_latency>1s за 5m, postgres_disk_usage>80%, postgres_connections>80%, RAM/CPU>85%",
+        "Alertmanager → notify-admin TG webhook",
+        "infra/grafana/provisioning/dashboards/poputchiki.json: HTTP req/sec, error rate, p50/p95/p99 latency, DB connections, slow queries (pg_stat_statements), TG circuit state, в-флайт SSE подключений",
+        "Uptime Kuma настроен на /health и /readiness каждых сервисов, slack webhook → admin TG"
+      ],
+      "test_steps": [
+        "Manual: docker compose --profile observability up -d → grafana доступна, prometheus scrape работает",
+        "Симулировать 5xx errors → AlertRule сработал → admin получил TG-alert"
+      ],
+      "dependencies": ["TASK-062", "TASK-113"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-119",
+      "category": "documentation",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "docs/runbook/: backup-restore.md + on-call.md + incident-template.md + deploy-rollback.md",
+      "acceptance_criteria": [
+        "docs/runbook/backup-restore.md: пошаговая инструкция как восстановить БД из dump, как из base+WAL (PITR), как проверить целостность бэкапа",
+        "docs/runbook/on-call.md: что делать при alert каждой категории (error rate, latency, disk, connections, backup failed, deploy failed)",
+        "docs/runbook/incident-template.md: skeleton постмортема (timeline, root cause, mitigation, action items)",
+        "docs/runbook/deploy-rollback.md: ручной rollback без GHA, как зайти на сервер, проверить /opt/poputchiki/last-good-tag, запустить scripts/rollback.sh",
+        "docs/runbook/README.md: индекс с ссылками",
+        "Все процедуры протестированы на staging хотя бы раз (запись в чек-листе)"
+      ],
+      "test_steps": [
+        "Файлы существуют, валидный markdown",
+        "Manual rehearsal: используя только runbook, восстановить БД из вчерашнего бэкапа за <30 мин",
+        "Manual: симулировать сценарий 'high error rate' — пошагово отработать on-call.md"
+      ],
+      "dependencies": ["TASK-061", "TASK-115", "TASK-116"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-120",
+      "category": "security",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "Postgres tuning + tls + non-superuser app role",
+      "acceptance_criteria": [
+        "infra/postgres/postgresql.conf: max_connections=100, shared_buffers=256MB, effective_cache_size=512MB, work_mem=4MB, maintenance_work_mem=64MB, wal_level=replica, archive_mode=on, log_min_duration_statement=500ms",
+        "infra/postgres/pg_hba.conf: host all all 172.16.0.0/12 scram-sha-256 (внутренняя docker сеть), host all all 0.0.0.0/0 reject",
+        "Создать роль app_user (NOSUPERUSER, CONNECT, SELECT/INSERT/UPDATE/DELETE на public schema), apps/api подключается через неё, не postgres-superuser",
+        "Создать роль app_migrator (для node-pg-migrate, отдельные creds в env)",
+        "TLS внутри docker network: опционально (контейнеры в одной сети уже изолированы); включить если postgres exposed beyond compose"
+      ],
+      "test_steps": [
+        "psql от app_user: GRANT CREATE TABLE — отказ (нет права)",
+        "psql от app_user: SELECT users — ОК (RLS работает с app.current_user_id)",
+        "Postgres restart — параметры применились (SHOW max_connections)"
+      ],
+      "dependencies": ["TASK-101", "TASK-062"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-121",
+      "category": "security",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "OWASP ZAP baseline + Trivy nightly + Lighthouse CI",
+      "acceptance_criteria": [
+        ".github/workflows/nightly.yml: runs on schedule cron '0 3 * * *'",
+        "Step ZAP: zaproxy/action-baseline против локально поднятого compose (api+web), ignore rules в .zap/rules.tsv",
+        "Step Trivy: на последний production image каждого сервиса; SARIF upload в GitHub Security tab",
+        "Step Lighthouse CI: треат scores Performance>80, Accessibility>90, Best Practices>90 на ключевых маршрутах (/rides, /profile/me, /rides/new)",
+        "Step Mutation testing: StrykerJS на packages/shared + apps/api (target ≥60% mutation score)",
+        "Fail nightly → admin TG alert"
+      ],
+      "test_steps": [
+        "Manual workflow_dispatch nightly.yml → все steps зелёные",
+        "Введите CRITICAL CVE в lockfile → Trivy fail",
+        "Снизьте a11y → Lighthouse fail"
+      ],
+      "dependencies": ["TASK-019", "TASK-115"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-122",
+      "category": "security",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "Setup TG Bot webhook на prod + verify signature + .env prod template",
+      "acceptance_criteria": [
+        "scripts/setup-tg-webhook.sh: вызывает Telegram API setWebhook url=https://webhook.${DOMAIN}/tg/webhook secret_token=${BOT_WEBHOOK_SECRET} max_connections=40 allowed_updates=['my_chat_member','message']",
+        "Скрипт идемпотентный — getWebhookInfo проверка перед setWebhook",
+        ".env.prod.example в repo (без секретов) — все нужные переменные с описанием каждой",
+        "Документация в docs/runbook/initial-setup.md: первый запуск prod с нуля",
+        "Sentinel: интеграционный test apps/webhook/tests/integration/signature.test.ts — wrong secret_token → 401"
+      ],
+      "test_steps": [
+        "На staging: scripts/setup-tg-webhook.sh → getWebhookInfo возвращает наш url",
+        "Реальный @BotFather → отправка my_chat_member kick → users.notify_disabled=true в БД",
+        "Заголовок X-Telegram-Bot-Api-Secret-Token подменён → 401"
+      ],
+      "dependencies": ["TASK-107", "TASK-115"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-123",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "i18n init + accessibility пройдено WCAG 2.1 AA на критичных flows",
+      "acceptance_criteria": [
+        "web: i18next init, default/fallback locale 'ru', структура web/src/locales/ru/*.json",
+        "Все строковые литералы UI извлечены в i18next ключи (lint правило @intlify/eslint-plugin)",
+        "Accessibility: jsx-a11y eslint plugin enabled, нет ошибок",
+        "Критичные flows (онбординг, создание поездки, лента, детальная карточка, лайк/отзыв) проверены через axe-core (web/tests/a11y/*.spec.ts) — 0 violations",
+        "Контраст ≥4.5:1 для обычного текста, ≥3:1 для крупного",
+        "Aria-labels на все интерактивные элементы (кнопки без текста, иконки)",
+        "Клавиатурная навигация: tab-order логичный, focus-ring видимый",
+        "Sentinel test в CI: axe-playwright на главных маршрутах"
+      ],
+      "test_steps": [
+        "bun run test:a11y — 0 violations",
+        "Manual: переключение языка работает (хотя один MVP — ru, проверка инфраструктуры)",
+        "Lighthouse Accessibility ≥90 на /rides и /profile/me"
+      ],
+      "dependencies": ["TASK-039", "TASK-040", "TASK-041", "TASK-044"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-124",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "prod-deploy",
+      "description": "Log shipping (опц.): pino → файл с rotation + опционально Loki через Promtail",
+      "acceptance_criteria": [
+        "apps/* пишут pino JSON в /opt/poputchiki/logs/<service>.log с rotation 100MB×10 (через pino/file + logrotate)",
+        "Опц. profile: docker-compose.prod.yml --profile logging добавляет promtail+loki+grafana datasource",
+        "В Grafana — dashboard 'Application Logs' с фильтром по service, level, requestId",
+        "PII redaction (TASK-082) применяется ДО записи в файл"
+      ],
+      "test_steps": [
+        "Сделать 1k запросов → файл .log существует, JSON валидный, secrets='[REDACTED]'",
+        "Если profile logging up — Loki принимает логи, в Grafana видны"
+      ],
+      "dependencies": ["TASK-082", "TASK-118"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-125",
+      "category": "documentation",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "Pre-launch checklist + go-live verification",
+      "acceptance_criteria": [
+        "docs/runbook/pre-launch-checklist.md — пунктами: всё security от SPEC §11, restore drill зелёный, observability up, TG webhook ответил OK, /health и /readiness 200 со всех сервисов, бэкап есть и восстановим, rollback процедура отрепетирована, admin TG-alerts тестово получены, RLS deny-by-default test зелёный, e2e full-cycle зелёный, mutation score ≥60%, ZAP baseline без High, Trivy без CRITICAL",
+        "docs/runbook/go-live.md — порядок действий в день запуска: smoke check → enable bot domain в @BotFather → отправить тестовое сообщение → пригласить 5 жителей-альфа",
+        "Контрольный run всех пунктов на staging — записан timestamp в файле как evidence",
+        "Sign-off от Антона (комментарий в самом файле)"
+      ],
+      "test_steps": [
+        "Все пункты pre-launch checklist выполнены и помечены ✅ с evidence (test run id / dashboard screenshot path / timestamp)",
+        "go-live.md протестирован на staging-домене"
+      ],
+      "dependencies": ["TASK-061", "TASK-062", "TASK-115", "TASK-116", "TASK-118", "TASK-119", "TASK-120", "TASK-121", "TASK-122", "TASK-060"],
       "status": "pending"
     }
   ]

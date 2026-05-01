@@ -339,7 +339,7 @@ function AdminScreen({ dark, accent, onBack }) {
         <Card dark={dark} padding={0} radius={14}>
           <SysRow label="Бэкап БД" value="OK · 2 ч назад" ok dark={dark}/>
           <SysRow label="Restore drill" value="OK · 4 дня назад" ok dark={dark}/>
-          <SysRow label="Supabase quota" value="22% / 500MB" ok dark={dark}/>
+          <SysRow label="Postgres disk usage" value="22% / 20GB" ok dark={dark}/>
           <SysRow label="p95 latency" value="143ms" ok last dark={dark}/>
         </Card>
       </div>

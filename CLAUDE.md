@@ -2,12 +2,16 @@
 
 ## Что это
 
-Poputchiki — Telegram MiniApp для попутчиков ЖК Царёво. Стек: TypeScript + Hono + Bun (backend), Vite + React (SPA), self-hosted PostgreSQL, Docker, Traefik. Деплой откладывается — текущая фаза **code-only local**.
+Poputchiki — Telegram MiniApp для попутчиков ЖК Царёво. Стек: TypeScript + Hono + Bun (backend), Vite + React (SPA), **self-hosted PostgreSQL 16 в Docker** (НЕ Supabase, НЕ Neon, НЕ managed), Docker Compose микросервисы (`api`, `notifier`, `cron`, `webhook`, `web-server`, `postgres`, `nominatim`), Traefik + Let's Encrypt на личном сервере заказчика.
+
+**Фаза**: full-MVP **с автономным go-to-prod**. После задач `phase=mvp` (TASK-001..114) → задачи `phase=prod-deploy` (TASK-115..125) → пайплайн деплоя на сервер.
+
+**RLS identity**: НЕТ Supabase-функций `auth.uid()`/`auth.jwt()`. Используем GUC `app.current_user_id`/`app.current_user_tg_id`/`app.current_user_role`, выставляются `apps/api` через `set_config(..., true)` в начале каждой транзакции (см. SPEC §3.4).
 
 Полный продукт описан в:
-- `docs/PRD-Poputchiki-v0.1.md` — продуктовые требования (v0.3)
-- `docs/SPEC-Architecture-v0.1.md` — архитектура и схема БД (v0.3)
-- `docs/OPEN-QUESTIONS-v0.1.md` — слепые зоны и решения (v0.3)
+- `docs/PRD-Poputchiki-v0.1.md` — продуктовые требования (v0.4)
+- `docs/SPEC-Architecture-v0.1.md` — архитектура и схема БД (v0.5)
+- `docs/OPEN-QUESTIONS-v0.1.md` — слепые зоны и решения (v0.4)
 - `docs/AUTOMATION.md` — стратегия автономной разработки
 
 Любые архитектурные/продуктовые решения сначала обновляют эти документы, потом код.
@@ -133,7 +137,9 @@ git push origin dev
 - **Одна задача за раз**: никаких бонусных правок, чем-то занялся → закончи или верни в pending.
 - **Не push в `main` никогда** без явного приказа Антона. Hook `PreToolUse(Bash:git push origin main)` блокирует.
 - **Не пиши секреты в код/коммит/чат/логи**: только `process.env.X` из `.env`.
-- **Не делай deploy-related работу** (Traefik labels на сервере, ssh, prod миграции, GH Actions deploy step) — фаза code-only. Задачи с `phase: post-mvp-deploy` не бери.
+- **Phase порядок**: сначала все `phase=mvp` задачи, потом `phase=prod-deploy`. Внутри фазы — по dependencies + priority. Из `prod-deploy` задачи бери только когда ВСЕ `mvp` зелёные.
+- **Production deploy** разрешён в рамках задач `phase=prod-deploy` (TASK-115..125). Любой rollback / `docker compose down` на production хосте — только через `scripts/rollback.sh` либо ручной command от Антона.
+- **Никаких внешних managed сервисов**: Supabase / Neon / Vercel / Cloudflare Pages / Fly.io / PostHog Cloud в коде — запрещено. Если задача требует external service — BLOCKED + согласование с Антоном.
 - **Threat model**: каждый юзер — потенциальный взломщик. Deny-by-default везде (RLS, auth, валидация).
 - **Bun не Node**: `bun run`, `bun test`, `bun add`, `bun install`.
 - **Самоостанов**: 5 итераций подряд BLOCKED → стоп, доложи Антону.
@@ -188,13 +194,16 @@ git push origin dev
 ## Стек напоминание
 
 - **Backend**: TypeScript + Hono + Bun
-- **Frontend**: TypeScript + Vite + React (SPA)
-- **БД**: self-hosted PostgreSQL 16 в Docker (НЕ Supabase)
-- **Auth**: собственный JWT после HMAC-проверки Telegram initData
-- **Realtime**: SSE через Hono (НЕ Supabase Realtime)
-- **Карта**: Leaflet + OpenStreetMap
-- **Тесты**: Vitest (unit, integration), Playwright (E2E)
+- **Frontend**: TypeScript + Vite + React (SPA), отдаётся Caddy за Traefik
+- **БД**: self-hosted PostgreSQL 16 в Docker (`postgres:16-alpine`). НЕ Supabase, НЕ Neon, НЕ managed
+- **Auth**: собственный JWT (HS256, `JWT_SECRET` из env) после HMAC-проверки Telegram initData. Refresh-tokens с ротацией через таблицу `revoked_tokens`
+- **Realtime**: SSE через Hono + Postgres `LISTEN/NOTIFY`. Fallback на 30s polling
+- **Карта**: Leaflet + OpenStreetMap (без API-key)
+- **Geocoding**: self-hosted Nominatim (`mediagis/nominatim`) контейнер с импортом региона Татарстан
+- **PII**: pgcrypto `pgp_sym_encrypt` для phone/apt_number, ключ `PGCRYPTO_KEY` из env
+- **Тесты**: Vitest (unit, integration, contract, security), Playwright (E2E), StrykerJS (mutation, nightly), OWASP ZAP baseline (nightly)
 - **Lint/format**: Biome
-- **Workspace**: Bun workspaces (monorepo: apps/api, apps/notifier, apps/cron, web, packages/shared)
-- **Docker**: docker-compose.dev.yml для локального Postgres; production манифест — фаза deploy.
-- **Деплой** (отложено): домашний сервер + Traefik + Let's Encrypt; домен `poputchiki.searchingforgamesforever.online`.
+- **Workspace**: Bun workspaces (monorepo: `apps/api`, `apps/notifier`, `apps/cron`, `apps/webhook`, `apps/web-server`, `web`, `packages/shared`)
+- **Docker**: `infra/docker-compose.dev.yml` (local: postgres + nominatim), `infra/docker-compose.prod.yml` (prod: api+notifier+cron+webhook+web-server+postgres+nominatim, опц. observability stack)
+- **Деплой**: GHA workflow `deploy.yml` → build images в GHCR → SSH на сервер → `scripts/deploy.sh ${SHA}` → backup pre-deploy → migrate → docker compose up -d → smoke /health → rollback при fail. Domain: `poputchiki.searchingforgamesforever.online` (поддомены `app.`, `api.`, `webhook.`)
+- **Observability**: pino logs → файл с rotation; опц. Prometheus + Grafana + Uptime Kuma compose; Sentry self-hosted (план A) либо `error_log` table + admin TG-alert (план B)

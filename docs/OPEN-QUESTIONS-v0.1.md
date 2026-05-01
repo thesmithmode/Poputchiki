@@ -1,8 +1,8 @@
 # Открытые вопросы и слепые зоны — Poputchiki
 
-**Версия:** 0.3
+**Версия:** 0.4
 **Дата:** 2026-05-01
-**Контекст:** заказчик ответил на 10 разблокирующих вопросов 2026-05-01. Ниже — статус каждого пункта (RESOLVED / OPEN), плюс новые вопросы, всплывшие в ходе уточнений.
+**Контекст:** заказчик подтвердил self-hosted Docker микросервисы 2026-05-01 (вторая сессия), Supabase удалён везде. Ниже — статус каждого пункта (RESOLVED / OPEN), плюс новые вопросы, всплывшие в ходе уточнений.
 
 > Формат: `[категория] Вопрос → текущее решение / предположение → почему критично.`
 
@@ -39,7 +39,7 @@
 
 ### B.2 [auth] Где живёт логика верификации Telegram initData?
 **Статус:** RESOLVED.
-**Решение:** в Hono-middleware апи-сервиса (наш TCB). Edge Function Supabase отвергнут — хуже наблюдаемость и тестирование. Эталон портируется из `Telegram-export-clean`.
+**Решение:** в Hono-middleware `apps/api` (наш TCB). Self-hosted, никаких внешних edge functions. Эталон портируется из `Telegram-export-clean`. JWT (HS256) подписывается `JWT_SECRET` из env, refresh-токен в `revoked_tokens` для ротации.
 
 ### B.3 [identity-guard] Cookie или localStorage?
 **Статус:** RESOLVED — выбран максимально параноидный вариант.
@@ -75,9 +75,9 @@
 **Статус:** RESOLVED.
 **Решение:** Postgres (таблицы `nonces`, `rate_limit_buckets`) — экономим free slot Redis. Перейдём на Upstash / managed Redis при превышении 50 RPS, когда blocking SQL станет горлышком.
 
-### D.2 [realtime] Supabase Realtime достаточен?
-**Статус:** RESOLVED для MVP.
-**Решение:** да, в free tier лимит 200 одновременных подключений; для одного ЖК достаточно. При росте → SSE через Hono или собственный WebSocket. Записано в roadmap.
+### D.2 [realtime] Чем делать realtime в self-hosted Postgres?
+**Статус:** RESOLVED.
+**Решение:** SSE через Hono (`GET /api/realtime/rides`), источник событий — Postgres `LISTEN/NOTIFY` (канал `rides_changed`, publisher — триггеры на INSERT/UPDATE/DELETE rides). Fallback на 30s polling после 5 reconnect failures. WebSocket / отдельный broker (NATS, Redis pub/sub) — пост-MVP при нагрузке >500 одновременных SSE.
 
 ### D.3 [TG bot] — отдельный или MiniApp Bot?
 **Статус:** RESOLVED.
@@ -87,9 +87,9 @@
 **Статус:** OPEN — решение по умолчанию.
 **Текущее предположение:** простое среднее по `reviews.stars` + отдельный счётчик `likes_received_count`. Bayesian average при появлении манипуляций (в фазе 1.5).
 
-### D.5 [хостинг] Домашний сервер или Fly.io?
+### D.5 [хостинг] Где разворачиваем prod?
 **Статус:** RESOLVED.
-**Решение:** primary — домашний сервер заказчика с Docker + Traefik + Let's Encrypt. Fly.io / Cloudflare Pages / CF Tunnel — все варианты сейчас не используются. План B (Fly.io free) — только при подтверждённой недоступности своего сервера.
+**Решение:** домашний сервер заказчика с Docker + Traefik + Let's Encrypt. Все компоненты (api, notifier, cron, webhook, web-server, postgres, nominatim) в одной docker-сети `poputchiki-internal`. Внешние сервисы (Fly.io / Cloudflare / Vercel / Supabase / Neon) **не используются**. Платный managed — только при росте нагрузки выше возможностей домашнего сервера, документировано в roadmap.
 
 ### D.6 [карта] Leaflet/OSM или платный SDK?
 **Статус:** RESOLVED.
@@ -131,9 +131,9 @@
 
 ## G. Метрики и аналитика
 
-### G.1 [PostHog] Self-hosted или Cloud?
-**Статус:** RESOLVED.
-**Решение:** PostHog Cloud free tier (1M events/мес). Self-hosted отвергнут — нагрузка на наш медленный сервер.
+### G.1 [Аналитика] Где трекать продуктовые события?
+**Статус:** RESOLVED для MVP — отложено в фазу 2.
+**Решение:** в MVP продуктовая аналитика не нужна (один ЖК, обратная связь напрямую от пользователей в TG). События записываются в `audit_log` (action+actor+ts), агрегаты — SQL-запросами или materialized view `product_metrics_daily`. PostHog (Cloud free либо self-hosted) — рассмотреть в фазе 2 при появлении необходимости в funnels/cohorts/replay.
 
 ---
 
@@ -164,16 +164,16 @@
 **Открыто:** не достаточно ли это? Если нужна более жёсткая защита — добавить cooldown 1 жалоба от одного пользователя в день в принципе, без привязки к таргету. Принять решение по факту первых жалоб.
 
 ### I.3 [Бэкап на медленном сервере] Cron, занимающий I/O пика
-**Риск:** медленный домашний сервер; дамп БД может ронять API в моменте.
-**Митигация:** запускать cron worker ночью (3:00 локального времени); `pg_dump` с `--jobs=1` (без параллельности); бэкап делать через Supabase API не локально, чтобы не нагружать БД (Supabase даёт `pg_dump` через WAL streaming).
+**Статус:** RESOLVED (self-hosted-friendly).
+**Митигация:** запускать cron-worker в 03:00 UTC (ночь по Москве); `pg_dump --format=custom --jobs=1` (без параллельности → меньше I/O пика); WAL archiving работает в фоне без всплесков (`archive_command`); основной snapshot — `pg_basebackup` раз в неделю в воскресенье 04:00 UTC. Restore-drill использует уже снятый dump, не дёргает прод.
 
 ### I.4 [Идемпотентность retry в notifier] Дублирующие пуши?
 **Открыто:** при retry на TG Bot API нужна дедупликация. Решение: notifier хранит `(notification_id, sent_at)`; при retry — проверяет sent_at < N минут → skip.
 
-### I.5 [Storage для аватаров] Использовать TG photo url или загружать в Supabase Storage?
-**Текущее предположение:** TG photo url (бесплатно, актуально, нет нашего хранилища).
-**Риск:** TG может изменить URL; не у всех аватар выставлен.
-**План:** на фоллбэк — генерировать identicon (например, через `boring-avatars`) на стороне клиента из tg_id.
+### I.5 [Storage для аватаров] TG photo URL или собственный bucket?
+**Статус:** RESOLVED.
+**Решение:** TG photo URL — бесплатно, актуально, нет своего хранилища. Storage / S3-bucket в MVP не разворачиваем.
+**Fallback:** при отсутствии photo_url или 404 от TG — клиент генерит identicon (`boring-avatars` или собственный SVG) детерминистически из `tg_id`. Sentinel-тест: имитация 404 → identicon отображается (TASK-117).
 
 ### I.6 [Edge cases] iOS Safari WebView и cookie с SameSite=Lax
 **Известная проблема:** iOS иногда не отправляет Lax cookies при cross-origin top-level navigation в WebView.
@@ -185,13 +185,21 @@
 
 ---
 
-## J. Быстрый action items список (актуально на v0.3)
+## J. Быстрый action items список (актуально на v0.4)
 
-1. **Какой домен/поддомен** закрепить за Poputchiki? Свой? DuckDNS? sslip.io?
+1. **Какой домен/поддомен** закрепить за Poputchiki? Свой? DuckDNS?
 2. **`ADMIN_TG_CHAT_ID`** — куда слать админ-алерты (личный чат с ботом, отдельная группа, канал)?
 3. **Список техподдержки** — только Антон, или есть ещё доверенные модераторы (тогда нужна роль `moderator` в `users`)?
-4. **Frontend хостинг** — отдавать через Traefik на том же сервере или вынести на Cloudflare Pages? (значение по умолчанию в SPEC §10.4 — на сервере; CF Pages в роадмап).
-5. **Разрешать ли `git push origin dev`** автономно (без подтверждения каждый раз) внутри Ralph-цикла?
+4. **Observability stack** — поднимаем Prometheus+Grafana+Uptime Kuma сейчас или откладываем до post-launch (есть только Sentry / собственный error_log + admin TG)?
+5. **Разрешать ли `git push origin dev`** автономно (без подтверждения каждый раз) — RESOLVED, разрешено по CLAUDE.md.
+
+### Ответы заказчика 2026-05-01 на предыдущие вопросы (v0.3 → v0.4)
+
+- ✅ **Self-hosted всё**: Postgres в Docker, никакого Supabase. Микросервисы (api, notifier, cron, webhook, web-server) в одном compose.
+- ✅ Frontend — Caddy за Traefik на том же сервере. CF Pages не используем.
+- ✅ MVP включает деплой в прод (не code-only-local). Добавлены задачи TASK-115..125 по deploy pipeline.
+- ✅ Аналитика отложена в фазу 2.
+- ✅ Storage аватаров — TG photo URL + identicon fallback.
 
 ### Ответы заказчика 2026-05-01 на предыдущие вопросы (v0.2 → v0.3)
 

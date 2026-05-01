@@ -42,7 +42,7 @@
 **Сильнее ralph.sh в чём:** распараллеливание независимых задач в одной сессии без захвата основного контекста.
 
 ### MCP servers
-Безопасный, типизированный доступ к внешним системам (Supabase, GitHub, Playwright, Context7) без shelling-out.
+Безопасный, типизированный доступ к внешним системам (GitHub, Playwright, Context7) без shelling-out. У нас self-hosted Postgres → доступ к БД через `psql` в скриптах (нет Supabase MCP), но Playwright/Context7/GitHub — через MCP.
 
 **Сильнее ralph.sh в чём:** ralph мог бы вызвать `psql` или `curl`, но MCP даёт schema-aware вызовы с auth-обёрткой, без рисков command injection.
 
@@ -111,7 +111,7 @@ Ralph пишет stdout каждой итерации в файл; легко д
 │     └─ refactor: чистит                                     │
 │  5. PostToolUse(Write|Edit): hook запускает lint+typecheck  │
 │  6. Subagent code-reviewer (если задача large)              │
-│  7. MCP supabase: если задача про схему/RLS                 │
+│  7. psql/db tools: если задача про схему/RLS (self-hosted)  │
 │  8. MCP playwright: если задача про E2E                     │
 │  9. Skill: verification-before-completion → run all tests   │
 │  10. Update tasks.json (status=done) + progress.txt          │
@@ -279,10 +279,10 @@ echo "Все задачи выполнены. Итераций: $((ITERATION-1))
 
 ### MCP servers
 
-- `supabase` — при работе со схемой / RLS / миграциями.
 - `playwright` — при написании / отладке E2E.
-- `context7` — для актуальных доков Hono / Supabase / Leaflet.
+- `context7` — для актуальных доков Hono / Vite / React / Leaflet / postgres-js.
 - `github` — для PR/issue (когда понадобятся, в MVP не сразу).
+- (Postgres MCP не используем — у нас self-hosted, доступ через `psql`/`postgres-js` хелперы в коде; нет смысла оборачивать через MCP.)
 
 ---
 
@@ -297,7 +297,7 @@ echo "Все задачи выполнены. Итераций: $((ITERATION-1))
 | Гарантия, что lint всегда запустится | hook `PostToolUse(Edit\|Write)` |
 | Гарантия, что push в main не уйдёт | hook `PreToolUse(Bash:git push origin main)` |
 | Структурированный TDD-процесс | skill `superpowers:test-driven-development` |
-| Доступ к Supabase / GitHub / Playwright | MCP |
+| Доступ к GitHub / Playwright / Context7 | MCP |
 
 ---
 
@@ -329,10 +329,10 @@ preflight_poputchiki() {
     command -v bun >/dev/null       || die "Нет bun"
     command -v jq >/dev/null        || die "Нет jq"
     command -v gpg >/dev/null       || die "Нет gpg (нужен для бэкапов)"
-    command -v supabase >/dev/null  || die "Нет supabase CLI"
+    command -v docker >/dev/null    || die "Нет docker (нужен для локальной БД)"
 
     # Файлы
-    [[ -f .env.local ]]    || die "Нет .env.local"
+    [[ -f .env ]] || [[ -f .env.local ]] || die "Нет .env"
     [[ -f tasks.json ]]    || die "Нет tasks.json"
     [[ -f docs/PRD-Poputchiki-v0.1.md ]] || die "Нет PRD — что мы делаем?"
 
@@ -340,8 +340,9 @@ preflight_poputchiki() {
     git diff --quiet                  || die "Незакомиченные изменения"
     [[ "$(git branch --show-current)" != "main" ]] || die "Нельзя работать в main"
 
-    # Локальная Supabase (для integration tests)
-    supabase status >/dev/null 2>&1   || die "supabase start не запущена"
+    # Локальный self-hosted Postgres контейнер
+    docker compose -f infra/docker-compose.dev.yml ps postgres 2>/dev/null | grep -q "healthy\|Up" \
+        || die "Локальный postgres не запущен: docker compose -f infra/docker-compose.dev.yml up -d postgres"
 
     # Smoke (быстро)
     bun run lint >/dev/null            || die "Lint красный — фиксим вручную"
@@ -427,12 +428,12 @@ EOF
 Флаг `RALPH_AUTO_PUSH_DEV=1` включаем только если заказчик разрешит.
 
 ### 6. Миграция-aware safety
-Если задача затрагивает SQL-миграцию (`supabase/migrations/`) — обязательная страховка:
+Если задача затрагивает SQL-миграцию (`db/migrations/`) — обязательная страховка:
 ```bash
-if git diff --staged --name-only | grep -q '^supabase/migrations/'; then
+if git diff --staged --name-only | grep -q '^db/migrations/'; then
     bun run backup:db || die "Backup БД перед миграцией не прошёл"
     bun run db:migrate || die "Миграция не прошла"
-    bun run test:rls-deny || die "RLS deny-by-default тест упал — откат"
+    bun run test:security || die "RLS deny-by-default / identity-leak тесты упали — откат"
 fi
 ```
 
@@ -476,7 +477,7 @@ fi
 scripts/
   ralph.sh                — главный loop
   ralph-tick.md           — промпт одной итерации
-  ralph-bootstrap.sh      — первый запуск: проверки, копирование .env.example, supabase start
+  ralph-bootstrap.sh      — первый запуск: проверки, копирование .env.example, docker compose up -d postgres
   notify-admin.sh         — тонкая обёртка над curl bot API
   backup-db.sh            — pg_dump + zstd + gpg, вызывается из cron worker и из миграции-safety
   restore-test.sh         — weekly restore drill

@@ -1,10 +1,23 @@
 # SPEC: Архитектура Poputchiki
 
-**Версия:** 0.4 (черновик к PRD v0.3)
+**Версия:** 0.5 (черновик к PRD v0.4)
 **Дата:** 2026-05-01
 **Статус:** Draft
 
-> Изменения 0.1 → 0.2 — в конце документа.
+> Изменения по версиям — в конце документа.
+
+## 0. Решения базовой инфраструктуры (must read)
+
+- **БД** — self-hosted **PostgreSQL 16** в Docker (контейнер `postgres`). НЕ Supabase, НЕ Neon, НЕ managed. Бэкапы/PITR/RLS — наши.
+- **Auth** — собственный JWT (HS256, секрет в env), HMAC-проверка Telegram initData в Hono middleware. НЕТ Supabase Auth.
+- **Realtime** — Server-Sent Events через Hono endpoint, источник событий — Postgres `LISTEN/NOTIFY`. НЕТ Supabase Realtime, НЕТ WebSocket в MVP.
+- **Storage** — TG photo URL для аватаров, без своего bucket. НЕТ Supabase Storage / S3 в MVP.
+- **RLS** — Postgres native RLS, identity берётся из GUC `app.current_user_id` / `app.current_user_tg_id`, выставляются `apps/api` через `SET LOCAL` в начале каждой транзакции. НЕТ `auth.uid()` / `auth.jwt()` (это Supabase-функции, у нас их нет).
+- **Frontend hosting** — статика SPA отдаётся Caddy-контейнером за Traefik, на том же сервере. НЕТ Cloudflare Pages, НЕТ Vercel.
+- **HTTPS** — Traefik + Let's Encrypt на личном сервере с публичным 443. НЕТ Cloudflare Tunnel.
+- **Метрики/observability** — `pino` JSON logs → файл с rotation, Prometheus scrape от self-hosted экспортёров (`postgres_exporter`, `node_exporter`, `cadvisor`), Grafana dashboard, Uptime Kuma для blackbox. Sentry — self-hosted compose ИЛИ fallback на собственный `error_log` table + admin TG-alert.
+- **Аналитика** — отложено в фазу 2 (PostHog free tier — план B при росте).
+- **Деплой** — Docker Compose на сервере, GHA build → SSH push → `docker compose up -d` → smoke /health → rollback по docker tag.
 
 ---
 
@@ -14,49 +27,62 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │                  Telegram WebApp (iOS/Android/Desktop)           │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │  React SPA (Vite + TS, hosted on Cloudflare Pages)         │  │
+│  │  React SPA (Vite + TS) — отдаётся Caddy-контейнером        │  │
 │  │  - @telegram-apps/sdk-react                                │  │
 │  │  - tg-identity-guard (свой; портирован из эталона)         │  │
-│  │  - Supabase JS client                                      │  │
+│  │  - postgres-js НЕТ — фронт ходит только в /api/**          │  │
 │  │  - Leaflet + OpenStreetMap (карта)                         │  │
-│  │  - PostHog browser SDK (опционально)                       │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └────────────────────────────┬─────────────────────────────────────┘
-                             │ HTTPS via Cloudflare Tunnel
-                             │ initData → /auth/telegram
-                             │ JWT → /api/**
+                             │ HTTPS (Traefik + Let's Encrypt)
+                             │ initData → POST /auth/telegram
+                             │ JWT (Authorization Bearer) → /api/**
+                             │ SSE GET /api/realtime/rides
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│        Cloudflare Tunnel  →  Docker Compose (домашний хост)      │
-│        или Fly.io free tier (3×256MB shared-cpu VMs)             │
+│   Domain (app.${DOMAIN} + api.${DOMAIN})                         │
+│              ↓                                                   │
+│   Traefik (443, ACME)                                            │
+│              ↓                                                   │
+│   Docker Compose network "poputchiki-internal"                   │
 │                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │  Контейнеры (микросервисы без избыточности):               │  │
-│  │  1. api      — Hono on Bun, основной API                   │  │
-│  │  2. notifier — Bun worker для Telegram pushes              │  │
-│  │  3. cron     — Bun worker для scheduled tasks              │  │
-│  │                (refresh MV, expand templates, backups)     │  │
-│  │  4. nginx    — reverse proxy + статические health endpoints│  │
+│  │  Микросервисы (Bun runtime, по одному инстансу в MVP):     │  │
+│  │  1. api       — Hono — публичный REST + SSE                │  │
+│  │  2. notifier  — worker — TG Bot push (LISTEN notify_user)  │  │
+│  │  3. cron      — worker — scheduled jobs с advisory locks   │  │
+│  │  4. webhook   — Hono — приёмник TG Bot webhook (bot_blocked│  │
+│  │                /my_chat_member, slash-команды бота)        │  │
+│  │  5. web       — caddy — статика SPA (build artefact)       │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └────────────────────────────┬─────────────────────────────────────┘
-                             │ Postgres (TLS)
+                             │ Postgres TCP (внутренняя сеть)
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                  Supabase Free Tier                              │
-│              (PostgreSQL + Auth + Realtime + Storage)            │
+│   postgres:16-alpine (self-hosted, контейнер `postgres`)         │
+│   + pgcrypto + pg_stat_statements                                │
+│   data volume:    ./.docker-data/postgres                        │
+│   backups volume: ./backups                                      │
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │  Tables: users, rides, ride_templates, ride_requests,      │  │
 │  │           ride_participation, likes, reviews, favorites,   │  │
 │  │           private_notes, complaints, audit_log, nonces,    │  │
-│  │           rate_limit_buckets, idempotency_keys             │  │
-│  │  RLS:    deny-by-default + явные политики на каждой        │  │
-│  │  MV:     user_stats (refresh every 5 min via cron worker)  │  │
-│  │  Triggers: likes_count, reviews_avg                        │  │
+│  │           rate_limit_buckets, idempotency_keys,            │  │
+│  │           support_messages, notification_preferences,      │  │
+│  │           revoked_tokens, error_log                        │  │
+│  │  RLS:    deny-by-default + FORCE на каждой; identity       │  │
+│  │           через GUC app.current_user_id / current_user_tg_id│  │
+│  │  MV:     user_stats (REFRESH CONCURRENTLY каждые 5 мин)    │  │
+│  │  Triggers: likes_count, rides_*_count, avg_stars,          │  │
+│  │            updated_at, complaints_autoblock                │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────┘
 
-         Локальные бэкапы:  ./backups/poputchiki-YYYY-MM-DD.sql.zst.gpg
-         (cron worker раз в сутки)
+         Бэкапы:    ./backups/poputchiki-YYYY-MM-DD.dump.zst.gpg
+                    (cron-worker, ежедневно 03:00 UTC, restore-drill weekly)
+         Метрики:   postgres_exporter, node_exporter, cadvisor → Prometheus → Grafana
+         Uptime:    Uptime Kuma (внешний blackbox /health)
+         Sentry:    self-hosted compose (план A) | error_log table + admin TG (план B)
 ```
 
 ---
@@ -66,43 +92,57 @@
 ```
 Poputchiki/
 ├── apps/
-│   ├── api/                    # Hono backend (Bun) — основной API
+│   ├── api/                    # Hono backend (Bun) — REST + SSE
 │   ├── notifier/               # Bun worker — рассылка Telegram-уведомлений
-│   └── cron/                   # Bun worker — scheduled jobs (бэкапы, refresh MV, expand templates)
+│   ├── cron/                   # Bun worker — scheduled jobs (refresh MV, expand templates, cleanup, backups, anomaly-detect)
+│   ├── webhook/                # Hono — приёмник TG Bot webhook (bot_blocked, my_chat_member, /start /help)
+│   └── web-server/             # Caddy образ с собранным SPA dist/
 │
-├── web/                        # React SPA (Vite) — деплой Cloudflare Pages
+├── web/                        # React SPA (Vite) source
 │
 ├── packages/
-│   └── shared/                 # типы, zod-схемы, константы (общие для api+web+workers)
+│   └── shared/                 # типы, zod-схемы, env-схема, константы (api+web+workers)
 │
-├── supabase/
-│   ├── migrations/             # SQL-миграции, версионируемые
-│   ├── seed.sql
-│   ├── policies/               # RLS-политики, отдельными файлами на таблицу
-│   └── config.toml
+├── db/
+│   ├── migrations/             # SQL-миграции (node-pg-migrate), версионируемые
+│   ├── seeds/                  # сидовые скрипты (admin role bootstrap, dev fixtures)
+│   ├── policies/               # RLS-политики отдельными файлами per-table (вспомогательно)
+│   └── functions/              # SQL-функции (app.current_user_id, set_updated_at, anonymize_user)
 │
 ├── infra/
-│   ├── docker-compose.yml      # production compose (api + notifier + cron + nginx)
-│   ├── docker-compose.dev.yml  # local dev (включая supabase локальный)
-│   ├── nginx/
-│   ├── cloudflared/            # Cloudflare Tunnel конфиг
-│   └── flyio/                  # альтернативный деплой fly.toml + Dockerfiles
+│   ├── docker-compose.dev.yml  # local: postgres, nominatim, mailpit (если надо)
+│   ├── docker-compose.prod.yml # prod: api, notifier, cron, webhook, web-server, prometheus stack (опц.)
+│   ├── caddy/                  # Caddyfile (SPA fallback)
+│   ├── prometheus/             # prometheus.yml + alerts.yml (опц.)
+│   └── grafana/                # provisioning dashboards (опц.)
 │
-├── backups/                    # локальные бэкапы (внутри проекта, по правилу пользователя)
-│   └── README.md               # GPG-ключ инструкция, retention policy
+├── backups/                    # локальные бэкапы (gitignored data, README закоммичен)
+│   └── README.md               # GPG retention policy
 │
 ├── docs/
-│   ├── PRD-Poputchiki-v0.1.md  (содержит v0.2)
-│   ├── SPEC-Architecture-v0.1.md (этот файл, v0.2)
-│   ├── OPEN-QUESTIONS-v0.1.md  (содержит v0.2)
-│   └── AUTOMATION.md           — стратегия автономной разработки (Ralph vs Claude Code natives)
+│   ├── PRD-Poputchiki-v0.1.md
+│   ├── SPEC-Architecture-v0.1.md   (этот файл)
+│   ├── OPEN-QUESTIONS-v0.1.md
+│   ├── AUTOMATION.md
+│   ├── design/                  # UI handoff (HTML+JSX прототипы)
+│   ├── legal/                   # privacy-policy.md, terms-of-service.md
+│   ├── runbook/                 # backup-restore.md, on-call.md, incident-template.md
+│   └── security/                # threat-model.md, ban-evasion.md
 │
 ├── scripts/
-│   ├── ralph.sh                # адаптированный для TS/Bun
-│   ├── backup.sh               # вызывается из cron worker
-│   └── restore-test.sh         # weekly drill
+│   ├── backup-db.sh            # вызывается из cron worker
+│   ├── restore-test.sh         # weekly drill
+│   ├── deploy.sh               # SSH-step, вызывается из GHA
+│   ├── rollback.sh             # переключение docker tag на предыдущий
+│   ├── setup-dev-tls.sh        # mkcert для local HTTPS
+│   ├── notify-admin.sh         # TG-уведомление админа
+│   └── db-reset.sh             # local dev only
 │
-├── .github/workflows/          # CI: lint → typecheck → unit → integration → e2e → coverage gate
+├── .github/workflows/
+│   ├── ci.yml                  # lint → typecheck → unit → integration → contract → security → e2e → coverage gate
+│   ├── deploy.yml              # build images → push → ssh deploy → smoke → rollback on fail
+│   ├── nightly.yml             # mutation testing, OWASP ZAP baseline, Trivy image scan
+│   └── rollback.yml            # manual workflow_dispatch — откат на предыдущий tag
 │
 ├── tasks.json                  # очередь задач для агента
 ├── progress.txt
@@ -112,9 +152,9 @@ Poputchiki/
 
 Принципы:
 - **Bun workspaces** — monorepo нативно.
-- `packages/shared` — Zod-схемы и DTO, переиспользуемые backend + frontend → contract drift невозможен.
-- **Никаких `.gitignore`** (правило проекта).
-- Микросервисы маленькие и изолированные, но без избыточности (нет двух нод одного сервиса в MVP).
+- `packages/shared` — Zod-схемы DTO + env, переиспользуемые backend + frontend → contract drift невозможен.
+- `.gitignore` — только секреты (`.env*`, ключи, `./.docker-data/`, `./backups/*.dump.zst.gpg`). Всё остальное — в репо.
+- Микросервисы маленькие и изолированные, по одному инстансу в MVP. Cron-jobs идемпотентны через advisory locks → можно безопасно scale-out при росте.
 
 ---
 
@@ -153,7 +193,7 @@ SameSite=Lax заблокирует cookie в кросс-сайт контекс
 7. Replay: `INSERT INTO nonces (hash, expires_at) ... ON CONFLICT DO NOTHING RETURNING 1` — если ничего не вернулось → 401 replay. (Postgres вместо Redis в MVP — экономим бесплатный slot.)
 8. Fail-closed: при ошибке БД → 401 infra.
 9. Upsert юзера: `users.tg_id` → если новый → создать, иначе обновить `last_seen_at` и `username`.
-10. Вернуть Supabase JWT с claims: `{ sub: user.id, tg_id, role: "user"|"admin", iat, exp }`. Подпись — Supabase JWT secret.
+10. Вернуть собственный JWT (HS256) с claims: `{ sub: user.id, tg_id, role: "user"|"admin", typ: "access"|"refresh", jti, iat, exp }`. Секрет подписи — `JWT_SECRET` из env.
 11. Установить cookie `tg_uid` для identity guard.
 
 ### 3.3 Identity guard на клиенте + сервере (paranoid mode)
@@ -161,9 +201,57 @@ SameSite=Lax заблокирует cookie в кросс-сайт контекс
 - **Сервер (новое в v0.2)**: middleware на каждом `/api/**` запросе сверяет `cookie.tg_uid === jwt.tg_id`. Mismatch → 401 + Set-Cookie `tg_uid=; Max-Age=0` + invalidate JWT.
 - Защищает от: переиспользования WebView attachment menu сессии другим пользователем; кражи JWT без cookie; кражи cookie без JWT.
 
-### 3.4 RLS-интеграция
-- Все запросы фронта к Supabase идут с этим JWT.
-- В RLS-политиках проверяем `(auth.jwt() ->> 'tg_id')::bigint = users.tg_id` и каскадно для зависимых таблиц.
+### 3.4 RLS-интеграция (self-hosted Postgres, без Supabase)
+
+Поскольку наш Postgres self-hosted, у нас нет supabase-функций `auth.uid()` / `auth.jwt()`. Identity берём из Postgres GUC, выставляемых `apps/api` в начале каждой транзакции:
+
+```sql
+-- db/functions/000_app_identity.sql
+CREATE SCHEMA IF NOT EXISTS app;
+
+-- Текущий пользователь: его UUID
+CREATE OR REPLACE FUNCTION app.current_user_id() RETURNS uuid
+LANGUAGE sql STABLE PARALLEL SAFE AS $$
+  SELECT NULLIF(current_setting('app.current_user_id', true), '')::uuid
+$$;
+
+-- Текущий пользователь: его tg_id (для cookie ↔ jwt sentinel и audit)
+CREATE OR REPLACE FUNCTION app.current_user_tg_id() RETURNS bigint
+LANGUAGE sql STABLE PARALLEL SAFE AS $$
+  SELECT NULLIF(current_setting('app.current_user_tg_id', true), '')::bigint
+$$;
+
+-- Текущая роль (user/admin) — для admin-only политик
+CREATE OR REPLACE FUNCTION app.current_user_role() RETURNS text
+LANGUAGE sql STABLE PARALLEL SAFE AS $$
+  SELECT COALESCE(NULLIF(current_setting('app.current_user_role', true), ''), 'anon')
+$$;
+
+CREATE OR REPLACE FUNCTION app.is_admin() RETURNS boolean
+LANGUAGE sql STABLE PARALLEL SAFE AS $$
+  SELECT app.current_user_role() = 'admin'
+$$;
+```
+
+В `apps/api/src/db/with-identity.ts` каждый запрос обёрнут так:
+
+```ts
+export async function withIdentity<T>(user: AuthUser | null, fn: (sql: Sql) => Promise<T>): Promise<T> {
+  return db.begin(async (tx) => {
+    if (user) {
+      await tx`SELECT
+        set_config('app.current_user_id',     ${user.id}::text, true),
+        set_config('app.current_user_tg_id',  ${user.tgId}::text, true),
+        set_config('app.current_user_role',   ${user.role}::text, true)`;
+    }
+    return fn(tx);
+  });
+}
+```
+
+Каждое RLS-выражение использует `app.current_user_id()` вместо `auth.uid()`. Анонимные запросы (без `set_config`) → функция возвращает `NULL` → policy не пропускает → deny-by-default.
+
+Sentinel-тест (TASK-056 + TASK-114): запрос без `set_config` к каждой таблице возвращает 0 rows / отказ.
 
 ---
 
@@ -416,36 +504,42 @@ CREATE UNIQUE INDEX ON user_stats (user_id);
 -- Refresh CONCURRENTLY каждые 5 минут (cron worker, без pg_cron — он недоступен на free tier).
 ```
 
-### 4.3 RLS политики (deny-by-default)
+### 4.3 RLS политики (deny-by-default, self-hosted)
+
+Identity функции — см. §3.4. На КАЖДОЙ таблице:
 
 ```sql
--- На КАЖДОЙ таблице:
 ALTER TABLE rides ENABLE ROW LEVEL SECURITY;
-ALTER TABLE rides FORCE ROW LEVEL SECURITY;  -- даже для service_role нужны явные политики
+ALTER TABLE rides FORCE ROW LEVEL SECURITY;  -- даже владелец БД проходит через политики
 
--- Чтение: только авторизованные
+-- Чтение: только авторизованные (любой залогиненный видит активные поездки)
 CREATE POLICY rides_read ON rides FOR SELECT
-USING (auth.jwt() IS NOT NULL);
+USING (app.current_user_id() IS NOT NULL);
 
 -- INSERT: только от своего имени
 CREATE POLICY rides_insert ON rides FOR INSERT
-WITH CHECK (driver_id = auth.uid());
+WITH CHECK (driver_id = app.current_user_id());
 
 -- UPDATE: только водитель этой поездки
 CREATE POLICY rides_update ON rides FOR UPDATE
-USING (driver_id = auth.uid())
-WITH CHECK (driver_id = auth.uid());
+USING (driver_id = app.current_user_id())
+WITH CHECK (driver_id = app.current_user_id());
 
 -- DELETE: только водитель и только до departure_at
 CREATE POLICY rides_delete ON rides FOR DELETE
-USING (driver_id = auth.uid() AND departure_at > now());
+USING (driver_id = app.current_user_id() AND departure_at > now());
 
--- Аналогично для всех остальных таблиц. Файлы — supabase/policies/<table>.sql.
-
--- Тест deny-by-default (CI gate):
--- 1. Анонимный клиент к каждой таблице: SELECT/INSERT/UPDATE/DELETE → ожидаем ноль строк / отказ.
--- 2. Авторизованный, но чужой ресурс: UPDATE/DELETE по чужим записям → отказ.
+-- Admin override (где нужно — например support_messages, audit_log read):
+CREATE POLICY support_messages_admin_read ON support_messages FOR SELECT
+USING (app.is_admin());
 ```
+
+Файлы политик — `db/policies/<table>.sql`, применяются миграциями `db/migrations/`.
+
+**Тесты deny-by-default (TASK-056, CI gate)**:
+1. Транзакция БЕЗ `set_config('app.current_user_id', ...)` к каждой таблице: `SELECT/INSERT/UPDATE/DELETE` → ноль строк / отказ.
+2. Авторизованный, но чужой ресурс: `UPDATE/DELETE` по чужим записям → отказ.
+3. Утечка identity между транзакциями — поскольку `set_config(..., true)` локальный для транзакции, после `COMMIT/ROLLBACK` identity сбрасывается. Sentinel-тест проверяет что следующий запрос в той же connection (из pool) не наследует identity.
 
 ---
 
@@ -513,7 +607,8 @@ Response: { items: Ride[], nextCursor: string | null }
 
 - **State**: TanStack Query для server-state, Zustand для UI-state (фильтры, модалки, view-mode list/map).
 - **Routing**: React Router (hash-роутинг — Telegram WebApp иногда ломает history API).
-- **Realtime**: SSE через Hono endpoint `GET /api/realtime/rides`, подписка фронта через `EventSource`. (Не Supabase Realtime — мы на self-hosted Postgres.)
+- **Realtime**: SSE через Hono endpoint `GET /api/realtime/rides`, подписка фронта через `EventSource`. Источник событий — Postgres `LISTEN/NOTIFY` (канал `rides_changed`), publisher — триггеры на INSERT/UPDATE/DELETE в `rides`.
+- **Realtime fallback**: при ошибке `EventSource` (5 reconnect failures подряд) — переключение на `setInterval(refetch, 30s)` polling через TanStack Query.
 - **Telegram SDK**: `@telegram-apps/sdk-react` — viewport, theme, BackButton, MainButton, HapticFeedback.
 - **Forms**: React Hook Form + zod resolver; те же схемы из `packages/shared`.
 - **Стилизация**: TailwindCSS + `@telegram-apps/telegram-ui`.
@@ -534,7 +629,7 @@ Response: { items: Ride[], nextCursor: string | null }
 | Уровень | Стек | Coverage gate | Где |
 |---------|------|---------------|-----|
 | Unit | Vitest | 90% lines, 85% branches | `apps/*/tests/unit`, `packages/shared/tests` |
-| Integration (backend) | Vitest + Supabase local (`supabase start`) | покрывает все RLS политики (deny-by-default test) | `apps/api/tests/integration` |
+| Integration (backend) | Vitest + Postgres test container (testcontainers-node ИЛИ docker compose -f docker-compose.dev.yml up postgres) | покрывает все RLS политики (deny-by-default test) | `apps/api/tests/integration` |
 | Contract | Zod schema parity check (api ↔ web) | 100% эндпоинтов | `apps/api/tests/contract` |
 | E2E | Playwright + Telegram WebApp mock | критичные flows A–G из PRD | `web/tests/e2e` |
 | Security | напр. `deny-by-default.test.ts`, `replay.test.ts`, `identity-mismatch.test.ts` | 100% security-критичных путей | `apps/api/tests/security` |
@@ -549,29 +644,65 @@ Response: { items: Ride[], nextCursor: string | null }
 
 ## 8. CI/CD
 
-GitHub Actions workflow:
-```
+GitHub Actions workflow `.github/workflows/ci.yml`:
+```yaml
 on: [push, pull_request]
+services:
+  postgres:
+    image: postgres:16-alpine
+    env: { POSTGRES_USER: ci, POSTGRES_PASSWORD: ci, POSTGRES_DB: poputchiki_test }
+    options: --health-cmd pg_isready
 jobs:
   quality:
-    - bun install
+    - actions/checkout
+    - oven-sh/setup-bun
+    - bun install --frozen-lockfile
     - bun run lint
     - bun run typecheck
+    - bun run db:migrate up                 # против postgres service container
+    - bun run db:seed:test
     - bun run test:unit -- --coverage
-    - supabase start && bun run test:integration
-    - bun run test:contract
-    - bun run test:security
-    - bun run test:e2e
-    - coverage gate (≥90% или fail)
-  deploy (только на push в main):
-    - бэкап БД pre-deploy (вызов /admin/backup-now или скрипт)
-    - bun run db:migrate
-    - docker compose pull && docker compose up -d (на хосте через SSH/Cloudflare Tunnel)
-        ИЛИ flyctl deploy (если деплой Fly.io)
-    - cloudflare pages deploy (фронт)
-    - smoke /health
-    - на ошибке smoke → откат через docker compose previous tag
+    - bun run test:integration              # RLS, миграции, триггеры
+    - bun run test:contract                 # zod schemas api↔web
+    - bun run test:security                 # deny-by-default, replay, race, middleware-stack
+    - bun run test:e2e                      # Playwright + apps/api dev + web build
+    - bun run coverage:check                # ≥90% или fail
+    - bun audit && npx -y osv-scanner --recursive
+    - gitleaks detect --source . --no-git
 ```
+
+Workflow `.github/workflows/deploy.yml` (только на push в `main`, см. TASK-115..TASK-125):
+```yaml
+on:
+  push: { branches: [main] }
+  workflow_dispatch:
+jobs:
+  build-and-push:
+    - docker build apps/api → ghcr.io/.../api:${SHA}
+    - docker build apps/notifier → ghcr.io/.../notifier:${SHA}
+    - docker build apps/cron → ghcr.io/.../cron:${SHA}
+    - docker build apps/webhook → ghcr.io/.../webhook:${SHA}
+    - bun run build:web && docker build apps/web-server → ghcr.io/.../web:${SHA}
+    - trivy image scan для каждого
+  deploy:
+    needs: build-and-push
+    - SSH on host: scripts/deploy.sh ${SHA}
+        # внутри:
+        # 1. backup-db.sh pre-deploy → ./backups/pre-deploy-${SHA}.dump.zst.gpg
+        # 2. docker compose -f infra/docker-compose.prod.yml pull
+        # 3. docker compose -f ... run --rm api bun run db:migrate up
+        # 4. docker compose -f ... up -d --no-deps api notifier cron webhook web-server
+        # 5. сохранить prev tag в /opt/poputchiki/last-good-tag
+    - smoke: curl -fsS https://api.${DOMAIN}/health → 200, https://app.${DOMAIN}/ → 200
+    - smoke fail → scripts/rollback.sh prev-tag → notify admin TG
+    - smoke ok → notify admin TG: ✅ deploy ${SHA}
+```
+
+Workflow `.github/workflows/nightly.yml`:
+- mutation testing (StrykerJS) по `apps/api`, `apps/notifier`, `packages/shared`, target ≥60% mutation score.
+- OWASP ZAP baseline scan против локально поднятого compose.
+- Trivy image scan последних production images.
+- Lighthouse CI против `web/dist`.
 
 ---
 
@@ -583,7 +714,7 @@ jobs:
 - **Retention**: daily 30 дней, weekly 12 (понедельник), monthly 24 (1-е число).
 - **Restore drill**: cron-job раз в неделю поднимает временный Postgres контейнер из последнего дампа, гонит smoke-тесты, отчитывается админу через TG-бот. Failed → блокирующий алерт.
 - **Off-site copy** (фаза 1.5, опционально): rsync на второй личный диск/хост заказчика. В MVP — только локально.
-- **Point-in-time recovery**: WAL на free Supabase — 7 дней по умолчанию.
+- **Point-in-time recovery (PITR)**: self-hosted Postgres с `wal_level=replica`, `archive_mode=on`, `archive_command=test ! -f /backups/wal/%f && cp %p /backups/wal/%f`. Retention WAL — 7 дней. Восстановление: `pg_basebackup` снимок (еженедельно) + WAL replay до целевого момента. Документировано в `docs/runbook/backup-restore.md` (TASK-119).
 
 ---
 
@@ -594,11 +725,17 @@ jobs:
 
 **Стек хостинга**:
 ```
-Internet → Traefik (443, ACME) → Docker network "poputchiki"
-                                   ├─ api      (Hono on Bun)
-                                   ├─ notifier (Bun worker)
-                                   ├─ cron     (Bun worker)
-                                   └─ web      (статика SPA, можно отдавать через Traefik с Caddy/nginx или вынести на Cloudflare Pages)
+Internet → Traefik (443, ACME) → Docker network "poputchiki-internal"
+                                   ├─ api         (Hono on Bun, Host=api.${DOMAIN})
+                                   ├─ webhook     (Hono on Bun, Host=webhook.${DOMAIN})
+                                   ├─ notifier    (Bun worker, internal-only)
+                                   ├─ cron        (Bun worker, internal-only)
+                                   ├─ web-server  (Caddy + SPA dist, Host=app.${DOMAIN})
+                                   ├─ postgres    (postgres:16-alpine, internal-only)
+                                   ├─ nominatim   (mediagis/nominatim, internal, geocoding proxy)
+                                   ├─ prometheus  (опц., Host=metrics.${DOMAIN} с basic-auth)
+                                   ├─ grafana     (опц., Host=grafana.${DOMAIN} с basic-auth)
+                                   └─ uptime-kuma (опц., Host=status.${DOMAIN})
 ```
 
 ### 10.2 Конфигурация Traefik (labels на сервисах)
@@ -629,11 +766,11 @@ Telegram MiniApp требует валидный TLS на домене; на bar
 **Action item**: уточнить у заказчика какой домен / поддомен закрепить за Poputchiki (см. OPEN-QUESTIONS).
 
 ### 10.4 Frontend: статика SPA
-Два варианта (выбрать один):
-- **Через Traefik на том же сервере**: build → docker volume → contoller-контейнер `caddy:alpine` отдаёт `dist/` на `app.${DOMAIN}`.
-- **Cloudflare Pages**: автодеплой при push в main; unlimited bandwidth, edge cache; API host через `VITE_API_BASE=https://api.${DOMAIN}`.
+**Решение**: SPA build (`web/dist/`) копируется в `apps/web-server` (Caddy образ), отдаётся через Traefik на `app.${DOMAIN}`. Один Docker tag = один атомарный deploy фронта+бэка.
 
-Решение по умолчанию для MVP — **на сервере через Traefik**. Меньше внешних зависимостей; перенос на CF Pages — план B при росте трафика.
+- Caddyfile: SPA fallback (`try_files $uri $uri/ /index.html`), gzip+brotli, cache-control `index.html=no-cache`, `*.js|*.css=public,max-age=31536000,immutable`.
+- API host: `VITE_API_BASE=https://api.${DOMAIN}` зашивается в build при `bun run build:web` (compile-time env).
+- Перенос на edge CDN — пост-MVP, план B при росте трафика.
 
 ### 10.5 Секреты
 **GitHub Secrets** (Actions) — единственный путь:
@@ -643,13 +780,17 @@ Telegram MiniApp требует валидный TLS на домене; на bar
 
 **Список секретов**:
 - `DOMAIN` (публичный, не секрет, но удобнее в одном месте)
-- `BOT_TOKEN`
-- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_ANON_KEY`
-- `ADMIN_TG_ID`
-- `ADMIN_TG_CHAT_ID` (куда шлются админ-алерты)
-- `BACKUP_KEY` (GPG passphrase)
-- `POSTHOG_KEY` (опц.)
-- `SSH_HOST`, `SSH_USER`, `SSH_KEY` — для deploy job
+- `BOT_TOKEN`, `BOT_WEBHOOK_SECRET` (TG секрет в `setWebhook` для верификации заголовка `X-Telegram-Bot-Api-Secret-Token`)
+- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `DATABASE_URL` (последний — composed)
+- `JWT_SECRET` (для подписи access/refresh JWT, 32+ random bytes)
+- `PGCRYPTO_KEY` (для pgp_sym_encrypt PII)
+- `ADMIN_TG_ID`, `ADMIN_TG_CHAT_ID` (куда шлются админ-алерты)
+- `BACKUP_KEY` (GPG passphrase для бэкапов)
+- `TRUSTED_PROXIES` (CIDR list, default `172.16.0.0/12` для docker bridge)
+- `SSH_HOST`, `SSH_USER`, `SSH_KEY` (для deploy job)
+- `GHCR_TOKEN` (для push docker images в GitHub Container Registry)
+- `SENTRY_DSN_API`, `SENTRY_DSN_WEB` (опц., если self-hosted Sentry поднят)
+- `GRAFANA_ADMIN_PASSWORD`, `PROMETHEUS_BASIC_AUTH` (опц., для observability stack)
 
 ### 10.6 Бэкапы
 Локально на сервере в `./backups/` внутри docker volume:
@@ -714,7 +855,7 @@ SSE endpoint `/api/realtime/rides` входит в `connect-src 'self'` (тот 
 Краткое решение: **гибрид**.
 - `tasks.json` остаётся persistent task store (читается между сессиями).
 - `scripts/ralph.sh` — лёгкий headless-loop с safety (timeout, retry, логи, pre-flight, coverage-gate, graceful shutdown). Адаптирован под Bun/TS.
-- Внутри сессии — Claude Code использует Skills (auto-work, brainstorming, TDD, debugging), TaskCreate для tracking шагов в рамках одной задачи, MCP (Supabase, Playwright, Context7), Subagents для параллельных независимых подзадач.
+- Внутри сессии — Claude Code использует Skills (auto-work, brainstorming, TDD, debugging), TaskCreate для tracking шагов в рамках одной задачи, MCP (Playwright, Context7), Subagents для параллельных независимых подзадач.
 - Hooks: `PreToolUse(Bash:git push origin main)` → block (по правилу пользователя); `PostToolUse(Edit|Write)` → run lint+typecheck; `Stop` → run full test suite.
 
 ---
@@ -725,6 +866,24 @@ SSE endpoint `/api/realtime/rides` входит в `connect-src 'self'` (тот 
 ---
 
 ## CHANGELOG
+
+### v0.5 (2026-05-01)
+
+**Полное удаление Supabase из MVP** (заказчик подтвердил self-hosted Postgres в Docker микросервисами):
+- §0 (новый): зафиксированы базовые инфраструктурные решения. Self-hosted Postgres 16, собственный JWT (HS256), SSE+LISTEN/NOTIFY вместо Supabase Realtime, TG photo URL вместо Storage, Caddy через Traefik вместо Cloudflare Pages.
+- §1 диаграмма: убран блок «Supabase Free Tier», добавлены контейнеры `postgres`, `webhook`, `web-server`, `nominatim`, observability stack. Добавлены таблицы `revoked_tokens`, `error_log`. Триггеры `avg_stars`, `updated_at`, `complaints_autoblock`.
+- §2 структура репо: вместо `supabase/` → `db/migrations`, `db/policies`, `db/functions`, `db/seeds`. Добавлены `apps/webhook`, `apps/web-server`, `docs/runbook`, `docs/security`, `infra/caddy`, `infra/prometheus`, `infra/grafana`. Скрипты `deploy.sh`, `rollback.sh`. Workflow `deploy.yml`, `nightly.yml`, `rollback.yml`.
+- §3.4 RLS: убраны Supabase-функции `auth.uid()` / `auth.jwt()`. Введены SQL-функции в схеме `app`: `app.current_user_id()`, `app.current_user_tg_id()`, `app.current_user_role()`, `app.is_admin()`. Identity выставляется через `set_config('app.current_user_id', ..., true)` в начале каждой транзакции хелпером `withIdentity()`. Sentinel-тест на утечку identity между транзакциями (TASK-114).
+- §4.3 RLS политики: переписаны под новые функции. Добавлен admin-override pattern.
+- §6: SSE realtime fallback на 30s polling.
+- §7: integration тесты на Postgres test container (testcontainers / docker compose), не `supabase start`.
+- §8: расширен CI workflow + добавлен deploy workflow (TASK-115..125) + nightly (mutation, ZAP, Trivy, Lighthouse).
+- §9: PITR через self-hosted WAL archive, не Supabase WAL.
+- §10: список контейнеров за Traefik расширен, Cloudflare Pages убран как опция, observability контейнеры опционально на отдельных сабдоменах с basic-auth.
+- §10.5: список секретов перепроверен. Убраны `SUPABASE_*`, добавлены `JWT_SECRET`, `PGCRYPTO_KEY`, `BOT_WEBHOOK_SECRET`, `TRUSTED_PROXIES`, `GHCR_TOKEN`, `SENTRY_DSN_*`, `GRAFANA_ADMIN_PASSWORD`.
+- §12: убрана MCP `supabase`.
+
+**Phase shift code-only-local → готовность к prod**: добавлены задачи TASK-107..125 в `tasks.json` (см. §13). Tasks → 106 + 19 = 125.
 
 ### v0.4 (2026-05-01)
 

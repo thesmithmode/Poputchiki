@@ -365,8 +365,9 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 ---
 
 ## 9. Ссылки
-- Открытые вопросы и слепые зоны: `docs/OPEN-QUESTIONS-v0.1.md` (актуальная v0.2)
-- Архитектура и схема БД: `docs/SPEC-Architecture-v0.1.md` (актуальная v0.2)
+- Открытые вопросы и слепые зоны: `docs/OPEN-QUESTIONS-v0.1.md` (актуальная v0.3)
+- Архитектура и схема БД: `docs/SPEC-Architecture-v0.1.md` (актуальная v0.3)
+- **Дизайн UI**: `docs/design/` — handoff bundle от Claude Design (HTML+JSX прототип всех экранов MVP). При работе над UI-задачами читать `docs/design/IMPLEMENTATION-NOTES.md` и `docs/design/chats/chat1.md` ПЕРЕД имплементацией.
 - Эталон Telegram auth: `C:\Soft\Projects\Telegram-export-clean\src\main\java\com\tcleaner\dashboard\auth\telegram\`
 - Шаблон автономного цикла: `saas/saas-project-ralph/ralph.sh` + `Доработать_скрипт.md`
 

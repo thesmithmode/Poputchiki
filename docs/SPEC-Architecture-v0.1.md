@@ -494,12 +494,19 @@ Response: { items: Ride[], nextCursor: string | null }
 
 - **State**: TanStack Query для server-state, Zustand для UI-state (фильтры, модалки, view-mode list/map).
 - **Routing**: React Router (hash-роутинг — Telegram WebApp иногда ломает history API).
-- **Realtime**: подписка на Supabase channel `rides:active` через JS-клиент; auto-reconnect.
+- **Realtime**: SSE через Hono endpoint `GET /api/realtime/rides`, подписка фронта через `EventSource`. (Не Supabase Realtime — мы на self-hosted Postgres.)
 - **Telegram SDK**: `@telegram-apps/sdk-react` — viewport, theme, BackButton, MainButton, HapticFeedback.
 - **Forms**: React Hook Form + zod resolver; те же схемы из `packages/shared`.
 - **Стилизация**: TailwindCSS + `@telegram-apps/telegram-ui`.
 - **Карта**: Leaflet + OpenStreetMap tiles, marker clustering (`leaflet.markercluster`), темизация под TG colorScheme.
-- **Хостинг**: Cloudflare Pages (free, unlimited bandwidth). API host проброшен через env `VITE_API_BASE`.
+- **Хостинг**: фронтенд отдаётся через Traefik на том же сервере (production); локально — Vite dev server.
+
+### Дизайн UI
+
+Готовый прототип всех экранов MVP — `docs/design/` (handoff bundle от Claude Design):
+- `docs/design/project/Poputchiki Mini App.html` + `docs/design/project/src/*.jsx` — React+Babel inline прототип, разбитый по экранам (feed, map, detail, profile, create, address, filters).
+- `docs/design/chats/chat1.md` — продуктовые решения и итерации (читать перед UI-имплементацией).
+- `docs/design/IMPLEMENTATION-NOTES.md` — маппинг tasks.json → файлы дизайна, правила воспроизведения (пиксель-в-пиксель на нашем стеке Vite + React + TS + Tailwind, не копировать internal structure).
 
 ---
 

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__serena__get_current_config",
+      "Bash(head:*)",
+      "WebSearch",
+      "Bash(wc -l src/bot/**/*.py)"
+    ]
+  }
+}

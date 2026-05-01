@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "Poputchiki",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "prd_source": "docs/PRD-Poputchiki-v0.1.md",
     "spec_source": "docs/SPEC-Architecture-v0.1.md",
     "phase": "full-mvp-with-prod-deploy",
@@ -473,23 +473,26 @@
     {
       "id": "TASK-019",
       "category": "infrastructure",
-      "priority": "medium",
+      "priority": "critical",
       "phase": "mvp",
-      "description": "GitHub Actions CI: lint + typecheck + tests + coverage gate (без deploy)",
+      "description": "GitHub Actions CI v1 (минимальный): lint + typecheck + unit tests + coverage gate ≥95%. Поднимается рано, расширяется по мере появления integration/e2e/security suite",
       "acceptance_criteria": [
         ".github/workflows/ci.yml",
-        "Запускается на push и pull_request",
-        "Шаги: setup-bun, bun install, lint, typecheck, test:unit с coverage, test:integration (Postgres service container с применением миграций bun run db:migrate), test:contract, test:security, test:e2e",
-        "Fail если coverage <90%",
-        "Postgres service container: postgres:16-alpine, healthcheck pg_isready, env переменные из repo secrets",
-        "Шаг audit: bun audit + osv-scanner (TASK-054), gitleaks (TASK-055)",
-        "БЕЗ deploy шагов (фаза code-only)"
+        "Запускается на push в dev/main и pull_request → dev/main",
+        "Шаги (минимум v1): setup-bun, bun install --frozen-lockfile, bun run lint, bun run typecheck, bun run test:unit -- --coverage, bun run coverage:check",
+        "Шаги расширяются автоматически когда соотв. скрипты определены в package.json (через if-step): test:integration (Postgres service container postgres:16-alpine с healthcheck pg_isready, миграции bun run db:migrate), test:contract, test:security, test:e2e",
+        "Fail если coverage lines<95% / branches<90% / functions<95% / statements<95%",
+        "Шаг audit: bun audit (warn-only); osv-scanner --recursive и gitleaks подключаются позднее через TASK-054/055",
+        "БЕЗ deploy шагов (deploy.yml — отдельный workflow в TASK-115)",
+        "Concurrency group=ci-${{github.ref}}, cancel-in-progress=true",
+        "Permissions: contents:read"
       ],
       "test_steps": [
-        "Push в dev → workflow запускается, все шаги зелёные",
-        "Сломать тест локально, push — CI красный"
+        "Push в dev → workflow запускается, все шаги зелёные на пустом package.json (только lint+typecheck+unit+coverage)",
+        "Сломать unit-тест локально, push — CI красный",
+        "Намеренно понизить покрытие <95% — coverage:check fail, CI красный"
       ],
-      "dependencies": ["TASK-018"],
+      "dependencies": ["TASK-002"],
       "status": "pending"
     },
     {
@@ -2238,11 +2241,11 @@
       "category": "documentation",
       "priority": "medium",
       "phase": "mvp",
-      "description": "Финальная синхронизация SPEC v0.5 / PRD v0.4 / OPEN-QUESTIONS v0.4 после имплементации (последняя mvp-задача — выполняется когда все остальные mvp = done)",
+      "description": "Финальная синхронизация SPEC v0.5+ / PRD v0.5+ / OPEN-QUESTIONS v0.5+ после имплементации (последняя mvp-задача — выполняется когда все остальные mvp = done)",
       "acceptance_criteria": [
-        "После выполнения ВСЕХ mvp-задач (TASK-001..105, 107..114, 117, 123, 126..129) — пройтись по SPEC §4-§11 и сверить с реально реализованным кодом, обновить любые расхождения",
+        "После выполнения ВСЕХ mvp-задач (TASK-001..105, 107..114, 117, 123, 126..130, 132) — пройтись по SPEC §4-§11 и сверить с реально реализованным кодом, обновить любые расхождения",
         "OPEN-QUESTIONS — пометить все RESOLVED по факту имплементации",
-        "В PRD CHANGELOG — добавить v0.5 с реальными расхождениями (если они есть)",
+        "В PRD CHANGELOG — добавить v0.6+ с реальными расхождениями (если они есть)",
         "В SPEC §13 (новый, опц.) — короткая ссылка на TASK-IDs где имплементировано каждое security/concurrency требование (для аудита)"
       ],
       "test_steps": [
@@ -2250,7 +2253,7 @@
         "Все упомянутые TASK-IDs существуют",
         "Грep по докам не находит auth.uid() / auth.jwt() / Supabase / Cloudflare Pages / Fly.io"
       ],
-      "dependencies": ["TASK-114", "TASK-117", "TASK-123", "TASK-126", "TASK-127", "TASK-128", "TASK-129"],
+      "dependencies": ["TASK-114", "TASK-117", "TASK-123", "TASK-126", "TASK-127", "TASK-128", "TASK-129", "TASK-130", "TASK-132"],
       "status": "pending"
     },
     {
@@ -2661,7 +2664,7 @@
         "Все пункты pre-launch checklist выполнены и помечены ✅ с evidence (test run id / dashboard screenshot path / timestamp)",
         "go-live.md протестирован на staging-домене"
       ],
-      "dependencies": ["TASK-061", "TASK-062", "TASK-115", "TASK-116", "TASK-118", "TASK-119", "TASK-120", "TASK-121", "TASK-122", "TASK-060"],
+      "dependencies": ["TASK-061", "TASK-062", "TASK-115", "TASK-116", "TASK-118", "TASK-119", "TASK-120", "TASK-121", "TASK-122", "TASK-060", "TASK-131"],
       "status": "pending"
     },
     {
@@ -2749,6 +2752,71 @@
         "Параллельный запуск 4 worker'ов — нет race на shared schema"
       ],
       "dependencies": ["TASK-004", "TASK-005", "TASK-101"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-130",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Sanitize UGC (отзывы, имя, описание поездки, support_messages) + SQL-injection sentinel test",
+      "acceptance_criteria": [
+        "packages/shared/src/sanitize/index.ts: helpers stripHtml(s), normalizeWhitespace(s), limitLength(s, n)",
+        "Все Zod-схемы UGC-полей (review.body, ride.note, profile.display_name, complaint.body, support_message.body) применяют sanitize transform ДО storage",
+        "Frontend ВСЕГДА выводит UGC через React (auto-escape) — never raw HTML injection; lint правило react/no-danger error блокирует raw-HTML рендер",
+        "apps/api/tests/security/sanitize.test.ts: payloads с script-тегом, onerror handler, javascript: URLs — после sanitize пустые/безопасные",
+        "Sentinel SQL-injection: apps/api/tests/security/sql-injection.spec.ts — 20+ payloads (' OR '1'='1, '); DROP TABLE users; --, UNION SELECT, и т.п.) на каждом search/filter endpoint → ответ без leak, без 500, audit_log без аномалий",
+        "Sentinel доказывает: postgres-js параметризация работает (намеренно сделать конкатенацию в коде → тест падает)"
+      ],
+      "test_steps": [
+        "bun run test:unit packages/shared/sanitize — зелёный",
+        "bun run test:security — sanitize + sql-injection зелёные",
+        "Намеренно сломать (заменить parametrized на template literal) → sql-injection.spec падает → доказательство sentinel"
+      ],
+      "dependencies": ["TASK-003", "TASK-014", "TASK-015", "TASK-021", "TASK-129"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-131",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "prod-deploy",
+      "description": "scripts/preflight.sh — server pre-flight check ПЕРЕД первым deploy (DNS, 443, Traefik, диск, env)",
+      "acceptance_criteria": [
+        "scripts/preflight.sh — bash, fail-fast (set -euo pipefail), запускается локально либо через GHA workflow_dispatch",
+        "Checks: 1) dig +short ${DOMAIN} → IP резолвится в IP сервера; 2) curl -I https://${DOMAIN} → 200/301/308 (Traefik отвечает); 3) ssh ${SSH_HOST} 'docker ps | grep traefik' → traefik running; 4) ssh ${SSH_HOST} 'df -h /' → free >5GB; 5) ssh ${SSH_HOST} 'test -d /opt/poputchiki && test -w /opt/poputchiki' — directory exists и writable; 6) ssh ${SSH_HOST} 'cat /opt/poputchiki/.env.prod | grep -E ^(BOT_TOKEN|JWT_SECRET|POSTGRES_PASSWORD|PGCRYPTO_KEY)= | wc -l' → 4 (все 4 секрета установлены, без значений в логе)",
+        "Каждый check либо ✓ либо ✗ с хинтом как пофиксить",
+        "Exit 0 — server ready, exit !=0 — deploy НЕ запускается",
+        "GHA: .github/workflows/preflight.yml — workflow_dispatch либо manual trigger",
+        "TASK-115 deploy.yml вызывает preflight.sh ПЕРЕД build-and-push шагом (опц. через needs:preflight)"
+      ],
+      "test_steps": [
+        "scripts/preflight.sh с правильно настроенным сервером — exit 0, все ✓",
+        "Сломать DNS (поменять ${DOMAIN} на несуществующий) → exit !=0, понятный hint",
+        "Удалить .env.prod на сервере → exit !=0"
+      ],
+      "dependencies": ["TASK-062", "TASK-115", "TASK-116"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-132",
+      "category": "documentation",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "PR template + code review checklist + CODEOWNERS (для self-review дисциплины и future-collaborators)",
+      "acceptance_criteria": [
+        ".github/PULL_REQUEST_TEMPLATE.md — секции: Summary, Why, Test plan (чек-боксы), Screenshots/Recording (для UI), Risk assessment, Rollback plan",
+        ".github/CODEOWNERS — @thesmithmode владелец всего на текущем этапе",
+        "docs/CODE_REVIEW_CHECKLIST.md — пункты: 1) Acceptance criteria покрыты; 2) Tests добавлены и зелёные (TDD doctrine); 3) Coverage diff не падает ниже 95%; 4) Naming/DRY/edge-cases; 5) Performance (N+1, индексы, payload size); 6) Security (input validation, RLS, secrets, OWASP Top 10); 7) Error handling (boundaries, retry, idempotency); 8) Docs (PRD/SPEC/CHANGELOG обновлены если архитектура поменялась); 9) Migration safety (down работает, no data loss); 10) Backwards compatibility (контракты api/web)",
+        "CLAUDE.md (project) ссылается на docs/CODE_REVIEW_CHECKLIST.md как обязательный для self-review перед маркировкой задачи done",
+        "Sentinel: tests/docs/pr-template-shape.test.ts — проверяет что PR template содержит ключевые секции (smoke against drift)"
+      ],
+      "test_steps": [
+        "ls .github/PULL_REQUEST_TEMPLATE.md .github/CODEOWNERS docs/CODE_REVIEW_CHECKLIST.md",
+        "Открыть PR → секции template применяются автоматически",
+        "bun run test:docs — sentinel зелёный"
+      ],
+      "dependencies": ["TASK-001"],
       "status": "pending"
     }
   ]

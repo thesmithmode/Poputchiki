@@ -1,10 +1,10 @@
 # SPEC: Архитектура Poputchiki
 
-**Версия:** 0.1 (черновик к PRD v0.1)
+**Версия:** 0.2 (черновик к PRD v0.2)
 **Дата:** 2026-05-01
 **Статус:** Draft
 
-> Документ описывает технические решения. Изменения архитектуры — через ревизию этого файла, не через ad-hoc правки в коде.
+> Изменения 0.1 → 0.2 — в конце документа.
 
 ---
 
@@ -14,55 +14,49 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │                  Telegram WebApp (iOS/Android/Desktop)           │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │  React SPA (Vite + TS)                                     │  │
+│  │  React SPA (Vite + TS, hosted on Cloudflare Pages)         │  │
 │  │  - @telegram-apps/sdk-react                                │  │
 │  │  - tg-identity-guard (свой; портирован из эталона)         │  │
-│  │  - Supabase JS client (для RLS-протектед чтений)           │  │
+│  │  - Supabase JS client                                      │  │
+│  │  - Leaflet + OpenStreetMap (карта)                         │  │
+│  │  - PostHog browser SDK (опционально)                       │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └────────────────────────────┬─────────────────────────────────────┘
-                             │ HTTPS (Railway TLS)
+                             │ HTTPS via Cloudflare Tunnel
                              │ initData → /auth/telegram
                              │ JWT → /api/**
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│              Hono on Bun (Railway, single container)             │
+│        Cloudflare Tunnel  →  Docker Compose (домашний хост)      │
+│        или Fly.io free tier (3×256MB shared-cpu VMs)             │
+│                                                                  │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │  Middleware chain:                                         │  │
-│  │  rate-limit → cors → csp → auth-jwt → audit-log → handler  │  │
-│  ├────────────────────────────────────────────────────────────┤  │
-│  │  Routes:                                                   │  │
-│  │  /auth/telegram      (HMAC verify → mint Supabase JWT)     │  │
-│  │  /api/rides          (CRUD)                                │  │
-│  │  /api/reviews        (write-only публикация отзывов)       │  │
-│  │  /api/favorites                                            │  │
-│  │  /api/users/me                                             │  │
-│  │  /api/admin/*        (role check: tg_id == ADMIN_TG_ID)    │  │
-│  │  /webhooks/telegram  (push notifier callbacks)             │  │
-│  │  /health, /readiness                                       │  │
-│  ├────────────────────────────────────────────────────────────┤  │
-│  │  Outbound:                                                 │  │
-│  │  - Supabase JS (service role для write, RLS-bypass только  │  │
-│  │    в audit-protected admin endpoints)                      │  │
-│  │  - Telegram Bot API (notify)                               │  │
-│  │  - Anthropic / Whisper (фаза 2)                            │  │
-│  │  - PostHog (опционально)                                   │  │
+│  │  Контейнеры (микросервисы без избыточности):               │  │
+│  │  1. api      — Hono on Bun, основной API                   │  │
+│  │  2. notifier — Bun worker для Telegram pushes              │  │
+│  │  3. cron     — Bun worker для scheduled tasks              │  │
+│  │                (refresh MV, expand templates, backups)     │  │
+│  │  4. nginx    — reverse proxy + статические health endpoints│  │
 │  └────────────────────────────────────────────────────────────┘  │
 └────────────────────────────┬─────────────────────────────────────┘
                              │ Postgres (TLS)
                              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                  Supabase (PostgreSQL + Auth + Realtime)         │
+│                  Supabase Free Tier                              │
+│              (PostgreSQL + Auth + Realtime + Storage)            │
 │  ┌────────────────────────────────────────────────────────────┐  │
 │  │  Tables: users, rides, ride_templates, ride_requests,      │  │
-│  │           reviews, favorites, private_notes, audit_log,    │  │
-│  │           verification_requests, bans, nonces              │  │
-│  │  RLS:    политики на каждой таблице                        │  │
-│  │  MV:     driver_stats (refresh every 5 min)                │  │
-│  │  Cron:   pg_cron — refresh MV, expand ride_templates,      │  │
-│  │           archive expired rides, backup trigger            │  │
-│  │  Storage: avatars (опционально, MVP берёт TG photo url)    │  │
+│  │           ride_participation, likes, reviews, favorites,   │  │
+│  │           private_notes, complaints, audit_log, nonces,    │  │
+│  │           rate_limit_buckets, idempotency_keys             │  │
+│  │  RLS:    deny-by-default + явные политики на каждой        │  │
+│  │  MV:     user_stats (refresh every 5 min via cron worker)  │  │
+│  │  Triggers: likes_count, reviews_avg                        │  │
 │  └────────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────────┘
+
+         Локальные бэкапы:  ./backups/poputchiki-YYYY-MM-DD.sql.zst.gpg
+         (cron worker раз в сутки)
 ```
 
 ---
@@ -72,34 +66,14 @@
 ```
 Poputchiki/
 ├── apps/
-│   ├── api/                    # Hono backend (Bun)
-│   │   ├── src/
-│   │   │   ├── routes/
-│   │   │   ├── middleware/
-│   │   │   ├── domain/         # бизнес-логика (доменные сервисы)
-│   │   │   ├── infra/          # Supabase client, Telegram client
-│   │   │   └── index.ts
-│   │   ├── tests/
-│   │   │   ├── unit/
-│   │   │   ├── integration/    # против локальной Supabase
-│   │   │   └── contract/
-│   │   ├── package.json
-│   │   └── tsconfig.json
-│   │
-│   └── web/                    # React SPA (Vite)
-│       ├── src/
-│       │   ├── pages/
-│       │   ├── components/
-│       │   ├── hooks/
-│       │   ├── lib/            # api client, telegram sdk wrappers
-│       │   └── main.tsx
-│       ├── tests/
-│       │   ├── unit/           # vitest + testing-library
-│       │   └── e2e/            # Playwright (через Telegram WebApp mock)
-│       └── vite.config.ts
+│   ├── api/                    # Hono backend (Bun) — основной API
+│   ├── notifier/               # Bun worker — рассылка Telegram-уведомлений
+│   └── cron/                   # Bun worker — scheduled jobs (бэкапы, refresh MV, expand templates)
+│
+├── web/                        # React SPA (Vite) — деплой Cloudflare Pages
 │
 ├── packages/
-│   └── shared/                 # типы, zod-схемы, константы (общие для api+web)
+│   └── shared/                 # типы, zod-схемы, константы (общие для api+web+workers)
 │
 ├── supabase/
 │   ├── migrations/             # SQL-миграции, версионируемые
@@ -107,24 +81,40 @@ Poputchiki/
 │   ├── policies/               # RLS-политики, отдельными файлами на таблицу
 │   └── config.toml
 │
-├── docs/
-│   ├── PRD-Poputchiki-v0.1.md
-│   ├── SPEC-Architecture-v0.1.md  (этот файл)
-│   └── OPEN-QUESTIONS-v0.1.md
+├── infra/
+│   ├── docker-compose.yml      # production compose (api + notifier + cron + nginx)
+│   ├── docker-compose.dev.yml  # local dev (включая supabase локальный)
+│   ├── nginx/
+│   ├── cloudflared/            # Cloudflare Tunnel конфиг
+│   └── flyio/                  # альтернативный деплой fly.toml + Dockerfiles
 │
-├── scripts/                    # ralph.sh (адаптированный), backup, restore тесты
+├── backups/                    # локальные бэкапы (внутри проекта, по правилу пользователя)
+│   └── README.md               # GPG-ключ инструкция, retention policy
+│
+├── docs/
+│   ├── PRD-Poputchiki-v0.1.md  (содержит v0.2)
+│   ├── SPEC-Architecture-v0.1.md (этот файл, v0.2)
+│   ├── OPEN-QUESTIONS-v0.1.md  (содержит v0.2)
+│   └── AUTOMATION.md           — стратегия автономной разработки (Ralph vs Claude Code natives)
+│
+├── scripts/
+│   ├── ralph.sh                # адаптированный для TS/Bun
+│   ├── backup.sh               # вызывается из cron worker
+│   └── restore-test.sh         # weekly drill
 │
 ├── .github/workflows/          # CI: lint → typecheck → unit → integration → e2e → coverage gate
 │
 ├── tasks.json                  # очередь задач для агента
 ├── progress.txt
-└── CLAUDE.md
+├── CLAUDE.md
+└── package.json                # bun workspaces root
 ```
 
 Принципы:
-- **monorepo** через Bun workspaces (нативно поддерживается).
+- **Bun workspaces** — monorepo нативно.
 - `packages/shared` — Zod-схемы и DTO, переиспользуемые backend + frontend → contract drift невозможен.
-- Никаких `.gitignore` (правило проекта).
+- **Никаких `.gitignore`** (правило проекта).
+- Микросервисы маленькие и изолированные, но без избыточности (нет двух нод одного сервиса в MVP).
 
 ---
 
@@ -137,6 +127,7 @@ Content-Type: application/json
 Body: { "initData": "<raw query string from Telegram.WebApp.initData>" }
 
 200 → { "access_token": "<supabase-jwt>", "expires_at": 1735689600 }
+       Set-Cookie: tg_uid=<tg_user_id>; HttpOnly=false; SameSite=Lax; Secure; Path=/
 401 → { "error": "invalid_init_data" | "expired" | "replay" | "infra" }
 ```
 
@@ -145,67 +136,87 @@ Body: { "initData": "<raw query string from Telegram.WebApp.initData>" }
 2. Достаём `hash`, остальные пары сортируем лексикографически и склеиваем как `key=value\nkey=value\n...`.
 3. `secretKey = HMAC_SHA256("WebAppData", BOT_TOKEN)`.
 4. `expected = HMAC_SHA256(secretKey, dataCheckString)`.
-5. `MessageDigest.isEqual(expected, providedHash)` → констант-тайм сравнение.
+5. Constant-time сравнение (`crypto.timingSafeEqual`) → 401 если не совпало.
 6. `auth_date` в окне ±5 минут от now.
-7. Replay: `setIfAbsent(nonce:{hash}, "1", TTL=5min)` в Supabase KV/Redis. Если ключ уже есть → 401 replay.
-8. Fail-closed: при ошибке nonce-стора → 401 infra.
+7. Replay: `INSERT INTO nonces (hash, expires_at) ... ON CONFLICT DO NOTHING RETURNING 1` — если ничего не вернулось → 401 replay. (Postgres вместо Redis в MVP — экономим бесплатный slot.)
+8. Fail-closed: при ошибке БД → 401 infra.
 9. Upsert юзера: `users.tg_id` → если новый → создать, иначе обновить `last_seen_at` и `username`.
 10. Вернуть Supabase JWT с claims: `{ sub: user.id, tg_id, role: "user"|"admin", iat, exp }`. Подпись — Supabase JWT secret.
+11. Установить cookie `tg_uid` для identity guard.
 
-### 3.3 Identity guard на клиенте
-- Cookie `tg_uid` (HttpOnly=false, SameSite=Lax, Secure, Path=/).
-- На каждой странице JS проверяет `cookie.tg_uid === Telegram.WebApp.initDataUnsafe.user.id`. Mismatch → форс re-auth (вызов `/auth/telegram` заново).
+### 3.3 Identity guard на клиенте + сервере (paranoid mode)
+- **Клиент**: на каждой странице JS проверяет `cookie.tg_uid === Telegram.WebApp.initDataUnsafe.user.id`. Mismatch → форс re-auth.
+- **Сервер (новое в v0.2)**: middleware на каждом `/api/**` запросе сверяет `cookie.tg_uid === jwt.tg_id`. Mismatch → 401 + Set-Cookie `tg_uid=; Max-Age=0` + invalidate JWT.
+- Защищает от: переиспользования WebView attachment menu сессии другим пользователем; кражи JWT без cookie; кражи cookie без JWT.
 
 ### 3.4 RLS-интеграция
 - Все запросы фронта к Supabase идут с этим JWT.
-- В RLS-политиках проверяем `auth.jwt() ->> 'tg_id' = users.tg_id` или `auth.uid() = ...`.
+- В RLS-политиках проверяем `(auth.jwt() ->> 'tg_id')::bigint = users.tg_id` и каскадно для зависимых таблиц.
 
 ---
 
-## 4. Модель данных (схема v0.1)
+## 4. Модель данных (v0.2)
 
 ### 4.1 Таблицы
 
 ```sql
 -- users: один пользователь = один tg_id
 CREATE TABLE users (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  tg_id        bigint UNIQUE NOT NULL,
-  tg_username  text,
-  display_name text NOT NULL,
-  avatar_url   text,
-  apt_number   text,                          -- зашифровано pgcrypto (pgp_sym_encrypt)
-  phone_enc    bytea,                         -- pgcrypto, ключ в Supabase Vault
-  is_verified  boolean NOT NULL DEFAULT false,
-  is_banned    boolean NOT NULL DEFAULT false,
-  role         text NOT NULL DEFAULT 'user',  -- user | admin
-  created_at   timestamptz NOT NULL DEFAULT now(),
-  last_seen_at timestamptz NOT NULL DEFAULT now()
+  id                    uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tg_id                 bigint UNIQUE NOT NULL,
+  tg_username           text,
+  display_name          text NOT NULL,
+  avatar_url            text,
+  apt_number_enc        bytea,                         -- pgcrypto pgp_sym_encrypt
+  phone_enc             bytea,                         -- pgcrypto
+  is_verified           boolean NOT NULL DEFAULT false, -- зарезервировано под пост-MVP
+  is_banned             boolean NOT NULL DEFAULT false,
+  notify_disabled       boolean NOT NULL DEFAULT false, -- бот заблокирован пользователем
+  role                  text NOT NULL DEFAULT 'user',
+  likes_received_count  int NOT NULL DEFAULT 0,         -- денормализация для фильтров доверия
+  rides_total_count     int NOT NULL DEFAULT 0,         -- денормализация
+  rides_completed_count int NOT NULL DEFAULT 0,
+  created_at            timestamptz NOT NULL DEFAULT now(),
+  last_seen_at          timestamptz NOT NULL DEFAULT now()
 );
+CREATE INDEX idx_users_trust ON users (created_at, likes_received_count);
 
 -- rides: разовая или экземпляр регулярной поездки
 CREATE TABLE rides (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   driver_id       uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   template_id     uuid REFERENCES ride_templates(id) ON DELETE SET NULL,
-  direction       text NOT NULL,              -- нормализованное направление
+  from_label      text NOT NULL,
+  from_lat        double precision NOT NULL,
+  from_lng        double precision NOT NULL,
+  to_label        text NOT NULL,
+  to_lat          double precision NOT NULL,
+  to_lng          double precision NOT NULL,
   departure_at    timestamptz NOT NULL,
   price_rub       int,                        -- nullable = договорная
   seats_total     smallint NOT NULL CHECK (seats_total BETWEEN 1 AND 4),
   seats_taken     smallint NOT NULL DEFAULT 0,
-  comment         text,
+  comment         text CHECK (length(comment) <= 200),
   status          text NOT NULL DEFAULT 'active',  -- active | cancelled | completed | archived
   created_at      timestamptz NOT NULL DEFAULT now(),
   updated_at      timestamptz NOT NULL DEFAULT now(),
   CHECK (seats_taken <= seats_total)
 );
 CREATE INDEX idx_rides_status_dep ON rides (status, departure_at);
+CREATE INDEX idx_rides_driver ON rides (driver_id, departure_at DESC);
+-- Гео-индекс под bounding-box запросы для карты:
+CREATE INDEX idx_rides_geo_from ON rides (from_lat, from_lng) WHERE status='active';
 
 -- ride_templates: шаблон регулярного рейса
 CREATE TABLE ride_templates (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   driver_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  direction     text NOT NULL,
+  from_label    text NOT NULL,
+  from_lat      double precision NOT NULL,
+  from_lng      double precision NOT NULL,
+  to_label      text NOT NULL,
+  to_lat        double precision NOT NULL,
+  to_lng        double precision NOT NULL,
   departure_time time NOT NULL,
   weekdays      smallint[] NOT NULL,          -- 0=Sun..6=Sat
   price_rub     int,
@@ -227,36 +238,75 @@ CREATE TABLE ride_requests (
   UNIQUE (ride_id, passenger_id)
 );
 
--- reviews: публичный отзыв пассажира на водителя по конкретной поездке
+-- ride_participation: подтверждённое участие (предусловие для лайка/отзыва)
+CREATE TABLE ride_participation (
+  ride_id        uuid NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+  passenger_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  driver_marked  boolean NOT NULL DEFAULT false,
+  passenger_confirmed boolean NOT NULL DEFAULT false,
+  marked_at      timestamptz,
+  confirmed_at   timestamptz,
+  PRIMARY KEY (ride_id, passenger_id)
+);
+
+-- likes: симметричные лайки 1/поездка
+CREATE TABLE likes (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ride_id     uuid NOT NULL REFERENCES rides(id) ON DELETE CASCADE,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (subject_id, target_id, ride_id),
+  CHECK (subject_id <> target_id)
+);
+-- триггер: после INSERT/DELETE → обновить users.likes_received_count у target
+
+-- reviews: симметричные отзывы (и водителю, и пассажиру)
 CREATE TABLE reviews (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   ride_id      uuid NOT NULL REFERENCES rides(id) ON DELETE RESTRICT,
-  driver_id    uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  passenger_id uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  subject_id   uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+  target_id    uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
   stars        smallint NOT NULL CHECK (stars BETWEEN 1 AND 5),
   text         text CHECK (length(text) <= 300),
   created_at   timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (ride_id, passenger_id)
+  UNIQUE (ride_id, subject_id, target_id),
+  CHECK (subject_id <> target_id)
 );
 
 -- favorites
 CREATE TABLE favorites (
   user_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  driver_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   notify    boolean NOT NULL DEFAULT false,
-  PRIMARY KEY (user_id, driver_id)
+  PRIMARY KEY (user_id, target_id),
+  CHECK (user_id <> target_id)
 );
 
--- private_notes: личные заметки юзера о водителе (только автор видит)
+-- private_notes
 CREATE TABLE private_notes (
-  user_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  driver_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  note      text NOT NULL CHECK (length(note) <= 500),
+  user_id    uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  note       text NOT NULL CHECK (length(note) <= 500),
   updated_at timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (user_id, driver_id)
+  PRIMARY KEY (user_id, target_id)
 );
 
--- audit_log: каждое state-changing действие
+-- complaints
+CREATE TABLE complaints (
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_user_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_ride_id  uuid REFERENCES rides(id) ON DELETE SET NULL,
+  reason_code     text NOT NULL CHECK (reason_code IN ('spam','fraud','offense','other')),
+  text            text CHECK (length(text) <= 500),
+  status          text NOT NULL DEFAULT 'open', -- open | resolved | dismissed
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  -- антиспам: 1 жалоба от пары (reporter,target) в неделю; обеспечивается уникальным индексом по дате-неделе
+  UNIQUE (reporter_id, target_user_id, target_ride_id, date_trunc('week', created_at))
+);
+
+-- audit_log
 CREATE TABLE audit_log (
   id         bigserial PRIMARY KEY,
   actor_id   uuid REFERENCES users(id),
@@ -274,59 +324,79 @@ CREATE TABLE nonces (
   expires_at timestamptz NOT NULL
 );
 CREATE INDEX idx_nonces_expires ON nonces (expires_at);
+-- cron: DELETE FROM nonces WHERE expires_at < now() — каждые 5 минут
 
--- verification_requests: заявки на верификацию водителя
-CREATE TABLE verification_requests (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  payload     jsonb NOT NULL,         -- что прислал (фото пропуска / номер квартиры)
-  status      text NOT NULL DEFAULT 'pending', -- pending | approved | rejected
-  reviewer_id uuid REFERENCES users(id),
-  created_at  timestamptz NOT NULL DEFAULT now()
+-- rate_limit_buckets: счётчики для rate-limiting
+CREATE TABLE rate_limit_buckets (
+  bucket_key  text PRIMARY KEY,        -- "user:{uuid}" или "ip:{inet}"
+  window_at   timestamptz NOT NULL,
+  hits        int NOT NULL DEFAULT 0
 );
+
+-- idempotency_keys
+CREATE TABLE idempotency_keys (
+  key            text PRIMARY KEY,
+  user_id        uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  response_hash  text NOT NULL,
+  response_body  jsonb NOT NULL,
+  status_code    smallint NOT NULL,
+  expires_at     timestamptz NOT NULL
+);
+CREATE INDEX idx_idem_expires ON idempotency_keys (expires_at);
 ```
 
-### 4.2 Materialized view `driver_stats`
+### 4.2 Materialized view `user_stats`
 
 ```sql
-CREATE MATERIALIZED VIEW driver_stats AS
+CREATE MATERIALIZED VIEW user_stats AS
 SELECT
-  u.id AS driver_id,
-  COUNT(DISTINCT r.id)                                  AS total_rides,
-  COUNT(DISTINCT r.id) FILTER (WHERE r.status='completed') AS completed_rides,
-  AVG(rv.stars)                                          AS avg_stars,
-  COUNT(rv.id)                                           AS reviews_count
+  u.id AS user_id,
+  COUNT(DISTINCT r_drv.id) FILTER (WHERE r_drv.status='completed') AS rides_as_driver_completed,
+  COUNT(DISTINCT rp.ride_id)                                       AS rides_as_passenger,
+  COALESCE(SUM(CASE WHEN l.target_id = u.id THEN 1 ELSE 0 END), 0) AS likes_received,
+  AVG(rv.stars) FILTER (WHERE rv.target_id = u.id)                 AS avg_stars,
+  COUNT(rv.id) FILTER (WHERE rv.target_id = u.id)                  AS reviews_count
 FROM users u
-LEFT JOIN rides r   ON r.driver_id = u.id
-LEFT JOIN reviews rv ON rv.driver_id = u.id
+LEFT JOIN rides r_drv               ON r_drv.driver_id = u.id
+LEFT JOIN ride_participation rp     ON rp.passenger_id = u.id AND rp.passenger_confirmed
+LEFT JOIN likes l                   ON l.target_id = u.id
+LEFT JOIN reviews rv                ON rv.target_id = u.id
 GROUP BY u.id;
 
-CREATE UNIQUE INDEX ON driver_stats (driver_id);
+CREATE UNIQUE INDEX ON user_stats (user_id);
+-- Refresh CONCURRENTLY каждые 5 минут (cron worker, без pg_cron — он недоступен на free tier).
 ```
-- Refresh CONCURRENTLY каждые 5 минут через `pg_cron`.
 
-### 4.3 RLS политики (примеры)
+### 4.3 RLS политики (deny-by-default)
 
 ```sql
+-- На КАЖДОЙ таблице:
 ALTER TABLE rides ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rides FORCE ROW LEVEL SECURITY;  -- даже для service_role нужны явные политики
 
--- читать активные поездки может любой авторизованный пользователь
+-- Чтение: только авторизованные
 CREATE POLICY rides_read ON rides FOR SELECT
-USING (auth.uid() IS NOT NULL);
+USING (auth.jwt() IS NOT NULL);
 
--- создавать только от своего имени
+-- INSERT: только от своего имени
 CREATE POLICY rides_insert ON rides FOR INSERT
 WITH CHECK (driver_id = auth.uid());
 
--- редактировать/удалять — только водитель этой поездки
+-- UPDATE: только водитель этой поездки
 CREATE POLICY rides_update ON rides FOR UPDATE
 USING (driver_id = auth.uid())
 WITH CHECK (driver_id = auth.uid());
 
+-- DELETE: только водитель и только до departure_at
 CREATE POLICY rides_delete ON rides FOR DELETE
-USING (driver_id = auth.uid());
+USING (driver_id = auth.uid() AND departure_at > now());
+
+-- Аналогично для всех остальных таблиц. Файлы — supabase/policies/<table>.sql.
+
+-- Тест deny-by-default (CI gate):
+-- 1. Анонимный клиент к каждой таблице: SELECT/INSERT/UPDATE/DELETE → ожидаем ноль строк / отказ.
+-- 2. Авторизованный, но чужой ресурс: UPDATE/DELETE по чужим записям → отказ.
 ```
-- Аналогично для всех остальных таблиц. Файлы — `supabase/policies/<table>.sql`.
 
 ---
 
@@ -336,46 +406,70 @@ USING (driver_id = auth.uid());
 
 ### 5.1 `POST /api/rides`
 ```ts
-// request
 {
-  direction: string,         // 1..120 chars
+  fromLabel: string,         // 1..120 chars
+  fromLat: number,           // -90..90
+  fromLng: number,           // -180..180
+  toLabel: string,
+  toLat: number,
+  toLng: number,
   departureAt: string,       // ISO8601, future, ≤ +30 days
   priceRub: number | null,   // 0..5000 or null
   seatsTotal: 1|2|3|4,
-  comment?: string           // ≤ 200 chars
+  comment?: string,
+  isRecurring?: boolean,
+  weekdays?: number[]        // 0..6, требуется если isRecurring
 }
-// 201
-{ id: string, ...ride }
+// 201 → { ride: Ride }
 // 422 zod errors / 401 unauthorized / 429 rate-limited
+// 403 если у юзера >0 открытых жалоб с порогом или младше 24h и уже есть активная поездка
 ```
 
 ### 5.2 `GET /api/rides`
 ```
-Query: direction?, fromAt?, toAt?, priceMax?, seatsMin?, verifiedOnly?, favoritesOnly?, cursor?
+Query:
+  fromLat?, fromLng?, toLat?, toLng?, radiusKm?  -- bbox/circle для карты
+  fromAt?, toAt?
+  priceMax?, seatsMin?
+  trustMinAccountAgeDays?, trustMinLikes?
+  favoritesOnly?
+  cursor?
 Response: { items: Ride[], nextCursor: string | null }
 ```
 
-### 5.3 `POST /api/reviews`
+### 5.3 `POST /api/likes`
 ```ts
-{ rideId: string, stars: 1..5, text?: string }
-// 201 review created, audit_log записан
-// 409 already reviewed
-// 403 not eligible (не был accepted на этой поездке)
+{ rideId: string, targetUserId: string }
+// 201 если ride_participation подтверждён обеими сторонами
+// 403 иначе
+// 409 если уже лайк есть
 ```
 
-### 5.4 Idempotency
-Все POST-эндпоинты принимают `Idempotency-Key: <uuid>` header. Backend хранит (`key`, `user_id`, `response_hash`) 24 часа; повтор с тем же key → возвращает закэшированный 2xx.
+### 5.4 `POST /api/reviews`
+```ts
+{ rideId: string, targetUserId: string, stars: 1..5, text?: string }
+// 201 / 403 / 409 как у likes
+```
+
+### 5.5 Idempotency
+Все POST-эндпоинты принимают `Idempotency-Key: <uuid>` header. Backend хранит ответ 24 часа в `idempotency_keys`; повтор с тем же ключом → возвращает закэшированный 2xx.
+
+### 5.6 Anti-bot фильтр на сервере (помимо UI-фильтров пользователя)
+- Запрос `POST /api/rides` от user'а с `created_at > now()-24h AND active_rides_count >= 1` → 403 `too_new`.
+- Запрос от user'а с `likes_received_count = 0 AND rides_today >= 3` → 403 `unverified_daily_limit`.
 
 ---
 
 ## 6. Frontend архитектура
 
-- **State**: TanStack Query для server-state, Zustand для UI-state (фильтры, модалки).
+- **State**: TanStack Query для server-state, Zustand для UI-state (фильтры, модалки, view-mode list/map).
 - **Routing**: React Router (hash-роутинг — Telegram WebApp иногда ломает history API).
 - **Realtime**: подписка на Supabase channel `rides:active` через JS-клиент; auto-reconnect.
 - **Telegram SDK**: `@telegram-apps/sdk-react` — viewport, theme, BackButton, MainButton, HapticFeedback.
 - **Forms**: React Hook Form + zod resolver; те же схемы из `packages/shared`.
-- **Стилизация**: TailwindCSS + `@telegram-apps/telegram-ui` (Telegram-нативные компоненты).
+- **Стилизация**: TailwindCSS + `@telegram-apps/telegram-ui`.
+- **Карта**: Leaflet + OpenStreetMap tiles, marker clustering (`leaflet.markercluster`), темизация под TG colorScheme.
+- **Хостинг**: Cloudflare Pages (free, unlimited bandwidth). API host проброшен через env `VITE_API_BASE`.
 
 ---
 
@@ -384,14 +478,15 @@ Response: { items: Ride[], nextCursor: string | null }
 | Уровень | Стек | Coverage gate | Где |
 |---------|------|---------------|-----|
 | Unit | Vitest | 90% lines, 85% branches | `apps/*/tests/unit`, `packages/shared/tests` |
-| Integration (backend) | Vitest + supabase local (`supabase start`) | покрывает все RLS политики | `apps/api/tests/integration` |
+| Integration (backend) | Vitest + Supabase local (`supabase start`) | покрывает все RLS политики (deny-by-default test) | `apps/api/tests/integration` |
 | Contract | Zod schema parity check (api ↔ web) | 100% эндпоинтов | `apps/api/tests/contract` |
-| E2E | Playwright + Telegram WebApp mock | критичные flows A–F из PRD | `apps/web/tests/e2e` |
+| E2E | Playwright + Telegram WebApp mock | критичные flows A–G из PRD | `web/tests/e2e` |
+| Security | напр. `deny-by-default.test.ts`, `replay.test.ts`, `identity-mismatch.test.ts` | 100% security-критичных путей | `apps/api/tests/security` |
 
 **TDD enforcement**:
 - Каждая задача в `tasks.json` имеет блок `tdd_steps` (red → green → refactor) ДО `implementation_steps`.
-- Pre-commit hook отклоняет коммиты, в которых coverage упал >0.5%.
-- CI: `lint → typecheck → unit → integration → e2e → coverage-gate`. Любой красный — блокировка merge.
+- Pre-commit hook отклоняет коммиты, если coverage упал >0.5% или новый файл без тестов.
+- CI: `lint → typecheck → unit → integration → contract → e2e → security → coverage-gate`.
 - Mutation testing (StrykerJS) — раз в неделю в CI nightly, target ≥ 60% mutation score.
 
 ---
@@ -409,58 +504,127 @@ jobs:
     - bun run test:unit -- --coverage
     - supabase start && bun run test:integration
     - bun run test:contract
-    - bun run e2e
+    - bun run test:security
+    - bun run test:e2e
     - coverage gate (≥90% или fail)
   deploy (только на push в main):
-    - бэкап Supabase pre-deploy (snapshot tag)
+    - бэкап БД pre-deploy (вызов /admin/backup-now или скрипт)
     - bun run db:migrate
-    - railway up
+    - docker compose pull && docker compose up -d (на хосте через SSH/Cloudflare Tunnel)
+        ИЛИ flyctl deploy (если деплой Fly.io)
+    - cloudflare pages deploy (фронт)
     - smoke /health
-    - на ошибке smoke → railway rollback
+    - на ошибке smoke → откат через docker compose previous tag
 ```
 
 ---
 
 ## 9. Бэкапы и DR
 
-- **Daily**: Supabase auto-backup (включён в Pro tier).
-- **Weekly full dump**: `pg_dump --format=custom --compress=9` → S3-совместимое хранилище (Backblaze B2 / Yandex Object Storage), encryption-at-rest (SSE-C ключ в Vault).
-- **Retention**: daily 30 дней, weekly 6 месяцев, monthly 2 года.
-- **Restore drill**: cron-job раз в месяц поднимает временный Postgres из последнего бэкапа, гонит smoke-тесты, отчитывается админу. Если restore failed — алерт.
-- **Point-in-time recovery**: WAL архивация в Supabase Pro (по умолчанию 7 дней; рассмотреть upgrade до 28 дней).
+- **Frequency**: ежедневный `pg_dump --format=custom --compress=9 --verbose` через cron worker в `./backups/poputchiki-YYYY-MM-DD.dump`.
+- **Encryption**: после dump → `gpg --symmetric --cipher-algo AES256 --batch --passphrase "$BACKUP_KEY"`. Ключ — в env, в репо никогда.
+- **Compression**: `zstd -19` поверх (двойная экономия).
+- **Retention**: daily 30 дней, weekly 12 (понедельник), monthly 24 (1-е число).
+- **Restore drill**: cron-job раз в неделю поднимает временный Postgres контейнер из последнего дампа, гонит smoke-тесты, отчитывается админу через TG-бот. Failed → блокирующий алерт.
+- **Off-site copy** (фаза 1.5, опционально): rsync на второй личный диск/хост заказчика. В MVP — только локально.
+- **Point-in-time recovery**: WAL на free Supabase — 7 дней по умолчанию.
 
 ---
 
-## 10. Развёртывание
+## 10. Развёртывание (бесплатный путь)
 
-### 10.1 Railway (рекомендованный путь MVP)
-- Один сервис: Bun runtime, контейнер собирается из Dockerfile.
-- Переменные окружения: `BOT_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `ADMIN_TG_ID`, `ANTHROPIC_API_KEY` (фаза 2), `WHISPER_API_KEY` (фаза 2), `POSTHOG_KEY` (опционально).
-- TLS: автоматический через Railway domain (`*.up.railway.app`) или custom domain через CNAME.
-- HTTPS-only force middleware.
+### 10.1 Рекомендованный путь MVP: Docker Compose + Cloudflare Tunnel
+**Контекст**: домена нет, но Telegram MiniApp требует HTTPS на домене. Bare IP не работает.
 
-### 10.2 Self-hosted (опция)
-См. `OPEN-QUESTIONS-v0.1.md` — требует решения по SSL (Caddy / Traefik + Let's Encrypt), reverse proxy, мониторингу. Запасной план, не MVP.
+**Шаги**:
+1. На личном сервере (Linux) — установить Docker + Docker Compose + cloudflared.
+2. В Cloudflare Dashboard → Zero Trust → Networks → Tunnels → создать туннель → получить токен.
+3. `cloudflared tunnel --token $TOKEN` запускается в отдельном контейнере; маршрутизирует `https://<имя-туннеля>.cfargotunnel.com` → `http://nginx:80` внутри compose.
+4. Либо подключить свой бесплатный поддомен (`<имя>.your-cf-zone.com`) если есть Cloudflare-зона; либо использовать дефолтный `*.cfargotunnel.com` (некрасиво, но работает).
+5. Telegram BotFather → `/setdomain` → задать этот домен; `/setmenubutton` → MiniApp на этот URL.
+
+**Плюсы**: 0₽, без открытых портов на роутере, TLS из коробки.
+**Минусы**: при падении домашнего сервера — приложение лежит. План B — Fly.io.
+
+### 10.2 План B: Fly.io free tier
+- 3 shared-cpu-1x VMs по 256MB RAM, 3GB persistent volume — бесплатно.
+- `fly launch` из репо → `fly.toml` с маппингом портов.
+- Бесплатный поддомен `<app>.fly.dev` с автоматическим TLS.
+- Сюда мигрируем если домашний сервер недоступен / медленный.
+
+### 10.3 DuckDNS как альтернатива Cloudflare Tunnel
+- `<имя>.duckdns.org` — бесплатный поддомен, обновление через cron-скрипт.
+- Let's Encrypt сертификат через `certbot --dns-duckdns` (плагин).
+- Требует открытых портов 80/443 на роутере — что не у всех есть.
+
+### 10.4 Frontend: Cloudflare Pages
+- Подключить репо → автодеплой при push в main.
+- Build: `cd web && bun install && bun run build` → `dist`.
+- `_headers` файл с CSP / HSTS / X-Frame-Options.
+- Бесплатно: unlimited bandwidth, edge на 300+ городах.
+
+### 10.5 Переменные окружения
+- **api**: `BOT_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `ADMIN_TG_ID`, `BACKUP_KEY` (GPG passphrase), `POSTHOG_KEY` (опц).
+- **web** (build-time): `VITE_API_BASE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_POSTHOG_KEY` (опц).
+- Хранение: на хосте — `.env.local` (вне git? — нет, по правилу проекта `.gitignore` запрещён, поэтому файл с секретами держать на хосте, в репо никогда не пушить, но репо приватный — допустимо если мы готовы); Cloudflare Pages — Environment Variables в UI.
 
 ---
 
 ## 11. Security checklist (минимум перед prod)
 
-- [ ] HMAC verify Telegram initData — unit + integration тесты (включая negative cases: подменённый hash, истёкший auth_date, replay).
-- [ ] RLS включён на каждой таблице, есть deny-by-default test.
-- [ ] Persistent secrets в Vault, не в репо. Gitleaks pre-commit hook.
-- [ ] Rate-limit на все public endpoints.
+- [ ] HMAC verify Telegram initData — unit + integration тесты (negative cases: подменённый hash, истёкший auth_date, replay).
+- [ ] Identity guard: cookie tg_uid ↔ jwt.tg_id ↔ Telegram.WebApp.initDataUnsafe.user.id — все 3 совпадают, иначе 401.
+- [ ] RLS включён + FORCE на каждой таблице. Deny-by-default тест зелёный.
+- [ ] Persistent secrets вне git (или в приватном репо явно, без публикации).
+- [ ] Rate-limit на все public endpoints + on-create rules для anti-bot.
 - [ ] CSP заголовки (script-src 'self' 'wasm-unsafe-eval' https://telegram.org).
-- [ ] HSTS, X-Frame-Options DENY (но для Telegram iframe — рассмотреть allow), X-Content-Type-Options nosniff.
-- [ ] CSRF protection на state-changing endpoints (двойной submit token + Origin check).
+- [ ] HSTS, X-Content-Type-Options nosniff. X-Frame-Options — особый случай для Telegram (см. ниже).
+- [ ] CSRF protection (double-submit + Origin check) на state-changing endpoints.
 - [ ] Идемпотентность всех write-эндпоинтов.
-- [ ] Аудит-лог пишет ip + user-agent + actor + payload hash.
+- [ ] Аудит-лог пишет ip + ua + actor + payload hash.
 - [ ] Шифрование phone/apt_number (pgcrypto).
-- [ ] Backup restore-drill зелёный.
+- [ ] Backup encrypted + restore-drill зелёный.
 - [ ] OWASP ZAP / SQLMap прогон против staging.
 - [ ] Зависимости проверены `bun audit` + `osv-scanner`.
+- [ ] Все `text` поля санитизируются на выводе; никаких `innerHTML`.
+- [ ] Жалобы не используются как DoS-вектор (антиспам по неделе).
+
+**X-Frame-Options для Telegram**: TG WebApp работает в WebView, не классическом iframe; X-Frame-Options DENY обычно безопасно. Проверить на iOS/Android после первого деплоя.
 
 ---
 
-## 12. Открытые архитектурные вопросы
-См. `docs/OPEN-QUESTIONS-v0.1.md` — раздел «Архитектура».
+## 12. Стратегия автономной разработки (Ralph + Claude Code natives)
+
+См. отдельный документ `docs/AUTOMATION.md` — обсуждение использования внешнего bash-цикла vs встроенных возможностей Claude Code (Skills, Hooks, Subagents, /loop, /schedule, MCP, TaskCreate).
+
+Краткое решение: **гибрид**.
+- `tasks.json` остаётся persistent task store (читается между сессиями).
+- `scripts/ralph.sh` — лёгкий headless-loop с safety (timeout, retry, логи, pre-flight, coverage-gate, graceful shutdown). Адаптирован под Bun/TS.
+- Внутри сессии — Claude Code использует Skills (auto-work, brainstorming, TDD, debugging), TaskCreate для tracking шагов в рамках одной задачи, MCP (Supabase, Playwright, Context7), Subagents для параллельных независимых подзадач.
+- Hooks: `PreToolUse(Bash:git push origin main)` → block (по правилу пользователя); `PostToolUse(Edit|Write)` → run lint+typecheck; `Stop` → run full test suite.
+
+---
+
+## 13. Открытые архитектурные вопросы
+См. `docs/OPEN-QUESTIONS-v0.1.md` (актуальная v0.2) — раздел «Архитектура».
+
+---
+
+## CHANGELOG
+
+### v0.2 (2026-05-01)
+- Деплой пересмотрен под бюджет $0: Docker Compose + Cloudflare Tunnel (или Fly.io free) вместо Railway; Cloudflare Pages для фронта.
+- Архитектура — 4 микросервиса в одном compose: api / notifier / cron / nginx; без избыточности (по одному инстансу).
+- Бэкапы — локально в `./backups/`, GPG+zstd, weekly restore drill (вместо S3).
+- nonce store — Postgres (таблица `nonces`) вместо Redis (экономим slot).
+- Rate-limit store — Postgres (`rate_limit_buckets`).
+- Добавлены сущности `likes`, `ride_participation`, `complaints`, `idempotency_keys`.
+- В `users` — денормализованные счётчики `likes_received_count`, `rides_*_count` для быстрого фильтра доверия (триггеры обновляют).
+- В `rides`/`ride_templates` добавлены геополя `from_lat/lng/to_lat/lng/from_label/to_label` для карты.
+- Карта — Leaflet + OpenStreetMap (бесплатно).
+- RLS — `FORCE ROW LEVEL SECURITY` (даже service_role требует явной политики); явный CI-тест deny-by-default.
+- Identity guard расширен server-side проверкой cookie ↔ JWT.
+- Anti-bot: серверные правила лимитов для свежих/безлайковых аккаунтов; UI-фильтры доверия.
+- Подтверждение поездки обеими сторонами как предусловие лайка/отзыва.
+- Симметричные отзывы (и водитель, и пассажир).
+- Раздел «Стратегия автономной разработки» с указанием на `docs/AUTOMATION.md`.

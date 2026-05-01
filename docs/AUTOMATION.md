@@ -1,10 +1,12 @@
 # Стратегия автономной разработки Poputchiki
 
-**Версия:** 0.1
+**Версия:** 0.2
 **Дата:** 2026-05-01
 **Статус:** Draft
 
 > Документ обсуждает: (1) нужен ли внешний `ralph.sh` или достаточно встроенных возможностей Claude Code, (2) как именно организовать автономный цикл, чтобы он был надёжным.
+
+> v0.2 (2026-05-01): заказчик подтвердил вариант через скрипт. Добавлен расширенный список доработок под задачи Poputchiki в §«Конкретные доработки скрипта под Poputchiki» в конце.
 
 ---
 
@@ -310,6 +312,186 @@ echo "Все задачи выполнены. Итераций: $((ITERATION-1))
 
 ## Вопросы для обсуждения с заказчиком
 
-1. Запускать ralph.sh на машине заказчика (терминал должен быть открыт) или арендовать минимальный VPS на $5/мес для autonomous run? — последний противоречит бюджету $0, но дёшев и снимает «забыл выключить ноутбук».
-2. Использовать `/schedule` для daily tick (один автономный шаг в сутки в облаке Anthropic) — это отдельная стоимость на стороне платных Claude Code workspace.
-3. Готовы ли на agentic git push в `dev` ветку без подтверждения? (push в `main` — точно нет.) Если да — экономим клики при каждой задаче.
+1. Запускать ralph.sh на машине заказчика (терминал должен быть открыт) или на том же домашнем сервере где Traefik (через `tmux`/`screen` или systemd-unit) — рекомендую второе: запустил и забыл.
+2. Готовы ли на agentic `git push origin dev` без подтверждения? (push в `main` — точно нет.) Если да — экономим клики.
+
+---
+
+## Конкретные доработки скрипта под Poputchiki
+
+Базовый шаблон выше — общий. Ниже — что именно добавляем под наш проект, помимо стандартного `Доработать_скрипт.md`-листа из `saas-project-ralph`.
+
+### 1. Точечный pre-flight для нашего стека
+```bash
+preflight_poputchiki() {
+    # Базовое окружение
+    command -v claude >/dev/null   || die "Нет claude CLI"
+    command -v bun >/dev/null       || die "Нет bun"
+    command -v jq >/dev/null        || die "Нет jq"
+    command -v gpg >/dev/null       || die "Нет gpg (нужен для бэкапов)"
+    command -v supabase >/dev/null  || die "Нет supabase CLI"
+
+    # Файлы
+    [[ -f .env.local ]]    || die "Нет .env.local"
+    [[ -f tasks.json ]]    || die "Нет tasks.json"
+    [[ -f docs/PRD-Poputchiki-v0.1.md ]] || die "Нет PRD — что мы делаем?"
+
+    # Состояние git
+    git diff --quiet                  || die "Незакомиченные изменения"
+    [[ "$(git branch --show-current)" != "main" ]] || die "Нельзя работать в main"
+
+    # Локальная Supabase (для integration tests)
+    supabase status >/dev/null 2>&1   || die "supabase start не запущена"
+
+    # Smoke (быстро)
+    bun run lint >/dev/null            || die "Lint красный — фиксим вручную"
+    bun run typecheck >/dev/null       || die "Типы красные — фиксим вручную"
+}
+```
+
+### 2. Tasks dependency-aware выбор
+В стандартном `ralph.sh` агенту даётся «найди pending». В нашем случае задача может зависеть от других — выбирать только готовые к работе:
+```bash
+ready_tasks_count() {
+    jq '
+      [ .tasks[]
+        | select(.status == "pending")
+        | select(
+            (.dependencies // []) as $deps
+            | $deps | all(. as $d | (any(.. | objects | select(.id == $d) | .status == "done"; .)))
+          )
+      ] | length
+    ' tasks.json
+}
+```
+
+(Простая проверка: pending без unmet deps.)
+
+### 3. Статус `blocked` и порог остановки
+Агент при невозможности выполнить (например, миграция требует ручного вмешательства) возвращает маркер `<promise>BLOCKED</promise>` + причину в `progress.txt`. Скрипт переводит задачу в `status: blocked` и идёт дальше.
+**Защита от зацикливания**: если 5 итераций подряд получили BLOCKED → останавливаемся и шлём админу алерт в TG.
+```bash
+BLOCKED_STREAK=0
+MAX_BLOCKED_STREAK=5
+
+# в цикле после run:
+if grep -q '<promise>BLOCKED</promise>' "$LOG"; then
+    ((BLOCKED_STREAK++))
+    if [[ $BLOCKED_STREAK -ge $MAX_BLOCKED_STREAK ]]; then
+        notify_admin "Ralph остановлен: $MAX_BLOCKED_STREAK подряд BLOCKED. Нужно ручное вмешательство."
+        exit 2
+    fi
+else
+    BLOCKED_STREAK=0
+fi
+```
+
+### 4. TG-уведомления админу о ходе цикла
+Без зависимостей — просто `curl` на Bot API:
+```bash
+notify_admin() {
+    local text="$1"
+    [[ -z "${ADMIN_TG_CHAT_ID:-}" ]] && return 0
+    [[ -z "${BOT_TOKEN:-}" ]] && return 0
+    curl -sS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+        -d "chat_id=${ADMIN_TG_CHAT_ID}" \
+        --data-urlencode "text=[ralph] ${text}" \
+        >/dev/null || true
+}
+
+# триггеры:
+notify_admin "Старт цикла. pending=${PENDING}"             # на старте
+notify_admin "Итерация ${ITERATION} завершена за ${ELAPSED}s. Готово: ${DONE}/${TOTAL}"  # после задачи
+notify_admin "❗ Coverage упал ниже ${COVERAGE_MIN}% — откатываюсь"                     # на провале
+notify_admin "Все задачи выполнены за ${ITERATION} итераций."                          # финал
+```
+
+### 5. Per-task git workflow в dev
+Делаем плоско: коммиты сразу в `dev`, по одному коммиту на задачу. Никаких feature-веток (избыточно для нашего объёма).
+```bash
+git_commit_task() {
+    local task_id="$1"
+    local title="$2"
+    git add -A
+    git commit -m "$(cat <<EOF
+${title}
+
+Реализация TASK-${task_id}. Coverage: $(jq '.coverage.total.lines.pct' coverage/coverage-summary.json)%.
+EOF
+)"
+    if [[ "${RALPH_AUTO_PUSH_DEV:-0}" == "1" ]]; then
+        git push origin dev
+    fi
+}
+```
+Флаг `RALPH_AUTO_PUSH_DEV=1` включаем только если заказчик разрешит.
+
+### 6. Миграция-aware safety
+Если задача затрагивает SQL-миграцию (`supabase/migrations/`) — обязательная страховка:
+```bash
+if git diff --staged --name-only | grep -q '^supabase/migrations/'; then
+    bun run backup:db || die "Backup БД перед миграцией не прошёл"
+    bun run db:migrate || die "Миграция не прошла"
+    bun run test:rls-deny || die "RLS deny-by-default тест упал — откат"
+fi
+```
+
+### 7. Schema drift gate
+Если задача меняет `packages/shared/src/schemas/` — обязательно `bun run test:contract`, чтобы api↔web остались согласованы.
+
+### 8. TDD enforcement в pre-commit
+До коммита проверять что новые файлы кода имеют соответствующие тесты:
+```bash
+new_code_files=$(git diff --staged --name-only | grep -E '^(apps|packages)/.*\.(ts|tsx)$' | grep -v '\.test\.' | grep -v '/tests/')
+for f in $new_code_files; do
+    test_file=$(echo "$f" | sed -E 's|src/|tests/unit/|; s|\.tsx?$|.test.&|; s|.test.ts$|.test.ts|')
+    if [[ ! -f "$test_file" ]]; then
+        die "Новый файл $f без теста $test_file (TDD strict mode)"
+    fi
+done
+```
+
+### 9. Метрики итерации
+В конце каждой итерации скрипт логирует таймер и обновляет `progress.txt`:
+```
+Итерация ${ITERATION}: ${ELAPSED_SEC}s | задача TASK-${ID} | coverage ${COV}%
+```
+Среднее время → ETA остатка для admin-notify.
+
+### 10. Остановка при rate-limit Anthropic API
+Если в выводе claude мелькнёт `429` или `rate_limit` — пауза 60 секунд и retry, не считая в `BLOCKED_STREAK`.
+
+### 11. DRY-RUN режим для отладки промпта
+```bash
+if [[ "${RALPH_DRY_RUN:-0}" == "1" ]]; then
+    # claude получает дополнительный флаг "только проанализируй, ничего не меняй"
+    PROMPT="${PROMPT}\n\nDRY-RUN: НЕ ВНОСИ ИЗМЕНЕНИЙ. Опиши что бы сделал, и что бы потребовалось."
+    timeout "${MAX_ITERATION_SEC}" claude --permission-mode plan -p "$PROMPT"
+    exit 0
+fi
+```
+
+### 12. Скрипт-обёртки
+```
+scripts/
+  ralph.sh                — главный loop
+  ralph-tick.md           — промпт одной итерации
+  ralph-bootstrap.sh      — первый запуск: проверки, копирование .env.example, supabase start
+  notify-admin.sh         — тонкая обёртка над curl bot API
+  backup-db.sh            — pg_dump + zstd + gpg, вызывается из cron worker и из миграции-safety
+  restore-test.sh         — weekly restore drill
+  schema-drift-check.sh   — упомянутый contract gate
+```
+
+---
+
+## Что мы НЕ добавляем в скрипт (намеренно)
+
+По принципу «не забегать вперёд»:
+- ❌ Discord webhook — у нас уже есть TG.
+- ❌ Конфиг-файл `ralph.config.json` — пока хватает env-переменных.
+- ❌ Cyclomatic complexity / Stryker mutation testing — в roadmap, не в MVP.
+- ❌ Feature-ветки на каждую задачу — плоский dev.
+- ❌ Performance regression detection — appliction слишком молодой, нет baseline.
+- ❌ Параллельный запуск задач — по одной за итерацию.
+- ❌ Discord/Slack/email алерты — только TG.

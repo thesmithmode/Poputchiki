@@ -1,6 +1,6 @@
 # SPEC: Архитектура Poputchiki
 
-**Версия:** 0.2 (черновик к PRD v0.2)
+**Версия:** 0.3 (черновик к PRD v0.3)
 **Дата:** 2026-05-01
 **Статус:** Draft
 
@@ -333,6 +333,36 @@ CREATE TABLE rate_limit_buckets (
   hits        int NOT NULL DEFAULT 0
 );
 
+-- support_messages: обращения пользователей в техподдержку
+CREATE TABLE support_messages (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text         text NOT NULL CHECK (length(text) BETWEEN 1 AND 2000),
+  status       text NOT NULL DEFAULT 'open',  -- open | resolved | dismissed
+  reply_text   text,
+  replied_at   timestamptz,
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_support_status ON support_messages (status, created_at DESC);
+
+-- notification_preferences: выборочное отключение категорий
+CREATE TABLE notification_preferences (
+  user_id   uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category  text NOT NULL CHECK (category IN (
+              'ride_request',         -- кто-то откликнулся на твою поездку
+              'ride_cancelled',       -- твоя поездка / поездка где ты пассажир отменена
+              'confirm_participation',-- запрос подтверждения после departure_at
+              'like_received',        -- получил лайк
+              'review_received',      -- получил отзыв
+              'favorite_new_ride',    -- избранный водитель опубликовал поездку
+              'support_reply',        -- ответ от админа на твоё обращение
+              'system'                -- системные алерты (мут запрещён)
+            )),
+  enabled   boolean NOT NULL DEFAULT true,
+  PRIMARY KEY (user_id, category)
+);
+-- Дефолт: все категории кроме 'system' можно отключать; system всегда true (RLS блокирует UPDATE).
+
 -- idempotency_keys
 CREATE TABLE idempotency_keys (
   key            text PRIMARY KEY,
@@ -531,42 +561,80 @@ jobs:
 
 ---
 
-## 10. Развёртывание (бесплатный путь)
+## 10. Развёртывание
 
-### 10.1 Рекомендованный путь MVP: Docker Compose + Cloudflare Tunnel
-**Контекст**: домена нет, но Telegram MiniApp требует HTTPS на домене. Bare IP не работает.
+### 10.1 Целевая инфраструктура (утверждено заказчиком)
+**Хост**: домашний/личный сервер с Docker. На сервере уже работает **Traefik** как reverse-proxy с ACME/Let's Encrypt. Публичный 443 открыт.
 
-**Шаги**:
-1. На личном сервере (Linux) — установить Docker + Docker Compose + cloudflared.
-2. В Cloudflare Dashboard → Zero Trust → Networks → Tunnels → создать туннель → получить токен.
-3. `cloudflared tunnel --token $TOKEN` запускается в отдельном контейнере; маршрутизирует `https://<имя-туннеля>.cfargotunnel.com` → `http://nginx:80` внутри compose.
-4. Либо подключить свой бесплатный поддомен (`<имя>.your-cf-zone.com`) если есть Cloudflare-зона; либо использовать дефолтный `*.cfargotunnel.com` (некрасиво, но работает).
-5. Telegram BotFather → `/setdomain` → задать этот домен; `/setmenubutton` → MiniApp на этот URL.
+**Стек хостинга**:
+```
+Internet → Traefik (443, ACME) → Docker network "poputchiki"
+                                   ├─ api      (Hono on Bun)
+                                   ├─ notifier (Bun worker)
+                                   ├─ cron     (Bun worker)
+                                   └─ web      (статика SPA, можно отдавать через Traefik с Caddy/nginx или вынести на Cloudflare Pages)
+```
 
-**Плюсы**: 0₽, без открытых портов на роутере, TLS из коробки.
-**Минусы**: при падении домашнего сервера — приложение лежит. План B — Fly.io.
+### 10.2 Конфигурация Traefik (labels на сервисах)
+Пример для `api`:
+```yaml
+services:
+  api:
+    image: poputchiki-api:latest
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-api.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-api.loadbalancer.server.port=3000"
+    networks:
+      - traefik-public
+      - poputchiki-internal
+```
 
-### 10.2 План B: Fly.io free tier
-- 3 shared-cpu-1x VMs по 256MB RAM, 3GB persistent volume — бесплатно.
-- `fly launch` из репо → `fly.toml` с маппингом портов.
-- Бесплатный поддомен `<app>.fly.dev` с автоматическим TLS.
-- Сюда мигрируем если домашний сервер недоступен / медленный.
+Аналогично `web` на `app.${DOMAIN}` (или единый Host с PathPrefix).
 
-### 10.3 DuckDNS как альтернатива Cloudflare Tunnel
-- `<имя>.duckdns.org` — бесплатный поддомен, обновление через cron-скрипт.
-- Let's Encrypt сертификат через `certbot --dns-duckdns` (плагин).
-- Требует открытых портов 80/443 на роутере — что не у всех есть.
+### 10.3 Домен — обязательное условие
+Telegram MiniApp требует валидный TLS на домене; на bare IP не работает. У сервера должен быть DNS A-record на публичный IP. Варианты:
+- **Существующий домен пользователя** + поддомен `app.<domain>` и `api.<domain>` (предпочтительно).
+- **DuckDNS** — бесплатный поддомен `<имя>.duckdns.org`, A-record обновляется cron'ом, Let's Encrypt через `certbot --dns-duckdns` или Traefik с DNS challenge.
+- **sslip.io / nip.io** — `<ip>.sslip.io` отдаёт A на сам IP; некрасиво, но работает.
 
-### 10.4 Frontend: Cloudflare Pages
-- Подключить репо → автодеплой при push в main.
-- Build: `cd web && bun install && bun run build` → `dist`.
-- `_headers` файл с CSP / HSTS / X-Frame-Options.
-- Бесплатно: unlimited bandwidth, edge на 300+ городах.
+**Action item**: уточнить у заказчика какой домен / поддомен закрепить за Poputchiki (см. OPEN-QUESTIONS).
 
-### 10.5 Переменные окружения
-- **api**: `BOT_TOKEN`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `ADMIN_TG_ID`, `BACKUP_KEY` (GPG passphrase), `POSTHOG_KEY` (опц).
-- **web** (build-time): `VITE_API_BASE`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_POSTHOG_KEY` (опц).
-- Хранение: на хосте — `.env.local` (вне git? — нет, по правилу проекта `.gitignore` запрещён, поэтому файл с секретами держать на хосте, в репо никогда не пушить, но репо приватный — допустимо если мы готовы); Cloudflare Pages — Environment Variables в UI.
+### 10.4 Frontend: статика SPA
+Два варианта (выбрать один):
+- **Через Traefik на том же сервере**: build → docker volume → contoller-контейнер `caddy:alpine` отдаёт `dist/` на `app.${DOMAIN}`.
+- **Cloudflare Pages**: автодеплой при push в main; unlimited bandwidth, edge cache; API host через `VITE_API_BASE=https://api.${DOMAIN}`.
+
+Решение по умолчанию для MVP — **на сервере через Traefik**. Меньше внешних зависимостей; перенос на CF Pages — план B при росте трафика.
+
+### 10.5 Секреты
+**GitHub Secrets** (Actions) — единственный путь:
+- В CI workflow секреты подставляются в job env.
+- `docker compose up` запускается через SSH-step → `--env-file ./.env.deploy` (генерируется в job).
+- Локально для разработки — `.env.local` на машине разработчика, в репо никогда.
+
+**Список секретов**:
+- `DOMAIN` (публичный, не секрет, но удобнее в одном месте)
+- `BOT_TOKEN`
+- `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET`, `SUPABASE_ANON_KEY`
+- `ADMIN_TG_ID`
+- `ADMIN_TG_CHAT_ID` (куда шлются админ-алерты)
+- `BACKUP_KEY` (GPG passphrase)
+- `POSTHOG_KEY` (опц.)
+- `SSH_HOST`, `SSH_USER`, `SSH_KEY` — для deploy job
+
+### 10.6 Бэкапы
+Локально на сервере в `./backups/` внутри docker volume:
+- daily 30, weekly 12, monthly 24 — итого ~66 файлов.
+- Ожидаемый размер MVP: <100MB сжатого → <7GB на retention. На сервере 20GB свободно — запас 3×.
+- Restore drill: cron worker раз в неделю поднимает временный Postgres из последнего dump'а в отдельной docker network, гонит smoke, отчитывается админ-алертом.
+
+### 10.7 Откат деплоя
+- Каждый deploy тегается коммитом и docker image tag = git short sha.
+- На сервере хранится последний и предпоследний tag.
+- `make rollback` (или Actions workflow `rollback.yml`) переключает Traefik back на предыдущий tag — секунды.
 
 ---
 
@@ -611,6 +679,11 @@ jobs:
 ---
 
 ## CHANGELOG
+
+### v0.3 (2026-05-01)
+- Развёртывание перепроектировано: **домашний сервер + Traefik + Let's Encrypt + GitHub Secrets**. Cloudflare Tunnel отвергнут (избыточен при наличии публичного 443 и Traefik). Раздел §10 переписан: Traefik labels, домен через DuckDNS / sslip.io если нет своего, бэкапы локально на том же сервере, откат через docker tag.
+- Добавлены таблицы `support_messages` (обращения в техподдержку с reply) и `notification_preferences` (выборочное отключение категорий push, system всегда активен).
+- Внутри MVP frontend отдаётся через Traefik; Cloudflare Pages — план B.
 
 ### v0.2 (2026-05-01)
 - Деплой пересмотрен под бюджет $0: Docker Compose + Cloudflare Tunnel (или Fly.io free) вместо Railway; Cloudflare Pages для фронта.

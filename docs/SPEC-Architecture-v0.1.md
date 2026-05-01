@@ -1,6 +1,6 @@
 # SPEC: Архитектура Poputchiki
 
-**Версия:** 0.3 (черновик к PRD v0.3)
+**Версия:** 0.4 (черновик к PRD v0.3)
 **Дата:** 2026-05-01
 **Статус:** Draft
 
@@ -126,9 +126,21 @@ POST /auth/telegram
 Content-Type: application/json
 Body: { "initData": "<raw query string from Telegram.WebApp.initData>" }
 
-200 → { "access_token": "<supabase-jwt>", "expires_at": 1735689600 }
-       Set-Cookie: tg_uid=<tg_user_id>; HttpOnly=false; SameSite=Lax; Secure; Path=/
+200 → { "access_token": "<jwt-24h>", "refresh_token": "<jwt-30d>", "expires_at": 1735689600 }
+       Set-Cookie: tg_uid=<tg_user_id>; HttpOnly=false; SameSite=None; Secure; Path=/
+       Set-Cookie: csrf_token=<random>; HttpOnly=false; SameSite=None; Secure; Path=/
 401 → { "error": "invalid_init_data" | "expired" | "replay" | "infra" }
+
+# Токены
+- access_token TTL = 24h (claim exp).
+- refresh_token TTL = 30d (claim typ='refresh', exp).
+- POST /auth/refresh { refresh_token } → новый access_token; refresh_token ротируется.
+- POST /auth/logout — инвалидирует refresh_token (запись в revoked_tokens), очищает cookie tg_uid и csrf_token.
+
+# Cookie SameSite=None обязательно
+Telegram WebApp в iOS/Android рендерится в кросс-сайт WebView (хост telegram.org → наш домен).
+SameSite=Lax заблокирует cookie в кросс-сайт контексте → identity-guard сломается.
+Только SameSite=None+Secure работает в TG WebView. Тест — TASK-FIX-COOKIE.
 ```
 
 ### 3.2 Алгоритм верификации
@@ -301,9 +313,16 @@ CREATE TABLE complaints (
   reason_code     text NOT NULL CHECK (reason_code IN ('spam','fraud','offense','other')),
   text            text CHECK (length(text) <= 500),
   status          text NOT NULL DEFAULT 'open', -- open | resolved | dismissed
-  created_at      timestamptz NOT NULL DEFAULT now(),
-  -- антиспам: 1 жалоба от пары (reporter,target) в неделю; обеспечивается уникальным индексом по дате-неделе
-  UNIQUE (reporter_id, target_user_id, target_ride_id, date_trunc('week', created_at))
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+-- Антиспам: 1 жалоба от пары (reporter,target,ride) в ISO-неделю.
+-- Postgres не разрешает выражения в UNIQUE-constraint → partial UNIQUE INDEX поверх expression.
+-- target_ride_id NULL обрабатывается через COALESCE до фиксированного UUID, иначе NULL≠NULL ломает индекс.
+CREATE UNIQUE INDEX complaints_unique_per_week_idx ON complaints (
+  reporter_id,
+  target_user_id,
+  COALESCE(target_ride_id, '00000000-0000-0000-0000-000000000000'::uuid),
+  date_trunc('week', created_at)
 );
 
 -- audit_log
@@ -652,7 +671,7 @@ Telegram MiniApp требует валидный TLS на домене; на bar
 - [ ] RLS включён + FORCE на каждой таблице. Deny-by-default тест зелёный.
 - [ ] Persistent secrets вне git (или в приватном репо явно, без публикации).
 - [ ] Rate-limit на все public endpoints + on-create rules для anti-bot.
-- [ ] CSP заголовки (script-src 'self' 'wasm-unsafe-eval' https://telegram.org).
+- [ ] CSP заголовки полные (см. ниже — script/style/img/connect/frame-ancestors/base/form-action).
 - [ ] HSTS, X-Content-Type-Options nosniff. X-Frame-Options — особый случай для Telegram (см. ниже).
 - [ ] CSRF protection (double-submit + Origin check) на state-changing endpoints.
 - [ ] Идемпотентность всех write-эндпоинтов.
@@ -665,6 +684,26 @@ Telegram MiniApp требует валидный TLS на домене; на bar
 - [ ] Жалобы не используются как DoS-вектор (антиспам по неделе).
 
 **X-Frame-Options для Telegram**: TG WebApp работает в WebView, не классическом iframe; X-Frame-Options DENY обычно безопасно. Проверить на iOS/Android после первого деплоя.
+
+### 11.1 Полная CSP
+
+```
+Content-Security-Policy:
+  default-src 'self';
+  script-src  'self' 'wasm-unsafe-eval' https://telegram.org https://*.telegram.org;
+  style-src   'self' 'unsafe-inline';                     -- Leaflet inline-styles
+  img-src     'self' data: blob: https://*.tile.openstreetmap.org https://*.telegram.org https://t.me;
+  font-src    'self' data:;
+  connect-src 'self' https://api.${DOMAIN} https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org;
+  frame-ancestors https://web.telegram.org https://*.telegram.org;
+  base-uri    'self';
+  form-action 'self';
+  object-src  'none';
+  upgrade-insecure-requests;
+```
+
+Если geocoding self-host (TASK-FIX-GEO) — `nominatim.openstreetmap.org` заменить на свой origin.
+SSE endpoint `/api/realtime/rides` входит в `connect-src 'self'` (тот же origin).
 
 ---
 
@@ -686,6 +725,49 @@ Telegram MiniApp требует валидный TLS на домене; на bar
 ---
 
 ## CHANGELOG
+
+### v0.4 (2026-05-01)
+
+Закрытие критических дыр в плане после ревью:
+
+**Security**:
+- §3.1 — JWT TTL зафиксирован: access 24h + refresh 30d. Endpoint `POST /auth/refresh` (TASK-066), `POST /auth/logout` (TASK-067). Таблица `revoked_tokens`.
+- §3.1 — Cookie `tg_uid` и `csrf_token` теперь `SameSite=None; Secure` (TG WebView кросс-сайт; Lax не работает). FIX TASK-064.
+- §11.1 — Полная CSP (img-src OSM tiles, connect-src api+nominatim, frame-ancestors telegram, style-src unsafe-inline для Leaflet, base/form/object). Sentinel-test TASK-065.
+- §11 — Дополнения: CORS только DOMAIN (TASK-078), trustProxy/X-Forwarded-For (TASK-079), `/auth/*` IP rate-limit (TASK-080), env validation zod (TASK-081), logger redaction (TASK-082), middleware-stack sentinel (TASK-084), Postgres connection pool + isolation levels (TASK-101), Dependabot (TASK-097).
+
+**Concurrency / data integrity**:
+- §4.1 — `complaints` антиспам через **partial UNIQUE INDEX** с COALESCE+date_trunc вместо невалидного UNIQUE constraint (FIX TASK-068).
+- Atomic seat booking через `UPDATE ... WHERE seats_taken<seats_total RETURNING` (TASK-069). Sentinel race-test 10 параллельных (TASK-085).
+- Counter triggers с `FOR NO KEY UPDATE` против lost-update; sentinel 100 concurrent INSERT likes (TASK-086).
+- Cron jobs обёрнуты в `pg_try_advisory_lock` (TASK-089).
+
+**Missing endpoints**:
+- `GET /api/users/me` (TASK-073), `GET /api/users/:id` (TASK-074), `PATCH /api/users/me` (TASK-075), `DELETE /api/users/me` (TASK-076 — 152-ФЗ право на удаление, soft-delete + анонимизация).
+- `GET /api/users/:id/schedule` (TASK-077).
+- `PATCH /api/rides/:id` (TASK-071), `PATCH /api/rides/:id/cancel` (TASK-072).
+- `POST /api/rides/:id/request` + accept/reject/cancel ride_requests (TASK-069, TASK-070).
+
+**Operational / прод-ready**:
+- Geocoding self-hosted Nominatim + proxy `/api/geocode` (TASK-092).
+- Local HTTPS dev через mkcert (TASK-096).
+- Admin bootstrap через db:seed (TASK-093).
+- Privacy Policy + ToS текст docs/legal/* + /privacy /terms роуты в web (TASK-094, TASK-095).
+- Sentry / error tracking (TASK-098).
+- Web production build + caddy serve (TASK-099).
+- Banned-user UI + backend 403 (TASK-100).
+- 404 + offline state (TASK-104).
+- Settings UI: logout + delete account (TASK-105).
+- Audit log partitioning + retention 12 месяцев (TASK-088).
+- LISTEN/NOTIFY reconnect backoff (TASK-090).
+- Updated_at триггеры (TASK-091).
+- Ban evasion documentation + anomaly monitoring (TASK-103).
+- Anti-bot middleware refactor (TASK-102): убрать inline из TASK-014, использовать TASK-053 на всех нужных routes.
+
+**CI**:
+- TASK-019 расширен: `test:security` + `test:e2e` + Postgres service container с миграциями + audit/gitleaks шаги.
+
+Итого: tasks.json 63 → 106 задач. План считается production-ready.
 
 ### v0.3 (2026-05-01)
 - Развёртывание перепроектировано: **домашний сервер + Traefik + Let's Encrypt + GitHub Secrets**. Cloudflare Tunnel отвергнут (избыточен при наличии публичного 443 и Traefik). Раздел §10 переписан: Traefik labels, домен через DuckDNS / sslip.io если нет своего, бэкапы локально на том же сервере, откат через docker tag.

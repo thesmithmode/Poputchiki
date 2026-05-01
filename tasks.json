@@ -194,7 +194,8 @@
         "UNIQUE на (subject_id, target_id, ride_id) для likes и reviews",
         "Триггер на likes INSERT/DELETE → users.likes_received_count",
         "RLS на всех + deny-by-default",
-        "complaints UNIQUE по (reporter_id, target_user_id, target_ride_id, week)"
+        "complaints антиспам — PARTIAL UNIQUE INDEX (НЕ UNIQUE constraint!) с COALESCE(target_ride_id, zero-uuid) и date_trunc('week', created_at). См. SPEC §4.1.",
+        "updated_at default+trigger на support_messages и notification_preferences"
       ],
       "test_steps": [
         "bun run db:migrate up — успех",
@@ -261,8 +262,9 @@
         "INSERT INTO nonces ... ON CONFLICT DO NOTHING RETURNING — replay → 401",
         "Fail-closed на ошибке БД → 401 infra",
         "Upsert юзера в users по tg_id",
-        "JWT с claims sub/tg_id/role/iat/exp, подпись HS256 с JWT_SECRET",
-        "Set-Cookie tg_uid=<tg_id>; HttpOnly=false; SameSite=Lax; Secure; Path=/"
+        "JWT access_token (TTL 24h, claim typ='access') + refresh_token (TTL 30d, claim typ='refresh'), подпись HS256 с JWT_SECRET",
+        "Set-Cookie tg_uid=<tg_id>; HttpOnly=false; SameSite=None; Secure; Path=/  (НЕ Lax — TG WebView кросс-сайт)",
+        "Set-Cookie csrf_token=<random>; HttpOnly=false; SameSite=None; Secure; Path=/"
       ],
       "test_steps": [
         "Integration: валидный initData → 200 + JWT + cookie + запись в users",
@@ -433,8 +435,10 @@
       "acceptance_criteria": [
         ".github/workflows/ci.yml",
         "Запускается на push и pull_request",
-        "Шаги: setup-bun, bun install, lint, typecheck, test:unit с coverage, test:integration (Postgres service container), test:contract",
+        "Шаги: setup-bun, bun install, lint, typecheck, test:unit с coverage, test:integration (Postgres service container с применением миграций bun run db:migrate), test:contract, test:security, test:e2e",
         "Fail если coverage <90%",
+        "Postgres service container: postgres:16-alpine, healthcheck pg_isready, env переменные из repo secrets",
+        "Шаг audit: bun audit + osv-scanner (TASK-054), gitleaks (TASK-055)",
         "БЕЗ deploy шагов (фаза code-only)"
       ],
       "test_steps": [
@@ -533,7 +537,7 @@
       "description": "CSP/HSTS/X-Frame-Options/X-Content-Type-Options middleware + secure-headers",
       "acceptance_criteria": [
         "apps/api/src/middleware/secure-headers.ts применяет: Content-Security-Policy, Strict-Transport-Security, X-Content-Type-Options nosniff, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy",
-        "CSP: script-src 'self' 'wasm-unsafe-eval' https://telegram.org; frame-ancestors https://web.telegram.org",
+        "Полная CSP по SPEC §11.1: default-src self; script-src self wasm-unsafe-eval https://telegram.org https://*.telegram.org; style-src self unsafe-inline; img-src self data: blob: https://*.tile.openstreetmap.org https://*.telegram.org; connect-src self https://api.${DOMAIN} https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri self; form-action self; object-src none; upgrade-insecure-requests",
         "HSTS: max-age=31536000; includeSubDomains",
         "X-Frame-Options: SAMEORIGIN (но allow для Telegram через CSP frame-ancestors)"
       ],
@@ -552,6 +556,7 @@
       "description": "CSRF protection (double-submit token + Origin check) на state-changing endpoints",
       "acceptance_criteria": [
         "apps/api/src/middleware/csrf.ts: для POST/PUT/PATCH/DELETE проверять header X-CSRF-Token и cookie csrf_token совпадают",
+        "Cookie csrf_token: SameSite=None;Secure;Path=/  (НЕ Lax — TG WebView кросс-сайт)",
         "Для SSR/SPA — токен генерится при /auth/telegram и кладётся в cookie + возвращается в response",
         "Origin/Referer check: разрешён только origin DOMAIN из env",
         "GET-запросы — без проверки"
@@ -1353,6 +1358,844 @@
       "test_steps": [
         "Файл валидно отображается markdown",
         "Ссылки внутри (на SPEC, OPEN-QUESTIONS) валидны"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-064",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "FIX/sentinel: cookie SameSite=None;Secure для tg_uid и csrf_token (TG WebView требует кросс-сайт cookie)",
+      "acceptance_criteria": [
+        "Все Set-Cookie заголовки используют SameSite=None;Secure;Path=/  (НЕ Lax)",
+        "Centralized helper apps/api/src/lib/cookie.ts — единственный источник Set-Cookie конфигов",
+        "Sentinel-test: response /auth/telegram содержит cookie с SameSite=None и Secure",
+        "Sentinel-test fail если кто-то вернёт SameSite=Lax"
+      ],
+      "test_steps": [
+        "Integration: POST /auth/telegram → set-cookie tg_uid имеет 'SameSite=None; Secure'",
+        "Integration: то же для csrf_token",
+        "Grep по коду — нет SameSite=Lax в src"
+      ],
+      "dependencies": ["TASK-011", "TASK-025"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-065",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "FIX/sentinel: полная CSP allow-list test (img/connect/frame-ancestors/style/form-action)",
+      "acceptance_criteria": [
+        "Sentinel-test: response Content-Security-Policy содержит каждую директиву из SPEC §11.1",
+        "Sentinel-test: img-src содержит https://*.tile.openstreetmap.org",
+        "Sentinel-test: connect-src содержит https://nominatim.openstreetmap.org (или geocoder proxy origin)",
+        "Sentinel-test: frame-ancestors содержит https://web.telegram.org и https://*.telegram.org",
+        "Sentinel-test: object-src 'none' и base-uri 'self'"
+      ],
+      "test_steps": [
+        "Integration: GET /health → проверить значение Content-Security-Policy header строкой",
+        "При удалении любой нужной директивы тест краснеет"
+      ],
+      "dependencies": ["TASK-024"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-066",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Refresh token: POST /auth/refresh + таблица revoked_tokens + ротация",
+      "acceptance_criteria": [
+        "Миграция: revoked_tokens (jti text PRIMARY KEY, user_id uuid, revoked_at timestamptz) с RLS deny",
+        "POST /auth/refresh { refresh_token } → новый access (24h) + новый refresh (30d), старый refresh заносится в revoked_tokens",
+        "Все /api/** middleware проверяют jti не в revoked_tokens",
+        "401 если token revoked / expired / typ != access на api endpoints",
+        "POST /auth/refresh не требует identity-guard (cookie может протухнуть раньше jwt)"
+      ],
+      "test_steps": [
+        "Integration: refresh с валидным token → новые токены",
+        "Integration: повторный refresh старым token → 401 (revoked)",
+        "Integration: api запрос с access typ=refresh → 401"
+      ],
+      "dependencies": ["TASK-011", "TASK-012"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-067",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "POST /auth/logout — инвалидация refresh + clear cookies + UI кнопка",
+      "acceptance_criteria": [
+        "POST /auth/logout: INSERT в revoked_tokens текущий refresh, Set-Cookie tg_uid=; Max-Age=0, csrf_token=; Max-Age=0",
+        "После logout — все api запросы 401",
+        "Web UI: кнопка 'Выйти' в /settings, очищает state, redirect /login"
+      ],
+      "test_steps": [
+        "Integration: logout → cookies очищены, refresh заблокирован",
+        "Unit (web): нажатие 'Выйти' вызывает API + очистка zustand store"
+      ],
+      "dependencies": ["TASK-066"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-068",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "FIX TASK-008: complaints антиспам — partial UNIQUE INDEX вместо UNIQUE constraint с date_trunc",
+      "acceptance_criteria": [
+        "Миграция: CREATE UNIQUE INDEX complaints_unique_per_week_idx ON complaints(reporter_id, target_user_id, COALESCE(target_ride_id, '00000000-0000-0000-0000-000000000000'::uuid), date_trunc('week', created_at))",
+        "Удалить ошибочный UNIQUE constraint если уже создан",
+        "При INSERT дубля — Postgres ErrorCode 23505 (unique_violation) → API возвращает 409"
+      ],
+      "test_steps": [
+        "Integration: 2 жалобы от A на B в одной неделе → вторая 409",
+        "Integration: 2 жалобы от A на B в разных неделях → обе 201",
+        "Integration: жалоба с target_ride_id=NULL дубль → 409 (COALESCE)"
+      ],
+      "dependencies": ["TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-069",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Atomic seat booking + concurrency-safe ride_request handler",
+      "acceptance_criteria": [
+        "POST /api/rides/:id/request: BEGIN; UPDATE rides SET seats_taken=seats_taken+1 WHERE id=:id AND status='active' AND seats_taken < seats_total RETURNING *; INSERT ride_requests; COMMIT;",
+        "Если UPDATE вернул 0 строк → 409 'no_seats' (rollback)",
+        "PASSENGER_id == auth.uid()",
+        "UNIQUE (ride_id, passenger_id) — повтор → 409",
+        "Транзакция isolation REPEATABLE READ",
+        "Триггерит push драйверу через notification (category=ride_request)"
+      ],
+      "test_steps": [
+        "Integration: 1 свободное место + 10 параллельных запросов → ровно 1 success, 9 → 409",
+        "Integration: повторный POST от того же пассажира → 409",
+        "Integration: после ride.status='cancelled' → 409"
+      ],
+      "dependencies": ["TASK-014", "TASK-007"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-070",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "ride_requests: accept/reject (driver) + cancel (passenger)",
+      "acceptance_criteria": [
+        "POST /api/ride-requests/:id/accept — только driver, status pending→accepted",
+        "POST /api/ride-requests/:id/reject — только driver, status pending→rejected, UPDATE rides SET seats_taken-=1",
+        "POST /api/ride-requests/:id/cancel — только passenger, status pending|accepted→cancelled, UPDATE rides SET seats_taken-=1",
+        "Все state transitions в транзакции с advisory lock на ride_id",
+        "Push в категориях ride_request_accepted/rejected/cancelled"
+      ],
+      "test_steps": [
+        "Integration: driver accept → status=accepted",
+        "Integration: passenger cancel accepted-request → seats_taken возвращён",
+        "Integration: чужой driver accept → 403"
+      ],
+      "dependencies": ["TASK-069", "TASK-034"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-071",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "PATCH /api/rides/:id — редактирование поездки водителем (до departure_at)",
+      "acceptance_criteria": [
+        "Редактируемые поля: from_label/lat/lng, to_*, departure_at, price_rub, comment, seats_total (только увеличение)",
+        "Только driver_id == auth.uid() (RLS)",
+        "Только если now() < departure_at",
+        "Если уменьшается seats_total ниже seats_taken → 422",
+        "Push пассажирам с принятыми requests при изменении departure_at/from/to (category=ride_changed)",
+        "audit_log запись"
+      ],
+      "test_steps": [
+        "Integration: driver PATCH price → ОК",
+        "Integration: passenger PATCH → 403",
+        "Integration: после departure_at → 410",
+        "Integration: seats_total=1 при seats_taken=2 → 422"
+      ],
+      "dependencies": ["TASK-014", "TASK-070"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-072",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "PATCH /api/rides/:id/cancel — отмена поездки",
+      "acceptance_criteria": [
+        "Только driver, status active→cancelled",
+        "Push всем пассажирам с принятыми requests (category=ride_cancelled)",
+        "ride_requests pending|accepted → cancelled автоматом",
+        "audit_log запись",
+        "Анти-абуз: автоматическая отмена >3 раз/день — flag для admin review"
+      ],
+      "test_steps": [
+        "Integration: driver cancel → всем пассажирам push (мок notify)",
+        "Integration: чужой → 403",
+        "Integration: 4-я отмена за день — audit_log запись + admin alert"
+      ],
+      "dependencies": ["TASK-014", "TASK-070"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-073",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "GET /api/users/me — собственный профиль",
+      "acceptance_criteria": [
+        "Возврат: id, tg_id, tg_username, display_name, avatar_url, role, onboarded, notify_disabled, created_at, last_seen_at, user_stats join (likes_received, avg_stars, rides_*)",
+        "phone/apt_number — только через отдельный endpoint /api/users/me/pii (TASK-020 decrypt RPC)",
+        "Cache-Control: private, no-store"
+      ],
+      "test_steps": [
+        "Integration: вернёт мой профиль с stats",
+        "Integration: phone_enc/apt_number_enc не в response"
+      ],
+      "dependencies": ["TASK-022", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-074",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "GET /api/users/:id — публичный профиль",
+      "acceptance_criteria": [
+        "Возврат: id, tg_username, display_name, avatar_url, created_at (для account-age бейджа), user_stats join",
+        "БЕЗ phone, apt_number, role, last_seen_at, notify_disabled",
+        "404 если is_banned"
+      ],
+      "test_steps": [
+        "Integration: чужой профиль — без приватных полей",
+        "Integration: banned юзер → 404"
+      ],
+      "dependencies": ["TASK-022", "TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-075",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "PATCH /api/users/me — обновление display_name, phone_enc, apt_number_enc",
+      "acceptance_criteria": [
+        "Body: { display_name?, phone?, apt_number? }",
+        "phone/apt_number шифруются через TASK-020 helper",
+        "display_name 1..50 chars, не пустой",
+        "RLS: только свой row (auth.uid()=id)",
+        "audit_log запись (payload — sha256, plain не пишется)"
+      ],
+      "test_steps": [
+        "Integration: PATCH display_name → запись обновлена",
+        "Integration: чужой → 403 (RLS)",
+        "Integration: phone сохранён зашифрованно"
+      ],
+      "dependencies": ["TASK-020", "TASK-023"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-076",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "DELETE /api/users/me — soft-delete + анонимизация (152-ФЗ право на удаление)",
+      "acceptance_criteria": [
+        "Helper sql function anonymize_user(uuid): set display_name='Удалённый', avatar_url=NULL, phone_enc=NULL, apt_number_enc=NULL, tg_username=NULL, is_banned=true, deleted_at=now()",
+        "Миграция: ALTER TABLE users ADD COLUMN deleted_at timestamptz",
+        "Все rides с driver_id=me ставятся status='cancelled' (через TASK-072 cancel cascade)",
+        "favorites/private_notes от/к юзеру удаляются",
+        "ride_participation НЕ удаляется (нужно для отзывов другой стороны)",
+        "audit_log: action='user_self_delete'"
+      ],
+      "test_steps": [
+        "Integration: DELETE /api/users/me → row анонимизирован, не удалён",
+        "Integration: после delete API доступ → 401 (refresh revoked)",
+        "Integration: rides juzera = cancelled"
+      ],
+      "dependencies": ["TASK-067", "TASK-072"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-077",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "GET /api/users/:id/schedule — регулярные рейсы для profile schedule tab",
+      "acceptance_criteria": [
+        "Возврат активные ride_templates юзера: weekdays, departure_time, from_label, to_label, price",
+        "RLS: видеть может любой авторизованный (это публичный schedule)",
+        "Без active_to expired"
+      ],
+      "test_steps": [
+        "Integration: 3 шаблона → 3 в response",
+        "Integration: active_to прошедшая дата → не возвращается"
+      ],
+      "dependencies": ["TASK-036"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-078",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "CORS middleware — только DOMAIN allowed origin",
+      "acceptance_criteria": [
+        "apps/api/src/middleware/cors.ts: Access-Control-Allow-Origin = https://app.${DOMAIN} (точный match, никаких *, никаких regex)",
+        "Allow-Credentials: true (нужно для cookie)",
+        "Allow-Methods: GET, POST, PATCH, DELETE, OPTIONS",
+        "Allow-Headers: Content-Type, Authorization, Idempotency-Key, X-CSRF-Token, X-Request-ID",
+        "Preflight OPTIONS обрабатывается до auth middleware",
+        "Origin не из whitelist → no Allow-Origin header → браузер блокирует"
+      ],
+      "test_steps": [
+        "Integration: OPTIONS preflight с правильным Origin → 204 + headers",
+        "Integration: Origin=https://evil.com → no Allow-Origin"
+      ],
+      "dependencies": ["TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-079",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "trustProxy + X-Forwarded-For: реальный client IP за Traefik",
+      "acceptance_criteria": [
+        "apps/api/src/lib/client-ip.ts: helper getClientIp(c) читает X-Forwarded-For (первый IP) если запрос пришёл с trusted proxy",
+        "TRUSTED_PROXIES env var (CIDR list, default: 172.16.0.0/12 docker bridge)",
+        "rate-limit, audit_log, anti-bot — все используют этот helper",
+        "В dev (no proxy) — c.req.raw.headers.get('x-forwarded-for') || socket IP"
+      ],
+      "test_steps": [
+        "Integration: запрос с X-Forwarded-For: 1.2.3.4 от trusted proxy → audit_log.ip='1.2.3.4'",
+        "Integration: тот же header от untrusted IP → audit_log.ip=untrusted-IP (не доверяет)"
+      ],
+      "dependencies": ["TASK-013", "TASK-023"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-080",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "/auth/* IP-based rate-limit (10 req/min на IP)",
+      "acceptance_criteria": [
+        "Отдельный middleware ДО identity-guard, применяется только на /auth/**",
+        "10 req/min на IP (use TASK-079 client-ip)",
+        "При превышении → 429 Retry-After",
+        "Не использует user_id (анонимный)",
+        "Хранилище — rate_limit_buckets (тот же что TASK-013)"
+      ],
+      "test_steps": [
+        "Integration: 11-й запрос с одного IP за минуту → 429",
+        "Integration: разные IP — независимые счётчики"
+      ],
+      "dependencies": ["TASK-013", "TASK-079"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-081",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "env vars validation: zod schema на process.env при старте api/notifier/cron — fail-fast",
+      "acceptance_criteria": [
+        "packages/shared/src/env.ts: zod schema всех нужных env (BOT_TOKEN, JWT_SECRET, POSTGRES_URL, DOMAIN, ADMIN_TG_ID, etc.)",
+        "Каждый apps/* при старте: parseEnv(process.env) → throw + process.exit(1) если пусто/невалидно",
+        "Никаких 'process.env.X || default' разбросанных по коду — только helper getEnv()",
+        "Тест: запуск api без BOT_TOKEN → exit 1 + понятное сообщение"
+      ],
+      "test_steps": [
+        "Integration: stub env без JWT_SECRET → exit 1",
+        "Integration: невалидный POSTGRES_URL → exit 1",
+        "Unit: zod errors понятные"
+      ],
+      "dependencies": ["TASK-003", "TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-082",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Logger redaction: pino redact paths для секретов и PII",
+      "acceptance_criteria": [
+        "pino.redact paths: BOT_TOKEN, JWT_SECRET, POSTGRES_PASSWORD, headers.authorization, headers.cookie, body.initData, body.phone, body.apt_number, body.access_token, body.refresh_token",
+        "Replace value '[REDACTED]'",
+        "applies to apps/api, apps/notifier, apps/cron"
+      ],
+      "test_steps": [
+        "Unit: log объект с authorization header → field='[REDACTED]'",
+        "Integration: POST /auth/telegram → access logs не содержат initData строку"
+      ],
+      "dependencies": ["TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-083",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Request-ID middleware + correlation logging",
+      "acceptance_criteria": [
+        "apps/api/src/middleware/request-id.ts: читает X-Request-ID или генерит uuid",
+        "Записывает в context, логи pino → child logger с requestId",
+        "Возвращает X-Request-ID в response",
+        "Web client пробрасывает X-Request-ID при retry"
+      ],
+      "test_steps": [
+        "Integration: запрос с X-Request-ID:abc → response с тем же ID, в логах requestId=abc",
+        "Integration: без header → генерится uuid"
+      ],
+      "dependencies": ["TASK-082"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-084",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Sentinel: middleware-stack-completeness — все mutating routes имеют все обязательные middleware",
+      "acceptance_criteria": [
+        "apps/api/tests/security/middleware-stack.test.ts: enumeration всех POST/PUT/PATCH/DELETE routes",
+        "Для каждого: проверка что цепочка содержит auth + identity-guard + rate-limit + csrf + idempotency + audit",
+        "Тест читает router metadata (Hono позволяет inspect routes)",
+        "Whitelist допустимых исключений (например /auth/* не имеют identity-guard)",
+        "Fail если новый route добавлен без middleware"
+      ],
+      "test_steps": [
+        "bun run test:security middleware-stack — зелёный",
+        "Удалить identity-guard из любого POST → тест краснеет"
+      ],
+      "dependencies": ["TASK-014", "TASK-023", "TASK-025", "TASK-026"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-085",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Sentinel: concurrency seat-booking race — 10 параллельных request на 1 место → 1 success",
+      "acceptance_criteria": [
+        "apps/api/tests/security/seats-race.test.ts",
+        "Создать ride seats_total=1, 10 пассажиров, Promise.all 10 POST /api/rides/:id/request",
+        "Ровно 1 status=201, 9 status=409 'no_seats'",
+        "rides.seats_taken == 1",
+        "ride_requests.count == 1"
+      ],
+      "test_steps": [
+        "bun run test:security seats-race — зелёный",
+        "Удалить FOR UPDATE / atomic UPDATE → тест краснеет"
+      ],
+      "dependencies": ["TASK-069"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-086",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Sentinel: triggers race — 100 concurrent INSERT likes → counter=100 точно",
+      "acceptance_criteria": [
+        "apps/api/tests/security/likes-race.test.ts",
+        "100 разных пар (subject,target,ride) → Promise.all INSERT",
+        "После завершения: SELECT users.likes_received_count WHERE id=target → точно правильные числа",
+        "Триггер использует FOR NO KEY UPDATE на users row для атомарного инкремента"
+      ],
+      "test_steps": [
+        "bun run test:security likes-race — зелёный",
+        "Удалить lock из триггера → тест краснеет с lost update"
+      ],
+      "dependencies": ["TASK-021"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-087",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Cron worker: nonce cleanup каждые 5 мин с advisory lock",
+      "acceptance_criteria": [
+        "apps/cron/src/cleanup-nonces.ts: SELECT pg_try_advisory_lock(<id_nonce_cleanup>); если получен — DELETE FROM nonces WHERE expires_at<now(); release",
+        "Расписание каждые 5 минут",
+        "Метрика last_run_at, deleted_count в логах"
+      ],
+      "test_steps": [
+        "Integration: вставить expired nonce → запустить worker → удалён",
+        "Integration: 2 параллельных запуска — только 1 выполняет (advisory lock)"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-088",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Audit log retention: монтаж partitioning + cleanup >12 месяцев",
+      "acceptance_criteria": [
+        "Миграция: ALTER TABLE audit_log → range partition по ts (months)",
+        "apps/cron/src/cleanup-audit-log.ts: DROP PARTITION older than 12 months, ежемесячно",
+        "Помесячные партиции создаются заранее cron'ом (нынешний+2 будущих месяца)"
+      ],
+      "test_steps": [
+        "Integration: партиции созданы за 3 месяца",
+        "Integration: симуляция старой партиции → дропается"
+      ],
+      "dependencies": ["TASK-023"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-089",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Cron worker reliability: advisory lock на все scheduled jobs (refresh MV, expand templates, cleanup nonces, audit retention, idempotency cleanup)",
+      "acceptance_criteria": [
+        "apps/cron/src/lib/with-lock.ts: helper withLock(lockId, fn) использует pg_try_advisory_lock",
+        "Все jobs обёрнуты в withLock с уникальным id",
+        "Sentinel-тест: запуск 2 cron worker одновременно — каждая job выполнена 1 раз"
+      ],
+      "test_steps": [
+        "Integration: 2 экземпляра cron worker → MV refresh выполнен ровно 1 раз",
+        "Integration: lock не удерживается между запусками"
+      ],
+      "dependencies": ["TASK-022", "TASK-037", "TASK-087", "TASK-088"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-090",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Postgres LISTEN/NOTIFY reconnect — exponential backoff в notifier и SSE handler",
+      "acceptance_criteria": [
+        "apps/notifier/src/listen.ts: на error/disconnect — reconnect с backoff 1s,2s,4s,8s,16s,30s (cap)",
+        "Тот же helper для SSE handler в apps/api (TASK-038)",
+        "Health endpoint /metrics возвращает status подключения"
+      ],
+      "test_steps": [
+        "Integration: kill DB connection → reconnect в течение 30s",
+        "Integration: после reconnect — следующий NOTIFY обработан"
+      ],
+      "dependencies": ["TASK-034", "TASK-038"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-091",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "updated_at триггеры на rides, ride_templates, users, support_messages, notification_preferences",
+      "acceptance_criteria": [
+        "Универсальная trigger function set_updated_at()",
+        "BEFORE UPDATE триггер на каждой таблице с колонкой updated_at",
+        "Колонка updated_at добавлена где её ещё нет (notification_preferences)"
+      ],
+      "test_steps": [
+        "Integration: UPDATE rides → updated_at обновлён до now()",
+        "Integration: explicit SET updated_at='2020-01-01' игнорируется (триггер перезапишет)"
+      ],
+      "dependencies": ["TASK-007", "TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-092",
+      "category": "functional",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Geocoding: self-hosted Nominatim + apps/api proxy /api/geocode (rate-limit 1 req/sec/user)",
+      "acceptance_criteria": [
+        "infra/docker-compose.dev.yml: добавить service nominatim (mediagis/nominatim:4.4) с initial-import региона Татарстан (~50MB osm)",
+        "apps/api/src/routes/geocode.ts: GET /api/geocode/search?q=<text> → проксирует к Nominatim, фильтр bbox=казань",
+        "Rate-limit на user_id 1 req/sec (отдельный bucket)",
+        "Cache LRU 1000 entries в памяти 24h",
+        "fallback static список ключевых точек ЖК Царёво если Nominatim не отвечает"
+      ],
+      "test_steps": [
+        "Integration: GET /api/geocode/search?q=ЖК Царёво → результаты",
+        "Integration: 2 req/sec → 2-й 429"
+      ],
+      "dependencies": ["TASK-013", "TASK-079"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-093",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Admin bootstrap: db:seed создаёт users.role='admin' для tg_id из ADMIN_TG_ID env",
+      "acceptance_criteria": [
+        "apps/api/scripts/seed.ts (или db/seeds/admin.sql): UPSERT users WHERE tg_id=$ADMIN_TG_ID SET role='admin'",
+        "Запускается на каждый bun run db:seed (idempotent)",
+        "Безопасно в prod: только обновляет role, не создаёт нового юзера если ещё не было /auth/telegram",
+        "audit_log: action='admin_role_granted'"
+      ],
+      "test_steps": [
+        "Integration: db:seed → admin tg_id получает role=admin",
+        "Integration: повторный seed — idempotent"
+      ],
+      "dependencies": ["TASK-059"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-094",
+      "category": "documentation",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Privacy Policy + ToS текст на русском (152-ФЗ + Telegram bot rules)",
+      "acceptance_criteria": [
+        "docs/legal/privacy-policy.md: оператор данных, цели обработки, перечень данных (tg_id, имя, аватар, опц. телефон, опц. квартира, геопоинты поездок), сроки хранения, передача третьим лицам (нет), право на удаление, контакт оператора",
+        "docs/legal/terms-of-service.md: 'не такси' оговорка, ответственность сторон, запрет коммерции, бан-критерии, юрисдикция РФ",
+        "Версия v1.0, дата, hash в audit_log при первом acceptance",
+        "Текст утверждается пользователем (Антон) — без юриста",
+        "Ссылки в onboarding (TASK-044)"
+      ],
+      "test_steps": [
+        "Файлы существуют, валидный markdown",
+        "Содержат обязательные разделы 152-ФЗ"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-095",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "/privacy + /terms роуты в web — рендер из docs/legal/*.md",
+      "acceptance_criteria": [
+        "web/src/pages/legal/Privacy.tsx и Terms.tsx",
+        "Build импорт markdown через vite-plugin-md или fetch /docs/legal/*.md",
+        "Скролл с anchor headings",
+        "Доступно из onboarding (TASK-044) и из /settings"
+      ],
+      "test_steps": [
+        "Unit: рендерит markdown",
+        "E2E: переход с onboarding → /privacy → возврат"
+      ],
+      "dependencies": ["TASK-094", "TASK-044"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-096",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Local HTTPS dev: mkcert + Vite https + Hono https — для тестирования TG WebApp локально",
+      "acceptance_criteria": [
+        "scripts/setup-dev-tls.sh: mkcert -install + mkcert localhost 127.0.0.1 ::1",
+        "Vite config: https с этими сертификатами (если файлы есть, иначе http)",
+        "Hono dev server: --tls flag поддержка",
+        "docs/dev/tg-webapp-local.md: инструкция как тестировать через Telegram BotFather + ngrok/cloudflared free tunnel (для devices) либо через Telegram Test Server"
+      ],
+      "test_steps": [
+        "Локально: setup-dev-tls.sh + bun run dev:web → https://localhost:5173 без warning",
+        "Curl https://localhost:3000/health → 200 с валидным TLS"
+      ],
+      "dependencies": ["TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-097",
+      "category": "security",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Dependabot config + weekly updates",
+      "acceptance_criteria": [
+        ".github/dependabot.yml: пакеты bun + github-actions, schedule weekly Monday",
+        "Группировка patch+minor в один PR, major — отдельные",
+        "Auto-merge для tests-passing patch updates через auto-merge action (опционально)"
+      ],
+      "test_steps": [
+        "Manual: dependabot создаёт PR на устаревший пакет в течение недели",
+        "Файл валидный yaml"
+      ],
+      "dependencies": ["TASK-019"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-098",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Sentry self-hosted + apps/api/web client setup (error tracking)",
+      "acceptance_criteria": [
+        "infra/docker-compose.dev.yml: опционально Sentry compose (если ресурсы позволяют) — иначе минимальная альтернатива: локальная таблица error_log + admin TG-alert на ERROR-level",
+        "apps/api: @sentry/bun или fallback pino-error → таблица + notify-admin",
+        "web: Sentry Browser SDK или window.onerror → POST /api/client-errors",
+        "Sample rate 100% в dev, 10% в prod",
+        "PII фильтрация: те же redact paths что TASK-082"
+      ],
+      "test_steps": [
+        "Integration: throw в handler → запись в error_log",
+        "Integration: PII не попадает в error payload"
+      ],
+      "dependencies": ["TASK-082"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-099",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Web production build + apps/web-server (caddy) для app.${DOMAIN}",
+      "acceptance_criteria": [
+        "Скрипт bun run build:web → web/dist/",
+        "apps/web-server/Dockerfile: caddy:alpine, копирует dist, Caddyfile с SPA fallback (try_files $uri $uri/ /index.html)",
+        "Compress: gzip + brotli",
+        "Cache headers: index.html no-cache, *.js/css 1y immutable",
+        "В docker-compose (post-mvp-deploy) — отдельный service web"
+      ],
+      "test_steps": [
+        "bun run build:web — успех, dist есть",
+        "docker run web-server → GET / → index.html с кэшем",
+        "GET /unknown-route → index.html (SPA fallback)"
+      ],
+      "dependencies": ["TASK-016"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-100",
+      "category": "ui",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "Banned-user UI: баннер + ограничение routes; backend 403 на /api/** для is_banned",
+      "acceptance_criteria": [
+        "apps/api: middleware checks users.is_banned — все /api/** кроме /api/users/me возвращают 403 'banned'",
+        "/api/users/me показывает причину/время бана",
+        "Web: при 403 'banned' — full-screen баннер 'Аккаунт заблокирован' + кнопка 'Связаться с поддержкой' (создаёт support_message)"
+      ],
+      "test_steps": [
+        "Integration: is_banned=true → POST /api/rides → 403",
+        "Unit (web): 403 banned → BannedScreen рендерится"
+      ],
+      "dependencies": ["TASK-014", "TASK-033"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-101",
+      "category": "security",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Postgres connection pool + transaction isolation defaults",
+      "acceptance_criteria": [
+        "apps/api/src/db/index.ts: postgres-js клиент с pool max=20, idle_timeout=20s, connect_timeout=5s",
+        "Default isolation READ COMMITTED (стандарт)",
+        "Helper withTx(level, fn) для REPEATABLE READ — используется в TASK-069 booking, TASK-070 accept/reject, TASK-072 cancel",
+        "Helper withSerializable(fn) для SERIALIZABLE — для критичных multi-row updates (cancel cascade)",
+        "Метрики: pool size, in-use, waiting в /metrics endpoint"
+      ],
+      "test_steps": [
+        "Unit: pool.options правильные",
+        "Integration: withTx REPEATABLE READ — конкурирующие запросы получают serialization_failure корректно"
+      ],
+      "dependencies": ["TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-102",
+      "category": "security",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "Refactor: anti-bot — единый middleware (TASK-053) применяется к /api/rides POST + /api/ride-templates POST + /api/ride-requests POST",
+      "acceptance_criteria": [
+        "TASK-014 убирает inline anti-bot из handler — рассчитывает только zod + RLS + audit",
+        "TASK-053 middleware применяется через Hono .use() для нужных routes",
+        "TASK-084 sentinel проверяет наличие anti-bot middleware на rides/templates/requests POST"
+      ],
+      "test_steps": [
+        "Integration: то же поведение что было в TASK-014 (4-я поездка от безлайкового → 403)",
+        "Code review: handler TASK-014 без anti-bot logic"
+      ],
+      "dependencies": ["TASK-053", "TASK-084"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-103",
+      "category": "security",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Account-age sentinel: ban evasion documentation + monitoring",
+      "acceptance_criteria": [
+        "docs/security/ban-evasion.md: документ — приняли что новый TG account = чистая запись, никакого fingerprint trust",
+        "Метрика: сколько новых юзеров за последние 24h создано → admin TG-alert если >50 (нездоровый рост)",
+        "apps/cron/src/anomaly-detect.ts ежедневно проверяет"
+      ],
+      "test_steps": [
+        "Файл существует с RFC-style решением",
+        "Integration: симулировать 51 новый юзер → admin alert"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-104",
+      "category": "ui",
+      "priority": "low",
+      "phase": "mvp",
+      "description": "404 + universal not-found + offline state в web",
+      "acceptance_criteria": [
+        "Маршрут * → NotFoundPage с кнопкой 'На главную'",
+        "Глобальный online/offline detection (navigator.onLine + fetch ping) → баннер 'Нет связи'",
+        "При offline — TanStack Query показывает stale data из кэша"
+      ],
+      "test_steps": [
+        "Unit: navigate /xxx → NotFound",
+        "Unit: navigator.onLine=false → баннер"
+      ],
+      "dependencies": ["TASK-052"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-105",
+      "category": "ui",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Settings UI: logout + delete account + текущая версия + ссылки на legal",
+      "acceptance_criteria": [
+        "Маршрут /settings: notification toggles (TASK-045) + кнопки 'Выйти' + 'Удалить аккаунт' + ссылки на /privacy /terms + версия из package.json",
+        "Logout: POST /auth/logout (TASK-067) → redirect /login",
+        "Delete account: модалка-подтверждение с ввод 'УДАЛИТЬ' → POST DELETE /api/users/me (TASK-076) → logout",
+        "Версия отображается в footer"
+      ],
+      "test_steps": [
+        "Unit: рендер всех элементов",
+        "E2E: logout → /login",
+        "E2E: delete account → 'УДАЛИТЬ' → API + logout"
+      ],
+      "dependencies": ["TASK-067", "TASK-076", "TASK-095"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-106",
+      "category": "documentation",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Обновить SPEC до v0.4 + OPEN-QUESTIONS — отразить все FIX-задачи",
+      "acceptance_criteria": [
+        "docs/SPEC-Architecture-v0.1.md → version 0.4",
+        "Раздел §3 — JWT 24h + refresh 30d, /auth/refresh, /auth/logout, cookie SameSite=None",
+        "Раздел §4 — complaints partial UNIQUE INDEX, revoked_tokens table, deleted_at в users, audit_log partitioning",
+        "Раздел §5 — все новые endpoints (/api/users/me, /:id, schedule, /api/rides/:id/cancel, /api/ride-requests/*)",
+        "Раздел §11 — полная CSP, CORS, trustProxy, /auth IP rate-limit",
+        "OPEN-QUESTIONS — phone OTP отложить в RESOLVED (без верификации в MVP, документировано в TASK-103)",
+        "CHANGELOG v0.4 со всеми пунктами"
+      ],
+      "test_steps": [
+        "Файлы валидно отображаются",
+        "Все ссылки live"
       ],
       "dependencies": [],
       "status": "pending"

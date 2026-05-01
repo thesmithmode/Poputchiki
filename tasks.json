@@ -1,0 +1,448 @@
+{
+  "project": {
+    "name": "Poputchiki",
+    "version": "0.1.0",
+    "prd_source": "docs/PRD-Poputchiki-v0.1.md",
+    "spec_source": "docs/SPEC-Architecture-v0.1.md",
+    "phase": "code-only-local",
+    "created_at": "2026-05-01"
+  },
+  "agent_instructions": {
+    "before_start": [
+      "Прочитай этот файл, progress.txt, CLAUDE.md, ralph-tick.md",
+      "Просмотри docs/PRD-Poputchiki-v0.1.md и docs/SPEC-Architecture-v0.1.md",
+      "Проверь git log --oneline -10",
+      "Выбери ОДНУ pending-задачу с max priority, у которой все dependencies = done",
+      "Не бери задачи с phase: post-mvp-deploy"
+    ],
+    "during_work": [
+      "Работай только над выбранной задачей",
+      "TDD: тесты ПЕРЕД реализацией",
+      "Один коммит на задачу (или несколько логических коммитов внутри одной задачи — ОК)",
+      "Не трогай код вне scope текущей задачи"
+    ],
+    "before_finish": [
+      "Запусти все relevant quality gates (lint, typecheck, тесты, coverage)",
+      "Меняй status на done ТОЛЬКО после того как все gates зелёные",
+      "Запиши блок в progress.txt",
+      "ЗАПРЕЩЕНО удалять или редактировать другие задачи — только менять status у своей",
+      "Выведи <promise>COMPLETE</promise> или <promise>BLOCKED</promise>"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "TASK-001",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Init Bun monorepo + Biome + базовые scripts",
+      "acceptance_criteria": [
+        "Корневой package.json с workspaces: apps/*, packages/*, web",
+        "Установлен Biome (lint + format), конфиг biome.json в корне",
+        "tsconfig.base.json в корне, наследуется в apps/web/packages",
+        "Скрипты: lint, format, typecheck, test:unit, test:integration, test:e2e, coverage:check (могут быть пустыми/echo пока, но определены)",
+        ".env.example уже есть — не трогать",
+        "bun install проходит без ошибок"
+      ],
+      "test_steps": [
+        "bun install — успешно",
+        "bun run lint — выходит 0",
+        "bun run format --check — выходит 0",
+        "bun run typecheck — выходит 0 (даже если нет файлов TS пока)",
+        "ls package.json biome.json tsconfig.base.json"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-002",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Vitest setup в корне с coverage gate ≥90%",
+      "acceptance_criteria": [
+        "vitest и @vitest/coverage-v8 в devDependencies",
+        "vitest.config.ts в корне с coverage providers v8, reporter json + text + html",
+        "Coverage threshold lines: 90, branches: 85, functions: 90, statements: 90",
+        "Скрипт coverage:check в package.json парсит coverage/coverage-summary.json и фейлит если ниже",
+        "Один пример unit-теста в packages/shared/tests/sanity.test.ts (1+1=2) — для проверки что vitest запускается"
+      ],
+      "test_steps": [
+        "bun run test:unit — проходит",
+        "bun run test:unit -- --coverage — генерирует coverage/coverage-summary.json",
+        "bun run coverage:check — выходит 0 (или 1 если ниже порога — пишем такой тест)"
+      ],
+      "dependencies": ["TASK-001"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-003",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "packages/shared: Zod-схемы базовых DTO (User, Ride, Like, Review)",
+      "acceptance_criteria": [
+        "packages/shared/package.json с экспортами",
+        "packages/shared/src/schemas/user.ts — Zod-схема UserDTO согласно SPEC §4",
+        "packages/shared/src/schemas/ride.ts — RideDTO с гео-полями",
+        "packages/shared/src/schemas/like.ts — LikeDTO",
+        "packages/shared/src/schemas/review.ts — ReviewDTO",
+        "Все схемы экспортируются через packages/shared/src/index.ts",
+        "TypeScript-типы выводятся через z.infer"
+      ],
+      "test_steps": [
+        "Юнит-тесты на каждую схему: валидный объект проходит, невалидные отклоняются",
+        "bun run test:unit packages/shared — все зелёные",
+        "bun run typecheck — зелёный"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-004",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "docker-compose.dev.yml с Postgres 16 для локальной разработки",
+      "acceptance_criteria": [
+        "infra/docker-compose.dev.yml в корне",
+        "Контейнер postgres:16-alpine",
+        "Переменные из .env: POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB",
+        "Порт 5432 проброшен на localhost",
+        "Volume для данных в ./.docker-data/postgres (этот путь добавить в .gitignore)",
+        "Healthcheck на pg_isready"
+      ],
+      "test_steps": [
+        "docker compose -f infra/docker-compose.dev.yml up -d",
+        "docker compose -f infra/docker-compose.dev.yml ps — postgres healthy",
+        "psql или bun-скрипт: подключение работает",
+        "docker compose down && rm -rf .docker-data — повторный up создаёт чистую БД"
+      ],
+      "dependencies": ["TASK-001"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-005",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Migration runner: node-pg-migrate настроен, скрипты db:migrate up/down",
+      "acceptance_criteria": [
+        "node-pg-migrate в devDependencies",
+        "Конфиг в package.json или .pgmigraterc",
+        "Папка db/migrations/ создана с README что туда класть",
+        "Скрипты в package.json: db:migrate, db:migrate:down, db:migrate:create",
+        "Конфиг читает .env (DATABASE_URL или POSTGRES_*)"
+      ],
+      "test_steps": [
+        "bun run db:migrate:create test_migration — создаёт файл",
+        "bun run db:migrate up — без миграций (пусто) — выходит 0",
+        "bun run db:migrate:down — без миграций — выходит 0"
+      ],
+      "dependencies": ["TASK-004"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-006",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Миграция 001: таблица users + RLS deny-by-default",
+      "acceptance_criteria": [
+        "db/migrations/001_users.sql соответствует схеме SPEC §4.1",
+        "ALTER TABLE users ENABLE/FORCE ROW LEVEL SECURITY",
+        "policy users_read_self: USING (id = (auth.jwt() ->> 'sub')::uuid)",
+        "Никаких policy без auth — deny-by-default",
+        "Поля apt_number_enc, phone_enc как bytea (для pgcrypto)"
+      ],
+      "test_steps": [
+        "bun run db:migrate up — миграция применилась",
+        "Integration test: анонимный select из users возвращает 0 rows",
+        "Integration test: с JWT юзер видит только свою запись"
+      ],
+      "dependencies": ["TASK-005", "TASK-003"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-007",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Миграция 002: таблицы rides, ride_templates, ride_requests, ride_participation",
+      "acceptance_criteria": [
+        "Таблицы по SPEC §4.1 (геополя from_lat/lng/to_lat/lng/from_label/to_label)",
+        "RLS на каждой: deny-by-default + явные политики",
+        "Индексы: idx_rides_status_dep, idx_rides_driver, idx_rides_geo_from",
+        "CHECK constraints: seats_taken <= seats_total"
+      ],
+      "test_steps": [
+        "bun run db:migrate up — успех",
+        "Integration test deny-by-default: анонимный INSERT/UPDATE/DELETE — отказ",
+        "Integration test: водитель может INSERT свою поездку, не может чужую"
+      ],
+      "dependencies": ["TASK-006"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-008",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Миграция 003: likes, reviews, favorites, private_notes, complaints, support_messages, notification_preferences",
+      "acceptance_criteria": [
+        "Все таблицы по SPEC §4.1",
+        "UNIQUE на (subject_id, target_id, ride_id) для likes и reviews",
+        "Триггер на likes INSERT/DELETE → users.likes_received_count",
+        "RLS на всех + deny-by-default",
+        "complaints UNIQUE по (reporter_id, target_user_id, target_ride_id, week)"
+      ],
+      "test_steps": [
+        "bun run db:migrate up — успех",
+        "Integration: дубль лайка отвергается",
+        "Integration: триггер лайка обновляет счётчик у target",
+        "Integration: 2 жалобы за неделю от одной пары — вторая отвергается"
+      ],
+      "dependencies": ["TASK-007"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-009",
+      "category": "infrastructure",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "apps/api: Hono на Bun + /health endpoint",
+      "acceptance_criteria": [
+        "apps/api/package.json с зависимостями hono, postgres (pg или postgres-js)",
+        "apps/api/src/index.ts — основной entry",
+        "Endpoint GET /health → {status:'ok', ts:...}",
+        "Скрипт bun run dev:api поднимает сервер на порту из env (default 3000)",
+        "Структурированные логи через pino"
+      ],
+      "test_steps": [
+        "bun run --cwd apps/api dev — сервер стартует",
+        "curl localhost:3000/health → 200",
+        "Unit-тест health endpoint",
+        "Integration-тест с реальным http.fetch"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-010",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Telegram initData HMAC verifier + replay-nonce util (apps/api/src/auth/)",
+      "acceptance_criteria": [
+        "verifyInitData(initData, botToken, clock): User по протоколу TG WebApp",
+        "Constant-time compare через crypto.timingSafeEqual",
+        "auth_date в окне ±5 минут",
+        "Throws TelegramAuthError со специфичной reason",
+        "Эталон: Telegram-export-clean/...TelegramMiniAppAuthVerifier.java"
+      ],
+      "test_steps": [
+        "Юнит-тест: валидный initData проходит",
+        "Юнит-тест: подменённый hash → throw 'invalid hash'",
+        "Юнит-тест: auth_date старше 5 мин → throw 'expired'",
+        "Юнит-тест: auth_date в будущем >5 мин → throw 'expired'",
+        "Coverage: 100% этого модуля"
+      ],
+      "dependencies": ["TASK-009"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-011",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Endpoint POST /auth/telegram: HMAC verify + nonce replay-protection (Postgres) + JWT mint + cookie tg_uid",
+      "acceptance_criteria": [
+        "Хранилище nonces — таблица из миграции (если ещё нет — добавить миграцию 004)",
+        "INSERT INTO nonces ... ON CONFLICT DO NOTHING RETURNING — replay → 401",
+        "Fail-closed на ошибке БД → 401 infra",
+        "Upsert юзера в users по tg_id",
+        "JWT с claims sub/tg_id/role/iat/exp, подпись HS256 с JWT_SECRET",
+        "Set-Cookie tg_uid=<tg_id>; HttpOnly=false; SameSite=Lax; Secure; Path=/"
+      ],
+      "test_steps": [
+        "Integration: валидный initData → 200 + JWT + cookie + запись в users",
+        "Integration: повторный тот же initData → 401 replay",
+        "Integration: подменённый hash → 401 invalid",
+        "Integration: protruding clock skew → 401 expired",
+        "Integration: вернувшийся юзер обновляет last_seen_at"
+      ],
+      "dependencies": ["TASK-010", "TASK-008"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-012",
+      "category": "security",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "Identity-guard middleware: cookie tg_uid ↔ jwt.tg_id check на каждом /api/**",
+      "acceptance_criteria": [
+        "Middleware читает Authorization Bearer + cookie tg_uid",
+        "Mismatch → 401 + Set-Cookie tg_uid=; Max-Age=0",
+        "Отсутствие любого из двух → 401",
+        "Передаёт user в context для handler'ов"
+      ],
+      "test_steps": [
+        "Integration: cookie+JWT согласованы → 200",
+        "Integration: cookie от другого юзера → 401",
+        "Integration: нет cookie → 401",
+        "Integration: нет Authorization → 401",
+        "Coverage 100% middleware"
+      ],
+      "dependencies": ["TASK-011"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-013",
+      "category": "security",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Rate-limit middleware на основе таблицы rate_limit_buckets",
+      "acceptance_criteria": [
+        "Миграция таблицы rate_limit_buckets если ещё нет",
+        "100 req/min на user_id, 1000 req/min на IP",
+        "При превышении → 429 + Retry-After",
+        "Атомарный INSERT ... ON CONFLICT UPDATE для счётчика"
+      ],
+      "test_steps": [
+        "Integration: 100 запросов от user проходят, 101-й → 429",
+        "Integration: разные user — независимые счётчики",
+        "Integration: окно сбрасывается через минуту"
+      ],
+      "dependencies": ["TASK-012"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-014",
+      "category": "functional",
+      "priority": "critical",
+      "phase": "mvp",
+      "description": "POST /api/rides — создание поездки",
+      "acceptance_criteria": [
+        "Zod-валидация тела по схеме из packages/shared",
+        "Auth + identity-guard + rate-limit обязательны",
+        "RLS гарантирует driver_id == auth.uid()",
+        "departure_at в будущем и ≤ +30 дней",
+        "Anti-bot: аккаунт <24h может иметь только 1 активную поездку",
+        "Anti-bot: аккаунт без лайков ограничен 3 поездками в сутки",
+        "Запись в audit_log"
+      ],
+      "test_steps": [
+        "Integration: валидный POST → 201 + запись в БД",
+        "Integration: невалидный (negative seats, прошедшая дата) → 422",
+        "Integration: попытка установить чужой driver_id → 403 (RLS)",
+        "Integration: anti-bot — 4-я поездка от безлайкового → 403"
+      ],
+      "dependencies": ["TASK-013"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-015",
+      "category": "functional",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "GET /api/rides — лента с фильтрами + cursor pagination",
+      "acceptance_criteria": [
+        "Query params: fromLat/Lng/toLat/Lng/radiusKm, fromAt/toAt, priceMax, seatsMin, trustMinAccountAgeDays, trustMinLikes, favoritesOnly, cursor",
+        "Сортировка по departure_at ASC",
+        "LIMIT 50 + cursor",
+        "Trust-фильтры применяются на стороне БД",
+        "Bbox фильтр: from_lat/lng в радиусе"
+      ],
+      "test_steps": [
+        "Integration: пустая БД → []",
+        "Integration: 100 поездок → первая страница 50 + nextCursor",
+        "Integration: вторая страница по cursor — 50 следующих",
+        "Integration: фильтр trustMinLikes=3 — только водители с ≥3 лайков"
+      ],
+      "dependencies": ["TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-016",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web/: Vite + React + TS skeleton + Telegram SDK + базовый routing",
+      "acceptance_criteria": [
+        "web/package.json с зависимостями: vite, react, react-dom, react-router-dom, @telegram-apps/sdk-react, @tanstack/react-query, zustand, leaflet",
+        "web/index.html, web/src/main.tsx, web/src/App.tsx",
+        "Hash-routing (HashRouter) — Telegram WebApp ломает history API",
+        "Подхват Telegram.WebApp colorScheme",
+        "Скрипт bun run dev:web — Vite dev server",
+        "TailwindCSS настроен"
+      ],
+      "test_steps": [
+        "bun run dev:web — стартует",
+        "Браузер открывает localhost:5173 — белый экран без ошибок в консоли",
+        "Unit-тест App рендера через testing-library"
+      ],
+      "dependencies": ["TASK-002"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-017",
+      "category": "ui",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "web/: главный экран — лента поездок (список + переключатель карта/список)",
+      "acceptance_criteria": [
+        "Страница /rides использует TanStack Query → fetch /api/rides",
+        "Карточка поездки: from_label → to_label, время, цена, мест, аватар водителя, лайки",
+        "Переключатель режима: список / карта (Leaflet)",
+        "Карта показывает маркеры точек from_lat/lng",
+        "Состояния: loading skeleton, empty, error"
+      ],
+      "test_steps": [
+        "Unit (testing-library): рендер пустой ленты",
+        "Unit: рендер с 3 mock поездками",
+        "Unit: переключатель меняет view"
+      ],
+      "dependencies": ["TASK-016", "TASK-015"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-018",
+      "category": "integration",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Playwright E2E: поток создания поездки через mock initData",
+      "acceptance_criteria": [
+        "playwright.config.ts с настройкой Telegram WebApp mock (window.Telegram.WebApp + initData)",
+        "tests/e2e/create-ride.spec.ts: пользователь логинится → видит ленту → создаёт поездку → видит её в ленте",
+        "Запуск через bun run test:e2e",
+        "Headless по умолчанию, headed по флагу"
+      ],
+      "test_steps": [
+        "bun run test:e2e — все спеки зелёные",
+        "Локальный Postgres + apps/api + web/dev должны быть подняты (compose) — добавить в скрипт"
+      ],
+      "dependencies": ["TASK-017", "TASK-014"],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-019",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "GitHub Actions CI: lint + typecheck + tests + coverage gate (без deploy)",
+      "acceptance_criteria": [
+        ".github/workflows/ci.yml",
+        "Запускается на push и pull_request",
+        "Шаги: setup-bun, bun install, lint, typecheck, test:unit с coverage, test:integration (Postgres service container), test:contract",
+        "Fail если coverage <90%",
+        "БЕЗ deploy шагов (фаза code-only)"
+      ],
+      "test_steps": [
+        "Push в dev → workflow запускается, все шаги зелёные",
+        "Сломать тест локально, push — CI красный"
+      ],
+      "dependencies": ["TASK-018"],
+      "status": "pending"
+    }
+  ]
+}

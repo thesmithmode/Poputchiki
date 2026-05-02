@@ -10,6 +10,7 @@
     "build": "echo 'api: no build step (bun runtime)'"
   },
   "dependencies": {
+    "hono": "^4.12.16",
     "postgres": "^3.4.9"
   }
 }

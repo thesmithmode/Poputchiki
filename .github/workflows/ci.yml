@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Lint · Typecheck · Test · Coverage
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'poputchiki' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'ci_password' }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'poputchiki_test' }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U poputchiki"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'poputchiki' }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'ci_password' }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'poputchiki_test' }}
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER || 'poputchiki' }}:${{ secrets.POSTGRES_PASSWORD || 'ci_password' }}@localhost:5432/${{ secrets.POSTGRES_DB || 'poputchiki_test' }}
+      JWT_SECRET: ci_jwt_secret_32_bytes_minimum_x
+      BOT_TOKEN: ci_bot_token_placeholder
+      PGCRYPTO_KEY: ci_pgcrypto_key_placeholder
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests + coverage
+        run: bun run coverage:check
+
+      - name: Coverage gate
+        run: node scripts/check-coverage.js
+
+      - name: Run migrations (for integration tests)
+        run: bun run db:migrate
+        continue-on-error: false
+
+      - name: Integration tests
+        run: bun run test:integration
+        continue-on-error: false
+
+      - name: Dependency audit
+        run: bun audit
+        continue-on-error: true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7

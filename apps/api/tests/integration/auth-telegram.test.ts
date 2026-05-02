@@ -19,17 +19,19 @@ function buildDsn(): string {
 }
 
 function makeInitData(tgId: number, nowSeconds: number, botToken: string): string {
-  const user = JSON.stringify({ id: tgId, first_name: TG_USER.first_name, username: TG_USER.username });
+  const user = JSON.stringify({
+    id: tgId,
+    first_name: TG_USER.first_name,
+    username: TG_USER.username,
+  });
   const fields: Record<string, string> = { auth_date: String(nowSeconds), user };
   const sorted = Object.entries(fields).sort(([a], [b]) => a.localeCompare(b));
   const dataCheckString = sorted.map(([k, v]) => `${k}=${v}`).join("\n");
   const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
   const hash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
-  return (
-    Object.entries(fields)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join("&") + `&hash=${hash}`
-  );
+  return `${Object.entries(fields)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join("&")}&hash=${hash}`;
 }
 
 let sql: ReturnType<typeof postgres>;
@@ -123,7 +125,7 @@ describe("POST /auth/telegram — rejection cases", () => {
   it("tampered hash → 401", async () => {
     const now = Math.floor(Date.now() / 1000);
     const initData = makeInitData(TG_ID, now, BOT_TOKEN);
-    const tampered = initData.replace(/hash=[0-9a-f]{64}$/, "hash=" + "0".repeat(64));
+    const tampered = initData.replace(/hash=[0-9a-f]{64}$/, `hash=${"0".repeat(64)}`);
     const res = await app.request("/auth/telegram", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

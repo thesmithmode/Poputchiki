@@ -83,8 +83,14 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     const now = Math.floor(Date.now() / 1000);
     const [accessToken, refreshToken] = await Promise.all([
-      sign({ sub: String(tgUser.id), uid: userId, typ: "access", iat: now, exp: now + ACCESS_TTL }, jwtSecret),
-      sign({ sub: String(tgUser.id), uid: userId, typ: "refresh", iat: now, exp: now + REFRESH_TTL }, jwtSecret),
+      sign(
+        { sub: String(tgUser.id), uid: userId, typ: "access", iat: now, exp: now + ACCESS_TTL },
+        jwtSecret,
+      ),
+      sign(
+        { sub: String(tgUser.id), uid: userId, typ: "refresh", iat: now, exp: now + REFRESH_TTL },
+        jwtSecret,
+      ),
     ]);
 
     const cookieOpts = { httpOnly: false, sameSite: "None" as const, secure: true, path: "/" };

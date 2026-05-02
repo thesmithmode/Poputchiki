@@ -2,6 +2,7 @@
   "name": "poputchiki",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "workspaces": ["apps/*", "packages/*", "web"],
   "scripts": {
     "lint": "biome check .",
@@ -19,6 +20,8 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "typescript": "^5.7.3"
+    "@vitest/coverage-v8": "^4.1.5",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.5"
   }
 }

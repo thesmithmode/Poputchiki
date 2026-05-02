@@ -49,16 +49,6 @@ interface Headers {
   set(name: string, value: string): void;
   getSetCookie(): string[];
 }
-// biome-ignore lint/style/noVar: ambient global declaration requires var, not let
-declare var Response: {
-  new (body?: BodyInit | null, init?: ResponseInit): Response;
-};
-interface Response {
-  readonly status: number;
-  readonly headers: Headers;
-  json(): Promise<unknown>;
-  text(): Promise<string>;
-}
 
 // Web Crypto API global — available in Bun runtime.
 // biome-ignore lint/style/noVar: ambient global declaration requires var, not let

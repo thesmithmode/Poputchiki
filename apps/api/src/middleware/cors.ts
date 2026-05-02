@@ -9,14 +9,13 @@ export const corsMiddleware: MiddlewareHandler = async (c, next) => {
   const allowed = origin !== "" && origin === allowedOrigin;
 
   if (c.req.method === "OPTIONS") {
-    const res = new Response(null, { status: 204 });
     if (allowed) {
-      res.headers.set("Access-Control-Allow-Origin", origin);
-      res.headers.set("Access-Control-Allow-Credentials", "true");
-      res.headers.set("Access-Control-Allow-Methods", ALLOWED_METHODS);
-      res.headers.set("Access-Control-Allow-Headers", ALLOWED_HEADERS);
+      c.header("Access-Control-Allow-Origin", origin);
+      c.header("Access-Control-Allow-Credentials", "true");
+      c.header("Access-Control-Allow-Methods", ALLOWED_METHODS);
+      c.header("Access-Control-Allow-Headers", ALLOWED_HEADERS);
     }
-    return res;
+    return c.body(null, 204);
   }
 
   await next();

@@ -19,3 +19,4 @@ backups/base-*
 .memory/scripts/__pycache__/
 .memory/scripts/*.log
 .memory/scripts/session-flush-*.md
+.memory/scripts/last-flush.json

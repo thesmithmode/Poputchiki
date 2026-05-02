@@ -2,7 +2,18 @@
   "permissions": {
     "allow": [
       "PowerShell(Get-ChildItem *)",
-      "PowerShell(chcp 65001 *)"
+      "PowerShell(chcp 65001 *)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); tasks=d.get\\('tasks',[]\\); print\\(f'Total: {len\\(tasks\\)}'\\); statuses={}; [statuses.update\\({t['status']: statuses.get\\(t['status'],0\\)+1}\\) for t in tasks]; print\\(statuses\\); phases={}; [phases.update\\({t.get\\('phase','?'\\): phases.get\\(t.get\\('phase','?'\\),0\\)+1}\\) for t in tasks]; print\\(phases\\); pending=[t for t in tasks if t['status']=='pending']; print\\('First 5 pending:'\\); [print\\(f\\\\\"  {t['id']} [{t.get\\('priority','?'\\)}] {t['title'][:60]}\\\\\"\\) for t in pending[:5]]\")",
+      "Bash(command -v bun)",
+      "Bash(bun --version)",
+      "Bash(grep -v \"^$\")",
+      "Bash(command -v docker)",
+      "Bash(docker --version)",
+      "Bash(command -v node)",
+      "Bash(command -v npm)",
+      "Bash(npm --version)",
+      "Bash(export PATH=\"$HOME/.bun/bin:$PATH\")",
+      "Bash(python -c ' *)"
     ]
   },
   "hooks": {

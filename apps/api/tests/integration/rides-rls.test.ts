@@ -2,8 +2,8 @@
  * Sentinel: rides RLS isolation.
  * Verifies driver-owns-ride policies and passenger request policies.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const DRIVER_UUID = "00000000-0000-4000-a000-000000000010";
 const PASSENGER_UUID = "00000000-0000-4000-a000-000000000011";
@@ -23,7 +23,7 @@ async function seedUser(tx: postgres.TransactionSql, id: string, tgId: number) {
   await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
   await tx`
     INSERT INTO users (id, tg_id, display_name, role)
-    VALUES (${id}, ${tgId}, ${"User " + tgId}, 'user')
+    VALUES (${id}, ${tgId}, ${`User ${tgId}`}, 'user')
     ON CONFLICT (id) DO NOTHING
   `;
 }
@@ -46,7 +46,8 @@ beforeAll(async () => {
       RETURNING id
     `;
   });
-  rideId = rows[0]!.id as string;
+  if (!rows[0]?.id) throw new Error("Failed to create test ride");
+  rideId = rows[0].id as string;
 });
 
 afterAll(async () => {

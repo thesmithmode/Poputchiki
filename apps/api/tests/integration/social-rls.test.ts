@@ -6,8 +6,8 @@
  * Requires: Postgres running + migrations 000, 001, 002, 003 applied.
  * Runs in CI only (POSTGRES_* env must be set).
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const USER_A = "00000000-0000-4000-a000-000000000020";
 const USER_B = "00000000-0000-4000-a000-000000000021";

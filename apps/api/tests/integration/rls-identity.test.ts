@@ -6,8 +6,8 @@
  * Requires: Postgres running + migrations 000 + 001 applied.
  * Runs in CI only (POSTGRES_* env must be set).
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import postgres from "postgres";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const required = ["POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB"];
 

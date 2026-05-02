@@ -90,7 +90,7 @@ describe("POST /auth/telegram — happy path", () => {
   it("upserts user in DB", async () => {
     const rows = await sql`SELECT id, tg_id, display_name FROM users WHERE tg_id = ${TG_ID}`;
     expect(rows.length).toBe(1);
-    expect(rows[0]?.tg_id).toBe(TG_ID);
+    expect(String(rows[0]?.tg_id)).toBe(String(TG_ID));
     expect(typeof rows[0]?.display_name).toBe("string");
   });
 

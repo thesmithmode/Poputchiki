@@ -43,6 +43,11 @@ interface Buffer extends Uint8Array {}
 declare function setTimeout(fn: (...args: unknown[]) => void, ms?: number): unknown;
 declare function clearTimeout(id: unknown): void;
 
+// Web Fetch API — multiple Set-Cookie headers support.
+interface Headers {
+  getSetCookie(): string[];
+}
+
 // Web Crypto API global — available in Bun runtime.
 // biome-ignore lint/style/noVar: ambient global declaration requires var, not let
 declare var crypto: {

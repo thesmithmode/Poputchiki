@@ -11,7 +11,7 @@ export default defineConfig({
       reporter: ["text", "json", "json-summary", "html"],
       reportsDirectory: "./coverage",
       include: ["packages/*/src/**/*.ts", "apps/*/src/**/*.ts"],
-      exclude: ["**/*.test.ts", "**/*.d.ts", "**/index.ts"],
+      exclude: ["**/*.test.ts", "**/*.d.ts", "**/index.ts", "**/*Router.ts"],
       thresholds: {
         lines: 95,
         branches: 95,

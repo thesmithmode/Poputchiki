@@ -1,8 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 
 const ALLOWED_METHODS = "GET, POST, PATCH, DELETE, OPTIONS";
-const ALLOWED_HEADERS =
-  "Content-Type, Authorization, Idempotency-Key, X-CSRF-Token, X-Request-ID";
+const ALLOWED_HEADERS = "Content-Type, Authorization, Idempotency-Key, X-CSRF-Token, X-Request-ID";
 
 export const corsMiddleware: MiddlewareHandler = async (c, next) => {
   const origin = c.req.header("origin") ?? "";

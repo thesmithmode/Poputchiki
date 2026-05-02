@@ -68,6 +68,13 @@ describe("verifyInitData — happy path", () => {
       verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 300)),
     ).not.toThrow();
   });
+
+  it("uses default system clock when no clock argument provided", () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = buildInitData({ auth_date: String(now) });
+    const result = verifyInitData(initData, BOT_TOKEN);
+    expect(result.user.id).toBe(TEST_USER.id);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -204,6 +211,18 @@ describe("verifyInitData — malformed input", () => {
       `&hash=${hash}`;
     expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
       "invalid user.id",
+    );
+  });
+
+  it("throws TelegramAuthError when auth_date is missing but hash is valid", () => {
+    const fields: Record<string, string> = { user: JSON.stringify(TEST_USER) };
+    const hash = computeHash(fields);
+    const initData = `user=${encodeURIComponent(JSON.stringify(TEST_USER))}&hash=${hash}`;
+    expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
+      TelegramAuthError,
+    );
+    expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
+      "missing auth_date",
     );
   });
 });

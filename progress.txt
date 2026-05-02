@@ -92,3 +92,22 @@
 - Coverage: ожидается 100% для verifyInitData.ts
 
 ---
+## [TASK-010] Telegram initData HMAC верификатор
+**Дата:** 2026-05-02 08:35 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/auth/verifyInitData.ts`: verifyInitData(initData, botToken, clock) → VerifiedInitData
+- HMAC-SHA256("WebAppData", botToken) → secretKey; HMAC(secretKey, dataCheckString) → hash
+- Constant-time compare через timingSafeEqual
+- auth_date окно ±5 мин (симметрично), TelegramAuthError с reason
+- `apps/api/src/bun.d.ts`: добавлены URLSearchParams, Buffer, node:crypto декларации
+- Паттерн проекта: ручные декларации в bun.d.ts вместо @types/node
+
+### Тесты
+- [x] 18 юнит-тестов: happy path, invalid hash (6), expired (3), malformed (4), default clock, missing auth_date
+- [x] Coverage: 100% verifyInitData.ts (statements/branches/functions/lines)
+- [x] CI зелёный
+
+---
+

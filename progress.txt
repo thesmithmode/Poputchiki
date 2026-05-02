@@ -70,3 +70,25 @@
 - Coverage: Unknown (нет src кода ещё) → OK
 
 ---
+
+## [TASK-010] Telegram initData HMAC верификатор
+**Дата:** 2026-05-02 07:55 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/auth/verifyInitData.ts`: verifyInitData(initData, botToken, clock) → VerifiedInitData
+- Ключ: HMAC-SHA256("WebAppData", botToken) — по протоколу Telegram WebApp
+- Constant-time compare: timingSafeEqual на UTF-8 буферах hex-строк
+- Окно auth_date: |now − authDate| ≤ 300s (±5 мин, симметрично)
+- TelegramAuthError extends Error с полем reason
+- Парсинг user JSON + проверка user.id > 0
+
+### Тесты
+- [x] 18 юнит-тестов в apps/api/tests/unit/auth/telegram-hmac.test.ts
+- [x] Happy path: valid, boundary ±4m59s, boundary 5m00s
+- [x] Invalid hash: missing, tampered, wrong length, all-zeros, field tampered, wrong botToken
+- [x] Expired: >5min old, >5min future, exactly 5m01s, boundary 5m00s pass
+- [x] Malformed: missing user, bad JSON, missing user.id
+- Coverage: ожидается 100% для verifyInitData.ts
+
+---

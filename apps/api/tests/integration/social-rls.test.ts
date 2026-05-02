@@ -23,16 +23,12 @@ function buildDsn(): string {
 let sql: ReturnType<typeof postgres>;
 let rideId: string;
 
-async function seedUser(
-  tx: postgres.TransactionSql,
-  id: string,
-  tgId: number,
-): Promise<void> {
+async function seedUser(tx: postgres.TransactionSql, id: string, tgId: number): Promise<void> {
   await tx`SELECT set_config('app.current_user_id', ${id}, true)`;
   await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
   await tx`
     INSERT INTO users (id, tg_id, display_name, role)
-    VALUES (${id}, ${tgId}, ${"SocialUser " + tgId}, 'user')
+    VALUES (${id}, ${tgId}, ${`SocialUser ${tgId}`}, 'user')
     ON CONFLICT (id) DO NOTHING
   `;
 }

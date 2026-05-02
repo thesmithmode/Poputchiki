@@ -9,7 +9,13 @@
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-const required = ["POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB"];
+const required = [
+  "POSTGRES_USER",
+  "POSTGRES_PASSWORD",
+  "POSTGRES_HOST",
+  "POSTGRES_PORT",
+  "POSTGRES_DB",
+];
 
 function buildDsn(): string {
   for (const v of required) {
@@ -81,8 +87,8 @@ describe("RLS: identity isolation with set_config", () => {
   });
 
   it("UPDATE without identity returns 0 rows updated", async () => {
-    const result = await sql.begin((tx) =>
-      tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`,
+    const result = await sql.begin(
+      (tx) => tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`,
     );
     expect(result.count).toBe(0);
   });

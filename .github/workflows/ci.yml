@@ -22,27 +22,27 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'poputchiki' }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'ci_password' }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'poputchiki_test' }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U poputchiki"
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
 
     env:
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER || 'poputchiki' }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD || 'ci_password' }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB || 'poputchiki_test' }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER || 'poputchiki' }}:${{ secrets.POSTGRES_PASSWORD || 'ci_password' }}@localhost:5432/${{ secrets.POSTGRES_DB || 'poputchiki_test' }}
-      JWT_SECRET: ci_jwt_secret_32_bytes_minimum_x
-      BOT_TOKEN: ci_bot_token_placeholder
-      PGCRYPTO_KEY: ci_pgcrypto_key_placeholder
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
 
     steps:
       - name: Checkout

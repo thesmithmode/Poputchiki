@@ -366,15 +366,15 @@ describe("audit_log RLS", () => {
   it("audit_log has a SELECT-only admin policy in pg_policies", async () => {
     const rows = await sql.begin(
       (tx) => tx`
-        SELECT polname, polcmd
+        SELECT policyname, cmd
         FROM pg_policies
         WHERE tablename = 'audit_log'
       `,
     );
-    // Must have at least one policy, all should be SELECT (r) for admin
+    // Must have at least one policy, all should be SELECT for admin
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
-      expect(row?.polcmd).toBe("r");
+      expect(row?.cmd).toBe("SELECT");
     }
   });
 });

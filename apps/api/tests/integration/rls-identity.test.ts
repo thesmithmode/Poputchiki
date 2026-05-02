@@ -33,6 +33,7 @@ const TEST_UUID = "00000000-0000-4000-a000-000000000001";
 beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
 
+  // Seed as superuser (bypasses RLS for insert)
   await sql.begin(async (tx) => {
     await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
     await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
@@ -45,6 +46,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Cleanup as superuser
   await sql.begin(async (tx) => {
     await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
     await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
@@ -55,12 +57,18 @@ afterAll(async () => {
 
 describe("RLS: deny-by-default (no identity set)", () => {
   it("SELECT without set_config returns 0 rows", async () => {
-    const rows = await sql.begin((tx) => tx`SELECT * FROM users`);
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`SELECT * FROM users`;
+    });
     expect(rows.length).toBe(0);
   });
 
   it("app.current_user_id() returns NULL without set_config", async () => {
-    const rows = await sql.begin((tx) => tx`SELECT app.current_user_id() AS uid`);
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`SELECT app.current_user_id() AS uid`;
+    });
     expect(rows[0]?.uid).toBeNull();
   });
 });
@@ -68,6 +76,7 @@ describe("RLS: deny-by-default (no identity set)", () => {
 describe("RLS: identity isolation with set_config", () => {
   it("SELECT with own id returns own row only", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
       await tx`SELECT set_config('app.current_user_tg_id', '9999999', true)`;
       await tx`SELECT set_config('app.current_user_role', 'user', true)`;
@@ -79,23 +88,29 @@ describe("RLS: identity isolation with set_config", () => {
 
   it("GUC does not leak between transactions", async () => {
     await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
       return tx`SELECT id FROM users WHERE id = ${TEST_UUID}`;
     });
-    const rows = await sql.begin((tx) => tx`SELECT id FROM users`);
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`SELECT id FROM users`;
+    });
     expect(rows.length).toBe(0);
   });
 
   it("UPDATE without identity returns 0 rows updated", async () => {
-    const result = await sql.begin(
-      (tx) => tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`,
-    );
+    const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`;
+    });
     expect(result.count).toBe(0);
   });
 
   it("UPDATE with wrong identity returns 0 rows updated", async () => {
     const OTHER_UUID = "00000000-0000-4000-a000-000000000002";
     const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${OTHER_UUID}, true)`;
       return tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`;
     });
@@ -106,6 +121,7 @@ describe("RLS: identity isolation with set_config", () => {
 describe("RLS: app identity functions", () => {
   it("app.current_user_id() returns set uuid", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
       return tx`SELECT app.current_user_id() AS uid`;
     });
@@ -114,6 +130,7 @@ describe("RLS: app identity functions", () => {
 
   it("app.is_admin() returns false for role=user", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_role', 'user', true)`;
       return tx`SELECT app.is_admin() AS admin`;
     });
@@ -122,6 +139,7 @@ describe("RLS: app identity functions", () => {
 
   it("app.is_admin() returns true for role=admin", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
       return tx`SELECT app.is_admin() AS admin`;
     });

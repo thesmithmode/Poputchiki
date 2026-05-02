@@ -36,15 +36,16 @@ async function seedUser(tx: postgres.TransactionSql, id: string, tgId: number): 
 beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
 
-  // Seed three users using admin bypass
+  // Seed three users as superuser (bypasses RLS for insert)
   await sql.begin(async (tx) => {
     await seedUser(tx, USER_A, 2000001);
     await seedUser(tx, USER_B, 2000002);
     await seedUser(tx, USER_C, 2000003);
   });
 
-  // USER_A creates a ride (so USER_B can later like USER_C on that ride)
+  // USER_A creates a ride as app role so RLS policies apply
   const rows = await sql.begin(async (tx) => {
+    await tx`SET LOCAL ROLE poputchiki_app`;
     await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
     await tx`SELECT set_config('app.current_user_role', 'user', true)`;
     return tx`
@@ -57,10 +58,10 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Cleanup as superuser
   await sql.begin(async (tx) => {
     await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
     await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
-    // Clean social tables first (FK deps)
     await tx`DELETE FROM audit_log WHERE user_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM complaints WHERE reporter_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM private_notes WHERE user_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
@@ -79,12 +80,16 @@ afterAll(async () => {
 
 describe("likes RLS", () => {
   it("anon cannot read likes", async () => {
-    const rows = await sql.begin((tx) => tx`SELECT * FROM likes`);
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`SELECT * FROM likes`;
+    });
     expect(rows.length).toBe(0);
   });
 
   it("authenticated user can insert like with own subject_id", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
       return tx`
         INSERT INTO likes (subject_id, target_id, ride_id)
@@ -98,6 +103,7 @@ describe("likes RLS", () => {
 
   it("authenticated user can read likes", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
       return tx`SELECT id FROM likes WHERE subject_id = ${USER_B}`;
     });
@@ -107,6 +113,7 @@ describe("likes RLS", () => {
   it("user cannot insert like with another's subject_id", async () => {
     await expect(
       sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
         await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
         return tx`
           INSERT INTO likes (subject_id, target_id, ride_id)
@@ -118,6 +125,7 @@ describe("likes RLS", () => {
 
   it("user can delete own like", async () => {
     const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
       return tx`DELETE FROM likes WHERE subject_id = ${USER_B} AND ride_id = ${rideId}`;
     });
@@ -125,10 +133,10 @@ describe("likes RLS", () => {
   });
 
   it("user cannot delete another's like", async () => {
-    // Re-insert USER_B's like first via admin
+    // Re-insert USER_B's like as app role with admin GUC
     await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
-      await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
       return tx`
         INSERT INTO likes (subject_id, target_id, ride_id)
         VALUES (${USER_B}, ${USER_C}, ${rideId})
@@ -137,6 +145,7 @@ describe("likes RLS", () => {
     });
 
     const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
       return tx`DELETE FROM likes WHERE subject_id = ${USER_B}`;
     });
@@ -150,12 +159,16 @@ describe("likes RLS", () => {
 
 describe("reviews RLS", () => {
   it("anon cannot read reviews", async () => {
-    const rows = await sql.begin((tx) => tx`SELECT * FROM reviews`);
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`SELECT * FROM reviews`;
+    });
     expect(rows.length).toBe(0);
   });
 
   it("user can insert review with own subject_id", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
       return tx`
         INSERT INTO reviews (ride_id, subject_id, target_id, stars)
@@ -169,6 +182,7 @@ describe("reviews RLS", () => {
 
   it("authenticated user can read reviews", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       return tx`SELECT id FROM reviews WHERE target_id = ${USER_A}`;
     });
@@ -178,6 +192,7 @@ describe("reviews RLS", () => {
   it("user cannot insert review with another's subject_id", async () => {
     await expect(
       sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
         await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
         return tx`
           INSERT INTO reviews (ride_id, subject_id, target_id, stars)
@@ -195,6 +210,7 @@ describe("reviews RLS", () => {
 describe("favorites RLS", () => {
   it("user can add a favorite", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       return tx`
         INSERT INTO favorites (user_id, target_id)
@@ -208,6 +224,7 @@ describe("favorites RLS", () => {
 
   it("user can read own favorites", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       return tx`SELECT target_id FROM favorites WHERE user_id = ${USER_A}`;
     });
@@ -217,6 +234,7 @@ describe("favorites RLS", () => {
 
   it("user cannot read another's favorites", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
       return tx`SELECT target_id FROM favorites WHERE user_id = ${USER_A}`;
     });
@@ -226,6 +244,7 @@ describe("favorites RLS", () => {
   it("user cannot insert favorite for another user", async () => {
     await expect(
       sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
         await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
         return tx`
           INSERT INTO favorites (user_id, target_id)
@@ -237,6 +256,7 @@ describe("favorites RLS", () => {
 
   it("user can delete own favorite", async () => {
     const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       return tx`DELETE FROM favorites WHERE user_id = ${USER_A} AND target_id = ${USER_B}`;
     });
@@ -244,10 +264,10 @@ describe("favorites RLS", () => {
   });
 
   it("user cannot delete another's favorite", async () => {
-    // Re-add USER_A favorite
+    // Re-add USER_A favorite as USER_A
     await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
-      await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
       return tx`
         INSERT INTO favorites (user_id, target_id)
         VALUES (${USER_A}, ${USER_B})
@@ -256,6 +276,7 @@ describe("favorites RLS", () => {
     });
 
     const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
       return tx`DELETE FROM favorites WHERE user_id = ${USER_A}`;
     });
@@ -270,6 +291,7 @@ describe("favorites RLS", () => {
 describe("private_notes RLS", () => {
   it("user can insert own private note", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       return tx`
         INSERT INTO private_notes (user_id, target_id, text)
@@ -282,6 +304,7 @@ describe("private_notes RLS", () => {
 
   it("user can read own private notes", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       return tx`SELECT text FROM private_notes WHERE user_id = ${USER_A}`;
     });
@@ -291,6 +314,7 @@ describe("private_notes RLS", () => {
 
   it("user cannot read another's private notes", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
       return tx`SELECT text FROM private_notes WHERE user_id = ${USER_A}`;
     });
@@ -300,6 +324,7 @@ describe("private_notes RLS", () => {
   it("user cannot insert note with another's user_id", async () => {
     await expect(
       sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
         await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
         return tx`
           INSERT INTO private_notes (user_id, target_id, text)
@@ -315,7 +340,7 @@ describe("private_notes RLS", () => {
 // ---------------------------------------------------------------------------
 
 describe("audit_log RLS", () => {
-  // Seed one audit row as admin so deny-by-default is real, not vacuous.
+  // Seed one audit row as superuser (no INSERT policy → only superuser can insert)
   beforeAll(async () => {
     await sql.begin(async (tx) => {
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
@@ -329,6 +354,7 @@ describe("audit_log RLS", () => {
 
   it("non-admin cannot SELECT audit_log (policy: admin only)", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       await tx`SELECT set_config('app.current_user_role', 'user', true)`;
       return tx`SELECT id FROM audit_log`;

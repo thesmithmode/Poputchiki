@@ -31,13 +31,15 @@ async function seedUser(tx: postgres.TransactionSql, id: string, tgId: number) {
 beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
 
+  // Seed as superuser (bypasses RLS for insert)
   await sql.begin(async (tx) => {
     await seedUser(tx, DRIVER_UUID, 1000001);
     await seedUser(tx, PASSENGER_UUID, 1000002);
   });
 
-  // Driver creates a ride
+  // Driver creates a ride — use app role so RLS policies apply
   const rows = await sql.begin(async (tx) => {
+    await tx`SET LOCAL ROLE poputchiki_app`;
     await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
     await tx`SELECT set_config('app.current_user_role', 'user', true)`;
     return tx`
@@ -51,6 +53,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Cleanup as superuser
   await sql.begin(async (tx) => {
     await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
     await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
@@ -63,6 +66,7 @@ afterAll(async () => {
 describe("Rides RLS: driver ownership", () => {
   it("driver can read own ride", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
       return tx`SELECT id FROM rides WHERE id = ${rideId}`;
     });
@@ -71,6 +75,7 @@ describe("Rides RLS: driver ownership", () => {
 
   it("passenger can read ride (public read)", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
       return tx`SELECT id FROM rides WHERE id = ${rideId}`;
     });
@@ -78,12 +83,16 @@ describe("Rides RLS: driver ownership", () => {
   });
 
   it("anon cannot read rides", async () => {
-    const rows = await sql.begin(async (tx) => tx`SELECT id FROM rides`);
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      return tx`SELECT id FROM rides`;
+    });
     expect(rows.length).toBe(0);
   });
 
   it("passenger cannot update driver's ride", async () => {
     const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
       return tx`UPDATE rides SET comment = 'hacked' WHERE id = ${rideId}`;
     });
@@ -93,6 +102,7 @@ describe("Rides RLS: driver ownership", () => {
   it("driver cannot insert ride for another driver", async () => {
     await expect(
       sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
         await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
         return tx`
           INSERT INTO rides (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng, departure_at, seats_total)
@@ -106,6 +116,7 @@ describe("Rides RLS: driver ownership", () => {
 describe("Ride requests RLS", () => {
   it("passenger can submit a request", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
       return tx`
         INSERT INTO ride_requests (ride_id, passenger_id)
@@ -118,6 +129,7 @@ describe("Ride requests RLS", () => {
 
   it("passenger can read own request", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
       return tx`SELECT id FROM ride_requests WHERE ride_id = ${rideId}`;
     });
@@ -126,6 +138,7 @@ describe("Ride requests RLS", () => {
 
   it("driver can read requests for own ride", async () => {
     const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
       return tx`SELECT id FROM ride_requests WHERE ride_id = ${rideId}`;
     });
@@ -135,6 +148,7 @@ describe("Ride requests RLS", () => {
   it("passenger cannot submit request as another user", async () => {
     await expect(
       sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
         await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
         return tx`
           INSERT INTO ride_requests (ride_id, passenger_id)

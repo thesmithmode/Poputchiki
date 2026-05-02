@@ -15,6 +15,7 @@ interface ImportMeta {
 }
 
 // Bun is Node.js-compatible: process is available as a global.
+// biome-ignore lint/style/noVar: ambient global declaration requires var, not let
 declare var process: {
   readonly env: Record<string, string | undefined>;
   readonly argv: readonly string[];

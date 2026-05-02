@@ -2686,7 +2686,8 @@
       "phase": "mvp",
       "description": "Trigger users.avg_stars + reviews_count при INSERT/UPDATE/DELETE на reviews",
       "acceptance_criteria": [
-        "Миграция: ALTER TABLE users ADD COLUMN avg_stars numeric(3,2) NULL, ADD COLUMN reviews_count int NOT NULL DEFAULT 0",
+        "Колонки avg_stars/reviews_count уже в 001_users.sql — ALTER TABLE не нужен",
+        "Миграция: CREATE OR REPLACE FUNCTION + trigger update_user_avg_stars()",
         "AFTER INSERT/UPDATE/DELETE on reviews FOR EACH ROW → пересчёт у target_id (FOR NO KEY UPDATE на users row для атомарности)",
         "Триггер использует подзапрос: AVG(stars), COUNT(*) WHERE target_id=...",
         "Sentinel race-test: 100 параллельных INSERT reviews → users.reviews_count=100 точно (как TASK-086 для likes)"

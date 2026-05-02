@@ -1,9 +1,15 @@
 import { Hono } from "hono";
+import type postgres from "postgres";
+import { createAuthRouter } from "./auth/authRouter";
 
-export function createApp(): Hono {
+export function createApp(sql?: postgres.Sql): Hono {
   const app = new Hono();
 
   app.get("/health", (c) => c.json({ status: "ok", ts: new Date().toISOString() }));
+
+  if (sql) {
+    app.route("/auth", createAuthRouter(sql));
+  }
 
   return app;
 }

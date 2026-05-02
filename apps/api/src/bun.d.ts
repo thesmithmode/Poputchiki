@@ -39,6 +39,12 @@ declare var Buffer: {
 };
 interface Buffer extends Uint8Array {}
 
+// Web Crypto API global — available in Bun runtime.
+// biome-ignore lint/style/noVar: ambient global declaration requires var, not let
+declare var crypto: {
+  randomUUID(): string;
+};
+
 // Node.js crypto module — Bun implements the full API.
 declare module "node:crypto" {
   class Hmac {

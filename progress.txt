@@ -111,3 +111,40 @@
 
 ---
 
+## TASK-011 — Endpoint POST /auth/telegram (2026-05-02)
+
+### Сделано
+- `db/migrations/004_nonces.sql`: таблица nonces (PK hash, idx on created_at)
+- `apps/api/src/auth/authRouter.ts`: Hono router, нonce replay-protection, upsert users, JWT access+refresh, cookie tg_uid+csrf_token
+- `apps/api/src/app.ts`: подключён authRouter + cors + secure-headers middleware
+- `apps/api/src/index.ts`: postgres client, Bun.serve entry
+
+### Тесты
+- [x] 8 интеграционных тестов: 200+JWT+cookie, replay 401, tampered 401, expired 401, missing initData 400, last_seen_at update
+- [x] CI зелёный
+
+---
+
+## TASK-078 — CORS middleware (2026-05-02)
+
+### Сделано
+- `apps/api/src/middleware/cors.ts`: точный match origin = https://app.${DOMAIN}, preflight OPTIONS 204, c.body/c.header API
+- 6 юнит-тестов: allowed origin, evil origin, no origin, wildcard rejected
+
+### Тесты
+- [x] 6 юнит-тестов
+- [x] CI зелёный
+
+---
+
+## TASK-024 — CSP/HSTS/secure-headers middleware (2026-05-02)
+
+### Сделано
+- `apps/api/src/middleware/secure-headers.ts`: CSP с DOMAIN interpolation, HSTS, X-Content-Type-Options nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, Permissions-Policy
+- 7 юнит-тестов
+
+### Тесты
+- [x] 7 юнит-тестов
+- [x] CI зелёный
+
+---

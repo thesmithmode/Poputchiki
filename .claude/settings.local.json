@@ -13,7 +13,9 @@
       "Bash(command -v npm)",
       "Bash(npm --version)",
       "Bash(export PATH=\"$HOME/.bun/bin:$PATH\")",
-      "Bash(python -c ' *)"
+      "Bash(python -c ' *)",
+      "Bash(bun install *)",
+      "Bash(bun run *)"
     ]
   },
   "hooks": {

@@ -1,0 +1,24 @@
+{
+  "name": "poputchiki",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*", "web"],
+  "scripts": {
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format .",
+    "format:fix": "biome format --write .",
+    "typecheck": "tsc --noEmit -p tsconfig.base.json",
+    "test:unit": "vitest run",
+    "test:unit:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:e2e": "playwright test",
+    "test:security": "vitest run --config vitest.security.config.ts",
+    "coverage:check": "vitest run --coverage",
+    "build": "bun run --filter '*' build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,4 +1,7 @@
 # Только секреты и runtime data volumes — всё остальное коммитим (правило проекта).
+# node_modules — исключение: платформо-специфичные бинарники (biome, bun) ломают Linux CI.
+# bun.lock обеспечивает reproducibility вместо коммита node_modules.
+node_modules/
 .env
 .env.local
 .env.*.local

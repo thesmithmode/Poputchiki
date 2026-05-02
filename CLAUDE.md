@@ -125,7 +125,28 @@ git push origin dev
 ```
 Молча skip если `BOT_TOKEN`/`ADMIN_TG_CHAT_ID` отсутствуют в `.env`.
 
-### 12. Следующая итерация
+### 12. Code review после крупных вех
+
+После завершения каждой из следующих вех — **остановись, проведи code review перед следующей задачей**:
+
+| Веха | После какой задачи |
+|---|---|
+| Infra + DB готовы | TASK-008 (все миграции) |
+| Auth полностью готов | TASK-015 (JWT refresh + logout) |
+| Core API готов | TASK-038 (все rides/requests endpoints) |
+| Frontend skeleton + auth | TASK-016 |
+| Full E2E happy path | TASK-060 |
+| Security hardening done | TASK-090 |
+
+**Процесс review:**
+1. `git diff dev..HEAD` или `git log --oneline` — понять масштаб
+2. Применить skill `superpowers:requesting-code-review`
+3. Найденные issues → создать задачи с `priority: high` прямо в `tasks.json` (добавить в список перед следующей вехой)
+4. Не продолжать пока критические issues не закрыты
+
+Security review (отдельно от code review) встроен в CI через `bun run test:security` и nightly OWASP ZAP (TASK-121).
+
+### 13. Следующая итерация
 Если ещё есть pending-задачи с готовыми deps:
 - Если Антон сказал «продолжай пока не закончится» / запущен `/loop` → возвращайся к шагу 1.
 - Иначе → жди инструкций.

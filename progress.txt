@@ -52,3 +52,21 @@
 - Coverage: N/A (инфра задача)
 
 ---
+
+## [TASK-002] Vitest setup + coverage gate ≥95%
+**Дата:** 2026-05-02 (UTC)
+**Статус:** done
+
+### Что сделано
+- vitest.config.ts: v8, reporters text+json+json-summary+html, thresholds 95/90/95/95
+- scripts/check-coverage.js: парсит coverage-summary.json, exit 1 если ниже порога
+- packages/shared/tests/sanity.test.ts: sanity (1+1=2)
+- package.json: type=module добавлен
+
+### Тесты
+- [x] bun run test:unit — 2 passed
+- [x] bun run coverage:check — coverage-summary.json генерируется
+- [x] node scripts/check-coverage.js — exit 0
+- Coverage: Unknown (нет src кода ещё) → OK
+
+---

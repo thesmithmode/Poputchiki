@@ -18,6 +18,10 @@ backups/*.dump.zst.gpg
 backups/wal/
 backups/base-*
 
+# Coverage reports — generated artifacts, меняются каждый CI run
+coverage/
+coverage-integration/
+
 # .memory (claude-memory-compiler — local-only state)
 .memory/scripts/__pycache__/
 .memory/scripts/*.log

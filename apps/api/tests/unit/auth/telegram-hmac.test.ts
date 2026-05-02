@@ -89,7 +89,9 @@ describe("verifyInitData — invalid hash", () => {
     const good = buildInitData();
     const hashMatch = good.match(/&hash=([0-9a-f]{64})$/);
     if (!hashMatch) throw new Error("no hash in initData");
-    const badHash = hashMatch[1].replace(/.$/, (c) => (c === "a" ? "b" : "a"));
+    const captured = hashMatch[1];
+    if (!captured) throw new Error("no hash captured");
+    const badHash = captured.replace(/.$/, (c) => (c === "a" ? "b" : "a"));
     const tampered = good.replace(/&hash=[0-9a-f]{64}$/, `&hash=${badHash}`);
     expect(() => verifyInitData(tampered, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
       TelegramAuthError,

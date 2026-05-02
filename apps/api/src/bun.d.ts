@@ -21,3 +21,31 @@ declare var process: {
   readonly argv: readonly string[];
   exit(code?: number): never;
 };
+
+// Web API globals available in Bun runtime (not in ES2022 lib alone).
+// biome-ignore lint/style/noVar: ambient global declaration requires var, not let
+declare var URLSearchParams: {
+  new (init?: string): URLSearchParams;
+};
+interface URLSearchParams {
+  get(name: string): string | null;
+  entries(): IterableIterator<[string, string]>;
+}
+
+// Node.js Buffer — Bun is fully compatible.
+// biome-ignore lint/style/noVar: ambient global declaration requires var, not let
+declare var Buffer: {
+  from(str: string, encoding: string): Buffer;
+};
+interface Buffer extends Uint8Array {}
+
+// Node.js crypto module — Bun implements the full API.
+declare module "node:crypto" {
+  class Hmac {
+    update(data: string | Uint8Array): Hmac;
+    digest(): Buffer;
+    digest(encoding: "hex"): string;
+  }
+  function createHmac(algorithm: string, key: string | Uint8Array): Hmac;
+  function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean;
+}

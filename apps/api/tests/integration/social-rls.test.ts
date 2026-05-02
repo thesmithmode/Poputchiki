@@ -61,6 +61,7 @@ afterAll(async () => {
     await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
     await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
     // Clean social tables first (FK deps)
+    await tx`DELETE FROM audit_log WHERE user_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM complaints WHERE reporter_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM private_notes WHERE user_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM favorites WHERE user_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
@@ -314,12 +315,25 @@ describe("private_notes RLS", () => {
 // ---------------------------------------------------------------------------
 
 describe("audit_log RLS", () => {
+  // Seed one audit row as admin so deny-by-default is real, not vacuous.
+  beforeAll(async () => {
+    await sql.begin(async (tx) => {
+      await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
+      await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
+      return tx`
+        INSERT INTO audit_log (user_id, action, entity, entity_id)
+        VALUES (${USER_A}, 'test_action', 'users', ${USER_A})
+      `;
+    });
+  });
+
   it("non-admin cannot SELECT audit_log (policy: admin only)", async () => {
     const rows = await sql.begin(async (tx) => {
       await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
       await tx`SELECT set_config('app.current_user_role', 'user', true)`;
       return tx`SELECT id FROM audit_log`;
     });
+    // Table has data but RLS blocks non-admin from reading it
     expect(rows.length).toBe(0);
   });
 

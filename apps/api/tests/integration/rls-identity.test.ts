@@ -27,16 +27,24 @@ const TEST_UUID = "00000000-0000-4000-a000-000000000001";
 beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
 
-  // Seed one user for isolation tests — upsert as superuser (bypasses RLS)
-  await sql`
-    INSERT INTO users (id, tg_id, display_name, role)
-    VALUES (${TEST_UUID}, 9999999, 'Test User', 'user')
-    ON CONFLICT (id) DO NOTHING
-  `;
+  // Seed one user for isolation tests — must set identity (FORCE RLS applies to all)
+  await sql.begin(async (tx) => {
+    await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
+    await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
+    return tx`
+      INSERT INTO users (id, tg_id, display_name, role)
+      VALUES (${TEST_UUID}, 9999999, 'Test User', 'user')
+      ON CONFLICT (id) DO NOTHING
+    `;
+  });
 });
 
 afterAll(async () => {
-  await sql`DELETE FROM users WHERE id = ${TEST_UUID}`;
+  await sql.begin(async (tx) => {
+    await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
+    await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
+    return tx`DELETE FROM users WHERE id = ${TEST_UUID}`;
+  });
   await sql.end();
 });
 

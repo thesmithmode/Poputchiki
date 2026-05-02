@@ -17,9 +17,9 @@
     "test:security": "vitest run --config vitest.security.config.ts",
     "coverage:check": "vitest run --coverage",
     "build": "bun run --filter '*' build",
-    "db:migrate": "node-pg-migrate up --migrations-dir db/migrations --envPath .env",
-    "db:migrate:down": "node-pg-migrate down --migrations-dir db/migrations --envPath .env",
-    "db:migrate:create": "node-pg-migrate create --migrations-dir db/migrations"
+    "db:migrate": "node-pg-migrate up --migrations-dir db/migrations --migration-file-language sql --envPath .env",
+    "db:migrate:down": "node-pg-migrate down --migrations-dir db/migrations --migration-file-language sql --envPath .env",
+    "db:migrate:create": "node-pg-migrate create --migrations-dir db/migrations --migration-file-language sql"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

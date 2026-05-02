@@ -1,4 +1,4 @@
-# Migrations
+# DB Migrations
 
 SQL-миграции управляются через `node-pg-migrate`.
 

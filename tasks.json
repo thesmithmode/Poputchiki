@@ -115,7 +115,8 @@
       "dependencies": [
         "TASK-002"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-02T06:41:25Z"
     },
     {
       "id": "TASK-004",

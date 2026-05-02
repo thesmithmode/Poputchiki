@@ -5,7 +5,10 @@
     "prd_source": "docs/PRD-Poputchiki-v0.1.md",
     "spec_source": "docs/SPEC-Architecture-v0.1.md",
     "phase": "full-mvp-with-prod-deploy",
-    "phases_order": ["mvp", "prod-deploy"],
+    "phases_order": [
+      "mvp",
+      "prod-deploy"
+    ],
     "infrastructure_decisions": {
       "db": "self-hosted PostgreSQL 16 в Docker (контейнер postgres:16-alpine). НЕ Supabase, НЕ Neon, НЕ managed.",
       "auth_rls_identity": "GUC app.current_user_id / app.current_user_tg_id / app.current_user_role через set_config(..., true) в каждой транзакции. НЕТ auth.uid()/auth.jwt() — это Supabase, у нас их нет. См. SPEC §3.4.",
@@ -62,7 +65,8 @@
         "ls package.json biome.json tsconfig.base.json"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-02T06:33:41Z"
     },
     {
       "id": "TASK-002",
@@ -82,7 +86,9 @@
         "bun run test:unit -- --coverage — генерирует coverage/coverage-summary.json",
         "bun run coverage:check — выходит 0 (или 1 если ниже порога — пишем такой тест)"
       ],
-      "dependencies": ["TASK-001"],
+      "dependencies": [
+        "TASK-001"
+      ],
       "status": "pending"
     },
     {
@@ -105,7 +111,9 @@
         "bun run test:unit packages/shared — все зелёные",
         "bun run typecheck — зелёный"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "pending"
     },
     {
@@ -128,7 +136,9 @@
         "psql или bun-скрипт: подключение работает",
         "docker compose down && rm -rf .docker-data — повторный up создаёт чистую БД"
       ],
-      "dependencies": ["TASK-001"],
+      "dependencies": [
+        "TASK-001"
+      ],
       "status": "pending"
     },
     {
@@ -149,7 +159,9 @@
         "bun run db:migrate up — без миграций (пусто) — выходит 0",
         "bun run db:migrate:down — без миграций — выходит 0"
       ],
-      "dependencies": ["TASK-004"],
+      "dependencies": [
+        "TASK-004"
+      ],
       "status": "pending"
     },
     {
@@ -180,7 +192,10 @@
         "Integration test: чужой UPDATE users → 0 rows updated",
         "Integration test: app.current_user_id() в новой connection из pool без set_config — возвращает NULL (identity не утекает между транзакциями)"
       ],
-      "dependencies": ["TASK-005", "TASK-003"],
+      "dependencies": [
+        "TASK-005",
+        "TASK-003"
+      ],
       "status": "pending"
     },
     {
@@ -211,7 +226,9 @@
         "Integration test: <userA> UPDATE чужой ride → 0 rows",
         "Integration test: ride_request от passenger=<userA> → ОК; от чужого имени → отказ"
       ],
-      "dependencies": ["TASK-006"],
+      "dependencies": [
+        "TASK-006"
+      ],
       "status": "pending"
     },
     {
@@ -243,7 +260,9 @@
         "Integration: попытка INSERT favorite с user_id чужим → отказ",
         "Integration: admin SELECT support_messages → видит все; user SELECT — только свои"
       ],
-      "dependencies": ["TASK-007"],
+      "dependencies": [
+        "TASK-007"
+      ],
       "status": "pending"
     },
     {
@@ -265,7 +284,9 @@
         "Unit-тест health endpoint",
         "Integration-тест с реальным http.fetch"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "pending"
     },
     {
@@ -288,7 +309,9 @@
         "Юнит-тест: auth_date в будущем >5 мин → throw 'expired'",
         "Coverage: 100% этого модуля"
       ],
-      "dependencies": ["TASK-009"],
+      "dependencies": [
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -313,7 +336,10 @@
         "Integration: protruding clock skew → 401 expired",
         "Integration: вернувшийся юзер обновляет last_seen_at"
       ],
-      "dependencies": ["TASK-010", "TASK-008"],
+      "dependencies": [
+        "TASK-010",
+        "TASK-008"
+      ],
       "status": "pending"
     },
     {
@@ -339,7 +365,10 @@
         "Integration: handler внутри withIdentity видит свои users-rows; вне — 0 rows",
         "Coverage 100% middleware + helper"
       ],
-      "dependencies": ["TASK-011", "TASK-101"],
+      "dependencies": [
+        "TASK-011",
+        "TASK-101"
+      ],
       "status": "pending"
     },
     {
@@ -359,7 +388,9 @@
         "Integration: разные user — независимые счётчики",
         "Integration: окно сбрасывается через минуту"
       ],
-      "dependencies": ["TASK-012"],
+      "dependencies": [
+        "TASK-012"
+      ],
       "status": "pending"
     },
     {
@@ -383,7 +414,9 @@
         "Integration: попытка установить чужой driver_id → 403 (RLS)",
         "Integration: anti-bot — 4-я поездка от безлайкового → 403"
       ],
-      "dependencies": ["TASK-013"],
+      "dependencies": [
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -405,7 +438,9 @@
         "Integration: вторая страница по cursor — 50 следующих",
         "Integration: фильтр trustMinLikes=3 — только водители с ≥3 лайков"
       ],
-      "dependencies": ["TASK-014"],
+      "dependencies": [
+        "TASK-014"
+      ],
       "status": "pending"
     },
     {
@@ -427,7 +462,9 @@
         "Браузер открывает localhost:5173 — белый экран без ошибок в консоли",
         "Unit-тест App рендера через testing-library"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "pending"
     },
     {
@@ -448,7 +485,10 @@
         "Unit: рендер с 3 mock поездками",
         "Unit: переключатель меняет view"
       ],
-      "dependencies": ["TASK-016", "TASK-015"],
+      "dependencies": [
+        "TASK-016",
+        "TASK-015"
+      ],
       "status": "pending"
     },
     {
@@ -467,7 +507,10 @@
         "bun run test:e2e — все спеки зелёные",
         "Локальный Postgres + apps/api + web/dev должны быть подняты (compose) — добавить в скрипт"
       ],
-      "dependencies": ["TASK-017", "TASK-014"],
+      "dependencies": [
+        "TASK-017",
+        "TASK-014"
+      ],
       "status": "pending"
     },
     {
@@ -492,7 +535,9 @@
         "Сломать unit-тест локально, push — CI красный",
         "Намеренно понизить покрытие <95% — coverage:check fail, CI красный"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "pending"
     },
     {
@@ -512,7 +557,9 @@
         "Integration: чужой юзер decrypt_user_pii → 0 rows (RLS)",
         "Integration: SELECT phone_enc как bytea возвращает шифр-блок, не plaintext"
       ],
-      "dependencies": ["TASK-006"],
+      "dependencies": [
+        "TASK-006"
+      ],
       "status": "pending"
     },
     {
@@ -533,7 +580,9 @@
         "Integration: ride.status='completed' → counter+1",
         "Integration: 100 одновременных INSERT → счётчик =100 без race"
       ],
-      "dependencies": ["TASK-008"],
+      "dependencies": [
+        "TASK-008"
+      ],
       "status": "pending"
     },
     {
@@ -553,7 +602,10 @@
         "Integration: после INSERT в reviews и ручного refresh → user_stats показывает новые цифры",
         "Integration: refresh CONCURRENTLY не блокирует SELECT в это время"
       ],
-      "dependencies": ["TASK-021", "TASK-009"],
+      "dependencies": [
+        "TASK-021",
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -573,7 +625,9 @@
         "Integration: GET (read) → запись НЕ создаётся",
         "Integration: 422 (валидация упала) → запись НЕ создаётся"
       ],
-      "dependencies": ["TASK-014"],
+      "dependencies": [
+        "TASK-014"
+      ],
       "status": "pending"
     },
     {
@@ -592,7 +646,9 @@
         "Integration: GET /health → response заголовки содержат CSP, HSTS, X-Content-Type-Options",
         "Integration: проверка значений каждого заголовка"
       ],
-      "dependencies": ["TASK-009"],
+      "dependencies": [
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -613,7 +669,9 @@
         "Integration: POST с подменённым Origin → 403",
         "Integration: POST без X-CSRF-Token → 403"
       ],
-      "dependencies": ["TASK-011"],
+      "dependencies": [
+        "TASK-011"
+      ],
       "status": "pending"
     },
     {
@@ -633,7 +691,10 @@
         "Integration: разные ключи — независимые операции",
         "Integration: после 24h key expires"
       ],
-      "dependencies": ["TASK-008", "TASK-014"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-014"
+      ],
       "status": "pending"
     },
     {
@@ -654,7 +715,10 @@
         "Integration: пассажир-не-водитель → 403",
         "Integration: до departure_at → 422"
       ],
-      "dependencies": ["TASK-014", "TASK-022"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-022"
+      ],
       "status": "pending"
     },
     {
@@ -675,7 +739,9 @@
         "Integration: подтверждение без driver_marked → 422",
         "Integration: 49 часов после ride → 410"
       ],
-      "dependencies": ["TASK-027"],
+      "dependencies": [
+        "TASK-027"
+      ],
       "status": "pending"
     },
     {
@@ -698,7 +764,10 @@
         "Integration: дубль → 409",
         "Integration: DELETE через 25 часов → 410"
       ],
-      "dependencies": ["TASK-028", "TASK-021"],
+      "dependencies": [
+        "TASK-028",
+        "TASK-021"
+      ],
       "status": "pending"
     },
     {
@@ -720,7 +789,9 @@
         "Integration: text >300 — 422",
         "Integration: PATCH через 25 часов → 410"
       ],
-      "dependencies": ["TASK-028"],
+      "dependencies": [
+        "TASK-028"
+      ],
       "status": "pending"
     },
     {
@@ -742,7 +813,10 @@
         "Integration: добавить себя самого → 422 (CHECK)",
         "Integration: GET /me — только мои"
       ],
-      "dependencies": ["TASK-008", "TASK-013"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -762,7 +836,10 @@
         "Integration: повторная жалоба от того же на того же в той же неделе → 409",
         "Integration: 5 жалоб от 5 разных юзеров за 7 дней → таргет банится"
       ],
-      "dependencies": ["TASK-008", "TASK-013"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -784,7 +861,9 @@
         "Integration: admin reply → reply_text заполнен, replied_at, status=resolved",
         "Integration: триггер уведомления (мокаем notify) — был вызван"
       ],
-      "dependencies": ["TASK-013"],
+      "dependencies": [
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -806,7 +885,10 @@
         "Integration: NOTIFY notify_user → worker обрабатывает (мок TG API)",
         "Integration: notification_preferences enabled=false → skip"
       ],
-      "dependencies": ["TASK-008", "TASK-013"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -826,7 +908,9 @@
         "Integration: PUT отключает категорию",
         "Integration: PUT system=false → 422"
       ],
-      "dependencies": ["TASK-008"],
+      "dependencies": [
+        "TASK-008"
+      ],
       "status": "pending"
     },
     {
@@ -847,7 +931,10 @@
         "Integration: чужой PATCH → 403",
         "Integration: weekdays=[1,2,3,4,5] (Пн-Пт) — валидно"
       ],
-      "dependencies": ["TASK-007", "TASK-013"],
+      "dependencies": [
+        "TASK-007",
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -867,7 +954,10 @@
         "Integration: повторный запуск — 0 новых",
         "Integration: active_to=прошлая дата → 0 rides"
       ],
-      "dependencies": ["TASK-036", "TASK-022"],
+      "dependencies": [
+        "TASK-036",
+        "TASK-022"
+      ],
       "status": "pending"
     },
     {
@@ -888,7 +978,9 @@
         "Integration: heartbeat за 30 сек > 1 событие пришло",
         "Integration: 100 одновременных клиентов — нагрузка стабильна"
       ],
-      "dependencies": ["TASK-014"],
+      "dependencies": [
+        "TASK-014"
+      ],
       "status": "pending"
     },
     {
@@ -913,7 +1005,11 @@
         "Unit: лайк disabled когда not eligible",
         "E2E: открыть карточку → нажать «Написать» → новая вкладка"
       ],
-      "dependencies": ["TASK-017", "TASK-029", "TASK-038"],
+      "dependencies": [
+        "TASK-017",
+        "TASK-029",
+        "TASK-038"
+      ],
       "status": "pending"
     },
     {
@@ -936,7 +1032,12 @@
         "Unit: гистограмма правильно отображает распределение",
         "Unit: расписание для водителя с регулярными рейсами"
       ],
-      "dependencies": ["TASK-017", "TASK-022", "TASK-030", "TASK-036"],
+      "dependencies": [
+        "TASK-017",
+        "TASK-022",
+        "TASK-030",
+        "TASK-036"
+      ],
       "status": "pending"
     },
     {
@@ -958,7 +1059,11 @@
         "E2E: создать single → видим в ленте",
         "E2E: создать recurring Пн-Пт → видим schedule в профиле"
       ],
-      "dependencies": ["TASK-017", "TASK-014", "TASK-036"],
+      "dependencies": [
+        "TASK-017",
+        "TASK-014",
+        "TASK-036"
+      ],
       "status": "pending"
     },
     {
@@ -981,7 +1086,10 @@
         "Unit: clustering включается при >50 точек",
         "E2E: pan карты → запрос с bbox-фильтром"
       ],
-      "dependencies": ["TASK-017", "TASK-015"],
+      "dependencies": [
+        "TASK-017",
+        "TASK-015"
+      ],
       "status": "pending"
     },
     {
@@ -1003,7 +1111,9 @@
         "Unit: применение фильтра шлёт правильный query в /api/rides",
         "E2E: установка фильтра → reload → состояние сохранено"
       ],
-      "dependencies": ["TASK-017"],
+      "dependencies": [
+        "TASK-017"
+      ],
       "status": "pending"
     },
     {
@@ -1024,7 +1134,10 @@
         "Unit: skip опционального шага",
         "E2E: первый login → onboarding → лента"
       ],
-      "dependencies": ["TASK-016", "TASK-020"],
+      "dependencies": [
+        "TASK-016",
+        "TASK-020"
+      ],
       "status": "pending"
     },
     {
@@ -1044,7 +1157,10 @@
         "Unit: system всегда on",
         "E2E: отключить like_received → новый лайк не вызывает notify (мок)"
       ],
-      "dependencies": ["TASK-016", "TASK-035"],
+      "dependencies": [
+        "TASK-016",
+        "TASK-035"
+      ],
       "status": "pending"
     },
     {
@@ -1064,7 +1180,10 @@
         "Unit: список с N favorite пользователей",
         "E2E: добавить → виден в /favorites"
       ],
-      "dependencies": ["TASK-031", "TASK-040"],
+      "dependencies": [
+        "TASK-031",
+        "TASK-040"
+      ],
       "status": "pending"
     },
     {
@@ -1084,7 +1203,11 @@
         "Unit: текстарея ≤2000 символов",
         "E2E: пожаловаться → запись в complaints"
       ],
-      "dependencies": ["TASK-032", "TASK-033", "TASK-040"],
+      "dependencies": [
+        "TASK-032",
+        "TASK-033",
+        "TASK-040"
+      ],
       "status": "pending"
     },
     {
@@ -1103,7 +1226,11 @@
         "Unit: button → API call (мок)",
         "E2E: открыть deep-link → подтверждение → модалка"
       ],
-      "dependencies": ["TASK-028", "TASK-029", "TASK-030"],
+      "dependencies": [
+        "TASK-028",
+        "TASK-029",
+        "TASK-030"
+      ],
       "status": "pending"
     },
     {
@@ -1124,7 +1251,10 @@
         "Unit: admin видит вкладки",
         "E2E: ответ на тикет → user получает support_reply (мок notify)"
       ],
-      "dependencies": ["TASK-033", "TASK-032"],
+      "dependencies": [
+        "TASK-033",
+        "TASK-032"
+      ],
       "status": "pending"
     },
     {
@@ -1144,7 +1274,9 @@
         "Unit: themeChanged → переключение",
         "E2E mock: SDK light → fonts/bg light"
       ],
-      "dependencies": ["TASK-016"],
+      "dependencies": [
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -1165,7 +1297,9 @@
         "Unit: MainButton text меняется по странице",
         "E2E: hapticFeedback импульс на лайк (мок)"
       ],
-      "dependencies": ["TASK-016"],
+      "dependencies": [
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -1186,7 +1320,9 @@
         "Unit: Skeleton рендерится при isLoading",
         "Unit: Empty с правильным текстом"
       ],
-      "dependencies": ["TASK-016"],
+      "dependencies": [
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -1207,7 +1343,10 @@
         "Integration: 0 лайков 4-я в сутки → 403 daily_limit",
         "Integration: admin без ограничений"
       ],
-      "dependencies": ["TASK-014", "TASK-021"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-021"
+      ],
       "status": "pending"
     },
     {
@@ -1226,7 +1365,9 @@
         "Локально: добавить deprecated пакет → CI падает",
         "Allowlist: пакет в списке → CI проходит"
       ],
-      "dependencies": ["TASK-019"],
+      "dependencies": [
+        "TASK-019"
+      ],
       "status": "pending"
     },
     {
@@ -1245,7 +1386,9 @@
         "Локально: попытаться commit с фейк-токеном → отклоняется",
         "CI: пуш с секретом в истории → fail"
       ],
-      "dependencies": ["TASK-019"],
+      "dependencies": [
+        "TASK-019"
+      ],
       "status": "pending"
     },
     {
@@ -1264,7 +1407,11 @@
         "bun run test:security — все зелёные (≥9 таблиц проверены)",
         "Удалить policy на любой таблице → тест краснеет"
       ],
-      "dependencies": ["TASK-008", "TASK-006", "TASK-007"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-006",
+        "TASK-007"
+      ],
       "status": "pending"
     },
     {
@@ -1283,7 +1430,9 @@
       "test_steps": [
         "bun run test:security — все 5 кейсов зелёные"
       ],
-      "dependencies": ["TASK-011"],
+      "dependencies": [
+        "TASK-011"
+      ],
       "status": "pending"
     },
     {
@@ -1304,7 +1453,9 @@
         "Edit файла → автоматом lint",
         "Stop сессии → fast test suite"
       ],
-      "dependencies": ["TASK-002"],
+      "dependencies": [
+        "TASK-002"
+      ],
       "status": "pending"
     },
     {
@@ -1323,7 +1474,10 @@
         "bun run db:reset — успех, чистая БД с сидами",
         "NODE_ENV=production bun run db:reset → отказ"
       ],
-      "dependencies": ["TASK-005", "TASK-008"],
+      "dependencies": [
+        "TASK-005",
+        "TASK-008"
+      ],
       "status": "pending"
     },
     {
@@ -1344,7 +1498,13 @@
         "bun run test:e2e tests/e2e/full-cycle.spec.ts — зелёный",
         "Запуск с docker compose up postgres + apps/api dev"
       ],
-      "dependencies": ["TASK-039", "TASK-041", "TASK-044", "TASK-048", "TASK-029"],
+      "dependencies": [
+        "TASK-039",
+        "TASK-041",
+        "TASK-044",
+        "TASK-048",
+        "TASK-029"
+      ],
       "status": "pending"
     },
     {
@@ -1368,7 +1528,9 @@
         "bash scripts/restore-test.sh последний-файл — Postgres временный поднимается, smoke зелёный",
         "Manual cron schedule check"
       ],
-      "dependencies": ["TASK-005"],
+      "dependencies": [
+        "TASK-005"
+      ],
       "status": "pending"
     },
     {
@@ -1396,7 +1558,11 @@
         "curl https://api.<staging-domain>/health → 200; https://app.<staging-domain>/ → 200",
         "Внутренний postgres недоступен снаружи docker network"
       ],
-      "dependencies": ["TASK-019", "TASK-061", "TASK-099"],
+      "dependencies": [
+        "TASK-019",
+        "TASK-061",
+        "TASK-099"
+      ],
       "status": "pending"
     },
     {
@@ -1437,7 +1603,10 @@
         "Integration: то же для csrf_token",
         "Grep по коду — нет SameSite=Lax в src"
       ],
-      "dependencies": ["TASK-011", "TASK-025"],
+      "dependencies": [
+        "TASK-011",
+        "TASK-025"
+      ],
       "status": "pending"
     },
     {
@@ -1457,7 +1626,9 @@
         "Integration: GET /health → проверить значение Content-Security-Policy header строкой",
         "При удалении любой нужной директивы тест краснеет"
       ],
-      "dependencies": ["TASK-024"],
+      "dependencies": [
+        "TASK-024"
+      ],
       "status": "pending"
     },
     {
@@ -1478,7 +1649,10 @@
         "Integration: повторный refresh старым token → 401 (revoked)",
         "Integration: api запрос с access typ=refresh → 401"
       ],
-      "dependencies": ["TASK-011", "TASK-012"],
+      "dependencies": [
+        "TASK-011",
+        "TASK-012"
+      ],
       "status": "pending"
     },
     {
@@ -1496,7 +1670,9 @@
         "Integration: logout → cookies очищены, refresh заблокирован",
         "Unit (web): нажатие 'Выйти' вызывает API + очистка zustand store"
       ],
-      "dependencies": ["TASK-066"],
+      "dependencies": [
+        "TASK-066"
+      ],
       "status": "pending"
     },
     {
@@ -1515,7 +1691,9 @@
         "Integration: 2 жалобы от A на B в разных неделях → обе 201",
         "Integration: жалоба с target_ride_id=NULL дубль → 409 (COALESCE)"
       ],
-      "dependencies": ["TASK-008"],
+      "dependencies": [
+        "TASK-008"
+      ],
       "status": "pending"
     },
     {
@@ -1537,7 +1715,10 @@
         "Integration: повторный POST от того же пассажира → 409",
         "Integration: после ride.status='cancelled' → 409"
       ],
-      "dependencies": ["TASK-014", "TASK-007"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-007"
+      ],
       "status": "pending"
     },
     {
@@ -1558,7 +1739,10 @@
         "Integration: passenger cancel accepted-request → seats_taken возвращён",
         "Integration: чужой driver accept → 403"
       ],
-      "dependencies": ["TASK-069", "TASK-034"],
+      "dependencies": [
+        "TASK-069",
+        "TASK-034"
+      ],
       "status": "pending"
     },
     {
@@ -1581,7 +1765,10 @@
         "Integration: после departure_at → 410",
         "Integration: seats_total=1 при seats_taken=2 → 422"
       ],
-      "dependencies": ["TASK-014", "TASK-070"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-070"
+      ],
       "status": "pending"
     },
     {
@@ -1602,7 +1789,10 @@
         "Integration: чужой → 403",
         "Integration: 4-я отмена за день — audit_log запись + admin alert"
       ],
-      "dependencies": ["TASK-014", "TASK-070"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-070"
+      ],
       "status": "pending"
     },
     {
@@ -1620,7 +1810,10 @@
         "Integration: вернёт мой профиль с stats",
         "Integration: phone_enc/apt_number_enc не в response"
       ],
-      "dependencies": ["TASK-022", "TASK-013"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -1638,7 +1831,10 @@
         "Integration: чужой профиль — без приватных полей",
         "Integration: banned юзер → 404"
       ],
-      "dependencies": ["TASK-022", "TASK-013"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-013"
+      ],
       "status": "pending"
     },
     {
@@ -1659,7 +1855,10 @@
         "Integration: чужой → 403 (RLS)",
         "Integration: phone сохранён зашифрованно"
       ],
-      "dependencies": ["TASK-020", "TASK-023"],
+      "dependencies": [
+        "TASK-020",
+        "TASK-023"
+      ],
       "status": "pending"
     },
     {
@@ -1681,7 +1880,10 @@
         "Integration: после delete API доступ → 401 (refresh revoked)",
         "Integration: rides juzera = cancelled"
       ],
-      "dependencies": ["TASK-067", "TASK-072"],
+      "dependencies": [
+        "TASK-067",
+        "TASK-072"
+      ],
       "status": "pending"
     },
     {
@@ -1699,7 +1901,9 @@
         "Integration: 3 шаблона → 3 в response",
         "Integration: active_to прошедшая дата → не возвращается"
       ],
-      "dependencies": ["TASK-036"],
+      "dependencies": [
+        "TASK-036"
+      ],
       "status": "pending"
     },
     {
@@ -1720,7 +1924,9 @@
         "Integration: OPTIONS preflight с правильным Origin → 204 + headers",
         "Integration: Origin=https://evil.com → no Allow-Origin"
       ],
-      "dependencies": ["TASK-009"],
+      "dependencies": [
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -1739,7 +1945,10 @@
         "Integration: запрос с X-Forwarded-For: 1.2.3.4 от trusted proxy → audit_log.ip='1.2.3.4'",
         "Integration: тот же header от untrusted IP → audit_log.ip=untrusted-IP (не доверяет)"
       ],
-      "dependencies": ["TASK-013", "TASK-023"],
+      "dependencies": [
+        "TASK-013",
+        "TASK-023"
+      ],
       "status": "pending"
     },
     {
@@ -1759,7 +1968,10 @@
         "Integration: 11-й запрос с одного IP за минуту → 429",
         "Integration: разные IP — независимые счётчики"
       ],
-      "dependencies": ["TASK-013", "TASK-079"],
+      "dependencies": [
+        "TASK-013",
+        "TASK-079"
+      ],
       "status": "pending"
     },
     {
@@ -1779,7 +1991,10 @@
         "Integration: невалидный POSTGRES_URL → exit 1",
         "Unit: zod errors понятные"
       ],
-      "dependencies": ["TASK-003", "TASK-009"],
+      "dependencies": [
+        "TASK-003",
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -1797,7 +2012,9 @@
         "Unit: log объект с authorization header → field='[REDACTED]'",
         "Integration: POST /auth/telegram → access logs не содержат initData строку"
       ],
-      "dependencies": ["TASK-009"],
+      "dependencies": [
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -1816,7 +2033,9 @@
         "Integration: запрос с X-Request-ID:abc → response с тем же ID, в логах requestId=abc",
         "Integration: без header → генерится uuid"
       ],
-      "dependencies": ["TASK-082"],
+      "dependencies": [
+        "TASK-082"
+      ],
       "status": "pending"
     },
     {
@@ -1836,7 +2055,12 @@
         "bun run test:security middleware-stack — зелёный",
         "Удалить identity-guard из любого POST → тест краснеет"
       ],
-      "dependencies": ["TASK-014", "TASK-023", "TASK-025", "TASK-026"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-023",
+        "TASK-025",
+        "TASK-026"
+      ],
       "status": "pending"
     },
     {
@@ -1856,7 +2080,9 @@
         "bun run test:security seats-race — зелёный",
         "Удалить FOR UPDATE / atomic UPDATE → тест краснеет"
       ],
-      "dependencies": ["TASK-069"],
+      "dependencies": [
+        "TASK-069"
+      ],
       "status": "pending"
     },
     {
@@ -1875,7 +2101,9 @@
         "bun run test:security likes-race — зелёный",
         "Удалить lock из триггера → тест краснеет с lost update"
       ],
-      "dependencies": ["TASK-021"],
+      "dependencies": [
+        "TASK-021"
+      ],
       "status": "pending"
     },
     {
@@ -1893,7 +2121,9 @@
         "Integration: вставить expired nonce → запустить worker → удалён",
         "Integration: 2 параллельных запуска — только 1 выполняет (advisory lock)"
       ],
-      "dependencies": ["TASK-011"],
+      "dependencies": [
+        "TASK-011"
+      ],
       "status": "pending"
     },
     {
@@ -1911,7 +2141,9 @@
         "Integration: партиции созданы за 3 месяца",
         "Integration: симуляция старой партиции → дропается"
       ],
-      "dependencies": ["TASK-023"],
+      "dependencies": [
+        "TASK-023"
+      ],
       "status": "pending"
     },
     {
@@ -1929,7 +2161,12 @@
         "Integration: 2 экземпляра cron worker → MV refresh выполнен ровно 1 раз",
         "Integration: lock не удерживается между запусками"
       ],
-      "dependencies": ["TASK-022", "TASK-037", "TASK-087", "TASK-088"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-037",
+        "TASK-087",
+        "TASK-088"
+      ],
       "status": "pending"
     },
     {
@@ -1947,7 +2184,10 @@
         "Integration: kill DB connection → reconnect в течение 30s",
         "Integration: после reconnect — следующий NOTIFY обработан"
       ],
-      "dependencies": ["TASK-034", "TASK-038"],
+      "dependencies": [
+        "TASK-034",
+        "TASK-038"
+      ],
       "status": "pending"
     },
     {
@@ -1965,7 +2205,10 @@
         "Integration: UPDATE rides → updated_at обновлён до now()",
         "Integration: explicit SET updated_at='2020-01-01' игнорируется (триггер перезапишет)"
       ],
-      "dependencies": ["TASK-007", "TASK-008"],
+      "dependencies": [
+        "TASK-007",
+        "TASK-008"
+      ],
       "status": "pending"
     },
     {
@@ -1985,7 +2228,10 @@
         "Integration: GET /api/geocode/search?q=ЖК Царёво → результаты",
         "Integration: 2 req/sec → 2-й 429"
       ],
-      "dependencies": ["TASK-013", "TASK-079"],
+      "dependencies": [
+        "TASK-013",
+        "TASK-079"
+      ],
       "status": "pending"
     },
     {
@@ -2004,7 +2250,9 @@
         "Integration: db:seed → admin tg_id получает role=admin",
         "Integration: повторный seed — idempotent"
       ],
-      "dependencies": ["TASK-059"],
+      "dependencies": [
+        "TASK-059"
+      ],
       "status": "pending"
     },
     {
@@ -2043,7 +2291,10 @@
         "Unit: рендерит markdown",
         "E2E: переход с onboarding → /privacy → возврат"
       ],
-      "dependencies": ["TASK-094", "TASK-044"],
+      "dependencies": [
+        "TASK-094",
+        "TASK-044"
+      ],
       "status": "pending"
     },
     {
@@ -2062,7 +2313,9 @@
         "Локально: setup-dev-tls.sh + bun run dev:web → https://localhost:5173 без warning",
         "Curl https://localhost:3000/health → 200 с валидным TLS"
       ],
-      "dependencies": ["TASK-016"],
+      "dependencies": [
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -2080,7 +2333,9 @@
         "Manual: dependabot создаёт PR на устаревший пакет в течение недели",
         "Файл валидный yaml"
       ],
-      "dependencies": ["TASK-019"],
+      "dependencies": [
+        "TASK-019"
+      ],
       "status": "pending"
     },
     {
@@ -2100,7 +2355,9 @@
         "Integration: throw в handler → запись в error_log",
         "Integration: PII не попадает в error payload"
       ],
-      "dependencies": ["TASK-082"],
+      "dependencies": [
+        "TASK-082"
+      ],
       "status": "pending"
     },
     {
@@ -2121,7 +2378,9 @@
         "docker run web-server → GET / → index.html с кэшем",
         "GET /unknown-route → index.html (SPA fallback)"
       ],
-      "dependencies": ["TASK-016"],
+      "dependencies": [
+        "TASK-016"
+      ],
       "status": "pending"
     },
     {
@@ -2139,7 +2398,10 @@
         "Integration: is_banned=true → POST /api/rides → 403",
         "Unit (web): 403 banned → BannedScreen рендерится"
       ],
-      "dependencies": ["TASK-014", "TASK-033"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-033"
+      ],
       "status": "pending"
     },
     {
@@ -2159,7 +2421,9 @@
         "Unit: pool.options правильные",
         "Integration: withTx REPEATABLE READ — конкурирующие запросы получают serialization_failure корректно"
       ],
-      "dependencies": ["TASK-009"],
+      "dependencies": [
+        "TASK-009"
+      ],
       "status": "pending"
     },
     {
@@ -2177,7 +2441,10 @@
         "Integration: то же поведение что было в TASK-014 (4-я поездка от безлайкового → 403)",
         "Code review: handler TASK-014 без anti-bot logic"
       ],
-      "dependencies": ["TASK-053", "TASK-084"],
+      "dependencies": [
+        "TASK-053",
+        "TASK-084"
+      ],
       "status": "pending"
     },
     {
@@ -2213,7 +2480,9 @@
         "Unit: navigate /xxx → NotFound",
         "Unit: navigator.onLine=false → баннер"
       ],
-      "dependencies": ["TASK-052"],
+      "dependencies": [
+        "TASK-052"
+      ],
       "status": "pending"
     },
     {
@@ -2233,7 +2502,11 @@
         "E2E: logout → /login",
         "E2E: delete account → 'УДАЛИТЬ' → API + logout"
       ],
-      "dependencies": ["TASK-067", "TASK-076", "TASK-095"],
+      "dependencies": [
+        "TASK-067",
+        "TASK-076",
+        "TASK-095"
+      ],
       "status": "pending"
     },
     {
@@ -2253,7 +2526,17 @@
         "Все упомянутые TASK-IDs существуют",
         "Грep по докам не находит auth.uid() / auth.jwt() / Supabase / Cloudflare Pages / Fly.io"
       ],
-      "dependencies": ["TASK-114", "TASK-117", "TASK-123", "TASK-126", "TASK-127", "TASK-128", "TASK-129", "TASK-130", "TASK-132"],
+      "dependencies": [
+        "TASK-114",
+        "TASK-117",
+        "TASK-123",
+        "TASK-126",
+        "TASK-127",
+        "TASK-128",
+        "TASK-129",
+        "TASK-130",
+        "TASK-132"
+      ],
       "status": "pending"
     },
     {
@@ -2277,7 +2560,11 @@
         "Integration: /start → sendMessage вызвана (мок)",
         "Integration: дубль update_id → skip"
       ],
-      "dependencies": ["TASK-008", "TASK-082", "TASK-081"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-082",
+        "TASK-081"
+      ],
       "status": "pending"
     },
     {
@@ -2300,7 +2587,11 @@
         "Integration: cancelled rides не трогаются",
         "Integration: 2 параллельных запуска — каждая транзиция ровно 1 раз (advisory lock)"
       ],
-      "dependencies": ["TASK-022", "TASK-089", "TASK-027"],
+      "dependencies": [
+        "TASK-022",
+        "TASK-089",
+        "TASK-027"
+      ],
       "status": "pending"
     },
     {
@@ -2322,7 +2613,12 @@
         "Integration: уже notified — повторно не шлёт",
         "Integration: marked_at=48 часов → не шлёт (окно прошло, см. TASK-028 410 Gone)"
       ],
-      "dependencies": ["TASK-027", "TASK-028", "TASK-034", "TASK-089"],
+      "dependencies": [
+        "TASK-027",
+        "TASK-028",
+        "TASK-034",
+        "TASK-089"
+      ],
       "status": "pending"
     },
     {
@@ -2343,7 +2639,9 @@
         "Integration: после 5 мин — повторная notification отправляется",
         "Integration: 429 → exponential backoff retry, метрика retries_count"
       ],
-      "dependencies": ["TASK-034"],
+      "dependencies": [
+        "TASK-034"
+      ],
       "status": "pending"
     },
     {
@@ -2364,7 +2662,12 @@
         "Изменение схемы в packages/shared без обновления snapshot → красный",
         "Backend handler принимает поле, отсутствующее в shared schema → красный"
       ],
-      "dependencies": ["TASK-014", "TASK-015", "TASK-029", "TASK-030"],
+      "dependencies": [
+        "TASK-014",
+        "TASK-015",
+        "TASK-029",
+        "TASK-030"
+      ],
       "status": "pending"
     },
     {
@@ -2384,7 +2687,11 @@
         "Integration: DELETE одного → пересчёт",
         "Integration: 100 concurrent INSERT → reviews_count=100"
       ],
-      "dependencies": ["TASK-008", "TASK-030", "TASK-021"],
+      "dependencies": [
+        "TASK-008",
+        "TASK-030",
+        "TASK-021"
+      ],
       "status": "pending"
     },
     {
@@ -2407,7 +2714,11 @@
         "Integration: симулировать 5x 5xx от TG mock → circuit open → следующий push в notification_log status=deferred",
         "Unit: withRetry — exponential backoff, MAX_ATTEMPTS соблюдается"
       ],
-      "dependencies": ["TASK-009", "TASK-034", "TASK-101"],
+      "dependencies": [
+        "TASK-009",
+        "TASK-034",
+        "TASK-101"
+      ],
       "status": "pending"
     },
     {
@@ -2427,7 +2738,13 @@
         "bun run test:security rls-identity-leak — identity не утекает между транзакциями pool",
         "Удалить set_config local=true → тест краснеет (identity бы утёк)"
       ],
-      "dependencies": ["TASK-005", "TASK-006", "TASK-007", "TASK-008", "TASK-101"],
+      "dependencies": [
+        "TASK-005",
+        "TASK-006",
+        "TASK-007",
+        "TASK-008",
+        "TASK-101"
+      ],
       "status": "pending"
     },
     {
@@ -2451,7 +2768,11 @@
         "Симулировать broken /health endpoint в коде → smoke red → rollback запущен → admin TG получает alert",
         "Trivy на заведомо vulnerable image → fail"
       ],
-      "dependencies": ["TASK-019", "TASK-062", "TASK-099"],
+      "dependencies": [
+        "TASK-019",
+        "TASK-062",
+        "TASK-099"
+      ],
       "status": "pending"
     },
     {
@@ -2477,7 +2798,10 @@
         "Сломать миграцию намеренно → deploy fail на шаге 3, контейнеры не перезапущены, pre-deploy backup есть",
         "ShellCheck pass на скриптах"
       ],
-      "dependencies": ["TASK-061", "TASK-062"],
+      "dependencies": [
+        "TASK-061",
+        "TASK-062"
+      ],
       "status": "pending"
     },
     {
@@ -2496,7 +2820,10 @@
         "Unit: photoUrl=невалид → onError → identicon",
         "Unit: одинаковый tg_id → одинаковый identicon"
       ],
-      "dependencies": ["TASK-016", "TASK-050"],
+      "dependencies": [
+        "TASK-016",
+        "TASK-050"
+      ],
       "status": "pending"
     },
     {
@@ -2518,7 +2845,10 @@
         "Manual: docker compose --profile observability up -d → grafana доступна, prometheus scrape работает",
         "Симулировать 5xx errors → AlertRule сработал → admin получил TG-alert"
       ],
-      "dependencies": ["TASK-062", "TASK-113"],
+      "dependencies": [
+        "TASK-062",
+        "TASK-113"
+      ],
       "status": "pending"
     },
     {
@@ -2540,7 +2870,11 @@
         "Manual rehearsal: используя только runbook, восстановить БД из вчерашнего бэкапа за <30 мин",
         "Manual: симулировать сценарий 'high error rate' — пошагово отработать on-call.md"
       ],
-      "dependencies": ["TASK-061", "TASK-115", "TASK-116"],
+      "dependencies": [
+        "TASK-061",
+        "TASK-115",
+        "TASK-116"
+      ],
       "status": "pending"
     },
     {
@@ -2561,7 +2895,10 @@
         "psql от app_user: SELECT users — ОК (RLS работает с app.current_user_id)",
         "Postgres restart — параметры применились (SHOW max_connections)"
       ],
-      "dependencies": ["TASK-101", "TASK-062"],
+      "dependencies": [
+        "TASK-101",
+        "TASK-062"
+      ],
       "status": "pending"
     },
     {
@@ -2583,7 +2920,10 @@
         "Введите CRITICAL CVE в lockfile → Trivy fail",
         "Снизьте a11y → Lighthouse fail"
       ],
-      "dependencies": ["TASK-019", "TASK-115"],
+      "dependencies": [
+        "TASK-019",
+        "TASK-115"
+      ],
       "status": "pending"
     },
     {
@@ -2604,7 +2944,10 @@
         "Реальный @BotFather → отправка my_chat_member kick → users.notify_disabled=true в БД",
         "Заголовок X-Telegram-Bot-Api-Secret-Token подменён → 401"
       ],
-      "dependencies": ["TASK-107", "TASK-115"],
+      "dependencies": [
+        "TASK-107",
+        "TASK-115"
+      ],
       "status": "pending"
     },
     {
@@ -2626,7 +2969,12 @@
         "bun run typecheck — зелёный",
         "Smoke: web/tests/i18n/load.spec.ts грузит ru-bundle, t('common.cancel') === 'Отмена'"
       ],
-      "dependencies": ["TASK-039", "TASK-040", "TASK-041", "TASK-044"],
+      "dependencies": [
+        "TASK-039",
+        "TASK-040",
+        "TASK-041",
+        "TASK-044"
+      ],
       "status": "pending"
     },
     {
@@ -2645,7 +2993,10 @@
         "Сделать 1k запросов → файл .log существует, JSON валидный, secrets='[REDACTED]'",
         "Если profile logging up — Loki принимает логи, в Grafana видны"
       ],
-      "dependencies": ["TASK-082", "TASK-118"],
+      "dependencies": [
+        "TASK-082",
+        "TASK-118"
+      ],
       "status": "pending"
     },
     {
@@ -2664,7 +3015,19 @@
         "Все пункты pre-launch checklist выполнены и помечены ✅ с evidence (test run id / dashboard screenshot path / timestamp)",
         "go-live.md протестирован на staging-домене"
       ],
-      "dependencies": ["TASK-061", "TASK-062", "TASK-115", "TASK-116", "TASK-118", "TASK-119", "TASK-120", "TASK-121", "TASK-122", "TASK-060", "TASK-131"],
+      "dependencies": [
+        "TASK-061",
+        "TASK-062",
+        "TASK-115",
+        "TASK-116",
+        "TASK-118",
+        "TASK-119",
+        "TASK-120",
+        "TASK-121",
+        "TASK-122",
+        "TASK-060",
+        "TASK-131"
+      ],
       "status": "pending"
     },
     {
@@ -2686,7 +3049,13 @@
         "Unit-тест: render каждой страницы → getByRole('button') возвращает все кнопки с accessibleName",
         "Sentinel: web/tests/a11y/semantic.spec.ts проверяет landmark/heading-инварианты"
       ],
-      "dependencies": ["TASK-039", "TASK-040", "TASK-041", "TASK-044", "TASK-123"],
+      "dependencies": [
+        "TASK-039",
+        "TASK-040",
+        "TASK-041",
+        "TASK-044",
+        "TASK-123"
+      ],
       "status": "pending"
     },
     {
@@ -2708,7 +3077,10 @@
         "E2E: Playwright keyboard-only прохождение онбординга → создания поездки → лайка отзыва без мыши",
         "Manual: Lighthouse Accessibility ≥95 на /rides и /profile/me"
       ],
-      "dependencies": ["TASK-123", "TASK-126"],
+      "dependencies": [
+        "TASK-123",
+        "TASK-126"
+      ],
       "status": "pending"
     },
     {
@@ -2728,7 +3100,11 @@
         "bun run test:a11y — все 6 flows зелёные",
         "Намеренно сломать contrast в одном компоненте → axe ловит → CI красный (доказательство sentinel работает)"
       ],
-      "dependencies": ["TASK-123", "TASK-126", "TASK-127"],
+      "dependencies": [
+        "TASK-123",
+        "TASK-126",
+        "TASK-127"
+      ],
       "status": "pending"
     },
     {
@@ -2751,7 +3127,11 @@
         "Запуск дважды подряд — второй прогон не падает на дубликатах (rollback или truncate работают)",
         "Параллельный запуск 4 worker'ов — нет race на shared schema"
       ],
-      "dependencies": ["TASK-004", "TASK-005", "TASK-101"],
+      "dependencies": [
+        "TASK-004",
+        "TASK-005",
+        "TASK-101"
+      ],
       "status": "pending"
     },
     {
@@ -2773,7 +3153,13 @@
         "bun run test:security — sanitize + sql-injection зелёные",
         "Намеренно сломать (заменить parametrized на template literal) → sql-injection.spec падает → доказательство sentinel"
       ],
-      "dependencies": ["TASK-003", "TASK-014", "TASK-015", "TASK-021", "TASK-129"],
+      "dependencies": [
+        "TASK-003",
+        "TASK-014",
+        "TASK-015",
+        "TASK-021",
+        "TASK-129"
+      ],
       "status": "pending"
     },
     {
@@ -2795,7 +3181,11 @@
         "Сломать DNS (поменять ${DOMAIN} на несуществующий) → exit !=0, понятный hint",
         "Удалить .env.prod на сервере → exit !=0"
       ],
-      "dependencies": ["TASK-062", "TASK-115", "TASK-116"],
+      "dependencies": [
+        "TASK-062",
+        "TASK-115",
+        "TASK-116"
+      ],
       "status": "pending"
     },
     {
@@ -2816,7 +3206,9 @@
         "Открыть PR → секции template применяются автоматически",
         "bun run test:docs — sentinel зелёный"
       ],
-      "dependencies": ["TASK-001"],
+      "dependencies": [
+        "TASK-001"
+      ],
       "status": "pending"
     }
   ]

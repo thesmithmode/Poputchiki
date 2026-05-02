@@ -33,4 +33,22 @@
 
 ## История
 
-<!-- Записи добавляются ниже в хронологическом порядке -->
+## [TASK-001] Bun monorepo + Biome + tsconfig.base
+**Дата:** 2026-05-02 (UTC)
+**Статус:** done
+
+### Что сделано
+- package.json root с workspaces: apps/*, packages/*, web
+- biome.json lint+format (ignore: docs, saas, tasks.json, node_modules)
+- tsconfig.base.json strict ES2022, exclude saas/ docs/
+- package.json + tsconfig.json для всех 5 apps + packages/shared + web
+- packages/shared/src/index.ts stub (заполнится в TASK-003)
+- node_modules/ добавлен в .gitignore (платформо-специфичные бинарники)
+
+### Тесты
+- [x] bun install — 6 packages, OK
+- [x] bun run lint — 18 files checked, 0 errors
+- [x] bun run typecheck — OK (exit 0)
+- Coverage: N/A (инфра задача)
+
+---

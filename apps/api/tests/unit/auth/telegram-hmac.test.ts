@@ -2,7 +2,7 @@
  * Unit tests for Telegram initData HMAC verifier.
  * Tests run without DB — pure crypto logic.
  */
-import { createHmac } from "crypto";
+import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { TelegramAuthError, verifyInitData } from "../../../src/auth/verifyInitData";
 
@@ -28,11 +28,9 @@ function buildInitData(
     ...overrides,
   };
   const hash = hashOverride ?? computeHash(fields);
-  return (
-    Object.entries(fields)
-      .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
-      .join("&") + `&hash=${hash}`
-  );
+  return `${Object.entries(fields)
+    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+    .join("&")}&hash=${hash}`;
 }
 
 const fixedClock = (nowSeconds: number) => ({ now: () => nowSeconds });
@@ -78,8 +76,7 @@ describe("verifyInitData — happy path", () => {
 
 describe("verifyInitData — invalid hash", () => {
   it("throws TelegramAuthError when hash is missing", () => {
-    const initData =
-      `auth_date=${TEST_AUTH_DATE}&user=${encodeURIComponent(JSON.stringify(TEST_USER))}`;
+    const initData = `auth_date=${TEST_AUTH_DATE}&user=${encodeURIComponent(JSON.stringify(TEST_USER))}`;
     expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
       TelegramAuthError,
     );
@@ -186,8 +183,7 @@ describe("verifyInitData — malformed input", () => {
       user: "{not-json}",
     };
     const hash = computeHash(fields);
-    const initData =
-      `auth_date=${TEST_AUTH_DATE}&user=${encodeURIComponent("{not-json}")}&hash=${hash}`;
+    const initData = `auth_date=${TEST_AUTH_DATE}&user=${encodeURIComponent("{not-json}")}&hash=${hash}`;
     expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
       "invalid user json",
     );

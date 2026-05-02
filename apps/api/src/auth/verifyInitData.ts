@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 export class TelegramAuthError extends Error {
   constructor(public readonly reason: string) {

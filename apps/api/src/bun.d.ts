@@ -39,6 +39,10 @@ declare var Buffer: {
 };
 interface Buffer extends Uint8Array {}
 
+// Timer globals — available in Bun runtime (Node.js + browser compatible).
+declare function setTimeout(fn: (...args: unknown[]) => void, ms?: number): unknown;
+declare function clearTimeout(id: unknown): void;
+
 // Web Crypto API global — available in Bun runtime.
 // biome-ignore lint/style/noVar: ambient global declaration requires var, not let
 declare var crypto: {

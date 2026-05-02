@@ -15,7 +15,15 @@
       "Bash(export PATH=\"$HOME/.bun/bin:$PATH\")",
       "Bash(python -c ' *)",
       "Bash(bun install *)",
-      "Bash(bun run *)"
+      "Bash(bun run *)",
+      "Bash(python *)",
+      "Bash(bun add *)",
+      "Bash(node scripts/check-coverage.js)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(export POSTGRES_USER=$\\(grep POSTGRES_USER .env)",
+      "Bash(gh run *)",
+      "Bash(git add *)",
+      "Bash(git rm *)"
     ]
   },
   "hooks": {

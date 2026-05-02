@@ -27,7 +27,6 @@ const TEST_UUID = "00000000-0000-4000-a000-000000000001";
 beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
 
-  // Seed one user for isolation tests — must set identity (FORCE RLS applies to all)
   await sql.begin(async (tx) => {
     await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
     await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
@@ -50,17 +49,13 @@ afterAll(async () => {
 
 describe("RLS: deny-by-default (no identity set)", () => {
   it("SELECT without set_config returns 0 rows", async () => {
-    const rows = await sql.begin(async (tx) => {
-      return tx`SELECT * FROM users`;
-    });
+    const rows = await sql.begin((tx) => tx`SELECT * FROM users`);
     expect(rows.length).toBe(0);
   });
 
   it("app.current_user_id() returns NULL without set_config", async () => {
-    const [row] = await sql.begin(async (tx) => {
-      return tx`SELECT app.current_user_id() AS uid`;
-    });
-    expect(row!.uid).toBeNull();
+    const rows = await sql.begin((tx) => tx`SELECT app.current_user_id() AS uid`);
+    expect(rows[0]?.uid).toBeNull();
   });
 });
 
@@ -73,27 +68,22 @@ describe("RLS: identity isolation with set_config", () => {
       return tx`SELECT id FROM users WHERE id = ${TEST_UUID}`;
     });
     expect(rows.length).toBe(1);
-    expect(rows[0]!.id).toBe(TEST_UUID);
+    expect(rows[0]?.id).toBe(TEST_UUID);
   });
 
   it("GUC does not leak between transactions", async () => {
-    // First tx sets GUC
     await sql.begin(async (tx) => {
       await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
       return tx`SELECT id FROM users WHERE id = ${TEST_UUID}`;
     });
-
-    // Second tx: no set_config — must see 0 rows
-    const rows = await sql.begin(async (tx) => {
-      return tx`SELECT id FROM users`;
-    });
+    const rows = await sql.begin((tx) => tx`SELECT id FROM users`);
     expect(rows.length).toBe(0);
   });
 
   it("UPDATE without identity returns 0 rows updated", async () => {
-    const result = await sql.begin(async (tx) => {
-      return tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`;
-    });
+    const result = await sql.begin((tx) =>
+      tx`UPDATE users SET display_name = 'Hacker' WHERE id = ${TEST_UUID}`,
+    );
     expect(result.count).toBe(0);
   });
 
@@ -109,26 +99,26 @@ describe("RLS: identity isolation with set_config", () => {
 
 describe("RLS: app identity functions", () => {
   it("app.current_user_id() returns set uuid", async () => {
-    const [row] = await sql.begin(async (tx) => {
+    const rows = await sql.begin(async (tx) => {
       await tx`SELECT set_config('app.current_user_id', ${TEST_UUID}, true)`;
       return tx`SELECT app.current_user_id() AS uid`;
     });
-    expect(row!.uid).toBe(TEST_UUID);
+    expect(rows[0]?.uid).toBe(TEST_UUID);
   });
 
   it("app.is_admin() returns false for role=user", async () => {
-    const [row] = await sql.begin(async (tx) => {
+    const rows = await sql.begin(async (tx) => {
       await tx`SELECT set_config('app.current_user_role', 'user', true)`;
       return tx`SELECT app.is_admin() AS admin`;
     });
-    expect(row!.admin).toBe(false);
+    expect(rows[0]?.admin).toBe(false);
   });
 
   it("app.is_admin() returns true for role=admin", async () => {
-    const [row] = await sql.begin(async (tx) => {
+    const rows = await sql.begin(async (tx) => {
       await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
       return tx`SELECT app.is_admin() AS admin`;
     });
-    expect(row!.admin).toBe(true);
+    expect(rows[0]?.admin).toBe(true);
   });
 });

@@ -269,7 +269,8 @@
       "dependencies": [
         "TASK-007"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-02T07:13:49Z"
     },
     {
       "id": "TASK-009",
@@ -293,7 +294,8 @@
       "dependencies": [
         "TASK-002"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-02T07:13:49Z"
     },
     {
       "id": "TASK-010",

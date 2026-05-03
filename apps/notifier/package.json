@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "typecheck": "echo 'notifier: no sources yet, skip typecheck'",
+    "typecheck": "tsc --noEmit",
     "build": "echo 'notifier: no build step (bun runtime)'"
+  },
+  "dependencies": {
+    "postgres": "^3.4.9"
   }
 }

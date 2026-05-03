@@ -38,6 +38,9 @@
     "apps/notifier": {
       "name": "@poputchiki/notifier",
       "version": "0.1.0",
+      "dependencies": {
+        "postgres": "^3.4.9",
+      },
     },
     "apps/web-server": {
       "name": "@poputchiki/web-server",

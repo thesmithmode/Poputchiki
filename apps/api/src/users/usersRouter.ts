@@ -54,7 +54,6 @@ interface PublicRow {
   tg_username: string | null;
   display_name: string;
   avatar_url: string | null;
-  role: string;
   created_at: Date;
   rides_as_driver_completed: number | string | null;
   rides_as_passenger: number | string | null;
@@ -69,7 +68,6 @@ function shapePublic(r: PublicRow) {
     tg_username: r.tg_username,
     display_name: r.display_name,
     avatar_url: r.avatar_url,
-    role: r.role,
     created_at: toIso(r.created_at),
     stats: {
       rides_as_driver_completed: Number(r.rides_as_driver_completed ?? 0),
@@ -111,7 +109,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     const user = c.get("user" as never) as AppUser;
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<PublicRow[]>`
-        SELECT u.id, u.tg_username, u.display_name, u.avatar_url, u.role, u.created_at,
+        SELECT u.id, u.tg_username, u.display_name, u.avatar_url, u.created_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
                s.likes_received, s.avg_stars, s.reviews_count
         FROM users u

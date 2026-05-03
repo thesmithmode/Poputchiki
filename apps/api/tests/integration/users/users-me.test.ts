@@ -128,6 +128,7 @@ describe("GET /api/users/:id", () => {
     expect(body.display_name).toBe("Other User");
     expect(body.tg_username).toBe("other_user");
     expect(body).not.toHaveProperty("tg_id");
+    expect(body).not.toHaveProperty("role");
     expect(body).not.toHaveProperty("onboarded");
     expect(body).not.toHaveProperty("notify_disabled");
     expect(body).not.toHaveProperty("last_seen_at");

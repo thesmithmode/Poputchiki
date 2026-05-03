@@ -76,9 +76,20 @@ jobs:
         run: bun run test:integration
         continue-on-error: false
 
+      - name: Security tests
+        run: bun run test:security
+        continue-on-error: false
+
       - name: Dependency audit
-        run: bun audit
-        continue-on-error: true
+        run: bun audit --audit-level high
+        continue-on-error: false
+
+      - name: Secrets scan (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        continue-on-error: false
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

@@ -72,4 +72,37 @@ describe("secureHeadersMiddleware", () => {
     const h = await getHeaders();
     expect(h.get("permissions-policy")).toBeTruthy();
   });
+
+  // --- SPEC §11.1 full CSP sentinel ---
+
+  it("SENTINEL: img-src contains https://*.tile.openstreetmap.org", async () => {
+    const csp = (await getHeaders()).get("content-security-policy") ?? "";
+    expect(csp).toContain("https://*.tile.openstreetmap.org");
+  });
+
+  it("SENTINEL: img-src contains https://t.me", async () => {
+    const csp = (await getHeaders()).get("content-security-policy") ?? "";
+    expect(csp).toContain("https://t.me");
+  });
+
+  it("SENTINEL: connect-src contains https://nominatim.openstreetmap.org", async () => {
+    const csp = (await getHeaders()).get("content-security-policy") ?? "";
+    expect(csp).toContain("https://nominatim.openstreetmap.org");
+  });
+
+  it("SENTINEL: frame-ancestors contains https://web.telegram.org and https://*.telegram.org", async () => {
+    const csp = (await getHeaders()).get("content-security-policy") ?? "";
+    expect(csp).toContain("frame-ancestors https://web.telegram.org https://*.telegram.org");
+  });
+
+  it("SENTINEL: object-src 'none' and base-uri 'self'", async () => {
+    const csp = (await getHeaders()).get("content-security-policy") ?? "";
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("base-uri 'self'");
+  });
+
+  it("SENTINEL: font-src contains 'self' and data:", async () => {
+    const csp = (await getHeaders()).get("content-security-policy") ?? "";
+    expect(csp).toContain("font-src 'self' data:");
+  });
 });

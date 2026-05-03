@@ -10,7 +10,13 @@
     "build": "echo 'api: no build step (bun runtime)'"
   },
   "dependencies": {
+    "@poputchiki/shared": "workspace:*",
     "hono": "^4.12.16",
-    "postgres": "^3.4.9"
+    "pino": "^9.6.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.4.2"
+  },
+  "devDependencies": {
+    "@types/pino": "^7.0.5"
   }
 }

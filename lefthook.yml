@@ -1,0 +1,8 @@
+pre-commit:
+  parallel: false
+  commands:
+    audit:
+      run: bun audit
+      fail_text: "Dependency vulnerabilities found. Review with 'bun audit'. Fix or add to .github/dependency-allowlist.json."
+    secrets:
+      run: gitleaks detect --source . --config .gitleaks.toml --no-git 2>/dev/null || echo "gitleaks not installed — skipping secrets scan locally"

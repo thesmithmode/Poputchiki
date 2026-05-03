@@ -35,13 +35,29 @@ interface URLSearchParams {
 // Node.js Buffer — Bun is fully compatible.
 // biome-ignore lint/style/noVar: ambient global declaration requires var, not let
 declare var Buffer: {
+  from(data: string | Uint8Array): Buffer;
   from(str: string, encoding: string): Buffer;
 };
-interface Buffer extends Uint8Array {}
+interface Buffer extends Uint8Array {
+  toString(encoding?: string): string;
+}
+
+// Web encoding globals — available in Bun runtime.
+declare function btoa(data: string): string;
+declare function atob(data: string): string;
 
 // Timer globals — available in Bun runtime (Node.js + browser compatible).
 declare function setTimeout(fn: (...args: unknown[]) => void, ms?: number): unknown;
 declare function clearTimeout(id: unknown): void;
+
+// Node.js console — available in Bun runtime.
+// biome-ignore lint/style/noVar: ambient global declaration requires var, not let
+declare var console: {
+  log(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+};
 
 // Web Fetch API globals — available in Bun runtime.
 interface Headers {
@@ -63,6 +79,11 @@ declare module "node:crypto" {
     digest(): Buffer;
     digest(encoding: "hex"): string;
   }
+  class Hash {
+    update(data: string | Uint8Array): Hash;
+    digest(encoding: "hex"): string;
+  }
   function createHmac(algorithm: string, key: string | Uint8Array): Hmac;
+  function createHash(algorithm: string): Hash;
   function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean;
 }

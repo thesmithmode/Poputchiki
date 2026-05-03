@@ -1,4 +1,16 @@
 import { z } from "zod";
+import { sanitizeText } from "../sanitize/index.js";
+
+export const UserProfileInput = z.object({
+  display_name: z
+    .string()
+    .min(1)
+    .max(100)
+    .transform((s) => sanitizeText(s, 100)),
+  notify_disabled: z.boolean().optional(),
+});
+
+export type UserProfileInput = z.infer<typeof UserProfileInput>;
 
 export const UserDTO = z.object({
   id: z.string().uuid(),

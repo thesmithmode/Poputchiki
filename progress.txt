@@ -148,3 +148,229 @@
 - [x] CI зелёный
 
 ---
+
+## [TASK-101] Postgres connection pool + transaction isolation defaults
+**Дата:** 2026-05-02 22:27 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/db/pool.ts`: createPool (max=20, idle_timeout=20s, connect_timeout=5s), withTx(level, fn), withSerializable(fn), poolMetrics.snapshot()
+- `apps/api/src/db/index.ts`: ре-экспорт из pool.ts
+- `apps/api/src/app.ts`: GET /metrics endpoint → poolMetrics.snapshot()
+- `apps/api/src/index.ts`: переключён на createPool вместо прямого postgres({ max: 10 })
+
+### Тесты
+- [x] 7 unit-тестов: POOL_CONFIG значения, createPool lazy init, withTx/withSerializable isolation args, in_use increment/decrement, reset on throw
+- [x] 3 integration-теста: connectivity, REPEATABLE READ snapshot isolation, SERIALIZABLE return value
+- [x] Coverage: 100% functions, 98.93% statements, 96.96% branches — все пороги ≥95%
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-012] Identity-guard middleware + withIdentity DB helper
+**Дата:** 2026-05-02 22:34 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/identity-guard.ts`: identityGuard(jwtSecret) middleware — читает Authorization Bearer + cookie tg_uid, mismatch → 401 + очищает cookie, передаёт AppUser в контекст через c.set
+- `apps/api/src/db/with-identity.ts`: withIdentity(sql, user, fn) — устанавливает 3 GUC + SET LOCAL ROLE poputchiki_app; withSystem(sql, fn) — для bootstrap /auth/** без RLS
+- `apps/api/src/auth/authRouter.ts`: добавлен role в RETURNING + JWT payload (sub, uid, role, typ, iat, exp)
+- AppUser type экспортирован из identity-guard.ts для использования в route handlers
+
+### Тесты
+- [x] 13 unit-тестов identity-guard: missing creds, invalid JWT, wrong secret, typ=refresh, cookie mismatch + cookie clear, happy path, Bearer prefix-less, no role default
+- [x] 4 unit-теста with-identity/withSystem: GUC calls verified, return values, system bypass
+- [x] 3 integration-теста: withIdentity → RLS allows own row; без withIdentity → 0 rows; wrong user → 0 rows
+- [x] Coverage: 97.77% branches, 100% functions — все пороги ≥95%
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-013] Rate-limit middleware на основе rate_limit_buckets
+**Дата:** 2026-05-02 22:37 (UTC)
+**Статус:** done
+
+### Что сделано
+- `db/migrations/005_rate_limit_buckets.sql`: таблица rate_limit_buckets (key, window_start, count, PK), индекс по window_start, GRANT poputchiki_app
+- `apps/api/src/middleware/rate-limit.ts`: rateLimit(sql, opts?) — IP limit (X-Forwarded-For → X-Real-IP → "unknown"), user limit (если AppUser в контексте), атомарный INSERT ON CONFLICT UPDATE, 429 + Retry-After
+- Конфигурируемые лимиты (userLimit/ipLimit) для тестируемости; дефолты 100/1000
+
+### Тесты
+- [x] 8 unit-тестов: IP limit pass/fail, X-Forwarded-For parsing, X-Real-IP fallback, unknown fallback, user limit pass/fail, SQL call count (2=IP+user, 1=IP only)
+- [x] 3 integration-теста: first 2 pass/3rd → 429, independent counters per user, window reset
+- [x] Coverage: 95.16% branches global — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-014] POST /api/rides — создание поездки
+**Дата:** 2026-05-02 23:00 (UTC)
+**Статус:** done
+
+### Что сделано
+- `packages/shared/src/schemas/ride.ts`: добавлена `CreateRideInput` (Zod v4) с полями from/to/departure_at/seats/price/comment/template_id; refine: departure_at > now И ≤ +30 дней
+- `packages/api/package.json`: добавлена зависимость `@poputchiki/shared: workspace:*`
+- `apps/api/src/rides/ridesRouter.ts`: POST / с Zod-валидацией, withIdentity-транзакцией, anti-bot проверками, INSERT rides, аудит-логом через привилегированное соединение
+- `apps/api/src/app.ts`: wire-up — /api/* через identityGuard + rateLimit, mount /api/rides
+- `apps/api/src/index.ts`: передача JWT_SECRET в createApp
+
+### Anti-bot логика
+- Аккаунт <24h: max 1 активная поездка (status='active') → 403
+- Нет лайков: max 3 поездки за текущие сутки (date_trunc day) → 403
+- Оба check'а внутри withIdentity-транзакции (RLS контекст)
+
+### Тесты
+- [x] 8 unit-тестов: validation 422 (bad label/seats/departure past/>30d/negative price/non-JSON), 201 happy path, 403 antibot
+- [x] 6 integration-тестов: 201 + ride в БД + audit_log, 422 past date/seats=0, 403 new account 2nd ride, 403 no-likes 4th ride today, 401 без auth
+- [x] Coverage: 95.31% branches global — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-015] GET /api/rides — лента с фильтрами + cursor pagination
+**Дата:** 2026-05-02 23:15 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/rides/ridesRouter.ts`: GET / handler с Zod-валидацией query params (GetRidesQuery)
+- Query params: fromLat/Lng/radiusKm (bbox фильтр), fromAt/toAt, priceMax, seatsMin, trustMinAccountAgeDays, trustMinLikes, favoritesOnly, cursor
+- Cursor pagination: LIMIT 51 → если 51 результат, есть следующая страница; nextCursor = base64url(departure_at + id)
+- Trust-фильтры через JOIN users на стороне БД (trustMinAccountAgeDays, trustMinLikes)
+- favoritesOnly → подзапрос favorites WHERE user_id = app.current_user_id()
+- Geo bbox: latDelta = radiusKm/111, lngDelta = radiusKm/(111*cos(lat))
+- bun.d.ts обновлён: Buffer.from с 1 аргументом + toString(), btoa/atob globals
+- zod добавлен в apps/api/package.json зависимости
+
+### Тесты
+- [x] 6 unit-тестов: пустой результат, <50 rides без nextCursor, 51 rides → 50+nextCursor, cursor forwarded, invalid cursor → 400, bad radiusKm → 422
+- [x] 5 integration-тестов: page 1 = 50, page 2 cursor = 15 (из 65 total), non-overlapping pages, trustMinLikes фильтр, seatsMin фильтр
+- [x] Coverage: 95.31% branches — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-020] pgcrypto: шифрование phone/apt_number
+**Дата:** 2026-05-02 23:25 (UTC)
+**Статус:** done
+
+### Что сделано
+- `db/migrations/006_pgcrypto_pii.sql`: `app.encrypt_pii(text)→bytea` и `app.decrypt_user_pii(uuid)→TABLE(phone,apt_number)` — SECURITY DEFINER, ключ через `set_config('pgcrypto.key',...,true)`
+- `apps/api/src/db/crypto.ts`: `encryptPii(sql,plaintext,key)` и `decryptUserPii(sql,userId,key)` — принимают `Sql | TransactionSql`
+- `apps/api/src/db/index.ts`: экспорт crypto helpers
+- down migration: `006_pgcrypto_pii.down.sql`
+
+### Безопасность
+- `decrypt_user_pii` возвращает 0 rows если `app.current_user_id() != target_user_id` — ownership guard на уровне SQL
+- Ключ передаётся через `set_config` с флагом local=true, не утекает между транзакциями
+- Шифротекст хранится как `bytea` (не текст)
+
+### Тесты
+- [x] 4 unit-теста: encryptPii двойной вызов SQL / пустой результат, decryptUserPii двойной вызов / null при пустом
+- [x] 3 integration-теста: round-trip encrypt→store→decrypt, phone_enc — bytea не plaintext, чужой юзер → null (0 rows)
+- [x] Coverage: 95.58% branches — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-023] Audit log middleware
+**Дата:** 2026-05-02 23:35 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/audit-log.ts`: Hono middleware для POST/PUT/PATCH/DELETE
+- Записывает: user_id (из JWT контекста), action (METHOD + path), entity (из path), entity_id (UUID из path если есть), meta={ip, ua, payload_hash}
+- Не пишет при 4xx/5xx (проверка `c.res.status`)
+- Fire-and-forget: `.catch` логирует ошибку, не блокирует request
+- sha256 хэш тела через `node:crypto` createHash
+- `apps/api/src/app.ts`: auditLog middleware подключён к `/api/*` после identityGuard + rateLimit
+- `apps/api/src/bun.d.ts`: добавлен `createHash` в node:crypto декларации, `console` global
+
+### Тесты
+- [x] 6 unit-тестов: POST 201→INSERT, GET→без INSERT, POST 422→без INSERT, DELETE с UUID→entity_id в запросе, INSERT ошибка→не бросает, action field корректный, payload_hash 64-char hex
+- [x] Coverage: 95.4% branches — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-021] Триггеры counters: likes_received_count, rides_total_count, rides_completed_count
+**Дата:** 2026-05-02 23:10 (UTC)
+**Статус:** done
+
+### Что сделано
+- `db/migrations/007_counter_triggers.sql`: три trigger-функции в схеме `app`:
+  - `trg_likes_update_count`: AFTER INSERT/DELETE ON likes → UPDATE users.likes_received_count (GREATEST(0,...) при DELETE)
+  - `trg_rides_insert_count`: AFTER INSERT ON rides → UPDATE users.rides_total_count для driver_id
+  - `trg_rides_completed_count`: AFTER UPDATE OF status ON rides — при переходе → 'completed' → rides_completed_count++
+- `db/migrations/007_counter_triggers.down.sql`: DROP TRIGGER + DROP FUNCTION
+- `apps/api/tests/integration/db/triggers.test.ts`: интеграционные тесты
+
+### Тесты
+- [x] Integration: INSERT лайка → likes_received_count+1
+- [x] Integration: DELETE лайка → likes_received_count-1 (не ниже 0)
+- [x] Integration: INSERT ride → rides_total_count++ для driver
+- [x] Integration: UPDATE ride.status='completed' → rides_completed_count++
+
+---
+
+## [TASK-025] CSRF protection middleware
+**Дата:** 2026-05-02 23:10 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/csrf.ts`: double-submit cookie проверка для POST/PUT/PATCH/DELETE
+- Сравнивает `X-CSRF-Token` header с `csrf_token` cookie — 403 при несовпадении или отсутствии
+- Опциональная Origin/Referer проверка через `allowedOrigin` параметр
+- GET-запросы пропускаются без проверки
+- `apps/api/src/app.ts`: csrf подключён к `/api/*` (после identityGuard + rateLimit, перед idempotency + auditLog)
+- `apps/api/tests/unit/middleware/csrf.test.ts`: 8 unit-тестов
+
+### Тесты
+- [x] GET → без CSRF проверки → 200
+- [x] POST с правильным token → 200
+- [x] POST без X-CSRF-Token → 403
+- [x] POST с неверным token → 403
+- [x] POST без cookie → 403
+- [x] Origin check: правильный origin → 200; неверный → 403; отсутствует при required → 403
+- [x] allowedOrigin не задан → origin не проверяется
+
+---
+
+## [TASK-026] Idempotency middleware
+**Дата:** 2026-05-02 23:10 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/idempotency.ts`: при наличии `Idempotency-Key` header в POST
+  - SELECT FROM idempotency_keys WHERE key=... AND created_at > NOW()-24h
+  - Если найден — вернуть закэшированный response (статус + body), без выполнения хэндлера
+  - Если нет — выполнить хэндлер, при 2xx → INSERT INTO idempotency_keys ON CONFLICT DO NOTHING
+  - INSERT ошибка игнорируется (best-effort)
+- `apps/api/src/app.ts`: idempotency подключён к `/api/*` после csrf, перед auditLog
+- `apps/api/tests/unit/middleware/idempotency.test.ts`: 4 unit-теста с mock sql
+
+### Тесты
+- [x] GET → не вызывает sql вообще → 200
+- [x] POST без Idempotency-Key → проходит без проверки → 201
+- [x] POST с ключом, нет кэша → выполняет + кэширует (2 sql вызова)
+- [x] POST с ключом, кэш-хит → возвращает кэш (1 sql вызов, хэндлер не вызван)
+- [x] INSERT ошибка → 201 (not thrown)
+
+---
+
+[2026-05-03] TASK-064 done — centralized COOKIE_DEFAULTS helper in apps/api/src/lib/cookie.ts; authRouter uses it; sentinel tests verify SameSite=None+Secure on all Set-Cookie headers.
+[2026-05-03] TASK-065 done — CSP sentinel tests: img-src/connect-src/frame-ancestors/object-src/base-uri/font-src. Added font-src 'self' data: and https://t.me to img-src per SPEC §11.1.
+[2026-05-03] TASK-066 done — refresh token: migration 008_revoked_tokens, POST /auth/refresh with jti rotation, identity-guard revocation check, tokens now include jti field.
+[2026-05-03] TASK-068 done — migration 009: complaints_unique_per_week_idx partial UNIQUE INDEX with COALESCE(ride_id, nil_uuid). db-errors helper isUniqueViolation + sentinel test for 23505→409 pattern.
+[2026-05-03] TASK-069 done — POST /api/rides/:id/request with REPEATABLE READ isolation; atomic UPDATE+INSERT; 409 on no_seats or duplicate; pg_notify to driver. withIdentity updated for isolation level.
+[2026-05-03] TASK-079 done — getClientIp helper with CIDR trusted proxy support (TRUSTED_PROXIES env var, default 172.16.0.0/12). rate-limit and audit-log now use centralized helper. 8 unit tests covering all edge cases.
+[2026-05-03] TASK-129 done — integration test infra: setup.ts helpers (buildDsn, withTestUser, truncateAll), sanity.spec.ts sentinel (DB connectivity + RLS isolation + withSystem), README.md with integration tests section.
+[2026-05-03] TASK-130 done — UGC sanitization + SQL-injection sentinel: packages/shared/src/sanitize/index.ts (stripHtml, normalizeWhitespace, limitLength, sanitizeText), Zod transforms в CreateRideInput/CreateReviewInput/UserProfileInput/ComplaintInput/SupportMessageInput, vitest.security.config.ts, 20+ SQL-injection payloads sentinel, parameterization proof test.
+[2026-05-03] TASK-056 done — deny-by-default RLS security test: apps/api/tests/security/rls-deny.test.ts охватывает 11 таблиц с RLS (анонимный SELECT/INSERT → отказ, изоляция userA/userB, чужой UPDATE/DELETE блокируется).
+[2026-05-03] TASK-067 done — POST /auth/logout: верификация refresh-токена, INSERT jti в revoked_tokens (best-effort), Set-Cookie tg_uid=; csrf_token= Max-Age=0. 6 unit-тестов.
+[2026-05-03] TASK-053 done — anti-bot serverside правила: специфические error codes (too_new/unverified_daily_limit), admin bypass, обновлены unit-тесты для конкретных error codes.
+[2026-05-03] TASK-054 done — bun audit --audit-level high в CI (fail на high/critical), .github/dependency-allowlist.json для false-positives, lefthook.yml с pre-commit audit.
+[2026-05-03] TASK-055 done — gitleaks: .gitleaks.toml с кастомными правилами (BOT_TOKEN, JWT_SECRET, POSTGRES_URL), gitleaks-action@v2 в CI, lefthook pre-commit secrets scan.
+[2026-05-03] TASK-081 done — parseApiEnv: packages/shared/src/env.ts (Zod schema для всех env), apps/api/src/index.ts fail-fast при старте, 9 unit-тестов (отсутствие обязательных vars, короткий JWT_SECRET, невалидный PORT).
+[2026-05-03] TASK-080 done — /auth/* IP rate-limit: apps/api/src/middleware/auth-rate-limit.ts (10 req/min per IP, rate_limit_buckets, getClientIp), интеграция в app.ts перед /auth/*, 4 unit-теста.
+[2026-05-03] TASK-082 done — pino logger: apps/api/src/lib/logger.ts с REDACT_PATHS (authorization, cookie, initData, tokens, PII), createLogger(), apps/api/package.json добавлен pino@9. 9 unit-тестов.
+[2026-05-03] TASK-084 done — middleware-stack sentinel: apps/api/tests/security/middleware-stack.test.ts — все /api/* mutating routes без токена → 401, CSRF-check, /auth/* не требует identity-guard.

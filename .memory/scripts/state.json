@@ -1,0 +1,17 @@
+{
+  "ingested": {
+    "2026-05-01.md": {
+      "hash": "157f575da7d4975a",
+      "compiled_at": "2026-05-02T22:45:17+00:00",
+      "cost_usd": 0.34019535
+    },
+    "2026-05-02.md": {
+      "hash": "411d595513c3f7d4",
+      "compiled_at": "2026-05-02T22:46:45+00:00",
+      "cost_usd": 0.2673495
+    }
+  },
+  "query_count": 0,
+  "last_lint": null,
+  "total_cost": 0.60754485
+}

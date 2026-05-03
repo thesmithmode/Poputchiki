@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
-import { sign } from "hono/jwt";
+import { sign, verify } from "hono/jwt";
 import type postgres from "postgres";
+import { COOKIE_DEFAULTS } from "../lib/cookie";
 import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 
 const ACCESS_TTL = 24 * 60 * 60;
@@ -38,9 +39,9 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     const { user: tgUser, hash } = verified;
 
-    let userId: string | null = null;
+    let authUser: { id: string; role: string } | null = null;
     try {
-      userId = await sql.begin(async (tx) => {
+      authUser = await sql.begin(async (tx) => {
         // Replay protection: insert once; conflict → replay attack
         const [nonce] = await tx`
           INSERT INTO nonces (hash) VALUES (${hash})
@@ -70,40 +71,190 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
           ON CONFLICT (tg_id) DO UPDATE SET
             last_seen_at = NOW(),
             tg_username = EXCLUDED.tg_username
-          RETURNING id
+          RETURNING id, role
         `;
         const upsertedId = upserted?.id;
-        return typeof upsertedId === "string" ? upsertedId : null;
+        const upsertedRole = typeof upserted?.role === "string" ? upserted.role : "user";
+        return typeof upsertedId === "string" ? { id: upsertedId, role: upsertedRole } : null;
       });
     } catch {
       return c.json({ error: "auth failed" }, 401);
     }
 
-    if (!userId) {
+    if (!authUser) {
       return c.json({ error: "replay" }, 401);
     }
 
     const now = Math.floor(Date.now() / 1000);
+    const jwtBase = { sub: String(tgUser.id), uid: authUser.id, role: authUser.role };
     const [accessToken, refreshToken] = await Promise.all([
       sign(
-        { sub: String(tgUser.id), uid: userId, typ: "access", iat: now, exp: now + ACCESS_TTL },
+        { ...jwtBase, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + ACCESS_TTL },
         jwtSecret,
       ),
       sign(
-        { sub: String(tgUser.id), uid: userId, typ: "refresh", iat: now, exp: now + REFRESH_TTL },
+        { ...jwtBase, typ: "refresh", jti: crypto.randomUUID(), iat: now, exp: now + REFRESH_TTL },
         jwtSecret,
       ),
     ]);
 
-    const cookieOpts = { httpOnly: false, sameSite: "None" as const, secure: true, path: "/" };
-    setCookie(c, "tg_uid", String(tgUser.id), cookieOpts);
-    setCookie(c, "csrf_token", crypto.randomUUID(), cookieOpts);
+    setCookie(c, "tg_uid", String(tgUser.id), COOKIE_DEFAULTS);
+    setCookie(c, "csrf_token", crypto.randomUUID(), COOKIE_DEFAULTS);
 
     return c.json({
       access_token: accessToken,
       refresh_token: refreshToken,
-      user: { id: userId, tg_id: tgUser.id },
+      user: { id: authUser.id, tg_id: tgUser.id },
     });
+  });
+
+  router.post("/refresh", async (c) => {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json({ error: "server misconfigured" }, 500);
+    }
+
+    const body = await c.req
+      .json<{ refresh_token?: unknown }>()
+      .catch((): { refresh_token?: unknown } => ({}));
+
+    const refreshToken = body.refresh_token;
+    if (!refreshToken || typeof refreshToken !== "string") {
+      return c.json({ error: "missing refresh_token" }, 400);
+    }
+
+    let payload: Record<string, unknown>;
+    try {
+      payload = await verify(refreshToken, jwtSecret, "HS256");
+    } catch {
+      return c.json({ error: "invalid token" }, 401);
+    }
+
+    if (payload.typ !== "refresh") {
+      return c.json({ error: "invalid token type" }, 401);
+    }
+
+    const oldJti = typeof payload.jti === "string" ? payload.jti : null;
+    const userId = typeof payload.uid === "string" ? payload.uid : null;
+
+    // Check revocation
+    if (oldJti) {
+      const [revoked] = await sql`
+        SELECT 1 FROM revoked_tokens WHERE jti = ${oldJti} LIMIT 1
+      `;
+      if (revoked) {
+        return c.json({ error: "token revoked" }, 401);
+      }
+    }
+
+    // Verify user still exists and is not soft-deleted.
+    if (!userId) return c.json({ error: "invalid token" }, 401);
+    const [userRow] = await sql`
+      SELECT id FROM users WHERE id = ${userId} AND deleted_at IS NULL LIMIT 1
+    `;
+    if (!userRow) {
+      return c.json({ error: "user not found" }, 401);
+    }
+
+    // Revoke the old refresh token
+    if (oldJti) {
+      try {
+        await sql`
+          INSERT INTO revoked_tokens (jti, user_id)
+          VALUES (${oldJti}, ${userId})
+          ON CONFLICT (jti) DO NOTHING
+        `;
+      } catch {
+        // best-effort revocation — don't fail the request
+      }
+    }
+
+    // Issue new tokens
+    const now = Math.floor(Date.now() / 1000);
+    const jwtBase = {
+      sub: String(payload.sub),
+      uid: String(payload.uid),
+      role: String(payload.role ?? "user"),
+    };
+    const [newAccess, newRefresh] = await Promise.all([
+      sign(
+        { ...jwtBase, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + ACCESS_TTL },
+        jwtSecret,
+      ),
+      sign(
+        { ...jwtBase, typ: "refresh", jti: crypto.randomUUID(), iat: now, exp: now + REFRESH_TTL },
+        jwtSecret,
+      ),
+    ]);
+
+    return c.json({ access_token: newAccess, refresh_token: newRefresh });
+  });
+
+  router.post("/logout", async (c) => {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      return c.json({ error: "server misconfigured" }, 500);
+    }
+
+    const body = await c.req
+      .json<{ refresh_token?: unknown; access_token?: unknown }>()
+      .catch((): { refresh_token?: unknown; access_token?: unknown } => ({}));
+
+    const refreshToken = body.refresh_token;
+    if (!refreshToken || typeof refreshToken !== "string") {
+      return c.json({ error: "missing refresh_token" }, 400);
+    }
+
+    let payload: Record<string, unknown>;
+    try {
+      payload = await verify(refreshToken, jwtSecret, "HS256");
+    } catch {
+      return c.json({ error: "invalid token" }, 401);
+    }
+
+    if (payload.typ !== "refresh") {
+      return c.json({ error: "invalid token type" }, 401);
+    }
+
+    const refreshJti = typeof payload.jti === "string" ? payload.jti : null;
+    const userId = typeof payload.uid === "string" ? payload.uid : null;
+
+    // Optionally revoke the access-token jti so it dies immediately, not at exp.
+    let accessJti: string | null = null;
+    const accessToken = body.access_token;
+    if (typeof accessToken === "string" && accessToken.length > 0) {
+      try {
+        const accessPayload = await verify(accessToken, jwtSecret, "HS256");
+        if (
+          accessPayload.typ === "access" &&
+          typeof accessPayload.jti === "string" &&
+          accessPayload.uid === userId
+        ) {
+          accessJti = accessPayload.jti;
+        }
+      } catch {
+        // ignore: malformed/expired access token doesn't block logout
+      }
+    }
+
+    const jtiList = [refreshJti, accessJti].filter((j): j is string => Boolean(j));
+    for (const jti of jtiList) {
+      try {
+        await sql`
+          INSERT INTO revoked_tokens (jti, user_id)
+          VALUES (${jti}, ${userId})
+          ON CONFLICT (jti) DO NOTHING
+        `;
+      } catch {
+        // best-effort revocation — logout proceeds even if DB insert fails
+      }
+    }
+
+    const clearOpts = { ...COOKIE_DEFAULTS, maxAge: 0 };
+    setCookie(c, "tg_uid", "", clearOpts);
+    setCookie(c, "csrf_token", "", clearOpts);
+
+    return c.json({ ok: true });
   });
 
   return router;

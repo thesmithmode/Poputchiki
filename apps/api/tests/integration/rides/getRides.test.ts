@@ -101,8 +101,10 @@ async function insertRide(
 beforeAll(async () => {
   sql = createPool(buildDsn());
 
-  // Pre-clean state from prior runs to keep counts deterministic.
-  await sql`DELETE FROM rides WHERE driver_id IN (${DRIVER_A.id}, ${DRIVER_B.id})`;
+  // GET /api/rides returns ALL rides (no driver filter), so other integration
+  // suites' ride seeds bleed into pagination counts. Wipe rides table fully —
+  // fileParallelism=false guarantees no concurrent file is mid-run.
+  await sql`TRUNCATE TABLE ride_requests, ride_participation, rides RESTART IDENTITY CASCADE`;
 
   await withSystem(sql, async (tx) => {
     // Driver A: established, has likes

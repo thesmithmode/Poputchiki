@@ -2784,7 +2784,8 @@
         "TASK-008",
         "TASK-101"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-03T09:47:02Z"
     },
     {
       "id": "TASK-115",

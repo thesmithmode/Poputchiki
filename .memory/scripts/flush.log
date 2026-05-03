@@ -113,3 +113,10 @@ Error output: Check stderr output for details
 2026-05-03 12:37:47 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-03 12:38:02 INFO Result: FLUSH_OK
 2026-05-03 12:38:02 INFO Flush complete for session 8c4a1297-61bd-453e-be87-11d481d603bd
+2026-05-03 12:43:53 INFO [hook] SessionEnd fired: session=8c4a1297-61bd-453e-be87-11d481d603bd source=unknown
+2026-05-03 12:43:53 INFO [hook] Spawned flush.py for session 8c4a1297-61bd-453e-be87-11d481d603bd (30 turns, 4659 chars)
+2026-05-03 12:43:54 INFO flush.py started for session 8c4a1297-61bd-453e-be87-11d481d603bd, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-8c4a1297-61bd-453e-be87-11d481d603bd-20260503-124353.md
+2026-05-03 12:43:54 INFO Flushing session 8c4a1297-61bd-453e-be87-11d481d603bd: 4658 chars
+2026-05-03 12:43:55 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 12:44:16 INFO Result: saved to daily log (1007 chars)
+2026-05-03 12:44:16 INFO Flush complete for session 8c4a1297-61bd-453e-be87-11d481d603bd

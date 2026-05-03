@@ -5,22 +5,6 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { authRateLimit } from "../../../src/middleware/auth-rate-limit";
 
-function makeApp(sqlCount: number) {
-  // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
-  const sql = vi.fn() as any;
-
-  let callCount = 0;
-  sql.mockImplementation(() => {
-    callCount++;
-    return Promise.resolve([{ count: callCount }]);
-  });
-
-  const app = new Hono();
-  app.use("/auth/*", authRateLimit(sql, { ipLimit: 10 }));
-  app.post("/auth/telegram", (c) => c.json({ ok: true }, 200));
-  return { app, sql };
-}
-
 describe("authRateLimit middleware", () => {
   it("запрос в рамках лимита → проходит", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
@@ -63,7 +47,7 @@ describe("authRateLimit middleware", () => {
 
   it("при rate limit sql вызывается с ip ключом", async () => {
     const sqlCalls: string[] = [];
-    const sql = ((strings: TemplateStringsArray, ...values: unknown[]) => {
+    const sql = ((_strings: TemplateStringsArray, ...values: unknown[]) => {
       sqlCalls.push(String(values[0]));
       return Promise.resolve([{ count: 1 }]);
     }) as unknown as Parameters<typeof authRateLimit>[0];

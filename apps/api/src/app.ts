@@ -12,6 +12,7 @@ import { identityGuard } from "./middleware/identity-guard";
 import { rateLimit } from "./middleware/rate-limit";
 import { secureHeadersMiddleware } from "./middleware/secure-headers";
 import { createRidesRouter } from "./rides/ridesRouter";
+import { createUsersRouter } from "./users/usersRouter";
 
 export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
   const app = new Hono();
@@ -34,6 +35,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
       app.use("/api/*", idempotency(sql));
       app.use("/api/*", auditLog(sql));
       app.route("/api/rides", createRidesRouter(sql));
+      app.route("/api/users", createUsersRouter(sql));
     }
   }
 

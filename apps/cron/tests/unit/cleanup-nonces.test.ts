@@ -20,22 +20,14 @@ describe("cleanupNonces", () => {
   });
 
   it("deletes old nonces and releases lock when lock acquired", async () => {
-    const sql = makeSql(
-      [{ acquired: true }],
-      [{ count: "7" }],
-      [],
-    );
+    const sql = makeSql([{ acquired: true }], [{ count: "7" }], []);
     const result = await cleanupNonces(sql);
     expect(result).toEqual({ deleted: 7 });
     expect(sql).toHaveBeenCalledTimes(3);
   });
 
   it("deleted=0 when no nonces to clean", async () => {
-    const sql = makeSql(
-      [{ acquired: true }],
-      [{ count: "0" }],
-      [],
-    );
+    const sql = makeSql([{ acquired: true }], [{ count: "0" }], []);
     const result = await cleanupNonces(sql);
     expect(result).toEqual({ deleted: 0 });
   });

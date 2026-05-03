@@ -1,13 +1,13 @@
+import postgres from "postgres";
 /**
  * Sentinel: concurrency seat-booking race.
  * 10 пассажиров → 1 свободное место → ровно 1 успех, seats_taken=1, ride_requests=1.
  * Проверяет REPEATABLE READ изоляцию в withIdentity (TASK-069).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import postgres from "postgres";
-import type { AppUser } from "../../src/middleware/identity-guard";
 import { withIdentity } from "../../src/db/with-identity";
-import { buildDsn, withTestUser, truncateAll } from "../integration/setup";
+import type { AppUser } from "../../src/middleware/identity-guard";
+import { buildDsn, truncateAll, withTestUser } from "../integration/setup";
 
 describe("Sentinel: concurrency seat-booking race", () => {
   let sql: postgres.Sql;

@@ -42,6 +42,7 @@ describe("POST /auth/logout", () => {
   });
 
   afterEach(() => {
+    // biome-ignore lint/performance/noDelete: test cleanup of env var requires delete
     delete process.env.JWT_SECRET;
     vi.restoreAllMocks();
   });

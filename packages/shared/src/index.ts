@@ -1,5 +1,8 @@
 export { UserDTO, UserProfileInput } from "./schemas/user.js";
-export type { UserDTO as UserDTOType, UserProfileInput as UserProfileInputType } from "./schemas/user.js";
+export type {
+  UserDTO as UserDTOType,
+  UserProfileInput as UserProfileInputType,
+} from "./schemas/user.js";
 
 export { CreateRideInput, RideDTO, RideStatus } from "./schemas/ride.js";
 export type {

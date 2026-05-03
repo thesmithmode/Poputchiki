@@ -29,7 +29,7 @@ export async function withTestUser(
 
   const [row] = await sql<[{ id: string }]>`
     INSERT INTO users (id, tg_id, display_name, role)
-    VALUES (${generatedId}, ${tgId}, ${"Test " + tgId}, ${role})
+    VALUES (${generatedId}, ${tgId}, ${`Test ${tgId}`}, ${role})
     ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
     RETURNING id
   `;

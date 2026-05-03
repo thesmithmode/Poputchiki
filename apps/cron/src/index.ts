@@ -10,17 +10,13 @@ const FIVE_MIN = 5 * 60 * 1000;
 
 async function runCleanup() {
   await cleanupNonces(sql).catch((err: unknown) =>
-    console.error(
-      JSON.stringify({ msg: "nonce_cleanup_error", error: String(err) }),
-    ),
+    console.error(JSON.stringify({ msg: "nonce_cleanup_error", error: String(err) })),
   );
 }
 
 async function runRefreshUserStats() {
   await refreshUserStats(sql).catch((err: unknown) =>
-    console.error(
-      JSON.stringify({ msg: "user_stats_refresh_error", error: String(err) }),
-    ),
+    console.error(JSON.stringify({ msg: "user_stats_refresh_error", error: String(err) })),
   );
 }
 

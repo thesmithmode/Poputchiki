@@ -1,9 +1,9 @@
+import { limitLength, normalizeWhitespace, stripHtml } from "@poputchiki/shared/sanitize";
 /**
  * Security: UGC sanitization helpers.
  * Verifies XSS payloads are neutralized before storage.
  */
 import { describe, expect, it } from "vitest";
-import { limitLength, normalizeWhitespace, stripHtml } from "@poputchiki/shared/sanitize";
 
 describe("stripHtml", () => {
   it("removes script tags and content", () => {
@@ -92,7 +92,7 @@ describe("Zod schema sanitize transforms: UGC fields", () => {
     };
     const result = CreateRideInput.safeParse({
       ...baseInput,
-      comment: '<script>alert(1)</script>Везу людей',
+      comment: "<script>alert(1)</script>Везу людей",
     });
     if (!result.success) throw result.error;
     expect(result.data.comment).not.toContain("<script>");
@@ -102,7 +102,7 @@ describe("Zod schema sanitize transforms: UGC fields", () => {
   it("display_name in UserProfileInput strips HTML", async () => {
     const { UserProfileInput } = await import("@poputchiki/shared");
     const result = UserProfileInput.safeParse({
-      display_name: '<b>Hacker</b>',
+      display_name: "<b>Hacker</b>",
     });
     if (!result.success) throw result.error;
     expect(result.data.display_name).not.toContain("<b>");

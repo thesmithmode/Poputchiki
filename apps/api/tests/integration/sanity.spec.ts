@@ -6,8 +6,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPool } from "../../src/db/pool";
 import { withIdentity, withSystem } from "../../src/db/with-identity";
-import { buildDsn, withTestUser } from "./setup";
 import type { AppUser } from "../../src/middleware/identity-guard";
+import { buildDsn, withTestUser } from "./setup";
 
 let sql: ReturnType<typeof createPool>;
 

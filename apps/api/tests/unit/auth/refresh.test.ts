@@ -23,12 +23,14 @@ async function makeRefreshToken(jti = "test-jti-refresh-001", ttlDelta = 30 * 24
 
 function makeSql(revokedRows: unknown[] = [], userRows: unknown[] = [{ id: "u" }]) {
   // 3-call sequence: revoked check, user existence check, INSERT into revoked_tokens
-  // biome-ignore lint/suspicious/noExplicitAny: mock
-  return vi
-    .fn()
-    .mockResolvedValueOnce(revokedRows)
-    .mockResolvedValueOnce(userRows)
-    .mockResolvedValueOnce([]) as any;
+  return (
+    vi
+      .fn()
+      .mockResolvedValueOnce(revokedRows)
+      .mockResolvedValueOnce(userRows)
+      // biome-ignore lint/suspicious/noExplicitAny: mock
+      .mockResolvedValueOnce([]) as any
+  );
 }
 
 describe("POST /auth/refresh", () => {
@@ -106,10 +108,10 @@ describe("POST /auth/refresh", () => {
   });
 
   it("REGRESSION: refresh_token of soft-deleted user → 401 (no new tokens)", async () => {
-    // biome-ignore lint/suspicious/noExplicitAny: mock
     const sql = vi
       .fn()
       .mockResolvedValueOnce([]) // revocation check: clean
+      // biome-ignore lint/suspicious/noExplicitAny: mock
       .mockResolvedValueOnce([]) as any; // user lookup: empty (deleted_at IS NOT NULL)
     const router = createAuthRouter(sql);
     const token = await makeRefreshToken("ok-jti");

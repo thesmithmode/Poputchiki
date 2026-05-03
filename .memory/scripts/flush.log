@@ -120,3 +120,7 @@ Error output: Check stderr output for details
 2026-05-03 12:43:55 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-03 12:44:16 INFO Result: saved to daily log (1007 chars)
 2026-05-03 12:44:16 INFO Flush complete for session 8c4a1297-61bd-453e-be87-11d481d603bd
+2026-05-03 12:52:21 INFO [pre-compact] PreCompact fired: session=9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 12:52:21 INFO [pre-compact] SKIP: only 4 turns (min 5)
+2026-05-03 12:52:43 INFO [pre-compact] PreCompact fired: session=9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 12:52:43 INFO [pre-compact] SKIP: only 4 turns (min 5)

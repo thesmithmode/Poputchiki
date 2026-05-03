@@ -1,11 +1,3 @@
-/**
- * Sentinel: middleware-stack-completeness.
- * Verifies all mutating /api/* routes require identity-guard (401 без токена),
- * CSRF protection (403 без Origin), и проходят через rate-limit и idempotency.
- *
- * /auth/* routes: НЕ требуют identity-guard, но имеют authRateLimit.
- */
-import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app";
@@ -23,10 +15,7 @@ const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 function getApiMutatingRoutes(): { method: string; path: string }[] {
   return app.routes
     .filter(
-      (r) =>
-        MUTATING_METHODS.has(r.method) &&
-        r.path.startsWith("/api/") &&
-        !r.path.includes("*"),
+      (r) => MUTATING_METHODS.has(r.method) && r.path.startsWith("/api/") && !r.path.includes("*"),
     )
     .map((r) => ({ method: r.method, path: r.path }));
 }
@@ -43,25 +32,24 @@ describe("Middleware-stack completeness", () => {
 });
 
 describe("identity-guard: все /api/* mutating routes требуют JWT", () => {
-  const routes = app.routes
-    .filter(
-      (r) =>
-        MUTATING_METHODS.has(r.method) &&
-        r.path.startsWith("/api/") &&
-        !r.path.includes("*"),
-    );
+  const routes = app.routes.filter(
+    (r) => MUTATING_METHODS.has(r.method) && r.path.startsWith("/api/") && !r.path.includes("*"),
+  );
 
   for (const route of routes) {
     it(`${route.method} ${route.path} без токена → 401`, async () => {
-      const res = await app.request(route.path.replace(/:[\w]+/g, "00000000-0000-4000-a000-000000000001"), {
-        method: route.method,
-        headers: {
-          "Content-Type": "application/json",
-          Origin: ALLOWED_ORIGIN,
-          "X-CSRF-Token": "test",
+      const res = await app.request(
+        route.path.replace(/:[\w]+/g, "00000000-0000-4000-a000-000000000001"),
+        {
+          method: route.method,
+          headers: {
+            "Content-Type": "application/json",
+            Origin: ALLOWED_ORIGIN,
+            "X-CSRF-Token": "test",
+          },
+          body: route.method !== "GET" ? JSON.stringify({}) : undefined,
         },
-        body: route.method !== "GET" ? JSON.stringify({}) : undefined,
-      });
+      );
       expect(res.status).toBe(401);
     });
   }

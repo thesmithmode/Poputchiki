@@ -34,10 +34,10 @@ describe("POST /rides/:id/request", () => {
       passenger_id: USER.id,
       status: "pending",
     };
-    // biome-ignore lint/suspicious/noExplicitAny: mock
     vi.mocked(withIdentity).mockResolvedValueOnce({
       rideRequest: mockRequest,
       driverId: DRIVER_ID,
+      // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
     mockSql.mockResolvedValueOnce([]); // pg_notify fire-and-forget
 
@@ -96,10 +96,10 @@ describe("POST /rides/:id/request", () => {
       passenger_id: USER.id,
       status: "pending",
     };
-    // biome-ignore lint/suspicious/noExplicitAny: mock
     vi.mocked(withIdentity).mockResolvedValueOnce({
       rideRequest: mockRequest,
       driverId: DRIVER_ID,
+      // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
     mockSql.mockResolvedValueOnce([]); // pg_notify
 

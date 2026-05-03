@@ -1,3 +1,4 @@
+import postgres from "postgres";
 /**
  * Sentinel: likes counter trigger atomicity under concurrent load.
  * 100 пар (subject, target, ride) → Promise.all INSERT likes →
@@ -5,10 +6,9 @@
  * Проверяет trigger trg_likes_update_count (TASK-021, migration 007).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import postgres from "postgres";
-import type { AppUser } from "../../src/middleware/identity-guard";
 import { withIdentity } from "../../src/db/with-identity";
-import { buildDsn, withTestUser, truncateAll } from "../integration/setup";
+import type { AppUser } from "../../src/middleware/identity-guard";
+import { buildDsn, truncateAll, withTestUser } from "../integration/setup";
 
 describe("Sentinel: likes-race — trigger atomicity", () => {
   let sql: postgres.Sql;
@@ -44,16 +44,12 @@ describe("Sentinel: likes-race — trigger atomicity", () => {
     // 10 subjects × 10 rides = 100 unique (subject, target, ride) pairs
     const inserts = subjects.flatMap((subject) =>
       rides.map((ride: { id: string }) =>
-        withIdentity(
-          sql,
-          subject as unknown as AppUser,
-          async (tx) => {
-            await tx`
+        withIdentity(sql, subject as unknown as AppUser, async (tx) => {
+          await tx`
               INSERT INTO likes (subject_id, target_id, ride_id)
               VALUES (${subject.id}, ${target.id}, ${ride.id})
             `;
-          },
-        ).catch((err: unknown) => ({ error: err })),
+        }).catch((err: unknown) => ({ error: err })),
       ),
     );
 

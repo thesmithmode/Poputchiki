@@ -12,7 +12,6 @@ import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPool } from "../../src/db/pool";
-import { withSystem } from "../../src/db/with-identity";
 import { identityGuard } from "../../src/middleware/identity-guard";
 import { createRidesRouter } from "../../src/rides/ridesRouter";
 import { buildDsn, withTestUser } from "../integration/setup";
@@ -53,7 +52,12 @@ beforeAll(async () => {
   testUser = await withTestUser(sql, 978800);
 
   token = await sign(
-    { sub: testUser.id, tgId: testUser.tgId, role: testUser.role, iat: Math.floor(Date.now() / 1000) },
+    {
+      sub: testUser.id,
+      tgId: testUser.tgId,
+      role: testUser.role,
+      iat: Math.floor(Date.now() / 1000),
+    },
     JWT_SECRET,
   );
 

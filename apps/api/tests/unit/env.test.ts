@@ -1,8 +1,8 @@
+import { parseApiEnv } from "@poputchiki/shared/env";
 /**
  * Unit tests: env vars validation — fail-fast при старте если обязательные переменные не заданы.
  */
 import { describe, expect, it } from "vitest";
-import { parseApiEnv } from "@poputchiki/shared/env";
 
 const VALID_ENV = {
   DATABASE_URL: "postgres://user:pass@localhost:5432/db",

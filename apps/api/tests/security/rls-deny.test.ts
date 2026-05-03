@@ -119,9 +119,7 @@ describe("RLS deny-by-default: anonymous INSERT", () => {
   });
 
   it("audit_log: анонимный INSERT → отказ", async () => {
-    const ok = await anonInsert(
-      `INSERT INTO audit_log (action, entity) VALUES ('HACK', 'users')`,
-    );
+    const ok = await anonInsert(`INSERT INTO audit_log (action, entity) VALUES ('HACK', 'users')`);
     expect(ok).toBe(false);
   });
 });

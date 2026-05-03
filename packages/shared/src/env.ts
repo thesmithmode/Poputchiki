@@ -18,9 +18,7 @@ export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 export function parseApiEnv(raw: Record<string, string | undefined>): ApiEnv {
   const result = ApiEnvSchema.safeParse(raw);
   if (!result.success) {
-    const issues = result.error.issues
-      .map((i) => `  ${i.path.join(".")}: ${i.message}`)
-      .join("\n");
+    const issues = result.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
     throw new Error(`Invalid environment variables:\n${issues}`);
   }
   return result.data;

@@ -74,7 +74,6 @@ describe("idempotency middleware", () => {
     // Simulate a race: both requests' INSERT race; one wins, one loses.
     let inserts = 0;
     let handlerRuns = 0;
-    // biome-ignore lint/suspicious/noExplicitAny: mock postgres
     const sql = ((strings: TemplateStringsArray) => {
       const text = strings.join("");
       if (text.includes("INSERT INTO idempotency_keys")) {

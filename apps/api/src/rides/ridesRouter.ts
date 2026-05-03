@@ -362,5 +362,70 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);
   });
 
+  app.post("/:id/confirm-participation", async (c) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    /* c8 ignore next -- identityGuard middleware returns 401 before handler runs */
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    const rideId = c.req.param("id");
+    if (!UUID_RE.test(rideId)) return c.json({ error: "invalid ride id" }, 400);
+
+    const MS_48H = 48 * 60 * 60 * 1000;
+
+    try {
+      const row = await withIdentity(sql, user, async (tx) => {
+        const [ride] = await tx<{ id: string; departure_at: Date }[]>`
+          SELECT id, departure_at FROM rides WHERE id = ${rideId}::uuid
+        `;
+        /* c8 ignore next -- defensive: ride existence checked below via participation */
+        if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+
+        if (Date.now() - ride.departure_at.getTime() > MS_48H) {
+          throw Object.assign(new Error("expired"), { code: "EXPIRED" });
+        }
+
+        const [participation] = await tx<
+          { passenger_id: string; driver_marked: boolean; passenger_confirmed: boolean }[]
+        >`
+          SELECT passenger_id, driver_marked, passenger_confirmed
+          FROM ride_participation
+          WHERE ride_id = ${rideId}::uuid AND passenger_id = ${user.id}::uuid
+        `;
+
+        if (!participation) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+        if (participation.passenger_id !== user.id) {
+          throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+        }
+        if (!participation.driver_marked) {
+          throw Object.assign(new Error("not_marked"), { code: "NOT_MARKED" });
+        }
+        if (participation.passenger_confirmed) {
+          throw Object.assign(new Error("already_confirmed"), { code: "ALREADY_CONFIRMED" });
+        }
+
+        const [updated] = await tx<
+          { ride_id: string; passenger_id: string; passenger_confirmed: boolean; confirmed_at: Date }[]
+        >`
+          UPDATE ride_participation
+          SET passenger_confirmed = true, confirmed_at = now()
+          WHERE ride_id = ${rideId}::uuid AND passenger_id = ${user.id}::uuid
+          RETURNING ride_id, passenger_id, passenger_confirmed, confirmed_at
+        `;
+        return updated;
+      });
+
+      return c.json(row, 200);
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code;
+      if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      if (code === "EXPIRED") return c.json({ error: "expired" }, 410);
+      if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      if (code === "NOT_MARKED") return c.json({ error: "not_marked" }, 422);
+      if (code === "ALREADY_CONFIRMED") return c.json({ error: "already_confirmed" }, 409);
+      /* c8 ignore next -- defensive: re-throw unknown errors */
+      throw err;
+    }
+  });
+
   return app;
 }

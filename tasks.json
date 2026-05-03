@@ -1889,7 +1889,7 @@
         "TASK-020",
         "TASK-023"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-076",
@@ -3257,7 +3257,7 @@
     },
     {
       "id": "TASK-133",
-      "status": "done",
+      "status": "pending",
       "category": "infrastructure",
       "priority": "high",
       "phase": "mvp",
@@ -3282,8 +3282,7 @@
       "dependencies": [
         "TASK-114",
         "TASK-129"
-      ],
-      "status": "pending"
+      ]
     },
     {
       "id": "TASK-134",

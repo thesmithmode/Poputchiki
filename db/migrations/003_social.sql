@@ -1,5 +1,6 @@
 -- Migration 003: social tables — likes, reviews, favorites, private_notes,
---                complaints, audit_log, idempotency_keys
+--                complaints, audit_log, idempotency_keys,
+--                support_messages, notification_preferences
 
 -- ---------------------------------------------------------------------------
 -- likes: symmetric per-ride likes (subject → target)
@@ -154,6 +155,58 @@ ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
 -- Only admins may read; no INSERT via policy (api bypasses RLS for writes)
 CREATE POLICY audit_log_read ON audit_log
   FOR SELECT USING (app.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- support_messages: user support requests with admin reply
+-- ---------------------------------------------------------------------------
+CREATE TABLE support_messages (
+  id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text       text        NOT NULL CHECK (length(text) BETWEEN 1 AND 2000),
+  status     text        NOT NULL DEFAULT 'open'
+                         CHECK (status IN ('open', 'resolved', 'dismissed')),
+  reply_text text,
+  replied_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_support_status ON support_messages (status, created_at DESC);
+
+ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE support_messages FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY support_messages_own ON support_messages
+  USING (user_id = app.current_user_id())
+  WITH CHECK (user_id = app.current_user_id());
+
+CREATE POLICY support_messages_admin_read ON support_messages
+  FOR SELECT USING (app.is_admin());
+
+-- ---------------------------------------------------------------------------
+-- notification_preferences: per-user per-category opt-out
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_preferences (
+  user_id  uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  category text NOT NULL CHECK (category IN (
+    'ride_request',
+    'ride_cancelled',
+    'confirm_participation',
+    'like_received',
+    'review_received',
+    'favorite_new_ride',
+    'support_reply',
+    'system'
+  )),
+  enabled  boolean NOT NULL DEFAULT true,
+  PRIMARY KEY (user_id, category)
+);
+
+ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_preferences FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY notification_preferences_own ON notification_preferences
+  USING (user_id = app.current_user_id())
+  WITH CHECK (user_id = app.current_user_id());
 
 -- nonces lives in 004_nonces.sql; rate_limit_buckets lives in 005_rate_limit_buckets.sql
 

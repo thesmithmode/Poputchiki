@@ -18,22 +18,22 @@ const JWT_SECRET = "test-secret-mark-participants-integration";
 const TEST_IP = "10.0.3.2";
 
 const DRIVER = {
-  id: "11111111-0000-0000-0000-000000000001",
+  id: "00000000-0000-4000-b000-700000000001",
   tgId: 70001,
   role: "user" as const,
 };
 const PASSENGER_A = {
-  id: "11111111-0000-0000-0000-000000000002",
+  id: "00000000-0000-4000-b000-700000000002",
   tgId: 70002,
   role: "user" as const,
 };
 const PASSENGER_B = {
-  id: "11111111-0000-0000-0000-000000000003",
+  id: "00000000-0000-4000-b000-700000000003",
   tgId: 70003,
   role: "user" as const,
 };
 const OTHER_USER = {
-  id: "11111111-0000-0000-0000-000000000004",
+  id: "00000000-0000-4000-b000-700000000004",
   tgId: 70004,
   role: "user" as const,
 };

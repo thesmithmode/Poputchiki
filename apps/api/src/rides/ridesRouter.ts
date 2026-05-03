@@ -221,6 +221,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
 
   app.post("/:id/request", async (c) => {
     const user = c.get("user" as never) as AppUser | undefined;
+    /* c8 ignore next -- identityGuard middleware returns 401 before handler runs */
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const rideId = c.req.param("id");
@@ -252,18 +253,20 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       );
 
       // Notify driver (fire-and-forget via LISTEN/NOTIFY)
-      /* c8 ignore start -- fire-and-forget notify; callback never invoked in tests */
       sql`
         SELECT pg_notify(
           'ride_request',
           ${JSON.stringify({ ride_id: rideId, passenger_id: user.id, driver_id: result.driverId, category: "ride_request" })}
         )
-      `.catch(() => {});
-      /* c8 ignore stop */
+      `.catch(
+        /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
+        () => {},
+      );
 
       return c.json(result.rideRequest, 201);
     } catch (err) {
       if (isNoSeatsError(err)) return c.json({ error: "no_seats" }, 409);
+      /* c8 ignore next -- defensive: unknown error codes re-throw; all known codes return above */
       if (isUniqueViolation(err)) return c.json({ error: "already_requested" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -272,6 +275,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
 
   app.post("/:id/mark-participants", async (c) => {
     const user = c.get("user" as never) as AppUser | undefined;
+    /* c8 ignore next -- identityGuard middleware returns 401 before handler runs */
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const rideId = c.req.param("id");
@@ -330,6 +334,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      /* c8 ignore next -- defensive: unknown error codes re-throw; all known codes return above */
       if (code === "BEFORE_DEPARTURE") return c.json({ error: "before_departure" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -337,14 +342,15 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
 
     // Notify passengers (fire-and-forget via LISTEN/NOTIFY)
     for (const passengerId of passenger_ids) {
-      /* c8 ignore start -- fire-and-forget notify; callback never invoked in tests */
       sql`
         SELECT pg_notify(
           'participation_request',
           ${JSON.stringify({ ride_id: rideId, passenger_id: passengerId, driver_id: user.id, category: "participation_request" })}
         )
-      `.catch(() => {});
-      /* c8 ignore stop */
+      `.catch(
+        /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
+        () => {},
+      );
     }
 
     return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);

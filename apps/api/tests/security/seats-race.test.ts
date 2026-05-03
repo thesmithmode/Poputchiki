@@ -43,12 +43,7 @@ describe("Sentinel: concurrency seat-booking race", () => {
           p as unknown as AppUser,
           async (tx) => {
             const [updated] = await tx`
-              UPDATE rides
-              SET seats_taken = seats_taken + 1
-              WHERE id = ${rideId}
-                AND status = 'active'
-                AND seats_taken < seats_total
-              RETURNING id
+              SELECT * FROM app.book_seat(${rideId}::uuid)
             `;
             if (!updated) {
               throw Object.assign(new Error("no_seats"), { code: "NO_SEATS" });

@@ -227,13 +227,8 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
         sql,
         user,
         async (tx) => {
-          const [ride] = await tx`
-            UPDATE rides
-            SET seats_taken = seats_taken + 1
-            WHERE id = ${rideId}
-              AND status = 'active'
-              AND seats_taken < seats_total
-            RETURNING id, driver_id
+          const [ride] = await tx<{ id: string; driver_id: string }[]>`
+            SELECT * FROM app.book_seat(${rideId}::uuid)
           `;
 
           if (!ride) {

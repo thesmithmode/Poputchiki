@@ -381,3 +381,5 @@
 [2026-05-03] TASK-114 done — sentinel migrations + rls-identity-leak: apps/api/tests/integration/migrations.test.ts (ephemeral DB, all up→down→up, schema fingerprint stable), apps/api/tests/security/rls-identity-leak.test.ts (sql.reserve() pinned connection, set_config local=true не утекает между tx).
 
 [2026-05-03] TASK-016 done — web/ Vite+React+TS skeleton: HashRouter, Tailwind (darkMode class), Telegram WebApp colorScheme adopt + ready + themeChanged listener, lib/telegram.ts, vitest jsdom config + @testing-library, dev:web/test:web root scripts, CI step Web tests (jsdom).
+
+[2026-05-03] TASK-133 started — integration test hardening: 003 schema duplicates removed (nonces, rate_limit_buckets), 000.down REASSIGN OWNED instead of DROP ROLE, vitest fileParallelism=false, rate-limit LIKE параметризован, getRides pre-clean, identity-guard assertion aligned with users_read_public policy, fixtures/uuids.ts registry, docs/POSTGRES-JS-GOTCHAS.md.

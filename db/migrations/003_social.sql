@@ -1,5 +1,5 @@
 -- Migration 003: social tables — likes, reviews, favorites, private_notes,
---                complaints, audit_log, nonces, rate_limit_buckets, idempotency_keys
+--                complaints, audit_log, idempotency_keys
 
 -- ---------------------------------------------------------------------------
 -- likes: symmetric per-ride likes (subject → target)
@@ -155,26 +155,7 @@ ALTER TABLE audit_log FORCE ROW LEVEL SECURITY;
 CREATE POLICY audit_log_read ON audit_log
   FOR SELECT USING (app.is_admin());
 
--- ---------------------------------------------------------------------------
--- nonces: replay protection for Telegram initData
--- No RLS — api uses privileged connection for nonce INSERT/SELECT
--- ---------------------------------------------------------------------------
-CREATE TABLE nonces (
-  hash       text        PRIMARY KEY,
-  expires_at timestamptz NOT NULL
-);
-
-CREATE INDEX idx_nonces_expires ON nonces (expires_at);
-
--- ---------------------------------------------------------------------------
--- rate_limit_buckets: token bucket per user per action
--- No RLS — api only
--- ---------------------------------------------------------------------------
-CREATE TABLE rate_limit_buckets (
-  key        text        PRIMARY KEY,
-  tokens     int         NOT NULL,
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+-- nonces lives in 004_nonces.sql; rate_limit_buckets lives in 005_rate_limit_buckets.sql
 
 -- ---------------------------------------------------------------------------
 -- idempotency_keys: dedup for POST requests

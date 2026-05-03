@@ -101,6 +101,9 @@ async function insertRide(
 beforeAll(async () => {
   sql = createPool(buildDsn());
 
+  // Pre-clean state from prior runs to keep counts deterministic.
+  await sql`DELETE FROM rides WHERE driver_id IN (${DRIVER_A.id}, ${DRIVER_B.id})`;
+
   await withSystem(sql, async (tx) => {
     // Driver A: established, has likes
     await tx`

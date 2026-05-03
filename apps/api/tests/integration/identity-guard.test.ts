@@ -65,12 +65,16 @@ describe("withIdentity: GUC propagation", () => {
     expect(rows.length).toBe(0);
   });
 
-  it("withIdentity with wrong user id returns 0 rows for target row", async () => {
+  it("withIdentity with another user id still reads public users (RLS users_read_public)", async () => {
+    // Policy `users_read_public`: any authenticated user can read non-deleted users.
+    // This sentinel asserts withIdentity sets GUC correctly (auth check passes for OTHER_UUID
+    // even though row belongs to TEST_UUID). Strict ownership is enforced on writes only.
     const OTHER_UUID = "00000000-0000-4000-a000-012000000002";
     const user = { id: OTHER_UUID, tgId: 9999999, role: "user" };
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx`SELECT id FROM users WHERE id = ${TEST_UUID}`;
     });
-    expect(rows.length).toBe(0);
+    expect(rows.length).toBe(1);
+    expect(rows[0]?.id).toBe(TEST_UUID);
   });
 });

@@ -4,7 +4,7 @@
  * Requires: Postgres + migrations 000-005 applied.
  */
 import { Hono } from "hono";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createPool } from "../../src/db/pool";
 import type { AppUser } from "../../src/middleware/identity-guard";
 import { rateLimit } from "../../src/middleware/rate-limit";
@@ -50,13 +50,27 @@ beforeAll(async () => {
   sql = createPool(buildDsn());
 });
 
+async function cleanupBuckets() {
+  // postgres-js: build LIKE patterns in JS, pass as full parameters.
+  // `'ip:${x}%'` inside the tagged template stays a literal string with a `$1`
+  // placeholder Postgres can't type-infer (42P18).
+  const ipPattern = `ip:${TEST_IP}%`;
+  await sql`
+    DELETE FROM rate_limit_buckets
+    WHERE key LIKE 'user:%' OR key LIKE ${ipPattern}
+  `;
+}
+
+beforeEach(async () => {
+  await cleanupBuckets();
+});
+
 afterEach(async () => {
-  // Clean rate_limit_buckets between tests
-  await sql`DELETE FROM rate_limit_buckets WHERE key LIKE 'user:%' OR key LIKE 'ip:${TEST_IP}%'`;
+  await cleanupBuckets();
 });
 
 afterAll(async () => {
-  await sql`DELETE FROM rate_limit_buckets WHERE key LIKE 'user:%' OR key LIKE 'ip:${TEST_IP}%'`;
+  await cleanupBuckets();
   await sql.end();
 });
 

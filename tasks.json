@@ -3252,6 +3252,35 @@
         "TASK-001"
       ],
       "status": "pending"
+    },
+    {
+      "id": "TASK-133",
+      "category": "infrastructure",
+      "priority": "high",
+      "phase": "mvp",
+      "description": "Integration test hardening — устранить накопленный долг pre-existing red в integration job (schema dup, parallelism state-leak, postgres-js LIKE bug, brittle RLS assertion)",
+      "acceptance_criteria": [
+        "db/migrations/003_social.sql + 003_social.down.sql: убраны дубликаты nonces и rate_limit_buckets (живут только в 004/005)",
+        "db/migrations/000_app_identity.down.sql: REASSIGN OWNED + DROP OWNED вместо DROP ROLE (cluster-wide роль не падает в migrations sentinel test при паралл. ephemeral DB)",
+        "vitest.integration.config.ts: fileParallelism=false + sequence.concurrent=false (tests гоняются последовательно — общий Postgres не выдерживает parallel state)",
+        "apps/api/tests/integration/rate-limit.test.ts: LIKE pattern строится в JS (исключает 42P18) + beforeEach cleanup",
+        "apps/api/tests/integration/rides/getRides.test.ts: pre-clean rides перед seed в beforeAll (count drift 19 vs 15 → 15)",
+        "apps/api/tests/integration/identity-guard.test.ts: тест приведён в соответствие с реальной policy users_read_public (любой auth user читает не-deleted users)",
+        "apps/api/tests/integration/fixtures/uuids.ts: централизованный реестр test UUID (убирает inline drift)",
+        "docs/POSTGRES-JS-GOTCHAS.md: задокументированы LIKE-параметризация, IMMUTABLE wrappers для btree, prepare:false для миграций",
+        "CI integration job зелёный 3 push подряд (sentinel против flakiness)"
+      ],
+      "test_steps": [
+        "git push origin dev → CI integration job green",
+        "повторный empty commit ×2 → 3 зелёных run подряд",
+        "локальный grep 'CREATE TABLE nonces' db/migrations/ → ровно 1 совпадение (004)",
+        "локальный grep 'CREATE TABLE rate_limit_buckets' db/migrations/ → ровно 1 совпадение (005)"
+      ],
+      "dependencies": [
+        "TASK-114",
+        "TASK-129"
+      ],
+      "status": "pending"
     }
   ]
 }

@@ -1,7 +1,5 @@
 -- Rollback migration 003: drop social tables in reverse dependency order
 DROP TABLE IF EXISTS idempotency_keys   CASCADE;
-DROP TABLE IF EXISTS rate_limit_buckets CASCADE;
-DROP TABLE IF EXISTS nonces             CASCADE;
 DROP TABLE IF EXISTS audit_log          CASCADE;
 DROP TABLE IF EXISTS complaints         CASCADE;
 DROP TABLE IF EXISTS private_notes      CASCADE;

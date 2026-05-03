@@ -392,9 +392,13 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
           WHERE ride_id = ${rideId}::uuid AND passenger_id = ${user.id}::uuid
         `;
 
-        if (!participation) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
-        if (participation.passenger_id !== user.id) {
-          throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+        if (!participation) {
+          const [other] = await tx<{ exists: number }[]>`
+            SELECT 1 AS exists FROM ride_participation
+            WHERE ride_id = ${rideId}::uuid LIMIT 1
+          `;
+          if (other) throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+          throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
         }
         if (!participation.driver_marked) {
           throw Object.assign(new Error("not_marked"), { code: "NOT_MARKED" });

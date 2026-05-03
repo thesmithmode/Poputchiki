@@ -158,16 +158,15 @@ describe("POST /api/rides/:id/confirm-participation", () => {
   });
 
   it("404 when no ride_participation row", async () => {
+    // Clean any prior participation for OTHER on this ride so query returns empty
+    await sql`DELETE FROM ride_participation WHERE ride_id = ${rideId} AND passenger_id = ${OTHER.id}`;
     const app = makeApp();
     const token = await makeToken(OTHER);
     const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${OTHER.tgId}` },
     });
-    // OTHER has ride_participation but driver not marked them (they're the driver-as-passenger here)
-    // Actually OTHER has a row with driver_marked=true but we need a user with NO row
-    // Let's use a random valid UUID ride that OTHER has no row in
-    expect([403, 404, 422]).toContain(res.status);
+    expect(res.status).toBe(404);
   });
 
   it("400 on invalid ride id", async () => {

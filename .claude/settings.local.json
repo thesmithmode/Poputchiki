@@ -23,7 +23,18 @@
       "Bash(export POSTGRES_USER=$\\(grep POSTGRES_USER .env)",
       "Bash(gh run *)",
       "Bash(git add *)",
-      "Bash(git rm *)"
+      "Bash(git rm *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git stash *)",
+      "Bash(git push *)",
+      "Bash(bun *)",
+      "Bash(git branch *)",
+      "PowerShell(git *)",
+      "PowerShell(\\(Get-Content \"C:\\\\Users\\\\thesm\\\\.claude\\\\CLAUDE.md\"\\).Count; \\(Get-Content \"C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\CLAUDE.md\"\\).Count)",
+      "PowerShell(Get-Content *)",
+      "Bash(powershell *)",
+      "Bash(Get-ChildItem *)"
     ]
   },
   "hooks": {

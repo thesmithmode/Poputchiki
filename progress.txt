@@ -377,3 +377,4 @@
 [2026-05-03] TASK-085 done — sentinel seats-race: apps/api/tests/security/seats-race.test.ts — 10 concurrent withIdentity(repeatable read) на ride seats_total=1 → ровно 1 успех, seats_taken=1, ride_requests=1.
 [2026-05-03] TASK-086 done — sentinel likes-race: apps/api/tests/security/likes-race.test.ts — 100 concurrent INSERT likes (10 subjects × 10 rides) → likes_received_count=100 (trigger trg_likes_update_count атомичен).
 [2026-05-03] TASK-087 done — cron nonce cleanup: apps/cron/src/cleanup-nonces.ts (pg_try_advisory_lock, DELETE WHERE created_at < now()-10min, release), apps/cron/src/index.ts (setInterval 5min), 4 unit-тесты.
+[2026-05-03] TASK-022 done — materialized view user_stats (db/migrations/010): rides_as_driver_completed, rides_as_passenger, likes_received, avg_stars, reviews_count + UNIQUE INDEX(user_id) для CONCURRENTLY. apps/cron/src/refresh-user-stats.ts (advisory lock 100002 + REFRESH MV CONCURRENTLY), 3 unit-теста, добавлен в setInterval 5min.

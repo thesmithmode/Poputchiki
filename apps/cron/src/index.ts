@@ -1,5 +1,6 @@
 import postgres from "postgres";
 import { cleanupNonces } from "./cleanup-nonces";
+import { refreshUserStats } from "./refresh-user-stats";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL required");
@@ -15,5 +16,15 @@ async function runCleanup() {
   );
 }
 
+async function runRefreshUserStats() {
+  await refreshUserStats(sql).catch((err: unknown) =>
+    console.error(
+      JSON.stringify({ msg: "user_stats_refresh_error", error: String(err) }),
+    ),
+  );
+}
+
 runCleanup();
+runRefreshUserStats();
 setInterval(runCleanup, FIVE_MIN);
+setInterval(runRefreshUserStats, FIVE_MIN);

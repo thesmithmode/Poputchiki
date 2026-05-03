@@ -5,7 +5,7 @@
  */
 import { createHmac } from "node:crypto";
 import postgres from "postgres";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
 import { readJson } from "../helpers/json";
 import { buildDsn } from "./setup";
@@ -39,6 +39,12 @@ beforeAll(async () => {
   // Clean up any leftover state from previous runs
   await sql`DELETE FROM nonces WHERE hash LIKE '%'`.catch(() => null);
   await sql`DELETE FROM users WHERE tg_id = ${TG_ID}`.catch(() => null);
+});
+
+// Auth router has authRateLimit (10/min/IP). Сбрасываем перед каждым it,
+// иначе fixture-логины забивают лимит и тесты получают 429 вместо целевого статуса.
+beforeEach(async () => {
+  await sql`DELETE FROM rate_limit_buckets WHERE key LIKE 'auth:%'`.catch(() => null);
 });
 
 afterAll(async () => {

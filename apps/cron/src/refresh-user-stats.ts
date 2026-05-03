@@ -3,9 +3,10 @@ import type postgres from "postgres";
 const LOCK_ID = 100002;
 
 export async function refreshUserStats(sql: postgres.Sql): Promise<{ refreshed: true } | null> {
-  const [{ acquired }] = await sql`
+  const lockRows = await sql<{ acquired: boolean }[]>`
     SELECT pg_try_advisory_lock(${LOCK_ID}) AS acquired
   `;
+  const acquired = lockRows[0]?.acquired;
 
   if (!acquired) return null;
 

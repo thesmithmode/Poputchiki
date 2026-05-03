@@ -1,7 +1,21 @@
+import { sanitizeText } from "@poputchiki/shared/sanitize";
 import { Hono } from "hono";
 import type postgres from "postgres";
+import { z } from "zod";
+import { encryptPii } from "../db/crypto";
 import { withIdentity } from "../db/with-identity";
 import type { AppUser } from "../middleware/identity-guard";
+
+const PatchMeInput = z.object({
+  display_name: z
+    .string()
+    .min(1)
+    .max(50)
+    .transform((s) => sanitizeText(s, 50))
+    .optional(),
+  phone: z.string().min(1).max(30).optional(),
+  apt_number: z.string().min(1).max(20).optional(),
+});
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -86,6 +100,48 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
   app.get("/me", async (c) => {
     const user = c.get("user" as never) as AppUser;
     const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<MeRow[]>`
+        SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,
+               u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
+               s.rides_as_driver_completed, s.rides_as_passenger,
+               s.likes_received, s.avg_stars, s.reviews_count
+        FROM users u
+        LEFT JOIN user_stats s ON s.user_id = u.id
+        WHERE u.id = ${user.id} AND u.deleted_at IS NULL
+      `;
+    });
+    /* c8 ignore next -- defensive: identity-guard ensures user exists for /me */
+    if (rows.length === 0) return c.json({ error: "not found" }, 404);
+    c.header("Cache-Control", "private, no-store");
+    return c.json(shapeMe(rows[0] as MeRow));
+  });
+
+  app.patch("/me", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      body = {};
+    }
+    const parsed = PatchMeInput.safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid input" }, 422);
+
+    const data = parsed.data;
+    const pgcryptoKey = process.env.PGCRYPTO_KEY ?? "";
+
+    const rows = await withIdentity(sql, user, async (tx) => {
+      if (data.display_name !== undefined) {
+        await tx`UPDATE users SET display_name = ${data.display_name} WHERE id = ${user.id}`;
+      }
+      if (data.phone !== undefined) {
+        const enc = await encryptPii(tx, data.phone, pgcryptoKey);
+        await tx`UPDATE users SET phone_enc = ${new Uint8Array(enc)} WHERE id = ${user.id}`;
+      }
+      if (data.apt_number !== undefined) {
+        const enc = await encryptPii(tx, data.apt_number, pgcryptoKey);
+        await tx`UPDATE users SET apt_number_enc = ${new Uint8Array(enc)} WHERE id = ${user.id}`;
+      }
       return tx<MeRow[]>`
         SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,

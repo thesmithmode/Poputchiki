@@ -22,6 +22,7 @@ CREATE TABLE users (
   avg_stars             numeric(3,2),
   reviews_count         int         NOT NULL DEFAULT 0,
   created_at            timestamptz NOT NULL DEFAULT now(),
+  updated_at            timestamptz NOT NULL DEFAULT now(),
   last_seen_at          timestamptz NOT NULL DEFAULT now(),
   deleted_at            timestamptz
 );

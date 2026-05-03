@@ -67,6 +67,7 @@ CREATE POLICY reviews_insert ON reviews
 CREATE TABLE favorites (
   user_id    uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   target_id  uuid        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  notify     boolean     NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, target_id),
   CHECK (user_id <> target_id)
@@ -182,7 +183,8 @@ CREATE TABLE support_messages (
                          CHECK (status IN ('open', 'resolved', 'dismissed')),
   reply_text text,
   replied_at timestamptz,
-  created_at timestamptz NOT NULL DEFAULT now()
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_support_status ON support_messages (status, created_at DESC);
@@ -212,7 +214,8 @@ CREATE TABLE notification_preferences (
     'support_reply',
     'system'
   )),
-  enabled  boolean NOT NULL DEFAULT true,
+  enabled    boolean     NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, category)
 );
 

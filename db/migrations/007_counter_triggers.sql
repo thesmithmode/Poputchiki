@@ -60,3 +60,34 @@ $$;
 CREATE TRIGGER trg_rides_completed
   AFTER UPDATE OF status ON rides
   FOR EACH ROW EXECUTE FUNCTION app.trg_rides_completed_count();
+
+-- ---------------------------------------------------------------------------
+-- set_updated_at: universal trigger to maintain updated_at on every UPDATE
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION app.set_updated_at()
+  RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_updated_at_rides
+  BEFORE UPDATE ON rides
+  FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+CREATE TRIGGER trg_updated_at_ride_templates
+  BEFORE UPDATE ON ride_templates
+  FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+CREATE TRIGGER trg_updated_at_users
+  BEFORE UPDATE ON users
+  FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+CREATE TRIGGER trg_updated_at_support_messages
+  BEFORE UPDATE ON support_messages
+  FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();
+
+CREATE TRIGGER trg_updated_at_notification_preferences
+  BEFORE UPDATE ON notification_preferences
+  FOR EACH ROW EXECUTE FUNCTION app.set_updated_at();

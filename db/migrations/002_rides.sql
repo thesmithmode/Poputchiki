@@ -18,7 +18,8 @@ CREATE TABLE ride_templates (
   active_from    date        NOT NULL DEFAULT current_date,
   active_to      date,
   is_active      boolean     NOT NULL DEFAULT true,
-  created_at     timestamptz NOT NULL DEFAULT now()
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE INDEX idx_ride_templates_driver ON ride_templates (driver_id) WHERE is_active = true;

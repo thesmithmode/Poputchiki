@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "echo 'notifier: no sources yet, skip typecheck'",
     "build": "echo 'notifier: no build step (bun runtime)'"
   }
 }

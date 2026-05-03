@@ -20,12 +20,13 @@ export async function cleanupNonces(sql: postgres.Sql): Promise<{ deleted: numbe
       SELECT COUNT(*) AS count FROM deleted
     `;
     const deleted = Number(count);
-    process.stdout.write(
-      `${JSON.stringify({
+    // biome-ignore lint/suspicious/noConsoleLog: structured cron log
+    console.log(
+      JSON.stringify({
         msg: "nonce_cleanup",
         last_run_at: new Date().toISOString(),
         deleted_count: deleted,
-      })}\n`,
+      }),
     );
     return { deleted };
   } finally {

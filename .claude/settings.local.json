@@ -34,7 +34,9 @@
       "PowerShell(\\(Get-Content \"C:\\\\Users\\\\thesm\\\\.claude\\\\CLAUDE.md\"\\).Count; \\(Get-Content \"C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\CLAUDE.md\"\\).Count)",
       "PowerShell(Get-Content *)",
       "Bash(powershell *)",
-      "Bash(Get-ChildItem *)"
+      "Bash(Get-ChildItem *)",
+      "Read(//c/Users/thesm/.claude/hooks/**)",
+      "Read(//c/Users/thesm/.claude/plugins/**)"
     ]
   },
   "hooks": {

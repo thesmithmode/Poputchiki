@@ -11,11 +11,12 @@ export async function refreshUserStats(sql: postgres.Sql): Promise<{ refreshed: 
 
   try {
     await sql`REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats`;
-    process.stdout.write(
-      `${JSON.stringify({
+    // biome-ignore lint/suspicious/noConsoleLog: structured cron log
+    console.log(
+      JSON.stringify({
         msg: "user_stats_refresh",
         last_refresh_at: new Date().toISOString(),
-      })}\n`,
+      }),
     );
     return { refreshed: true };
   } finally {

@@ -8,5 +8,8 @@
     "start": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
     "build": "echo 'cron: no build step (bun runtime)'"
+  },
+  "dependencies": {
+    "postgres": "^3.4.9"
   }
 }

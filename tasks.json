@@ -477,8 +477,7 @@
       "dependencies": [
         "TASK-002"
       ],
-      "status": "done",
-      "completed_at": "2026-05-03"
+      "status": "pending"
     },
     {
       "id": "TASK-017",

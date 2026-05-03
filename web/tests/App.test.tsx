@@ -4,13 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
 
 type WindowWithTelegram = Window & {
-  Telegram?: {
-    WebApp?: {
-      colorScheme: "light" | "dark";
-      onEvent: (...args: unknown[]) => void;
-      ready: () => void;
-    };
-  };
+  Telegram?:
+    | {
+        WebApp?: {
+          colorScheme: "light" | "dark";
+          onEvent: (...args: unknown[]) => void;
+          ready: () => void;
+        };
+      }
+    | undefined;
 };
 
 const w = () => window as unknown as WindowWithTelegram;

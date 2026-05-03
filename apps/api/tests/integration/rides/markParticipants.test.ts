@@ -261,4 +261,25 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
     const body = await readJson(res);
     expect(body.error).toBe("validation failed");
   });
+
+  it("non-existent ride → 404 not_found", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER);
+    const nonExistentId = "00000000-0000-0000-0000-000000000000";
+
+    const res = await app.request(`/api/rides/${nonExistentId}/mark-participants`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+      body: JSON.stringify({ passenger_ids: [PASSENGER_A.id] }),
+    });
+
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not_found");
+  });
 });

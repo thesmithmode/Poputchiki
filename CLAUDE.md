@@ -2,7 +2,7 @@
 
 ## Что это
 
-Poputchiki — Telegram MiniApp для попутчиков ЖК Царёво. Стек: TypeScript + Hono + Bun (backend), Vite + React (SPA), self-hosted PostgreSQL 16 в Docker (НЕ Supabase, НЕ Neon, НЕ managed), Docker Compose микросервисы (`api`, `notifier`, `cron`, `webhook`, `web-server`, `postgres`, `nominatim`), Traefik + Let's Encrypt на личном сервере заказчика.
+Poputchiki — Telegram MiniApp для попутчиков ЖК Царёво. Целевая нагрузка: **50 000 одновременных пользователей** — все архитектурные, DB и API решения принимаются с учётом этого масштаба. Стек: TypeScript + Hono + Bun (backend), Vite + React (SPA), self-hosted PostgreSQL 16 в Docker (НЕ Supabase, НЕ Neon, НЕ managed), Docker Compose микросервисы (`api`, `notifier`, `cron`, `webhook`, `web-server`, `postgres`, `nominatim`), Traefik + Let's Encrypt на личном сервере заказчика.
 Фаза: full-MVP с автономным go-to-prod. `phase=mvp` (TASK-001..114) → `phase=prod-deploy` (TASK-115..125) → пайплайн деплоя.
 RLS identity: НЕТ Supabase `auth.uid()`/`auth.jwt()`. GUC `app.current_user_id`/`app.current_user_tg_id`/`app.current_user_role`, выставляются `apps/api` через `set_config(..., true)` в начале каждой транзакции (SPEC §3.4).
 Документы (любое арх/прод решение → сначала docs, потом код):

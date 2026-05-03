@@ -27,8 +27,8 @@ function buildDsn(): string {
   );
 }
 
-const USER_A: AppUser = { id: "00000000-0000-4000-a000-rl0000000001", tgId: 7001, role: "user" };
-const USER_B: AppUser = { id: "00000000-0000-4000-a000-rl0000000002", tgId: 7002, role: "user" };
+const USER_A: AppUser = { id: "00000000-0000-4000-a000-a10000000001", tgId: 7001, role: "user" };
+const USER_B: AppUser = { id: "00000000-0000-4000-a000-a10000000002", tgId: 7002, role: "user" };
 const TEST_IP = "10.0.0.1";
 
 let sql: ReturnType<typeof createPool>;

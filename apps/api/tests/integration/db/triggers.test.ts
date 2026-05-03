@@ -25,8 +25,8 @@ function buildDsn(): string {
   );
 }
 
-const DRIVER = { id: "00000000-0000-4000-e000-trigger00001", tgId: 8801 };
-const PASSENGER = { id: "00000000-0000-4000-e000-trigger00002", tgId: 8802 };
+const DRIVER = { id: "00000000-0000-4000-e000-e00000000001", tgId: 8801 };
+const PASSENGER = { id: "00000000-0000-4000-e000-e00000000002", tgId: 8802 };
 
 let sql: ReturnType<typeof createPool>;
 

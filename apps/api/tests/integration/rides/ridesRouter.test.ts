@@ -36,17 +36,17 @@ const JWT_SECRET = "test-secret-rides-integration";
 const TEST_IP = "10.0.2.1";
 
 const USER_ESTABLISHED = {
-  id: "00000000-0000-4000-b000-rides0000001",
+  id: "00000000-0000-4000-b000-100000000001",
   tgId: 8001,
   role: "user" as const,
 };
 const USER_NEW = {
-  id: "00000000-0000-4000-b000-rides0000002",
+  id: "00000000-0000-4000-b000-100000000002",
   tgId: 8002,
   role: "user" as const,
 };
 const USER_NO_LIKES = {
-  id: "00000000-0000-4000-b000-rides0000003",
+  id: "00000000-0000-4000-b000-100000000003",
   tgId: 8003,
   role: "user" as const,
 };

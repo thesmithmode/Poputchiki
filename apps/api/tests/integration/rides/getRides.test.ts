@@ -34,12 +34,12 @@ const JWT_SECRET = "test-secret-getrides-integration";
 const TEST_IP = "10.0.3.1";
 
 const DRIVER_A = {
-  id: "00000000-0000-4000-c000-getrides00001",
+  id: "00000000-0000-4000-c000-c00000000001",
   tgId: 9001,
   role: "user" as const,
 };
 const DRIVER_B = {
-  id: "00000000-0000-4000-c000-getrides00002",
+  id: "00000000-0000-4000-c000-c00000000002",
   tgId: 9002,
   role: "user" as const,
 };

@@ -28,11 +28,11 @@ function buildDsn(): string {
 const PII_KEY = "test-pgcrypto-key-for-integration";
 
 const USER_A = {
-  id: "00000000-0000-4000-d000-crypto000001",
+  id: "00000000-0000-4000-d000-c00000000001",
   tgId: 7701,
 };
 const USER_B = {
-  id: "00000000-0000-4000-d000-crypto000002",
+  id: "00000000-0000-4000-d000-c00000000002",
   tgId: 7702,
 };
 

@@ -20,14 +20,14 @@ function buildDsn(): string {
 
 const JWT_SECRET = "test-secret-users-me-integration";
 
-const ME = { id: "00000000-0000-4000-d000-usrme0000001", tgId: 7100001, role: "user" as const };
+const ME = { id: "00000000-0000-4000-d000-200000000001", tgId: 7100001, role: "user" as const };
 const OTHER = {
-  id: "00000000-0000-4000-d000-usrme0000002",
+  id: "00000000-0000-4000-d000-200000000002",
   tgId: 7100002,
   role: "user" as const,
 };
 const BANNED = {
-  id: "00000000-0000-4000-d000-usrme0000003",
+  id: "00000000-0000-4000-d000-200000000003",
   tgId: 7100003,
   role: "user" as const,
 };
@@ -162,7 +162,7 @@ describe("GET /api/users/:id", () => {
   it("404 for non-existent uuid", async () => {
     const app = makeApp();
     const token = await makeToken(ME);
-    const res = await app.request("/api/users/00000000-0000-4000-d000-usrmedeadbeef", {
+    const res = await app.request("/api/users/00000000-0000-4000-d000-2deadbeef000", {
       headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
     });
     expect(res.status).toBe(404);

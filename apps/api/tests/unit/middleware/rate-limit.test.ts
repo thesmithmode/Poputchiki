@@ -4,7 +4,7 @@ import type { AppUser } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { readJson } from "../../helpers/json";
 
-const USER: AppUser = { id: "00000000-0000-4000-a000-rl0000000001", tgId: 555, role: "user" };
+const USER: AppUser = { id: "00000000-0000-4000-a000-a10000000001", tgId: 555, role: "user" };
 
 function makeSql(count: number) {
   // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql

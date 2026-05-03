@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { auditLog } from "../../../src/middleware/audit-log";
 import type { AppUser } from "../../../src/middleware/identity-guard";
 
-const USER: AppUser = { id: "00000000-0000-4000-a000-audit000001", tgId: 6001, role: "user" };
+const USER: AppUser = { id: "00000000-0000-4000-a000-a01d00000001", tgId: 6001, role: "user" };
 
 function makeSql() {
   const mock = vi.fn().mockResolvedValue([]);

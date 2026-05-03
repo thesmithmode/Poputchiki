@@ -18,6 +18,14 @@ BEGIN
   END IF;
 END $$;
 
+-- IMMUTABLE wrapper: btree index expressions must be IMMUTABLE.
+-- date_trunc(text, timestamptz) is STABLE (depends on session TZ);
+-- AT TIME ZONE 'UTC' returns plain timestamp where date_trunc is IMMUTABLE.
+CREATE OR REPLACE FUNCTION complaint_week_utc(ts timestamptz)
+RETURNS timestamp AS $$
+  SELECT date_trunc('week', (ts AT TIME ZONE 'UTC'));
+$$ LANGUAGE sql IMMUTABLE;
+
 -- Partial unique index: one complaint per reporter-target pair per calendar week
 -- COALESCE ride_id to nil UUID so NULL values are treated as equal in the unique check
 CREATE UNIQUE INDEX IF NOT EXISTS complaints_unique_per_week_idx
@@ -25,5 +33,5 @@ CREATE UNIQUE INDEX IF NOT EXISTS complaints_unique_per_week_idx
     reporter_id,
     target_id,
     COALESCE(ride_id, '00000000-0000-0000-0000-000000000000'::uuid),
-    date_trunc('week', created_at)
+    complaint_week_utc(created_at)
   );

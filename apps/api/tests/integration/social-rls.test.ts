@@ -8,17 +8,11 @@
  */
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { buildDsn } from "./setup";
 
 const USER_A = "00000000-0000-4000-a000-000000000020";
 const USER_B = "00000000-0000-4000-a000-000000000021";
 const USER_C = "00000000-0000-4000-a000-000000000022";
-
-function buildDsn(): string {
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
 
 let sql: ReturnType<typeof postgres>;
 let rideId: string;

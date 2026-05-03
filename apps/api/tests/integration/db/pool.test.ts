@@ -5,24 +5,7 @@
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPool, withSerializable, withTx } from "../../../src/db/pool";
-
-const required = [
-  "POSTGRES_USER",
-  "POSTGRES_PASSWORD",
-  "POSTGRES_HOST",
-  "POSTGRES_PORT",
-  "POSTGRES_DB",
-];
-
-function buildDsn(): string {
-  for (const v of required) {
-    if (!process.env[v]) throw new Error(`Missing env: ${v}`);
-  }
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
+import { buildDsn } from "../setup";
 
 const UUID_A = "00000000-0000-4000-a000-101000000001";
 const UUID_B = "00000000-0000-4000-a000-101000000002";

@@ -4,16 +4,10 @@
  */
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { buildDsn } from "./setup";
 
 const DRIVER_UUID = "00000000-0000-4000-a000-000000000010";
 const PASSENGER_UUID = "00000000-0000-4000-a000-000000000011";
-
-function buildDsn(): string {
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
 
 let sql: ReturnType<typeof postgres>;
 let rideId: string;

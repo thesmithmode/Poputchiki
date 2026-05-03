@@ -10,13 +10,7 @@ import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createUsersRouter } from "../../../src/users/usersRouter";
 import { readJson } from "../../helpers/json";
-
-function buildDsn(): string {
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
+import { buildDsn } from "../setup";
 
 const JWT_SECRET = "test-secret-users-me-integration";
 

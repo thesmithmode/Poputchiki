@@ -8,16 +8,10 @@ import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
 import { readJson } from "../helpers/json";
+import { buildDsn } from "./setup";
 
 const TG_ID = 8_888_888_888;
 const TG_USER = { id: TG_ID, first_name: "Integration", username: "int_test" };
-
-function buildDsn(): string {
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
 
 function makeInitData(tgId: number, nowSeconds: number, botToken: string): string {
   const user = JSON.stringify({

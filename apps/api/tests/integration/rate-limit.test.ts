@@ -8,24 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { createPool } from "../../src/db/pool";
 import type { AppUser } from "../../src/middleware/identity-guard";
 import { rateLimit } from "../../src/middleware/rate-limit";
-
-const required = [
-  "POSTGRES_USER",
-  "POSTGRES_PASSWORD",
-  "POSTGRES_HOST",
-  "POSTGRES_PORT",
-  "POSTGRES_DB",
-];
-
-function buildDsn(): string {
-  for (const v of required) {
-    if (!process.env[v]) throw new Error(`Missing env: ${v}`);
-  }
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
+import { buildDsn } from "./setup";
 
 const USER_A: AppUser = { id: "00000000-0000-4000-a000-a10000000001", tgId: 7001, role: "user" };
 const USER_B: AppUser = { id: "00000000-0000-4000-a000-a10000000002", tgId: 7002, role: "user" };

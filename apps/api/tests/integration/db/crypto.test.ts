@@ -6,24 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { decryptUserPii, encryptPii } from "../../../src/db/crypto";
 import { createPool } from "../../../src/db/pool";
 import { withIdentity, withSystem } from "../../../src/db/with-identity";
-
-const required = [
-  "POSTGRES_USER",
-  "POSTGRES_PASSWORD",
-  "POSTGRES_HOST",
-  "POSTGRES_PORT",
-  "POSTGRES_DB",
-];
-
-function buildDsn(): string {
-  for (const v of required) {
-    if (!process.env[v]) throw new Error(`Missing env: ${v}`);
-  }
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
+import { buildDsn } from "../setup";
 
 const PII_KEY = "test-pgcrypto-key-for-integration";
 

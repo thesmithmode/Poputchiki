@@ -13,24 +13,7 @@ import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
 import { readJson } from "../../helpers/json";
-
-const required = [
-  "POSTGRES_USER",
-  "POSTGRES_PASSWORD",
-  "POSTGRES_HOST",
-  "POSTGRES_PORT",
-  "POSTGRES_DB",
-];
-
-function buildDsn(): string {
-  for (const v of required) {
-    if (!process.env[v]) throw new Error(`Missing env: ${v}`);
-  }
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST}:${process.env.POSTGRES_PORT}/${process.env.POSTGRES_DB}`
-  );
-}
+import { buildDsn } from "../setup";
 
 const JWT_SECRET = "test-secret-rides-integration";
 const TEST_IP = "10.0.2.1";

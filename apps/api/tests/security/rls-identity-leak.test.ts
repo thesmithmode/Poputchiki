@@ -10,13 +10,7 @@
 import { randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-
-function buildDsn(): string {
-  return (
-    process.env.DATABASE_URL ??
-    `postgres://${process.env.POSTGRES_USER}:${process.env.POSTGRES_PASSWORD}@${process.env.POSTGRES_HOST ?? "localhost"}:${process.env.POSTGRES_PORT ?? 5432}/${process.env.POSTGRES_DB}`
-  );
-}
+import { buildDsn } from "../integration/setup";
 
 let sql: ReturnType<typeof postgres>;
 const USER_A = randomUUID();

@@ -95,7 +95,12 @@ git commit -m "<TYPE>: <описание на русском>"
 ```
 Где TYPE: `FEAT|FIX|CHORE|DOCS|REFACTOR|TEST`.
 
-**Без AI-подписи**. Никаких `Co-Authored-By: Claude`, `Generated with Claude Code`, и т.п. Удалить до commit.
+**Без AI-подписи и без AI-ссылок**. Запрещено в commit subject, body, PR, release notes, changelog, issue comments, docs:
+- `Co-Authored-By: Claude` / `Co-Authored-By: Claude Sonnet` / любые `noreply@anthropic.com`
+- `Generated with Claude Code` / `🤖 Generated with`
+- URL вида `https://claude.ai/code/session_*` или любые другие `claude.ai/*`
+
+Удалить **до** commit/push. Проверять `git show HEAD` после каждого коммита.
 
 **Кириллица**: bash ломает кириллицу → используй PowerShell или here-doc для коммитов с русским текстом.
 

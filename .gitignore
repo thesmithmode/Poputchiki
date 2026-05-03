@@ -22,8 +22,7 @@ backups/base-*
 coverage/
 coverage-integration/
 
-# .memory (claude-memory-compiler — local-only state)
-.memory/scripts/__pycache__/
-.memory/scripts/*.log
-.memory/scripts/session-flush-*.md
-.memory/scripts/last-flush.json
+# Python bytecode
+__pycache__/
+*.pyc
+

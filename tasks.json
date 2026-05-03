@@ -3281,6 +3281,44 @@
         "TASK-129"
       ],
       "status": "pending"
+    },
+    {
+      "id": "TASK-134",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "SECURITY DEFINER domain layer + counter trigger fixes — счётчики и seat booking не работали под RLS FORCE",
+      "acceptance_criteria": [
+        "db/migrations/011_security_definer_fixes.sql: trg_likes_update_count, trg_rides_insert_count, trg_rides_completed_count → SECURITY DEFINER",
+        "db/migrations/012_book_seat_setof.sql: app.book_seat() SQL function SETOF rides, SECURITY DEFINER, REVOKE+GRANT",
+        "apps/api/src/rides/ridesRouter.ts: POST /:id/request делегирует в app.book_seat()",
+        "Sentinel apps/api/tests/security/likes-race.test.ts зелёный (likes_received_count=100)",
+        "Sentinel apps/api/tests/security/seats-race.test.ts зелёный (1 success, seats_taken=1)"
+      ],
+      "test_steps": [
+        "bun run test:security в CI → likes-race + seats-race green",
+        "psql: \\df+ app.book_seat → prosecdef=t"
+      ],
+      "dependencies": ["TASK-114"],
+      "status": "in_progress"
+    },
+    {
+      "id": "TASK-135",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "mvp",
+      "description": "Router integration coverage до 95% — auth/refresh, auth/logout, rides POST /:id/request тесты + поднять threshold",
+      "acceptance_criteria": [
+        "apps/api/tests/integration/auth/refresh.test.ts: happy path + revoked + expired",
+        "apps/api/tests/integration/auth/logout.test.ts: revoke + cookie clear",
+        "apps/api/tests/integration/rides/rideRequest.test.ts: book_seat happy + NO_SEATS + already_requested",
+        "vitest.integration.config.ts thresholds → lines/branches/functions/statements ≥95"
+      ],
+      "test_steps": [
+        "bun run coverage:integration → все routers ≥95%"
+      ],
+      "dependencies": ["TASK-133", "TASK-134"],
+      "status": "pending"
     }
   ]
 }

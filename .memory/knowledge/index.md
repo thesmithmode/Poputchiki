@@ -20,3 +20,7 @@
 | [[connections/scope-creep-and-coverage-gates]] | Scope creep creates untested code → coverage fails → pressure to lower threshold; both have same root cause | daily/2026-05-03.md | 2026-05-03 |
 | [[concepts/hono-route-prefix-test-mismatch]] | Test URL includes mount prefix → wrong handler matches silently → 0% coverage on target handler despite green tests | daily/2026-05-03.md | 2026-05-03 |
 | [[concepts/c8-ignore-denominator-oscillation]] | c8 ignore start/stop changes function AND branch denominators independently → oscillation between failing metrics | daily/2026-05-03.md | 2026-05-03 |
+| [[concepts/pre-push-agent-hook]] | Claude Code agent hook fires on git push → haiku reviews diff → ALLOW/BLOCK; doesn't fire if settings.json changed same session | daily/2026-05-03.md | 2026-05-03 |
+| [[concepts/zod-uuid-strict-validation]] | Zod v4 `z.uuid()` enforces RFC 4122 version/variant bits; sequential test fixtures like `11111111-...` fail with 422 | daily/2026-05-03.md | 2026-05-03 |
+| [[concepts/batch-ci-fix-discipline]] | Reactive push→fail→fix loop wastes CI queue time; collect full failure surface first, fix all in one commit | daily/2026-05-03.md | 2026-05-03 |
+| [[concepts/truncate-cascade-test-isolation]] | `TRUNCATE ... CASCADE` helper removes FK ordering problems in test teardown; `fileParallelism: false` prevents deadlock | daily/2026-05-03.md | 2026-05-03 |

@@ -1,5 +1,15 @@
 # Build Log
 
+## [2026-05-03T23:59:30+03:00] compile | 2026-05-03.md (fourth pass)
+- Source: daily/2026-05-03.md
+- Articles created: [[concepts/batch-ci-fix-discipline]], [[concepts/truncate-cascade-test-isolation]]
+- Articles updated: [[concepts/pre-push-agent-hook]] (hook removed in session 22:30; added status note + source update), [[concepts/hono-route-prefix-test-mismatch]] (added detailed investigation trace from session 19:46: wrong handler matching confirmed, local test run evidence)
+
+## [2026-05-03T23:59:00+03:00] compile | 2026-05-03.md (third pass)
+- Source: daily/2026-05-03.md
+- Articles created: [[concepts/pre-push-agent-hook]], [[concepts/zod-uuid-strict-validation]]
+- Articles updated: [[concepts/c8-ignore-denominator-oscillation]] (added: start/stop does NOT affect V8 function definitions; only `c8 ignore next` on preceding line works for function coverage; inline placement may not be respected)
+
 ## [2026-05-03T23:30:00+03:00] compile | 2026-05-03.md (second pass)
 - Source: daily/2026-05-03.md
 - Articles created: [[concepts/hono-route-prefix-test-mismatch]], [[concepts/c8-ignore-denominator-oscillation]]

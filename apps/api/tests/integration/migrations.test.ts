@@ -114,3 +114,52 @@ describe("Sentinel: migrations up/down/up consistency", () => {
     expect(fp2).toBe(fp1);
   }, 60_000);
 });
+
+// TASK-008 sentinel: verify required tables exist after all migrations applied
+describe("Sentinel: TASK-008 required tables exist", () => {
+  it("support_messages table exists with required columns", async () => {
+    const cols = await target.unsafe(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'support_messages'
+      ORDER BY column_name
+    `);
+    const names = cols.map((c: Record<string, unknown>) => c.column_name as string);
+    expect(names).toContain("id");
+    expect(names).toContain("user_id");
+    expect(names).toContain("text");
+    expect(names).toContain("status");
+    expect(names).toContain("reply_text");
+    expect(names).toContain("replied_at");
+    expect(names).toContain("created_at");
+  });
+
+  it("notification_preferences table exists with required columns", async () => {
+    const cols = await target.unsafe(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'notification_preferences'
+      ORDER BY column_name
+    `);
+    const names = cols.map((c: Record<string, unknown>) => c.column_name as string);
+    expect(names).toContain("user_id");
+    expect(names).toContain("category");
+    expect(names).toContain("enabled");
+  });
+
+  it("support_messages has RLS enabled", async () => {
+    const [row] = await target.unsafe(`
+      SELECT relrowsecurity, relforcerowsecurity
+      FROM pg_class WHERE relname = 'support_messages'
+    `);
+    expect(row?.relrowsecurity).toBe(true);
+    expect(row?.relforcerowsecurity).toBe(true);
+  });
+
+  it("notification_preferences has RLS enabled", async () => {
+    const [row] = await target.unsafe(`
+      SELECT relrowsecurity, relforcerowsecurity
+      FROM pg_class WHERE relname = 'notification_preferences'
+    `);
+    expect(row?.relrowsecurity).toBe(true);
+    expect(row?.relforcerowsecurity).toBe(true);
+  });
+});

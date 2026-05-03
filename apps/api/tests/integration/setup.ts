@@ -62,6 +62,8 @@ export async function truncateAll(sql: postgres.Sql): Promise<void> {
       ride_participation,
       ride_templates,
       nonces,
+      support_messages,
+      notification_preferences,
       users
     RESTART IDENTITY CASCADE
   `;

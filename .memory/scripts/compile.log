@@ -39,3 +39,21 @@ Error output: Check stderr output for details
 
 Compilation complete. Total cost: $0.00
 Knowledge base: 18 articles
+Files to compile (1):
+  - 2026-05-03.md
+
+[1/1] Compiling 2026-05-03.md...
+  Cost: $0.6330
+  Done.
+
+Compilation complete. Total cost: $0.63
+Knowledge base: 20 articles
+Files to compile (1):
+  - 2026-05-03.md
+
+[1/1] Compiling 2026-05-03.md...
+  Cost: $0.5441
+  Done.
+
+Compilation complete. Total cost: $0.54
+Knowledge base: 22 articles

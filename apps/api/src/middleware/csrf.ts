@@ -27,5 +27,6 @@ export function csrf(allowedOrigin?: string): MiddlewareHandler {
     }
 
     await next();
+    return;
   };
 }

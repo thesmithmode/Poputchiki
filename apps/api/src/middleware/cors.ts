@@ -24,4 +24,5 @@ export const corsMiddleware: MiddlewareHandler = async (c, next) => {
     c.res.headers.set("Access-Control-Allow-Origin", origin);
     c.res.headers.set("Access-Control-Allow-Credentials", "true");
   }
+  return;
 };

@@ -12,9 +12,11 @@ export default app;
 if (import.meta.main) {
   Bun.serve({
     port: env.PORT,
-    fetch(req, server) {
+    // biome-ignore lint/suspicious/noExplicitAny: bun-types Bun.serve fetch signature drops server arg
+    fetch(req: Request, server: any) {
       // Inject Bun server into Hono env so captureSocketIp() can read peer address.
       return app.fetch(req, { server });
     },
-  });
+    // biome-ignore lint/suspicious/noExplicitAny: idem
+  } as any);
 }

@@ -28,5 +28,6 @@ export function authRateLimit(sql: postgres.Sql, opts?: AuthRateLimitOptions): M
     }
 
     await next();
+    return;
   };
 }

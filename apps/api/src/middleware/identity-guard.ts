@@ -51,5 +51,6 @@ export function identityGuard(jwtSecret: string, sql?: postgres.Sql): Middleware
 
     c.set("user" as never, user);
     await next();
+    return;
   };
 }

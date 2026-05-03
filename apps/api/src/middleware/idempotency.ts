@@ -107,5 +107,6 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
     } catch {
       // Best-effort persistence — sentinel will linger; subsequent requests get 409 until 24h.
     }
+    return;
   };
 }

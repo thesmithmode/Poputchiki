@@ -49,5 +49,6 @@ export function rateLimit(sql: postgres.Sql, opts?: RateLimitOptions): Middlewar
     }
 
     await next();
+    return;
   };
 }

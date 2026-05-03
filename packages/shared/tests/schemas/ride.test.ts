@@ -1,5 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { RideDTO } from "../../src/schemas/ride.js";
+import { CreateRideInput, RideDTO } from "../../src/schemas/ride.js";
+
+describe("CreateRideInput", () => {
+  const future = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const base = {
+    from_label: "  A  ",
+    from_lat: 55,
+    from_lng: 37,
+    to_label: "  B  ",
+    to_lat: 55,
+    to_lng: 37.1,
+    departure_at: future,
+    seats_total: 2,
+  };
+
+  it("sanitizes labels + comment=null untouched", () => {
+    const out = CreateRideInput.parse({ ...base, comment: null });
+    expect(out.from_label).toBe("A");
+    expect(out.to_label).toBe("B");
+    expect(out.comment).toBeNull();
+  });
+
+  it("comment string passes through transform", () => {
+    const out = CreateRideInput.parse({ ...base, comment: "  hi  " });
+    expect(out.comment).toBe("hi");
+  });
+
+  it("rejects past departure_at", () => {
+    const past = new Date(Date.now() - 1000).toISOString();
+    expect(CreateRideInput.safeParse({ ...base, departure_at: past }).success).toBe(false);
+  });
+});
 
 const validRide = {
   id: "550e8400-e29b-41d4-a716-446655440001",

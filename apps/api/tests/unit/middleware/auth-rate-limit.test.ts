@@ -69,6 +69,34 @@ describe("authRateLimit middleware", () => {
     expect(sqlCalls.some((k) => k.includes("ip:") || k.includes("9.8.7.6"))).toBe(true);
   });
 
+  it("без opts → дефолт ipLimit=10", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    const sql = vi.fn().mockResolvedValue([{ count: 11 }]) as any;
+    const app = new Hono();
+    app.use("/auth/*", async (c, next) => {
+      c.set("socketIp" as never, "172.20.0.2");
+      await next();
+    });
+    app.use("/auth/*", authRateLimit(sql));
+    app.post("/auth/telegram", (c) => c.json({ ok: true }, 200));
+    const res = await app.request("/auth/telegram", { method: "POST" });
+    expect(res.status).toBe(429);
+  });
+
+  it("ipRow undefined → проходит (count=0)", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    const sql = vi.fn().mockResolvedValue([]) as any;
+    const app = new Hono();
+    app.use("/auth/*", async (c, next) => {
+      c.set("socketIp" as never, "172.20.0.2");
+      await next();
+    });
+    app.use("/auth/*", authRateLimit(sql));
+    app.post("/auth/telegram", (c) => c.json({ ok: true }, 200));
+    const res = await app.request("/auth/telegram", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+
   it("на /api/* middleware НЕ применяется", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
     const sql = vi.fn().mockResolvedValue([{ count: 999 }]) as any;

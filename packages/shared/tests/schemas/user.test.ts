@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { UserDTO } from "../../src/schemas/user.js";
+import { UserDTO, UserProfileInput } from "../../src/schemas/user.js";
+
+describe("UserProfileInput", () => {
+  it("accepts valid name + sanitizes via transform", () => {
+    const out = UserProfileInput.parse({ display_name: "  Иван  " });
+    expect(out.display_name).toBe("Иван");
+  });
+
+  it("rejects empty name", () => {
+    expect(UserProfileInput.safeParse({ display_name: "" }).success).toBe(false);
+  });
+
+  it("rejects >100 chars", () => {
+    expect(UserProfileInput.safeParse({ display_name: "x".repeat(101) }).success).toBe(false);
+  });
+
+  it("notify_disabled optional boolean", () => {
+    expect(
+      UserProfileInput.parse({ display_name: "A", notify_disabled: true }).notify_disabled,
+    ).toBe(true);
+  });
+});
 
 const validUser = {
   id: "550e8400-e29b-41d4-a716-446655440000",

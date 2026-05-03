@@ -177,6 +177,90 @@ describe("idempotency middleware", () => {
     expect(calls).toContain("DELETE");
   });
 
+  it("POST with key, handler throws + DELETE rejects → catch arrow swallows", async () => {
+    const sql = ((strings: TemplateStringsArray) => {
+      const text = strings.join("");
+      if (text.includes("INSERT")) return Promise.resolve([{ key: KEY }]);
+      if (text.includes("DELETE")) return Promise.reject(new Error("db dead"));
+      return Promise.resolve([]);
+    }) as unknown as Parameters<typeof idempotency>[0];
+    const app = new Hono();
+    app.use("*", idempotency(sql));
+    app.post("/api/rides", () => {
+      throw new Error("boom");
+    });
+    const res = await app.request("/api/rides", {
+      method: "POST",
+      headers: { "Idempotency-Key": KEY },
+    });
+    expect(res.status).toBe(500);
+  });
+
+  it("POST with key, INSERT throws → next() called, no claim", async () => {
+    const sql = ((strings: TemplateStringsArray) => {
+      const text = strings.join("");
+      if (text.includes("INSERT")) return Promise.reject(new Error("db down"));
+      return Promise.resolve([]);
+    }) as unknown as Parameters<typeof idempotency>[0];
+    const app = new Hono();
+    app.use("*", idempotency(sql));
+    app.post("/api/rides", (c) => c.json({ id: "ok" }, 201));
+    const res = await app.request("/api/rides", {
+      method: "POST",
+      headers: { "Idempotency-Key": KEY },
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it("POST claim lost, no cached row (>24h expired) → 409 expired", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    const sql = vi.fn() as any;
+    sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const app = new Hono();
+    app.use("*", idempotency(sql));
+    app.post("/api/rides", (c) => c.json({ id: "x" }, 201));
+    const res = await app.request("/api/rides", {
+      method: "POST",
+      headers: { "Idempotency-Key": KEY },
+    });
+    expect(res.status).toBe(409);
+    const body = await readJson(res);
+    expect(body.error).toBe("idempotency_key_expired");
+  });
+
+  it("POST claim won + UPDATE throws → swallowed, response still returned", async () => {
+    const sql = ((strings: TemplateStringsArray) => {
+      const text = strings.join("");
+      if (text.includes("INSERT")) return Promise.resolve([{ key: KEY }]);
+      if (text.includes("UPDATE")) return Promise.reject(new Error("update fail"));
+      return Promise.resolve([]);
+    }) as unknown as Parameters<typeof idempotency>[0];
+    const app = new Hono();
+    app.use("*", idempotency(sql));
+    app.post("/api/rides", (c) => c.json({ id: "ok" }, 201));
+    const res = await app.request("/api/rides", {
+      method: "POST",
+      headers: { "Idempotency-Key": KEY },
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it("POST claim won + non-JSON body → stored as null", async () => {
+    const sql = ((strings: TemplateStringsArray) => {
+      const text = strings.join("");
+      if (text.includes("INSERT")) return Promise.resolve([{ key: KEY }]);
+      return Promise.resolve([]);
+    }) as unknown as Parameters<typeof idempotency>[0];
+    const app = new Hono();
+    app.use("*", idempotency(sql));
+    app.post("/api/rides", (c) => c.text("plain", 201));
+    const res = await app.request("/api/rides", {
+      method: "POST",
+      headers: { "Idempotency-Key": KEY },
+    });
+    expect(res.status).toBe(201);
+  });
+
   it("POST with key, non-2xx response → sentinel released (client may retry)", async () => {
     const calls: string[] = [];
     const sql = ((strings: TemplateStringsArray) => {

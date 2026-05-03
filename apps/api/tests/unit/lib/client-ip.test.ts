@@ -91,6 +91,51 @@ describe("getClientIp", () => {
     expect(ip).toBe("200.1.2.3");
   });
 
+  it("invalid CIDR bits in TRUSTED_PROXIES → не падает, считает не доверенным", async () => {
+    const ip = await getIp({
+      socketIp: "172.20.0.2",
+      headers: { "X-Forwarded-For": "9.9.9.9" },
+      envProxy: "172.16.0.0/99",
+    });
+    expect(ip).toBe("172.20.0.2");
+  });
+
+  it("malformed socket IP → not trusted, returns as-is", async () => {
+    const ip = await getIp({
+      socketIp: "not.an.ip",
+      headers: { "X-Forwarded-For": "9.9.9.9" },
+      envProxy: "172.16.0.0/12",
+    });
+    expect(ip).toBe("not.an.ip");
+  });
+
+  it("CIDR без слеша → exact match", async () => {
+    const ip = await getIp({
+      socketIp: "172.20.0.2",
+      headers: { "X-Forwarded-For": "9.9.9.9" },
+      envProxy: "172.20.0.2",
+    });
+    expect(ip).toBe("9.9.9.9");
+  });
+
+  it("CIDR /0 → matches all", async () => {
+    const ip = await getIp({
+      socketIp: "8.8.8.8",
+      headers: { "X-Forwarded-For": "1.1.1.1" },
+      envProxy: "0.0.0.0/0",
+    });
+    expect(ip).toBe("1.1.1.1");
+  });
+
+  it("trusted proxy + empty XFF + empty Real-IP → fallback socket", async () => {
+    const ip = await getIp({
+      socketIp: "172.20.0.2",
+      headers: { "X-Forwarded-For": "" },
+      envProxy: "172.16.0.0/12",
+    });
+    expect(ip).toBe("172.20.0.2");
+  });
+
   it("REGRESSION: untrusted client with XFF cannot bypass rate-limit ceiling", async () => {
     // Attacker sends fake XFF on every request from same socket.
     // Each request must resolve to the SAME (real) IP.

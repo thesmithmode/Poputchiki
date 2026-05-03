@@ -1,5 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { ReviewDTO } from "../../src/schemas/review.js";
+import { CreateReviewInput, ReviewDTO } from "../../src/schemas/review.js";
+
+describe("CreateReviewInput", () => {
+  const base = {
+    ride_id: "550e8400-e29b-41d4-a716-446655440003",
+    target_id: "550e8400-e29b-41d4-a716-446655440001",
+    stars: 5,
+  };
+
+  it("accepts minimal valid", () => {
+    expect(CreateReviewInput.safeParse(base).success).toBe(true);
+  });
+
+  it("transforms body via sanitize", () => {
+    const out = CreateReviewInput.parse({ ...base, body: "  hi  " });
+    expect(out.body).toBe("hi");
+  });
+
+  it("body=null passes through transform unchanged", () => {
+    const out = CreateReviewInput.parse({ ...base, body: null });
+    expect(out.body).toBeNull();
+  });
+
+  it("rejects stars=0", () => {
+    expect(CreateReviewInput.safeParse({ ...base, stars: 0 }).success).toBe(false);
+  });
+
+  it("rejects body >300", () => {
+    expect(CreateReviewInput.safeParse({ ...base, body: "x".repeat(301) }).success).toBe(false);
+  });
+});
 
 const validReview = {
   id: "550e8400-e29b-41d4-a716-446655440004",

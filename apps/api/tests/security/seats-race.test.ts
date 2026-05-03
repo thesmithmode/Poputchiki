@@ -25,8 +25,8 @@ describe("Sentinel: concurrency seat-booking race", () => {
     const driver = await withTestUser(sql, 9000001);
 
     const [ride] = await sql<{ id: string }[]>`
-      INSERT INTO rides (driver_id, origin_lat, origin_lng, dest_lat, dest_lng, depart_at, seats_total, seats_taken, status)
-      VALUES (${driver.id}, 55.75, 37.62, 55.80, 37.70, now() + interval '2 hours', 1, 0, 'active')
+      INSERT INTO rides (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng, departure_at, seats_total, seats_taken, status)
+      VALUES (${driver.id}, 'A', 55.75, 37.62, 'B', 55.80, 37.70, now() + interval '2 hours', 1, 0, 'active')
       RETURNING id
     `;
     if (!ride) throw new Error("ride insert failed");

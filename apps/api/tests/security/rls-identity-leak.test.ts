@@ -39,25 +39,23 @@ describe("Sentinel: identity GUC must not leak across transactions on same conne
   it("set_config(local=true) does not leak from tx A to tx B on pinned connection", async () => {
     const reserved = await sql.reserve();
     try {
-      await reserved.begin(async (tx) => {
-        await tx`SET LOCAL ROLE poputchiki_app`;
-        await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
-        await tx`SELECT set_config('app.current_user_role', 'user', true)`;
-        const rows = await tx`SELECT id FROM users WHERE id = ${USER_A}`;
-        expect(rows.length).toBe(1);
-      });
+      // tx A: identity set
+      await reserved`BEGIN`;
+      await reserved`SET LOCAL ROLE poputchiki_app`;
+      await reserved`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
+      await reserved`SELECT set_config('app.current_user_role', 'user', true)`;
+      const rowsA = await reserved`SELECT id FROM users WHERE id = ${USER_A}`;
+      expect(rowsA.length).toBe(1);
+      await reserved`COMMIT`;
 
-      const leaked = await reserved.begin(async (tx) => {
-        await tx`SET LOCAL ROLE poputchiki_app`;
-        return tx`SELECT app.current_user_id() AS uid`;
-      });
+      // tx B: same connection, no identity → must see nothing
+      await reserved`BEGIN`;
+      await reserved`SET LOCAL ROLE poputchiki_app`;
+      const leaked = await reserved`SELECT app.current_user_id() AS uid`;
       expect(leaked[0]?.uid).toBeNull();
-
-      const visibleRows = await reserved.begin(async (tx) => {
-        await tx`SET LOCAL ROLE poputchiki_app`;
-        return tx`SELECT id FROM users`;
-      });
-      expect(visibleRows.length).toBe(0);
+      const visible = await reserved`SELECT id FROM users`;
+      expect(visible.length).toBe(0);
+      await reserved`COMMIT`;
     } finally {
       reserved.release();
     }
@@ -67,17 +65,17 @@ describe("Sentinel: identity GUC must not leak across transactions on same conne
     const reserved = await sql.reserve();
     try {
       for (let i = 0; i < 5; i++) {
-        await reserved.begin(async (tx) => {
-          await tx`SET LOCAL ROLE poputchiki_app`;
-          await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
-          await tx`SELECT 1`;
-        });
+        await reserved`BEGIN`;
+        await reserved`SET LOCAL ROLE poputchiki_app`;
+        await reserved`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
+        await reserved`SELECT 1`;
+        await reserved`COMMIT`;
       }
-      const rows = await reserved.begin(async (tx) => {
-        await tx`SET LOCAL ROLE poputchiki_app`;
-        return tx`SELECT id FROM users`;
-      });
+      await reserved`BEGIN`;
+      await reserved`SET LOCAL ROLE poputchiki_app`;
+      const rows = await reserved`SELECT id FROM users`;
       expect(rows.length).toBe(0);
+      await reserved`COMMIT`;
     } finally {
       reserved.release();
     }

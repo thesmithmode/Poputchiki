@@ -52,12 +52,15 @@ beforeAll(async () => {
   sql = createPool(buildDsn());
   testUser = await withTestUser(sql, 978800);
 
+  const now = Math.floor(Date.now() / 1000);
   token = await sign(
     {
-      sub: testUser.id,
-      tgId: testUser.tgId,
+      sub: String(testUser.tgId),
+      uid: testUser.id,
       role: testUser.role,
-      iat: Math.floor(Date.now() / 1000),
+      typ: "access",
+      iat: now,
+      exp: now + 3600,
     },
     JWT_SECRET,
   );
@@ -79,7 +82,7 @@ describe("SQL injection: GET /api/rides query params", () => {
       const res = await app.request(`/api/rides?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          Cookie: `access_token=${token}`,
+          Cookie: `tg_uid=${testUser.tgId}`,
         },
       });
       expect(res.status).not.toBe(500);
@@ -95,20 +98,26 @@ describe("SQL injection: GET /api/rides query params", () => {
 });
 
 describe("SQL injection: numeric params coercion blocks injection", () => {
-  it("fromLat с injection payload → 400 (zod validation)", async () => {
+  it("fromLat с injection payload → 422 (zod validation)", async () => {
     const params = new URLSearchParams(`fromLat=${encodeURIComponent("' OR 1=1 --")}`);
     const res = await app.request(`/api/rides?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${testUser.tgId}`,
+      },
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
-  it("seatsMin с injection payload → 400 (zod validation)", async () => {
+  it("seatsMin с injection payload → 422 (zod validation)", async () => {
     const params = new URLSearchParams(`seatsMin=${encodeURIComponent("'; DROP TABLE users; --")}`);
     const res = await app.request(`/api/rides?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${testUser.tgId}`,
+      },
     });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 });
 
@@ -122,7 +131,8 @@ describe("Proof: postgres-js parameterization vs concatenation", () => {
   });
 
   it("raw concatenation (умышленно сломанная) бросает ошибку синтаксиса SQL", async () => {
-    const unsafePayload = "' OR '1'='1";
+    // Payload содержит unmatched ); — после конкатенации SQL невалиден.
+    const unsafePayload = "x'); SELECT FROM ; --";
 
     const unsafeQuery = async (): Promise<unknown> => {
       return sql.unsafe(`SELECT id FROM users WHERE display_name = '${unsafePayload}'`);

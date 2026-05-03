@@ -228,3 +228,119 @@ Error output: Check stderr output for details
 2026-05-03 13:52:35 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
 Error output: Check stderr output for details
 2026-05-03 13:52:35 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:05:41 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:05:41 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 14350 chars)
+2026-05-03 14:05:41 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-140541.md
+2026-05-03 14:05:41 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 14349 chars
+2026-05-03 14:05:42 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:08:09 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:08:09 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 14:08:09 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:08:09 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:27:29 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:27:29 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 14734 chars)
+2026-05-03 14:27:30 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-142729.md
+2026-05-03 14:27:30 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 14733 chars
+2026-05-03 14:27:32 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:28:38 ERROR Agent SDK error: Control request timeout: initialize
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 407, in _send_control_request
+    await event.wait()
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1804, in wait
+    await self._event.wait()
+  File "C:\Users\thesm\AppData\Local\Programs\Python\Python313\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 2620d1f9b50; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 406, in _send_control_request
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\thesm\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 128, in process_query
+    await query.initialize()
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 159, in initialize
+    response = await self._send_control_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        request, timeout=self._initialize_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 420, in _send_control_request
+    raise Exception(f"Control request timeout: {request.get('subtype')}") from e
+Exception: Control request timeout: initialize
+
+2026-05-03 14:28:38 ERROR Result: FLUSH_ERROR: Exception: Control request timeout: initialize
+2026-05-03 14:28:38 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:31:51 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:31:51 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 14555 chars)
+2026-05-03 14:31:51 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-143151.md
+2026-05-03 14:31:51 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 14554 chars
+2026-05-03 14:31:52 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:32:29 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:32:29 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 14:32:29 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:32:29 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0

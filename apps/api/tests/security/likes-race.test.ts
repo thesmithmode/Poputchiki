@@ -31,10 +31,10 @@ describe("Sentinel: likes-race — trigger atomicity", () => {
     );
 
     const rides = await sql<{ id: string }[]>`
-      INSERT INTO rides (driver_id, origin_lat, origin_lng, dest_lat, dest_lng, depart_at, seats_total, seats_taken, status)
+      INSERT INTO rides (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng, departure_at, seats_total, seats_taken, status)
       SELECT
         ${driver.id}::uuid,
-        55.75, 37.62, 55.80, 37.70,
+        'A', 55.75, 37.62, 'B', 55.80, 37.70,
         now() + (n || ' hours')::interval,
         3, 0, 'active'
       FROM generate_series(1, 10) AS n

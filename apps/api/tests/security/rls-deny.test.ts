@@ -113,7 +113,7 @@ describe("RLS deny-by-default: anonymous INSERT", () => {
 
   it("likes: анонимный INSERT → отказ", async () => {
     const ok = await anonInsert(
-      `INSERT INTO likes (from_user_id, to_user_id) VALUES ('${userA.id}', '${userB.id}')`,
+      `INSERT INTO likes (subject_id, target_id, ride_id) VALUES ('${userA.id}', '${userB.id}', '${rideId}')`,
     );
     expect(ok).toBe(false);
   });
@@ -128,7 +128,7 @@ describe("RLS isolation: user A не видит приватные данные 
   it("private_notes: userA видит только свои записи", async () => {
     // Вставить заметку от userB напрямую
     await sql`
-      INSERT INTO private_notes (owner_id, subject_id, body)
+      INSERT INTO private_notes (user_id, target_id, text)
       VALUES (${userB.id}, ${userA.id}, 'Secret note')
       ON CONFLICT DO NOTHING
     `;
@@ -137,12 +137,12 @@ describe("RLS isolation: user A не видит приватные данные 
     expect(countAsA).toBe(0);
 
     // Cleanup
-    await sql`DELETE FROM private_notes WHERE owner_id = ${userB.id}`;
+    await sql`DELETE FROM private_notes WHERE user_id = ${userB.id}`;
   });
 
   it("favorites: userA видит только свои избранные", async () => {
     await sql`
-      INSERT INTO favorites (user_id, target_user_id)
+      INSERT INTO favorites (user_id, target_id)
       VALUES (${userB.id}, ${userA.id})
       ON CONFLICT DO NOTHING
     `;

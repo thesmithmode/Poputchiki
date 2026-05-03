@@ -36,7 +36,17 @@
       "Bash(powershell *)",
       "Bash(Get-ChildItem *)",
       "Read(//c/Users/thesm/.claude/hooks/**)",
-      "Read(//c/Users/thesm/.claude/plugins/**)"
+      "Read(//c/Users/thesm/.claude/plugins/**)",
+      "Bash(xargs grep *)",
+      "Bash(bunx biome *)",
+      "Bash(grep \"^\\\\.\\\\\\\\|error\\\\|×\")",
+      "Bash(Get-Content \"C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\progress.txt\")",
+      "Bash(Select-Object -Last 10)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 *)",
+      "Bash(Select-Object FullName)"
     ]
   },
   "hooks": {

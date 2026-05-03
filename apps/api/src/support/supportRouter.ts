@@ -44,15 +44,17 @@ export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; admi
   userRouter.get("/messages/me", async (c) => {
     const user = c.get("user" as never) as AppUser;
     const rows = await withIdentity(sql, user, async (tx) => {
-      return tx<{
-        id: string;
-        user_id: string;
-        text: string;
-        status: string;
-        reply_text: string | null;
-        replied_at: Date | null;
-        created_at: Date;
-      }[]>`
+      return tx<
+        {
+          id: string;
+          user_id: string;
+          text: string;
+          status: string;
+          reply_text: string | null;
+          replied_at: Date | null;
+          created_at: Date;
+        }[]
+      >`
         SELECT id, user_id, text, status, reply_text, replied_at, created_at
         FROM support_messages
         WHERE user_id = ${user.id}
@@ -69,14 +71,16 @@ export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; admi
 
     const status = c.req.query("status");
     const rows = await withIdentity(sql, user, async (tx) => {
-      return tx<{
-        id: string;
-        user_id: string;
-        text: string;
-        status: string;
-        reply_text: string | null;
-        created_at: Date;
-      }[]>`
+      return tx<
+        {
+          id: string;
+          user_id: string;
+          text: string;
+          status: string;
+          reply_text: string | null;
+          created_at: Date;
+        }[]
+      >`
         SELECT id, user_id, text, status, reply_text, replied_at, created_at
         FROM support_messages
         ${status ? tx`WHERE status = ${status}` : tx``}
@@ -105,14 +109,16 @@ export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; admi
     if (!parsed.success) return c.json({ error: "invalid input" }, 422);
 
     const rows = await withIdentity(sql, user, async (tx) => {
-      return tx<{
-        id: string;
-        user_id: string;
-        text: string;
-        status: string;
-        reply_text: string;
-        replied_at: Date;
-      }[]>`
+      return tx<
+        {
+          id: string;
+          user_id: string;
+          text: string;
+          status: string;
+          reply_text: string;
+          replied_at: Date;
+        }[]
+      >`
         UPDATE support_messages
         SET status = 'resolved', reply_text = ${parsed.data.reply_text}, replied_at = now()
         WHERE id = ${msgId}

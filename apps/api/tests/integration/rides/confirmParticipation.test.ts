@@ -15,7 +15,11 @@ import { buildDsn } from "../setup";
 const JWT_SECRET = "test-secret-confirm-participation";
 
 const DRIVER = { id: "00000000-0000-4000-e000-100000000001", tgId: 8100001, role: "user" as const };
-const PASSENGER = { id: "00000000-0000-4000-e000-100000000002", tgId: 8100002, role: "user" as const };
+const PASSENGER = {
+  id: "00000000-0000-4000-e000-100000000002",
+  tgId: 8100002,
+  role: "user" as const,
+};
 const OTHER = { id: "00000000-0000-4000-e000-100000000003", tgId: 8100003, role: "user" as const };
 
 let sql: ReturnType<typeof createPool>;

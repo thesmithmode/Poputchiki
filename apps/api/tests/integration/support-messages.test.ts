@@ -8,7 +8,7 @@ import { buildDsn } from "./setup";
 
 const USER_A = "00000000-0000-4000-b000-200000000001";
 const USER_B = "00000000-0000-4000-b000-200000000002";
-const ADMIN  = "00000000-0000-4000-b000-200000000003";
+const ADMIN = "00000000-0000-4000-b000-200000000003";
 
 let sql: ReturnType<typeof postgres>;
 

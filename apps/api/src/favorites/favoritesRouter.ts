@@ -51,17 +51,19 @@ export function createFavoritesRouter(sql: postgres.Sql): Hono {
   app.get("/me", async (c) => {
     const user = c.get("user" as never) as AppUser;
     const rows = await withIdentity(sql, user, async (tx) => {
-      return tx<{
-        target_id: string;
-        notify: boolean;
-        created_at: Date;
-        display_name: string;
-        tg_username: string | null;
-        avatar_url: string | null;
-        likes_received_count: number;
-        avg_stars: number | null;
-        reviews_count: number;
-      }[]>`
+      return tx<
+        {
+          target_id: string;
+          notify: boolean;
+          created_at: Date;
+          display_name: string;
+          tg_username: string | null;
+          avatar_url: string | null;
+          likes_received_count: number;
+          avg_stars: number | null;
+          reviews_count: number;
+        }[]
+      >`
         SELECT f.target_id, f.notify, f.created_at,
                u.display_name, u.tg_username, u.avatar_url,
                u.likes_received_count, u.avg_stars, u.reviews_count

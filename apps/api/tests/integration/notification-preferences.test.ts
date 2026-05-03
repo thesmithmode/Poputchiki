@@ -42,7 +42,8 @@ describe("notification_preferences RLS", () => {
         VALUES (${USER_A}, 'ride_request', false)
       `;
     });
-    const rows = await sql`SELECT * FROM notification_preferences WHERE user_id = ${USER_A} AND category = 'ride_request'`;
+    const rows =
+      await sql`SELECT * FROM notification_preferences WHERE user_id = ${USER_A} AND category = 'ride_request'`;
     expect(rows.length).toBe(1);
     expect(rows[0]?.enabled).toBe(false);
   });
@@ -117,7 +118,8 @@ describe("notification_preferences RLS", () => {
         WHERE user_id = ${USER_A} AND category = 'ride_request'
       `;
     });
-    const rows = await sql`SELECT enabled FROM notification_preferences WHERE user_id = ${USER_A} AND category = 'ride_request'`;
+    const rows =
+      await sql`SELECT enabled FROM notification_preferences WHERE user_id = ${USER_A} AND category = 'ride_request'`;
     expect(rows[0]?.enabled).toBe(true);
   });
 

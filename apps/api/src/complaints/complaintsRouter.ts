@@ -34,13 +34,15 @@ export function createComplaintsRouter(sql: postgres.Sql): Hono {
     try {
       const reason = text ? `${reason_code}: ${text}` : reason_code;
       const rows = await withIdentity(sql, user, async (tx) => {
-        return tx<{
-          id: string;
-          reporter_id: string;
-          target_id: string;
-          status: string;
-          created_at: Date;
-        }[]>`
+        return tx<
+          {
+            id: string;
+            reporter_id: string;
+            target_id: string;
+            status: string;
+            created_at: Date;
+          }[]
+        >`
           INSERT INTO complaints (reporter_id, target_id, ride_id, reason, status)
           VALUES (${user.id}, ${target_user_id}, ${target_ride_id ?? null}, ${reason}, 'open')
           RETURNING id, reporter_id, target_id, status, created_at

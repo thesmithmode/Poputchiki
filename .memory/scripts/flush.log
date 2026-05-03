@@ -561,3 +561,10 @@ Error output: Check stderr output for details
 2026-05-04 00:30:31 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
 Error output: Check stderr output for details
 2026-05-04 00:30:31 INFO Flush complete for session 8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 01:17:15 INFO [hook] SessionEnd fired: session=8f49076a-aa02-4283-ab09-b7a0ca19316c source=unknown
+2026-05-04 01:17:15 INFO [hook] Spawned flush.py for session 8f49076a-aa02-4283-ab09-b7a0ca19316c (30 turns, 3794 chars)
+2026-05-04 01:17:15 INFO flush.py started for session 8f49076a-aa02-4283-ab09-b7a0ca19316c, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-8f49076a-aa02-4283-ab09-b7a0ca19316c-20260504-011715.md
+2026-05-04 01:17:15 INFO Flushing session 8f49076a-aa02-4283-ab09-b7a0ca19316c: 3793 chars
+2026-05-04 01:17:17 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-04 01:17:42 INFO Result: saved to daily log (1226 chars)
+2026-05-04 01:17:42 INFO Flush complete for session 8f49076a-aa02-4283-ab09-b7a0ca19316c

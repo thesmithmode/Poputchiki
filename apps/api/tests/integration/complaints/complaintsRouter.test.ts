@@ -5,10 +5,10 @@
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createComplaintsRouter } from "../../../src/complaints/complaintsRouter";
 import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
-import { createComplaintsRouter } from "../../../src/complaints/complaintsRouter";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -74,14 +74,14 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[0]!.tgId}`,
+        Cookie: `tg_uid=${REPORTERS[0]?.tgId}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "spam" }),
     });
     expect(res.status).toBe(201);
     const body = await readJson(res);
-    expect(body.reporter_id).toBe(REPORTERS[0]!.id);
+    expect(body.reporter_id).toBe(REPORTERS[0]?.id);
     expect(body.target_id).toBe(TARGET.id);
     expect(body.status).toBe("open");
   });
@@ -93,7 +93,7 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[0]!.tgId}`,
+        Cookie: `tg_uid=${REPORTERS[0]?.tgId}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "spam" }),
@@ -108,7 +108,7 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[1]!.tgId}`,
+        Cookie: `tg_uid=${REPORTERS[1]?.tgId}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "invalid" }),
@@ -123,10 +123,10 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[1]!.tgId}`,
+        Cookie: `tg_uid=${REPORTERS[1]?.tgId}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ target_user_id: REPORTERS[1]!.id, reason_code: "spam" }),
+      body: JSON.stringify({ target_user_id: REPORTERS[1]?.id, reason_code: "spam" }),
     });
     expect(res.status).toBe(422);
   });

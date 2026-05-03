@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { createAuthRouter } from "./auth/authRouter";
+import { createComplaintsRouter } from "./complaints/complaintsRouter";
 import { poolMetrics } from "./db/pool";
+import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { auditLog } from "./middleware/audit-log";
 import { authRateLimit } from "./middleware/auth-rate-limit";
 import { captureSocketIp } from "./middleware/capture-socket-ip";
@@ -10,9 +12,8 @@ import { csrf } from "./middleware/csrf";
 import { idempotency } from "./middleware/idempotency";
 import { identityGuard } from "./middleware/identity-guard";
 import { rateLimit } from "./middleware/rate-limit";
+import { requestId } from "./middleware/request-id";
 import { secureHeadersMiddleware } from "./middleware/secure-headers";
-import { createComplaintsRouter } from "./complaints/complaintsRouter";
-import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { createNotificationsRouter } from "./notifications/notificationsRouter";
 import { createRidesRouter } from "./rides/ridesRouter";
 import { createSupportRouter } from "./support/supportRouter";
@@ -21,6 +22,7 @@ import { createUsersRouter } from "./users/usersRouter";
 export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
   const app = new Hono();
 
+  app.use("*", requestId());
   app.use("*", captureSocketIp());
   app.use("*", corsMiddleware);
   app.use("*", secureHeadersMiddleware);

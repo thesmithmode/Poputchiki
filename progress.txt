@@ -387,3 +387,11 @@
 [2026-05-03] TASK-074 done — GET /api/users/:id: исправлен баг (role утекал в публичный профиль), удалён u.role из SQL/interface/shapePublic, добавлен expect(body).not.toHaveProperty("role") в тест. Соответствует AC: без role/tg_id/onboarded/notify_disabled/last_seen_at, 404 для is_banned.
 [2026-05-03] TASK-075 done — PATCH /api/users/me: display_name (1-50 chars, sanitized), phone/apt_number через encryptPii (pgcrypto bytea), RLS via withIdentity, Cache-Control: private, no-store. Возвращает обновлённый профиль. 6 интеграционных тестов: обновление display_name, phone шифруется + не в ответе, audit_log plaintext sentinel, 422 на пустое/длинное display_name, empty body → 200 no-op, 401 без авторизации.
 [2026-05-03] TASK-133 done — статус исправлен (работа была выполнена ранее: schema dedup, REASSIGN OWNED, fileParallelism=false, LIKE fix, coverage 95%+).
+
+[2026-05-04] TASK-028 done — POST /api/rides/:id/confirm-participation (committed afb56eb earlier; verified marked done).
+[2026-05-04] TASK-031 done — favorites POST/DELETE/GET/PATCH (committed d41a7e1).
+[2026-05-04] TASK-032 done — complaints endpoints (committed afb56eb).
+[2026-05-04] TASK-033 done — support messages endpoints (committed afb56eb).
+[2026-05-04] TASK-035 done — GET/PUT /api/notifications/preferences (committed e876e09).
+[2026-05-04] TASK-057 done — replay attack security tests for /auth/telegram: tampered hash, stale/future auth_date, replay nonce, false-positive guard (apps/api/tests/security/replay.test.ts).
+[2026-05-04] TASK-083 done — request-id middleware: reads/generates X-Request-ID, echoes header, child pino logger with requestId in context. Integration tests cover echo+uuid+uniqueness.

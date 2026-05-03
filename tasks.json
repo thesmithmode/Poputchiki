@@ -762,7 +762,7 @@
       "dependencies": [
         "TASK-027"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-029",
@@ -837,7 +837,7 @@
         "TASK-008",
         "TASK-013"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-032",
@@ -860,7 +860,7 @@
         "TASK-008",
         "TASK-013"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-033",
@@ -884,7 +884,7 @@
       "dependencies": [
         "TASK-013"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-034",
@@ -931,7 +931,7 @@
       "dependencies": [
         "TASK-008"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-036",
@@ -1457,7 +1457,7 @@
       "dependencies": [
         "TASK-011"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-058",
@@ -2071,7 +2071,7 @@
       "dependencies": [
         "TASK-082"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-084",

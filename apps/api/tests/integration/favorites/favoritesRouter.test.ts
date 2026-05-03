@@ -7,8 +7,8 @@ import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
-import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createFavoritesRouter } from "../../../src/favorites/favoritesRouter";
+import { identityGuard } from "../../../src/middleware/identity-guard";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 

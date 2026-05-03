@@ -404,7 +404,12 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
         }
 
         const [updated] = await tx<
-          { ride_id: string; passenger_id: string; passenger_confirmed: boolean; confirmed_at: Date }[]
+          {
+            ride_id: string;
+            passenger_id: string;
+            passenger_confirmed: boolean;
+            confirmed_at: Date;
+          }[]
         >`
           UPDATE ride_participation
           SET passenger_confirmed = true, confirmed_at = now()

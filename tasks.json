@@ -3327,6 +3327,24 @@
         "TASK-134"
       ],
       "status": "pending"
+    },
+    {
+      "id": "TASK-136",
+      "category": "infrastructure",
+      "priority": "medium",
+      "phase": "scale",
+      "description": "Масштабирование до 50 000 одновременных пользователей: PgBouncer, Redis rate-limit, SSE/WS сервис, CDN, horizontal API scaling",
+      "acceptance_criteria": [
+        "PgBouncer перед Postgres (connection pooling)",
+        "Redis заменяет rate_limit_buckets в БД",
+        "SSE realtime вынесен или масштабируется горизонтально",
+        "CDN перед статикой",
+        "Load test: 50k concurrent без деградации p99 > 500ms"
+      ],
+      "dependencies": [
+        "TASK-125"
+      ],
+      "status": "pending"
     }
   ]
 }

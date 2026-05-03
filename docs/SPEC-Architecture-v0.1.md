@@ -865,6 +865,36 @@ SSE endpoint `/api/realtime/rides` входит в `connect-src 'self'` (тот 
 
 ---
 
+## 14. Масштабирование до 50 000 одновременных пользователей
+
+**Целевая нагрузка:** 50 000 concurrent users (продуктовое требование).
+Текущая MVP-архитектура рассчитана на ~300–1000 юзеров (один Docker Compose на домашнем сервере).
+После завершения MVP вернуться к этому разделу и реализовать.
+
+### Что нужно изменить
+
+| Компонент | Проблема | Решение |
+|---|---|---|
+| **Postgres** | 50k connections = OOM | PgBouncer (connection pooling) + read replicas для SELECT |
+| **SSE realtime** | 50k открытых HTTP-соединений на один процесс | Вынести SSE в отдельный stateful сервис; или переключиться на WebSocket + горизонтальное масштабирование |
+| **LISTEN/NOTIFY** | При 50k подписчиках notification storm через один pg channel | Разбить на топики по ride_id; или заменить на Redis Pub/Sub |
+| **rate_limit_buckets** | Hotspot при 50k rps в основной БД | Вынести rate-limit в Redis (atomic INCR + EXPIRE) |
+| **API инстансы** | Один контейнер `api` — нет auto-scaling | Kubernetes или docker swarm с HPA; sticky sessions не нужны (stateless) |
+| **Статика** | `web-server` контейнер под нагрузкой | CDN перед Traefik (Cloudflare / BunnyCDN) |
+| **Postgres tuning** | Дефолтные `shared_buffers`, `max_connections` | Тюнинг под сервер (уже частично в TASK-120) + WAL-G для репликации |
+
+### Что уже готово (масштабируется хорошо)
+- Stateless Hono API — горизонтальное масштабирование без изменений
+- RLS + SECURITY DEFINER функции — корректны при любом числе соединений
+- Атомарный `app.book_seat()` — нет race condition даже при высоком параллелизме
+- JWT без server-side sessions — нет sticky sessions
+- Idempotency keys — защита от дублей при retry под нагрузкой
+
+### Когда приступать
+После `phase=prod-deploy` (TASK-115..125). Оформить как отдельную фазу `phase=scale`.
+
+---
+
 ## CHANGELOG
 
 ### v0.5 (2026-05-01)

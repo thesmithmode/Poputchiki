@@ -60,7 +60,8 @@ describe("idempotency middleware", () => {
     );
     const app = new Hono();
     app.use("*", idempotency(sql));
-    app.post("/api/rides", handler);
+    // biome-ignore lint/suspicious/noExplicitAny: vitest mock not assignable to Hono Handler
+    app.post("/api/rides", handler as any);
 
     const res = await app.request("/api/rides", {
       method: "POST",

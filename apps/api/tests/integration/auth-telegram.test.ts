@@ -28,7 +28,9 @@ function makeInitData(tgId: number, nowSeconds: number, botToken: string): strin
   const fields: Record<string, string> = { auth_date: String(nowSeconds), user };
   const sorted = Object.entries(fields).sort(([a], [b]) => a.localeCompare(b));
   const dataCheckString = sorted.map(([k, v]) => `${k}=${v}`).join("\n");
-  const secretKey = createHmac("sha256", "WebAppData").update(botToken).digest();
+  const secretKey = new Uint8Array(
+    createHmac("sha256", "WebAppData").update(botToken).digest(),
+  );
   const hash = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
   return `${Object.entries(fields)
     .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)

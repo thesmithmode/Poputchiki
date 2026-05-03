@@ -44,7 +44,7 @@ describe("createLogger redaction", () => {
   });
 
   it("redact пути включены в конфиг логгера", () => {
-    const logger = createLogger({ testMode: true });
+    const logger = createLogger({ testMode: true }) as { _redactPaths: string[] };
     expect(logger._redactPaths).toEqual(expect.arrayContaining(REDACT_PATHS));
   });
 });

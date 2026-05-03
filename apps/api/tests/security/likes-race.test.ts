@@ -23,14 +23,14 @@ describe("Sentinel: likes-race — trigger atomicity", () => {
   });
 
   it("100 concurrent likes inserts (10 subjects × 10 rides) → likes_received_count=100", async () => {
-    const target = await withTestUser(sql, 8000001n);
-    const driver = await withTestUser(sql, 8000002n);
+    const target = await withTestUser(sql, 8000001);
+    const driver = await withTestUser(sql, 8000002);
 
     const subjects = await Promise.all(
-      Array.from({ length: 10 }, (_, i) => withTestUser(sql, BigInt(8100001 + i))),
+      Array.from({ length: 10 }, (_, i) => withTestUser(sql, 8100001 + i)),
     );
 
-    const rides = await sql`
+    const rides = await sql<{ id: string }[]>`
       INSERT INTO rides (driver_id, origin_lat, origin_lng, dest_lat, dest_lng, depart_at, seats_total, seats_taken, status)
       SELECT
         ${driver.id}::uuid,
@@ -43,7 +43,7 @@ describe("Sentinel: likes-race — trigger atomicity", () => {
 
     // 10 subjects × 10 rides = 100 unique (subject, target, ride) pairs
     const inserts = subjects.flatMap((subject) =>
-      rides.map((ride: { id: string }) =>
+      rides.map((ride) =>
         withIdentity(sql, subject as unknown as AppUser, async (tx) => {
           await tx`
               INSERT INTO likes (subject_id, target_id, ride_id)
@@ -57,10 +57,10 @@ describe("Sentinel: likes-race — trigger atomicity", () => {
     const errors = results.filter((r) => r && (r as { error?: unknown }).error);
     expect(errors).toHaveLength(0);
 
-    const [user] = await sql`
+    const [user] = await sql<{ likes_received_count: number | string }[]>`
       SELECT likes_received_count FROM users WHERE id = ${target.id}
     `;
-    expect(Number(user.likes_received_count)).toBe(100);
+    expect(Number(user?.likes_received_count ?? 0)).toBe(100);
 
     await Promise.all(subjects.map((s) => s.cleanup()));
     await target.cleanup();

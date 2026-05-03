@@ -35,11 +35,11 @@ describe("integration infra: withTestUser isolation", () => {
       const appUserA: AppUser = { id: userA.id, tgId: userA.tgId, role: "user" };
 
       const rowsSeenByA = await withIdentity(sql, appUserA, async (tx) => {
-        return tx`SELECT id FROM users WHERE id IN (${userA.id}, ${userB.id})`;
+        return tx<{ id: string }[]>`SELECT id FROM users WHERE id IN (${userA.id}, ${userB.id})`;
       });
 
-      expect(rowsSeenByA.some((r: { id: string }) => r.id === userA.id)).toBe(true);
-      expect(rowsSeenByA.some((r: { id: string }) => r.id === userB.id)).toBe(false);
+      expect(rowsSeenByA.some((r) => r.id === userA.id)).toBe(true);
+      expect(rowsSeenByA.some((r) => r.id === userB.id)).toBe(false);
     } finally {
       await userA.cleanup();
       await userB.cleanup();

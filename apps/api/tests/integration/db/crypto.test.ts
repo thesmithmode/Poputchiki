@@ -67,7 +67,7 @@ describe("encryptPii / decryptUserPii — round-trip", () => {
     // Encrypt and store phone in a system transaction
     await withSystem(sql, async (tx) => {
       const enc = await encryptPii(tx, phone, PII_KEY);
-      await tx`UPDATE users SET phone_enc = ${enc} WHERE id = ${USER_A.id}`;
+      await tx`UPDATE users SET phone_enc = ${new Uint8Array(enc)} WHERE id = ${USER_A.id}`;
     });
 
     // Decrypt as the user (withIdentity sets app.current_user_id)

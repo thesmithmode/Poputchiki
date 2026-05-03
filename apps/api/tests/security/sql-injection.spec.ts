@@ -75,7 +75,7 @@ afterAll(async () => {
 describe("SQL injection: GET /api/rides query params", () => {
   for (const payload of SQL_INJECTION_PAYLOADS) {
     it(`payload: ${payload.slice(0, 40)} → не вызывает 500 и не утекает данные`, async () => {
-      const params = new URLSearchParams({ cursor: payload });
+      const params = new URLSearchParams(`cursor=${encodeURIComponent(payload)}`);
       const res = await app.request(`/api/rides?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -96,7 +96,7 @@ describe("SQL injection: GET /api/rides query params", () => {
 
 describe("SQL injection: numeric params coercion blocks injection", () => {
   it("fromLat с injection payload → 400 (zod validation)", async () => {
-    const params = new URLSearchParams({ fromLat: "' OR 1=1 --" });
+    const params = new URLSearchParams("fromLat=" + encodeURIComponent("' OR 1=1 --"));
     const res = await app.request(`/api/rides?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -104,7 +104,7 @@ describe("SQL injection: numeric params coercion blocks injection", () => {
   });
 
   it("seatsMin с injection payload → 400 (zod validation)", async () => {
-    const params = new URLSearchParams({ seatsMin: "'; DROP TABLE users; --" });
+    const params = new URLSearchParams("seatsMin=" + encodeURIComponent("'; DROP TABLE users; --"));
     const res = await app.request(`/api/rides?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });

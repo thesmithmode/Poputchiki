@@ -22,17 +22,18 @@ describe("Sentinel: concurrency seat-booking race", () => {
   });
 
   it("10 concurrent requests for 1 seat → exactly 1 success, seats_taken=1, ride_requests=1", async () => {
-    const driver = await withTestUser(sql, 9000001n);
+    const driver = await withTestUser(sql, 9000001);
 
-    const [ride] = await sql`
+    const [ride] = await sql<{ id: string }[]>`
       INSERT INTO rides (driver_id, origin_lat, origin_lng, dest_lat, dest_lng, depart_at, seats_total, seats_taken, status)
       VALUES (${driver.id}, 55.75, 37.62, 55.80, 37.70, now() + interval '2 hours', 1, 0, 'active')
       RETURNING id
     `;
-    const rideId = ride.id as string;
+    if (!ride) throw new Error("ride insert failed");
+    const rideId = ride.id;
 
     const passengers = await Promise.all(
-      Array.from({ length: 10 }, (_, i) => withTestUser(sql, BigInt(9100001 + i))),
+      Array.from({ length: 10 }, (_, i) => withTestUser(sql, 9100001 + i)),
     );
 
     const results = await Promise.all(
@@ -72,13 +73,13 @@ describe("Sentinel: concurrency seat-booking race", () => {
     const successes = results.filter((r) => r.ok).length;
     expect(successes).toBe(1);
 
-    const [rideState] = await sql`SELECT seats_taken FROM rides WHERE id = ${rideId}`;
-    expect(Number(rideState.seats_taken)).toBe(1);
+    const [rideState] = await sql<{ seats_taken: number | string }[]>`SELECT seats_taken FROM rides WHERE id = ${rideId}`;
+    expect(Number(rideState?.seats_taken ?? 0)).toBe(1);
 
-    const [{ count }] = await sql`
+    const [countRow] = await sql<{ count: number | string }[]>`
       SELECT COUNT(*) AS count FROM ride_requests WHERE ride_id = ${rideId}
     `;
-    expect(Number(count)).toBe(1);
+    expect(Number(countRow?.count ?? 0)).toBe(1);
 
     await Promise.all(passengers.map((p) => p.cleanup()));
     await driver.cleanup();

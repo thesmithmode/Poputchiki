@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import { describe, expect, it } from "vitest";
-import { COOKIE_DEFAULTS } from "../../../src/lib/cookie";
+import {
+  AUTH_COOKIE_DEFAULTS,
+  COOKIE_DEFAULTS,
+  CSRF_COOKIE_DEFAULTS,
+} from "../../../src/lib/cookie";
 
 describe("COOKIE_DEFAULTS sentinel", () => {
   it("sameSite is 'None'", () => {
@@ -42,6 +46,29 @@ describe("COOKIE_DEFAULTS sentinel", () => {
     expect(csrfCookie).toBeTruthy();
     expect(csrfCookie).toContain("SameSite=None");
     expect(csrfCookie).toContain("Secure");
+  });
+
+  it("SENTINEL: AUTH cookies are HttpOnly (XSS defence for tg_uid)", () => {
+    expect(AUTH_COOKIE_DEFAULTS.httpOnly).toBe(true);
+  });
+
+  it("SENTINEL: CSRF cookie is NOT HttpOnly (double-submit needs JS read)", () => {
+    expect(CSRF_COOKIE_DEFAULTS.httpOnly).toBe(false);
+  });
+
+  it("SENTINEL: rendered tg_uid cookie has HttpOnly flag", async () => {
+    const app = new Hono();
+    app.get("/test", (c) => {
+      setCookie(c, "tg_uid", "12345", AUTH_COOKIE_DEFAULTS);
+      setCookie(c, "csrf_token", "token-abc", CSRF_COOKIE_DEFAULTS);
+      return c.json({ ok: true });
+    });
+    const res = await app.request("/test");
+    const cookies = res.headers.getSetCookie();
+    const tg = cookies.find((k: string) => k.startsWith("tg_uid=")) ?? "";
+    const csrf = cookies.find((k: string) => k.startsWith("csrf_token=")) ?? "";
+    expect(/HttpOnly/i.test(tg)).toBe(true);
+    expect(/HttpOnly/i.test(csrf)).toBe(false);
   });
 
   it("SENTINEL: Set-Cookie does NOT use SameSite=Lax", async () => {

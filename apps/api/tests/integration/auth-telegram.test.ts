@@ -79,12 +79,9 @@ describe("POST /auth/telegram — happy path", () => {
     const hasCsrf = cookieHeader.includes("csrf_token=");
     expect(hasUid).toBe(true);
     expect(hasCsrf).toBe(true);
-    const tgUidPart = cookieHeader
-      .split(/,(?=\s*\w+=)/)
-      .find((p) => p.includes("tg_uid=")) ?? "";
-    const csrfPart = cookieHeader
-      .split(/,(?=\s*\w+=)/)
-      .find((p) => p.includes("csrf_token=")) ?? "";
+    const tgUidPart = cookieHeader.split(/,(?=\s*\w+=)/).find((p) => p.includes("tg_uid=")) ?? "";
+    const csrfPart =
+      cookieHeader.split(/,(?=\s*\w+=)/).find((p) => p.includes("csrf_token=")) ?? "";
     expect(/HttpOnly/i.test(tgUidPart)).toBe(true);
     expect(/HttpOnly/i.test(csrfPart)).toBe(false);
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 1}`.catch(() => null);
@@ -160,7 +157,6 @@ describe("POST /auth/telegram — rejection cases", () => {
 
 describe("POST /auth/refresh — refresh token endpoint", () => {
   let refreshToken: string;
-  let userId: string;
 
   beforeAll(async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -173,7 +169,6 @@ describe("POST /auth/refresh — refresh token endpoint", () => {
     });
     const body = await readJson(res);
     refreshToken = body.refresh_token;
-    userId = body.user.id;
   });
 
   afterAll(async () => {

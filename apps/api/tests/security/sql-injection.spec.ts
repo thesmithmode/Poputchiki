@@ -14,9 +14,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createPool } from "../../src/db/pool";
 import { identityGuard } from "../../src/middleware/identity-guard";
 import { createRidesRouter } from "../../src/rides/ridesRouter";
+import { readJson } from "../helpers/json";
 import { buildDsn, withTestUser } from "../integration/setup";
 import type { TestUser } from "../integration/setup";
-import { readJson } from "../helpers/json";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-sqli";
 
@@ -96,7 +96,7 @@ describe("SQL injection: GET /api/rides query params", () => {
 
 describe("SQL injection: numeric params coercion blocks injection", () => {
   it("fromLat с injection payload → 400 (zod validation)", async () => {
-    const params = new URLSearchParams("fromLat=" + encodeURIComponent("' OR 1=1 --"));
+    const params = new URLSearchParams(`fromLat=${encodeURIComponent("' OR 1=1 --")}`);
     const res = await app.request(`/api/rides?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -104,7 +104,7 @@ describe("SQL injection: numeric params coercion blocks injection", () => {
   });
 
   it("seatsMin с injection payload → 400 (zod validation)", async () => {
-    const params = new URLSearchParams("seatsMin=" + encodeURIComponent("'; DROP TABLE users; --"));
+    const params = new URLSearchParams(`seatsMin=${encodeURIComponent("'; DROP TABLE users; --")}`);
     const res = await app.request(`/api/rides?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });

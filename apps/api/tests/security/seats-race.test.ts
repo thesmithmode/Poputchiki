@@ -73,7 +73,9 @@ describe("Sentinel: concurrency seat-booking race", () => {
     const successes = results.filter((r) => r.ok).length;
     expect(successes).toBe(1);
 
-    const [rideState] = await sql<{ seats_taken: number | string }[]>`SELECT seats_taken FROM rides WHERE id = ${rideId}`;
+    const [rideState] = await sql<
+      { seats_taken: number | string }[]
+    >`SELECT seats_taken FROM rides WHERE id = ${rideId}`;
     expect(Number(rideState?.seats_taken ?? 0)).toBe(1);
 
     const [countRow] = await sql<{ count: number | string }[]>`

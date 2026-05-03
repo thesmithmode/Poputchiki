@@ -47,9 +47,7 @@ export function verifyInitData(
   const dataCheckString = entries.map(([k, v]) => `${k}=${v}`).join("\n");
 
   // Secret key: HMAC-SHA256("WebAppData", botToken)
-  const secretKey = new Uint8Array(
-    createHmac("sha256", "WebAppData").update(botToken).digest(),
-  );
+  const secretKey = new Uint8Array(createHmac("sha256", "WebAppData").update(botToken).digest());
 
   // Expected hash: HMAC-SHA256(secretKey, dataCheckString) as hex
   const expectedHex = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");

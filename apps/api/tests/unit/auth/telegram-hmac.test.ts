@@ -14,9 +14,7 @@ const TEST_AUTH_DATE = 1_745_000_000;
 function computeHash(fields: Record<string, string>): string {
   const sorted = Object.entries(fields).sort(([a], [b]) => a.localeCompare(b));
   const dataCheckString = sorted.map(([k, v]) => `${k}=${v}`).join("\n");
-  const secretKey = new Uint8Array(
-    createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest(),
-  );
+  const secretKey = new Uint8Array(createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest());
   return createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
 }
 

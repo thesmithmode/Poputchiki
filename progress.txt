@@ -395,3 +395,4 @@
 [2026-05-04] TASK-035 done — GET/PUT /api/notifications/preferences (committed e876e09).
 [2026-05-04] TASK-057 done — replay attack security tests for /auth/telegram: tampered hash, stale/future auth_date, replay nonce, false-positive guard (apps/api/tests/security/replay.test.ts).
 [2026-05-04] TASK-083 done — request-id middleware: reads/generates X-Request-ID, echoes header, child pino logger with requestId in context. Integration tests cover echo+uuid+uniqueness.
+[2026-05-04] TASK-029 done — POST /api/likes (precondition: ride_participation confirmed обеими сторонами; 403 если нет; 409 на дубль через UNIQUE; 422 на self-like) + DELETE /api/likes/:id (24h окно, 410 после; 404 на отсутствие). 9 интеграционных тестов.

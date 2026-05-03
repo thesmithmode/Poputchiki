@@ -11,9 +11,11 @@ import { idempotency } from "./middleware/idempotency";
 import { identityGuard } from "./middleware/identity-guard";
 import { rateLimit } from "./middleware/rate-limit";
 import { secureHeadersMiddleware } from "./middleware/secure-headers";
+import { createComplaintsRouter } from "./complaints/complaintsRouter";
 import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { createNotificationsRouter } from "./notifications/notificationsRouter";
 import { createRidesRouter } from "./rides/ridesRouter";
+import { createSupportRouter } from "./support/supportRouter";
 import { createUsersRouter } from "./users/usersRouter";
 
 export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
@@ -40,6 +42,10 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
       app.route("/api/users", createUsersRouter(sql));
       app.route("/api/notifications", createNotificationsRouter(sql));
       app.route("/api/favorites", createFavoritesRouter(sql));
+      app.route("/api/complaints", createComplaintsRouter(sql));
+      const { userRouter: supportUser, adminRouter: supportAdmin } = createSupportRouter(sql);
+      app.route("/api/support", supportUser);
+      app.route("/api/admin/support", supportAdmin);
     }
   }
 

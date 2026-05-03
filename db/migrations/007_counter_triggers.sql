@@ -62,6 +62,37 @@ CREATE TRIGGER trg_rides_completed
   FOR EACH ROW EXECUTE FUNCTION app.trg_rides_completed_count();
 
 -- ---------------------------------------------------------------------------
+-- auto-ban: ban target user when ≥5 complaints from ≥5 distinct reporters in 7 days
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION app.trg_complaints_auto_ban()
+  RETURNS trigger LANGUAGE plpgsql
+  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+DECLARE
+  v_distinct_reporters int;
+BEGIN
+  SELECT COUNT(DISTINCT reporter_id) INTO v_distinct_reporters
+  FROM complaints
+  WHERE target_id = NEW.target_id
+    AND created_at >= NOW() - INTERVAL '7 days';
+
+  IF v_distinct_reporters >= 5 THEN
+    UPDATE users SET is_banned = true WHERE id = NEW.target_id AND is_banned = false;
+
+    INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+    VALUES (
+      NEW.target_id, 'AUTO_BAN', 'users', NEW.target_id,
+      jsonb_build_object('reason', 'auto_ban', 'complaint_count', v_distinct_reporters)
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_complaints_auto_ban
+  AFTER INSERT ON complaints
+  FOR EACH ROW EXECUTE FUNCTION app.trg_complaints_auto_ban();
+
+-- ---------------------------------------------------------------------------
 -- set_updated_at: universal trigger to maintain updated_at on every UPDATE
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app.set_updated_at()

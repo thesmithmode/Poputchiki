@@ -477,7 +477,8 @@
       "dependencies": [
         "TASK-002"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-03T15:40:48Z"
     },
     {
       "id": "TASK-017",
@@ -737,7 +738,8 @@
         "TASK-014",
         "TASK-022"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-03T15:54:41Z"
     },
     {
       "id": "TASK-028",
@@ -3299,8 +3301,11 @@
         "bun run test:security в CI → likes-race + seats-race green",
         "psql: \\df+ app.book_seat → prosecdef=t"
       ],
-      "dependencies": ["TASK-114"],
-      "status": "in_progress"
+      "dependencies": [
+        "TASK-114"
+      ],
+      "status": "done",
+      "completed_at": "2026-05-03T15:33:50Z"
     },
     {
       "id": "TASK-135",
@@ -3317,7 +3322,10 @@
       "test_steps": [
         "bun run coverage:integration → все routers ≥95%"
       ],
-      "dependencies": ["TASK-133", "TASK-134"],
+      "dependencies": [
+        "TASK-133",
+        "TASK-134"
+      ],
       "status": "pending"
     }
   ]

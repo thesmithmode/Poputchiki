@@ -374,3 +374,6 @@
 [2026-05-03] TASK-080 done — /auth/* IP rate-limit: apps/api/src/middleware/auth-rate-limit.ts (10 req/min per IP, rate_limit_buckets, getClientIp), интеграция в app.ts перед /auth/*, 4 unit-теста.
 [2026-05-03] TASK-082 done — pino logger: apps/api/src/lib/logger.ts с REDACT_PATHS (authorization, cookie, initData, tokens, PII), createLogger(), apps/api/package.json добавлен pino@9. 9 unit-тестов.
 [2026-05-03] TASK-084 done — middleware-stack sentinel: apps/api/tests/security/middleware-stack.test.ts — все /api/* mutating routes без токена → 401, CSRF-check, /auth/* не требует identity-guard.
+[2026-05-03] TASK-085 done — sentinel seats-race: apps/api/tests/security/seats-race.test.ts — 10 concurrent withIdentity(repeatable read) на ride seats_total=1 → ровно 1 успех, seats_taken=1, ride_requests=1.
+[2026-05-03] TASK-086 done — sentinel likes-race: apps/api/tests/security/likes-race.test.ts — 100 concurrent INSERT likes (10 subjects × 10 rides) → likes_received_count=100 (trigger trg_likes_update_count атомичен).
+[2026-05-03] TASK-087 done — cron nonce cleanup: apps/cron/src/cleanup-nonces.ts (pg_try_advisory_lock, DELETE WHERE created_at < now()-10min, release), apps/cron/src/index.ts (setInterval 5min), 4 unit-тесты.

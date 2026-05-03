@@ -50,8 +50,13 @@ describe("integration infra: withTestUser isolation", () => {
     const user = await withTestUser(sql, 977703);
     await user.cleanup();
     const user2 = await withTestUser(sql, 977703);
+    expect(user2.id).toBeTruthy();
+    expect(user2.tgId).toBe(977703);
     await user2.cleanup();
-    expect(true).toBe(true);
+    const [row] = await sql<{ count: number }[]>`
+      SELECT COUNT(*)::int AS count FROM users WHERE tg_id = 977703
+    `;
+    expect(row?.count).toBe(0);
   });
 });
 

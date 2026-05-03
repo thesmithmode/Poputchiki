@@ -62,6 +62,8 @@ describe("Sentinel: likes-race — trigger atomicity", () => {
     `;
     expect(Number(user?.likes_received_count ?? 0)).toBe(100);
 
+    await sql`DELETE FROM likes WHERE target_id = ${target.id}`;
+    await sql`DELETE FROM rides WHERE driver_id = ${driver.id}`;
     await Promise.all(subjects.map((s) => s.cleanup()));
     await target.cleanup();
     await driver.cleanup();

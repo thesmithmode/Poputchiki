@@ -33,9 +33,7 @@ function encodeCursor(ride: Record<string, unknown>): string {
   // row reappears on the next page (off-by-one + page overlap). Use ISO 8601
   // to preserve millisecond precision through encode/decode/cast.
   const d =
-    ride.departure_at instanceof Date
-      ? ride.departure_at.toISOString()
-      : String(ride.departure_at);
+    ride.departure_at instanceof Date ? ride.departure_at.toISOString() : String(ride.departure_at);
   const payload: CursorData = { d, i: String(ride.id) };
   return btoa(JSON.stringify(payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }

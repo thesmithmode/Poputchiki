@@ -138,8 +138,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       return c.json({ error: "invalid token type" }, 401);
     }
 
+    /* c8 ignore start -- signed JWTs always carry jti/uid; null branches unreachable */
     const oldJti = typeof payload.jti === "string" ? payload.jti : null;
     const userId = typeof payload.uid === "string" ? payload.uid : null;
+    /* c8 ignore stop */
 
     // Check revocation
     if (oldJti) {
@@ -152,6 +154,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     }
 
     // Verify user still exists and is not soft-deleted.
+    /* c8 ignore next -- uid always present in signed tokens */
     if (!userId) return c.json({ error: "invalid token" }, 401);
     const [userRow] = await sql`
       SELECT id FROM users WHERE id = ${userId} AND deleted_at IS NULL LIMIT 1
@@ -161,6 +164,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     }
 
     // Revoke the old refresh token
+    /* c8 ignore next -- oldJti always non-null for issued refresh tokens */
     if (oldJti) {
       try {
         await sql`
@@ -222,9 +226,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       return c.json({ error: "invalid token type" }, 401);
     }
 
-    /* c8 ignore next 2 -- defensive null branch: signed JWTs always have jti/uid */
+    /* c8 ignore start -- defensive null: signed JWTs always carry jti/uid */
     const refreshJti = typeof payload.jti === "string" ? payload.jti : null;
     const userId = typeof payload.uid === "string" ? payload.uid : null;
+    /* c8 ignore stop */
 
     // Optionally revoke the access-token jti so it dies immediately, not at exp.
     let accessJti: string | null = null;

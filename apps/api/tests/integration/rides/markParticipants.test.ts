@@ -282,4 +282,24 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
     const body = await readJson(res);
     expect(body.error).toBe("not_found");
   });
+
+  it("invalid ride id format → 400 invalid ride id", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER);
+
+    const res = await app.request("/api/rides/not-a-valid-uuid/mark-participants", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+      body: JSON.stringify({ passenger_ids: [PASSENGER_A.id] }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid ride id");
+  });
 });

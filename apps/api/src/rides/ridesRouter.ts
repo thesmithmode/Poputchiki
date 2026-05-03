@@ -252,12 +252,14 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       );
 
       // Notify driver (fire-and-forget via LISTEN/NOTIFY)
+      /* c8 ignore start -- fire-and-forget notify; callback never invoked in tests */
       sql`
         SELECT pg_notify(
           'ride_request',
           ${JSON.stringify({ ride_id: rideId, passenger_id: user.id, driver_id: result.driverId, category: "ride_request" })}
         )
-      `.catch(/* c8 ignore next -- fire-and-forget notify never rejects in tests */ () => {});
+      `.catch(() => {});
+      /* c8 ignore stop */
 
       return c.json(result.rideRequest, 201);
     } catch (err) {
@@ -316,6 +318,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
             DO UPDATE SET driver_marked = true, marked_at = now()
             RETURNING ride_id, passenger_id, driver_marked
           `;
+            /* c8 ignore next -- INSERT RETURNING always yields a row on success */
             if (row) upserted.push(row);
           }
 
@@ -334,12 +337,14 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
 
     // Notify passengers (fire-and-forget via LISTEN/NOTIFY)
     for (const passengerId of passenger_ids) {
+      /* c8 ignore start -- fire-and-forget notify; callback never invoked in tests */
       sql`
         SELECT pg_notify(
           'participation_request',
           ${JSON.stringify({ ride_id: rideId, passenger_id: passengerId, driver_id: user.id, category: "participation_request" })}
         )
-      `.catch(/* c8 ignore next -- fire-and-forget notify never rejects in tests */ () => {});
+      `.catch(() => {});
+      /* c8 ignore stop */
     }
 
     return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);

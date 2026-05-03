@@ -74,7 +74,7 @@ describe("getClientIp", () => {
   });
 
   it("default TRUSTED_PROXIES covers 172.16.0.0/12 docker bridge", async () => {
-    delete process.env.TRUSTED_PROXIES;
+    Reflect.deleteProperty(process.env, "TRUSTED_PROXIES");
     const ip = await getIp({
       socketIp: "172.17.0.2",
       headers: { "X-Forwarded-For": "55.66.77.88" },

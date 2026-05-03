@@ -18,7 +18,12 @@ export async function withIdentity<T>(
     return fn(tx);
   };
   if (isolation) {
-    return sql.begin(isolation, body) as Promise<T>;
+    // postgres.js append опций после BEGIN. Нормализуем уровень изоляции
+    // в полный SQL clause: "repeatable read" → "ISOLATION LEVEL REPEATABLE READ".
+    const clause = /^isolation level/i.test(isolation)
+      ? isolation
+      : `ISOLATION LEVEL ${isolation.toUpperCase()}`;
+    return sql.begin(clause, body) as Promise<T>;
   }
   return sql.begin(body) as Promise<T>;
 }

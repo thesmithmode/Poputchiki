@@ -177,7 +177,7 @@ describe("POST /api/rides/:id/request — error cases", () => {
   });
 
   it("повторная заявка от того же passenger → 409 already_requested", async () => {
-    const rideId = await seedRide(5, 0);
+    const rideId = await seedRide(3, 0);
     const app = makeApp();
     const token = await makeToken(PASSENGER);
     const headers = {

@@ -14,10 +14,49 @@ permissions:
   contents: read
 
 jobs:
-  ci:
-    name: Lint · Typecheck · Test · Coverage
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
 
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+
+  unit:
+    name: Unit + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run coverage:check
+      - run: node scripts/check-coverage.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-unit
+          path: coverage/
+          retention-days: 7
+
+  integration:
+    name: Integration + coverage (routers)
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: postgres:16-alpine
@@ -32,7 +71,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
-
     env:
       POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
       POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
@@ -43,62 +81,118 @@ jobs:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
+      - run: bun run coverage:integration
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-integration
+          path: coverage-integration/
+          retention-days: 7
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+  security:
+    name: Security tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run db:migrate
+      - run: bun run test:security
 
-      - name: Lint
-        run: bun run lint
+  web:
+    name: Web tests (jsdom)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run test:web
 
-      - name: Typecheck
-        run: bun run typecheck
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun audit --audit-level high
 
-      - name: Unit tests + coverage
-        run: bun run coverage:check
-
-      - name: Coverage gate
-        run: node scripts/check-coverage.js
-
-      - name: Run migrations (for integration tests)
-        run: bun run db:migrate
-        continue-on-error: false
-
-      - name: Integration tests + coverage (routers)
-        run: bun run coverage:integration
-        continue-on-error: false
-
-      - name: Security tests
-        run: bun run test:security
-        continue-on-error: false
-
-      - name: Web tests (jsdom)
-        run: bun run test:web
-        continue-on-error: false
-
-      - name: Dependency audit
-        run: bun audit --audit-level high
-        continue-on-error: false
-
-      - name: Secrets scan (gitleaks)
-        uses: gitleaks/gitleaks-action@v2
+  gitleaks:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
-        continue-on-error: false
 
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 7
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, unit, integration, security, web, audit, gitleaks]
+    if: always()
+    steps:
+      - name: Aggregate
+        run: |
+          echo "## CI Job Status" >> $GITHUB_STEP_SUMMARY
+          declare -A R=(
+            [Lint]="${{ needs.lint.result }}"
+            [Typecheck]="${{ needs.typecheck.result }}"
+            [Unit]="${{ needs.unit.result }}"
+            [Integration]="${{ needs.integration.result }}"
+            [Security]="${{ needs.security.result }}"
+            [Web]="${{ needs.web.result }}"
+            [Audit]="${{ needs.audit.result }}"
+            [Gitleaks]="${{ needs.gitleaks.result }}"
+          )
+          FAILED=()
+          for k in "${!R[@]}"; do
+            v="${R[$k]}"
+            echo "- $k: $v" >> $GITHUB_STEP_SUMMARY
+            if [ "$v" != "success" ]; then FAILED+=("$k:$v"); fi
+          done
+          if [ ${#FAILED[@]} -gt 0 ]; then
+            echo "FAILED: ${FAILED[*]}"
+            exit 1
+          fi
+          echo "All jobs passed."

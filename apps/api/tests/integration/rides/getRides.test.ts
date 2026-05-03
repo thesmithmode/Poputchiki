@@ -177,6 +177,54 @@ describe("GET /api/rides — pagination", () => {
   });
 });
 
+describe("GET /api/rides — validation", () => {
+  it("invalid query (fromLat>90) → 422", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER_A);
+    const res = await app.request("/api/rides?fromLat=999", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+    });
+    expect(res.status).toBe(422);
+    const body = await readJson(res);
+    expect(body.error).toBe("validation failed");
+  });
+
+  it("malformed cursor (not base64 JSON) → 400 invalid cursor (decodeCursor catch)", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER_A);
+    const res = await app.request("/api/rides?cursor=%21%21invalid", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+    });
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid cursor");
+  });
+
+  it("cursor missing required keys → 400 invalid cursor (null-shape branch)", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER_A);
+    const badCursor = btoa(JSON.stringify({ x: 1 }));
+    const res = await app.request(`/api/rides?cursor=${encodeURIComponent(badCursor)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+    });
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid cursor");
+  });
+});
+
 describe("GET /api/rides — filters", () => {
   it("trustMinLikes=3 → only Driver A rides (5 likes)", async () => {
     const app = makeApp();
@@ -211,5 +259,43 @@ describe("GET /api/rides — filters", () => {
     for (const ride of body.rides) {
       expect(ride.seats_total - ride.seats_taken).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it("all filters at once → covers every conditional SQL fragment branch", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER_A);
+    const params = new URLSearchParams({
+      fromAt: new Date(Date.now() - 60_000).toISOString(),
+      toAt: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString(),
+      priceMax: "10000",
+      seatsMin: "1",
+      fromLat: "55.75",
+      fromLng: "37.61",
+      radiusKm: "100",
+      trustMinAccountAgeDays: "1",
+      trustMinLikes: "0",
+      favoritesOnly: "false",
+    });
+    const res = await app.request(`/api/rides?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("favoritesOnly=true → covers favorites IN-subquery branch", async () => {
+    const app = makeApp();
+    const token = await makeToken(DRIVER_A);
+    const res = await app.request("/api/rides?favoritesOnly=true", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+    });
+    expect(res.status).toBe(200);
   });
 });

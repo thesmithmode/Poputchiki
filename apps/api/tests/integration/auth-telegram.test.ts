@@ -159,6 +159,15 @@ describe("POST /auth/telegram — rejection cases", () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it("non-JSON body → 400 (catch arrow falls back to {})", async () => {
+    const res = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-json",
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("POST /auth/refresh — refresh token endpoint", () => {
@@ -209,6 +218,15 @@ describe("POST /auth/refresh — refresh token endpoint", () => {
       body: JSON.stringify({ refresh_token: "invalid_token_string" }),
     });
     expect(res.status).toBe(401);
+  });
+
+  it("non-JSON body → 400 (catch arrow falls back to {})", async () => {
+    const res = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-a-json",
+    });
+    expect(res.status).toBe(400);
   });
 
   it("access token instead of refresh → 401", async () => {
@@ -322,6 +340,15 @@ describe("POST /auth/logout — logout endpoint", () => {
       body: JSON.stringify({ refresh_token: "bad_token" }),
     });
     expect(res.status).toBe(401);
+  });
+
+  it("non-JSON body → 400 (catch arrow falls back to {})", async () => {
+    const res = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-a-json",
+    });
+    expect(res.status).toBe(400);
   });
 
   it("access token type → 401", async () => {

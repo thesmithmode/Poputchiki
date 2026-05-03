@@ -60,7 +60,37 @@ describe("withIdentity", () => {
     await withIdentity(mockSql, USER, async () => "ok", "repeatable read");
 
     expect(beginMock).toHaveBeenCalledOnce();
-    expect(beginMock.mock.calls[0]?.[0]).toBe("repeatable read");
+    expect(beginMock.mock.calls[0]?.[0]).toBe("ISOLATION LEVEL REPEATABLE READ");
+  });
+
+  it("SENTINEL: bare isolation level normalised to full SQL clause (BEGIN <opts>)", async () => {
+    const beginMock = vi
+      .fn()
+      .mockImplementation(async (_iso: string, fn: (tx: unknown) => Promise<unknown>) => {
+        // biome-ignore lint/suspicious/noExplicitAny: mock template tag
+        const tag = vi.fn().mockResolvedValue([]) as any;
+        return fn(tag);
+      });
+    // biome-ignore lint/suspicious/noExplicitAny: mock sql object
+    const mockSql = { begin: beginMock } as any;
+
+    await withIdentity(mockSql, USER, async () => "ok", "serializable");
+    expect(beginMock.mock.calls[0]?.[0]).toBe("ISOLATION LEVEL SERIALIZABLE");
+  });
+
+  it("passes through full clause untouched when caller already prefixed", async () => {
+    const beginMock = vi
+      .fn()
+      .mockImplementation(async (_iso: string, fn: (tx: unknown) => Promise<unknown>) => {
+        // biome-ignore lint/suspicious/noExplicitAny: mock template tag
+        const tag = vi.fn().mockResolvedValue([]) as any;
+        return fn(tag);
+      });
+    // biome-ignore lint/suspicious/noExplicitAny: mock sql object
+    const mockSql = { begin: beginMock } as any;
+
+    await withIdentity(mockSql, USER, async () => "ok", "ISOLATION LEVEL READ COMMITTED");
+    expect(beginMock.mock.calls[0]?.[0]).toBe("ISOLATION LEVEL READ COMMITTED");
   });
 });
 

@@ -18,6 +18,7 @@ describe("Sentinel: concurrency seat-booking race", () => {
   });
 
   afterAll(async () => {
+    await truncateAll(sql).catch(() => null);
     await sql.end();
   });
 
@@ -78,7 +79,8 @@ describe("Sentinel: concurrency seat-booking race", () => {
     `;
     expect(Number(countRow?.count ?? 0)).toBe(1);
 
-    await Promise.all(passengers.map((p) => p.cleanup()));
-    await driver.cleanup();
+    // Cleanup: ride/ride_requests must die before users (FK rides_driver_id_fkey).
+    // truncateAll handles cascade safely.
+    await truncateAll(sql);
   });
 });

@@ -22,8 +22,8 @@ keywords = ["POSTGRES_PASSWORD", "postgres"]
 [allowlist]
 description = "Global allowlist"
 paths = [
-  ".gitleaks.toml",
-  ".env.example",
-  "docs/",
-  "*.md",
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''^docs/''',
+  '''.*\.md$''',
 ]

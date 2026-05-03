@@ -15,7 +15,6 @@ export default defineConfig({
         "**/*.test.ts",
         "**/*.d.ts",
         "apps/*/src/index.ts",
-        "apps/*/src/app.ts",
         "apps/api/src/auth/authRouter.ts",
         "apps/api/src/users/usersRouter.ts",
         "apps/api/src/rides/ridesRouter.ts",

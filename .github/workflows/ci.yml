@@ -72,8 +72,8 @@ jobs:
         run: bun run db:migrate
         continue-on-error: false
 
-      - name: Integration tests
-        run: bun run test:integration
+      - name: Integration tests + coverage (routers)
+        run: bun run coverage:integration
         continue-on-error: false
 
       - name: Security tests

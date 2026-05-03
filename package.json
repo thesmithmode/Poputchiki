@@ -13,6 +13,7 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "coverage:integration": "vitest run --config vitest.integration.config.ts --coverage",
     "test:e2e": "playwright test",
     "test:security": "vitest run --config vitest.security.config.ts",
     "test:web": "bun run --filter @poputchiki/web test",

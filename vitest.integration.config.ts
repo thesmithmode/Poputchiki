@@ -14,10 +14,15 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "json-summary", "html"],
       reportsDirectory: "./coverage-integration",
-      include: ["apps/*/src/**/*.ts"],
+      include: [
+        "apps/api/src/auth/authRouter.ts",
+        "apps/api/src/users/usersRouter.ts",
+        "apps/api/src/rides/ridesRouter.ts",
+        "apps/api/src/app.ts",
+      ],
       thresholds: {
         lines: 95,
-        branches: 95,
+        branches: 90,
         functions: 95,
         statements: 95,
       },

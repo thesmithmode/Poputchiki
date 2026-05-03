@@ -5,7 +5,9 @@ import type { Category, NotifierDb, Recipient } from "./types.js";
 export function createDb(sql: postgres.Sql): NotifierDb {
   return {
     async getRecipient(userId: string, category: Category): Promise<Recipient | null> {
-      const rows = await sql<{ tg_id: number; notify_disabled: boolean; pref_enabled: boolean }[]>`
+      const rows = await sql<
+        { tg_id: string | number; notify_disabled: boolean; pref_enabled: boolean }[]
+      >`
         SELECT
           u.tg_id,
           u.notify_disabled,
@@ -16,7 +18,8 @@ export function createDb(sql: postgres.Sql): NotifierDb {
         WHERE u.id = ${userId}
         LIMIT 1
       `;
-      return rows[0] ?? null;
+      const r = rows[0];
+      return r ? { ...r, tg_id: Number(r.tg_id) } : null;
     },
 
     async markNotifyDisabled(userId: string): Promise<void> {

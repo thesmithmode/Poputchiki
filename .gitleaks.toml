@@ -27,3 +27,7 @@ paths = [
   '''^docs/''',
   '''.*\.md$''',
 ]
+regexes = [
+  '''\$\{process\.env\.''',
+  '''postgres://[a-z]+/[a-z]+''',
+]

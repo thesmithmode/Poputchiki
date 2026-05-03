@@ -80,6 +80,10 @@ jobs:
         run: bun run test:security
         continue-on-error: false
 
+      - name: Web tests (jsdom)
+        run: bun run test:web
+        continue-on-error: false
+
       - name: Dependency audit
         run: bun audit --audit-level high
         continue-on-error: false

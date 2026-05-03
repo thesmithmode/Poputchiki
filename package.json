@@ -15,6 +15,8 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:security": "vitest run --config vitest.security.config.ts",
+    "test:web": "bun run --filter @poputchiki/web test",
+    "dev:web": "bun run --filter @poputchiki/web dev",
     "coverage:check": "vitest run --coverage",
     "build": "bun run --filter '*' build",
     "db:migrate": "node-pg-migrate up --migrations-dir db/migrations --migration-file-language sql --envPath .env",

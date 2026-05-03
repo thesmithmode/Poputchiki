@@ -98,6 +98,28 @@ describe("GET /rides — basic", () => {
     expect(body.nextCursor.length).toBeGreaterThan(0);
   });
 
+  it("encodeCursor uses ISO 8601 when departure_at is a Date (preserves ms)", async () => {
+    // postgres-js returns timestamptz as JS Date; cursor must round-trip with
+    // millisecond precision so the boundary row doesn't reappear on next page.
+    const ms = Date.now() + 60 * 60 * 1000 + 123; // .123 ms
+    const date = new Date(ms);
+    const rides = Array.from({ length: 51 }, (_, i) =>
+      makeRide({
+        // Last ride (index 49 after slice) has a real Date object
+        departure_at: i === 49 ? (date as unknown as string) : new Date(ms + (i + 1) * 1000),
+      }),
+    );
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValueOnce(rides as any);
+    const app = makeApp();
+    const res = await app.request("/rides");
+    const body = await readJson(res);
+    const padded = body.nextCursor.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = JSON.parse(atob(padded));
+    expect(decoded.d).toBe(date.toISOString());
+    expect(decoded.d).toMatch(/\.\d{3}Z$/);
+  });
+
   it("cursor param forwarded to withIdentity call", async () => {
     // Build a valid cursor
     const ride = makeRide();

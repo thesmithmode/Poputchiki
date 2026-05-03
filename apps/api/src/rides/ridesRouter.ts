@@ -28,7 +28,15 @@ interface CursorData {
 }
 
 function encodeCursor(ride: Record<string, unknown>): string {
-  const payload: CursorData = { d: String(ride.departure_at), i: String(ride.id) };
+  // postgres-js returns timestamptz as JS Date; String(date) loses sub-second
+  // precision when round-tripped through ::timestamptz cast, so the boundary
+  // row reappears on the next page (off-by-one + page overlap). Use ISO 8601
+  // to preserve millisecond precision through encode/decode/cast.
+  const d =
+    ride.departure_at instanceof Date
+      ? ride.departure_at.toISOString()
+      : String(ride.departure_at);
+  const payload: CursorData = { d, i: String(ride.id) };
   return btoa(JSON.stringify(payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 

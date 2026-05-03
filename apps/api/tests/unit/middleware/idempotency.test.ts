@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { idempotency } from "../../../src/middleware/idempotency";
+import { readJson } from "../../helpers/json";
 
 const KEY = "test-idempotency-key-abc";
 
@@ -66,7 +67,7 @@ describe("idempotency middleware", () => {
       headers: { "Idempotency-Key": KEY },
     });
     expect(res.status).toBe(201);
-    expect((await res.json()).id).toBe("cached-ride");
+    expect((await readJson(res)).id).toBe("cached-ride");
     expect(handler).not.toHaveBeenCalled(); // route never ran
   });
 

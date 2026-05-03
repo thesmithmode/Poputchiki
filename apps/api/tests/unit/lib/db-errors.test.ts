@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { isUniqueViolation } from "../../../src/lib/db-errors";
+import { readJson } from "../../helpers/json";
 
 describe("isUniqueViolation", () => {
   it("postgres-style error with code 23505 → true", () => {
@@ -42,7 +43,7 @@ describe("isUniqueViolation", () => {
 
     const res = await app.request("/api/complaints", { method: "POST" });
     expect(res.status).toBe(409);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("duplicate_complaint");
   });
 });

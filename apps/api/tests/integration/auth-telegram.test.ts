@@ -7,6 +7,7 @@ import { createHmac } from "node:crypto";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
+import { readJson } from "../helpers/json";
 
 const TG_ID = 8_888_888_888;
 const TG_USER = { id: TG_ID, first_name: "Integration", username: "int_test" };
@@ -64,7 +65,7 @@ describe("POST /auth/telegram — happy path", () => {
       body: JSON.stringify({ initData: savedInitData }),
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(typeof body.access_token).toBe("string");
     expect(typeof body.refresh_token).toBe("string");
     expect(body.user?.tg_id).toBe(TG_ID);

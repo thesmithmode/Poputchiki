@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app";
+import { readJson } from "../helpers/json";
 
 describe("GET /metrics", () => {
   it("returns HTTP 200", async () => {
@@ -11,7 +12,7 @@ describe("GET /metrics", () => {
   it("body has max, in_use, waiting", async () => {
     const app = createApp();
     const res = await app.request("/metrics");
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body).toHaveProperty("max", 20);
     expect(body).toHaveProperty("in_use");
     expect(body).toHaveProperty("waiting");

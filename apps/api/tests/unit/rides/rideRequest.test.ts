@@ -8,6 +8,7 @@ vi.mock("../../../src/db/with-identity", () => ({
 }));
 
 import { withIdentity } from "../../../src/db/with-identity";
+import { readJson } from "../../helpers/json";
 
 const USER: AppUser = { id: "00000000-0000-4000-a000-000000000001", tgId: 1001, role: "user" };
 const DRIVER_ID = "00000000-0000-4000-a000-000000000002";
@@ -45,7 +46,7 @@ describe("POST /rides/:id/request", () => {
     const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
 
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.id).toBe("req-uuid");
     expect(body.ride_id).toBe(RIDE_ID);
   });
@@ -58,7 +59,7 @@ describe("POST /rides/:id/request", () => {
     const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
 
     expect(res.status).toBe(409);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("no_seats");
   });
 
@@ -70,7 +71,7 @@ describe("POST /rides/:id/request", () => {
     const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
 
     expect(res.status).toBe(409);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("already_requested");
   });
 

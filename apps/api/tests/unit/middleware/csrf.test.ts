@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { csrf } from "../../../src/middleware/csrf";
+import { readJson } from "../../helpers/json";
 
 const CSRF_TOKEN = "test-csrf-token-abc123";
 const ORIGIN = "https://app.example.com";
@@ -44,7 +45,7 @@ describe("csrf middleware", () => {
       headers: { Cookie: `csrf_token=${CSRF_TOKEN}` },
     });
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toContain("csrf");
   });
 
@@ -85,7 +86,7 @@ describe("csrf middleware", () => {
       headers: { ...makeHeaders(), Origin: "https://evil.example.com" },
     });
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toContain("origin");
   });
 

@@ -8,6 +8,7 @@ vi.mock("../../../src/db/with-identity", () => ({
 }));
 
 import { withIdentity } from "../../../src/db/with-identity";
+import { readJson } from "../../helpers/json";
 
 const USER: AppUser = {
   id: "00000000-0000-4000-a000-000000000001",
@@ -55,7 +56,7 @@ describe("POST /rides — validation", () => {
       body: JSON.stringify(VALID_BODY),
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.id).toBe("ride-uuid");
   });
 
@@ -68,7 +69,7 @@ describe("POST /rides — validation", () => {
       body: JSON.stringify(noLabel),
     });
     expect(res.status).toBe(422);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("validation failed");
   });
 
@@ -100,7 +101,7 @@ describe("POST /rides — validation", () => {
       body: JSON.stringify({ ...VALID_BODY, departure_at: "2020-01-01T00:00:00.000Z" }),
     });
     expect(res.status).toBe(422);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.details.fieldErrors.departure_at).toBeDefined();
   });
 
@@ -157,7 +158,7 @@ describe("POST /rides — anti-bot", () => {
       body: JSON.stringify(VALID_BODY),
     });
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("too_new");
   });
 
@@ -175,7 +176,7 @@ describe("POST /rides — anti-bot", () => {
       body: JSON.stringify(VALID_BODY),
     });
     expect(res.status).toBe(403);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("unverified_daily_limit");
   });
 
@@ -192,7 +193,7 @@ describe("POST /rides — anti-bot", () => {
       body: JSON.stringify(VALID_BODY),
     });
     expect(res.status).toBe(201);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.id).toBe("ride-uuid");
   });
 });

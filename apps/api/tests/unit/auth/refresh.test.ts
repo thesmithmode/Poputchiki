@@ -1,6 +1,7 @@
 import { sign } from "hono/jwt";
 import { describe, expect, it, vi } from "vitest";
 import { createAuthRouter } from "../../../src/auth/authRouter";
+import { readJson } from "../../helpers/json";
 
 const JWT_SECRET = "test-jwt-secret-at-least-32-chars!!";
 vi.stubEnv("JWT_SECRET", JWT_SECRET);
@@ -45,7 +46,7 @@ describe("POST /auth/refresh", () => {
     });
 
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(typeof body.access_token).toBe("string");
     expect(typeof body.refresh_token).toBe("string");
     expect(body.access_token).not.toBe(refreshToken);
@@ -123,7 +124,7 @@ describe("POST /auth/refresh", () => {
     });
 
     expect(res.status).toBe(401);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toMatch(/user not found/);
   });
 

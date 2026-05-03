@@ -16,6 +16,7 @@ import { identityGuard } from "../../src/middleware/identity-guard";
 import { createRidesRouter } from "../../src/rides/ridesRouter";
 import { buildDsn, withTestUser } from "../integration/setup";
 import type { TestUser } from "../integration/setup";
+import { readJson } from "../helpers/json";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-sqli";
 
@@ -85,7 +86,7 @@ describe("SQL injection: GET /api/rides query params", () => {
       expect(res.status).not.toBe(503);
 
       if (res.status === 200) {
-        const body = await res.json();
+        const body = await readJson(res);
         expect(body).toHaveProperty("rides");
         expect(Array.isArray(body.rides)).toBe(true);
       }

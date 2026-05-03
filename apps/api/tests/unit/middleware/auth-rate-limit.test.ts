@@ -4,6 +4,7 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { authRateLimit } from "../../../src/middleware/auth-rate-limit";
+import { readJson } from "../../helpers/json";
 
 describe("authRateLimit middleware", () => {
   it("запрос в рамках лимита → проходит", async () => {
@@ -41,7 +42,7 @@ describe("authRateLimit middleware", () => {
     });
     expect(res.status).toBe(429);
     expect(res.headers.get("Retry-After")).toBeTruthy();
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toContain("rate limit");
   });
 

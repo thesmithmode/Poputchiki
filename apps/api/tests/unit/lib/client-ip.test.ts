@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { afterEach, describe, expect, it } from "vitest";
 import { getClientIp } from "../../../src/lib/client-ip";
+import { readJson } from "../../helpers/json";
 
 async function getIp(opts: {
   socketIp?: string;
@@ -19,7 +20,7 @@ async function getIp(opts: {
   });
   app.get("/ip", (c) => c.json({ ip: getClientIp(c) }));
   const res = await app.request("/ip", { headers: opts.headers ?? {} });
-  const body = await res.json();
+  const body = await readJson(res);
   return body.ip;
 }
 

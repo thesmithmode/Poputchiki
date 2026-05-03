@@ -9,6 +9,7 @@ vi.mock("../../../src/db/with-identity", () => ({
 }));
 
 import { withIdentity } from "../../../src/db/with-identity";
+import { readJson } from "../../helpers/json";
 
 const USER: AppUser = {
   id: "00000000-0000-4000-a000-000000000001",
@@ -63,7 +64,7 @@ describe("GET /rides — basic", () => {
     const app = makeApp();
     const res = await app.request("/rides");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.rides).toEqual([]);
     expect(body.nextCursor).toBeNull();
   });
@@ -75,7 +76,7 @@ describe("GET /rides — basic", () => {
     const app = makeApp();
     const res = await app.request("/rides");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.rides).toHaveLength(5);
     expect(body.nextCursor).toBeNull();
   });
@@ -91,7 +92,7 @@ describe("GET /rides — basic", () => {
     const app = makeApp();
     const res = await app.request("/rides");
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.rides).toHaveLength(50);
     expect(typeof body.nextCursor).toBe("string");
     expect(body.nextCursor.length).toBeGreaterThan(0);
@@ -117,7 +118,7 @@ describe("GET /rides — basic", () => {
     const app = makeApp();
     const res = await app.request("/rides?cursor=not-valid-base64-json!!!");
     expect(res.status).toBe(400);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("invalid cursor");
   });
 
@@ -125,7 +126,7 @@ describe("GET /rides — basic", () => {
     const app = makeApp();
     const res = await app.request("/rides?radiusKm=-1");
     expect(res.status).toBe(422);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("validation failed");
   });
 });

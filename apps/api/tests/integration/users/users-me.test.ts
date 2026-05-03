@@ -9,6 +9,7 @@ import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createUsersRouter } from "../../../src/users/usersRouter";
+import { readJson } from "../../helpers/json";
 
 function buildDsn(): string {
   return (
@@ -77,7 +78,7 @@ describe("GET /api/users/me", () => {
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.id).toBe(ME.id);
     expect(body.tg_id).toBe(ME.tgId);
     expect(body.tg_username).toBe("me_user");
@@ -103,7 +104,7 @@ describe("GET /api/users/me", () => {
     const res = await app.request("/api/users/me", {
       headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
     });
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body).not.toHaveProperty("phone_enc");
     expect(body).not.toHaveProperty("apt_number_enc");
     expect(body).not.toHaveProperty("phone");
@@ -128,7 +129,7 @@ describe("GET /api/users/:id", () => {
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.id).toBe(OTHER.id);
     expect(body.display_name).toBe("Other User");
     expect(body.tg_username).toBe("other_user");

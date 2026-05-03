@@ -12,6 +12,7 @@ import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+import { readJson } from "../../helpers/json";
 
 const required = [
   "POSTGRES_USER",
@@ -166,7 +167,7 @@ describe("POST /api/rides — happy path", () => {
     });
 
     expect(res.status).toBe(201);
-    const ride = await res.json();
+    const ride = await readJson(res);
     expect(ride.driver_id).toBe(USER_ESTABLISHED.id);
     expect(ride.seats_total).toBe(2);
     expect(ride.status).toBe("active");

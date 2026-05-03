@@ -10,6 +10,7 @@ import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+import { readJson } from "../../helpers/json";
 
 const required = [
   "POSTGRES_USER",
@@ -143,7 +144,7 @@ describe("GET /api/rides — pagination", () => {
       },
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.rides).toHaveLength(50);
     expect(typeof body.nextCursor).toBe("string");
   });
@@ -157,12 +158,12 @@ describe("GET /api/rides — pagination", () => {
       "X-Forwarded-For": TEST_IP,
     };
 
-    const p1 = await (await app.request("/api/rides", { headers })).json();
+    const p1 = await readJson(await app.request("/api/rides", { headers }));
     expect(p1.rides).toHaveLength(50);
 
     const p2res = await app.request(`/api/rides?cursor=${p1.nextCursor}`, { headers });
     expect(p2res.status).toBe(200);
-    const p2 = await p2res.json();
+    const p2 = await readJson(p2res);
     // 60 (A) + 5 (B) = 65 total, page 1 = 50, page 2 = 15
     expect(p2.rides).toHaveLength(15);
     expect(p2.nextCursor).toBeNull();
@@ -177,8 +178,8 @@ describe("GET /api/rides — pagination", () => {
       "X-Forwarded-For": TEST_IP,
     };
 
-    const p1 = await (await app.request("/api/rides", { headers })).json();
-    const p2 = await (await app.request(`/api/rides?cursor=${p1.nextCursor}`, { headers })).json();
+    const p1 = await readJson(await app.request("/api/rides", { headers }));
+    const p2 = await readJson(await app.request(`/api/rides?cursor=${p1.nextCursor}`, { headers }));
 
     const p1Ids = new Set(p1.rides.map((r: { id: string }) => r.id));
     const p2Ids = p2.rides.map((r: { id: string }) => r.id);
@@ -200,7 +201,7 @@ describe("GET /api/rides — filters", () => {
       },
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     // All rides belong to DRIVER_A (0 from DRIVER_B who has 0 likes)
     for (const ride of body.rides) {
       expect(ride.driver_id).toBe(DRIVER_A.id);
@@ -218,7 +219,7 @@ describe("GET /api/rides — filters", () => {
       },
     });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = await readJson(res);
     for (const ride of body.rides) {
       expect(ride.seats_total - ride.seats_taken).toBeGreaterThanOrEqual(2);
     }

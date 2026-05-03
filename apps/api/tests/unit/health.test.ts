@@ -4,6 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/app";
+import { readJson } from "../helpers/json";
 
 describe("GET /health", () => {
   it("returns HTTP 200", async () => {
@@ -15,14 +16,14 @@ describe("GET /health", () => {
   it("body has status='ok'", async () => {
     const app = createApp();
     const res = await app.request("/health");
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.status).toBe("ok");
   });
 
   it("body has ts as ISO 8601 string", async () => {
     const app = createApp();
     const res = await app.request("/health");
-    const body = await res.json();
+    const body = await readJson(res);
     expect(typeof body.ts).toBe("string");
     // ISO 8601: parseable and round-trips without NaN
     expect(Number.isNaN(Date.parse(body.ts))).toBe(false);

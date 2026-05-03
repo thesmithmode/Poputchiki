@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { describe, expect, it, vi } from "vitest";
 import { identityGuard } from "../../../src/middleware/identity-guard";
+import { readJson } from "../../helpers/json";
 
 const SECRET = "test-jwt-secret-for-unit-tests";
 const USER_UUID = "00000000-0000-4000-a000-000000000099";
@@ -182,7 +183,7 @@ describe("identityGuard: happy path", () => {
       headers: withAuth(token, String(TG_ID)),
     });
     expect(res.status).toBe(200);
-    const user = await res.json();
+    const user = await readJson(res);
     expect(user.id).toBe(USER_UUID);
     expect(user.tgId).toBe(TG_ID);
     expect(user.role).toBe("user");
@@ -195,7 +196,7 @@ describe("identityGuard: happy path", () => {
       headers: withAuth(token, String(TG_ID)),
     });
     expect(res.status).toBe(200);
-    const user = await res.json();
+    const user = await readJson(res);
     expect(user.role).toBe("admin");
   });
 
@@ -219,7 +220,7 @@ describe("identityGuard: happy path", () => {
       headers: withAuth(token, String(TG_ID)),
     });
     expect(res.status).toBe(200);
-    const user = await res.json();
+    const user = await readJson(res);
     expect(user.role).toBe("user");
   });
 });

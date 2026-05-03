@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { AppUser } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
+import { readJson } from "../../helpers/json";
 
 const USER: AppUser = { id: "00000000-0000-4000-a000-rl0000000001", tgId: 555, role: "user" };
 
@@ -69,7 +70,7 @@ describe("rateLimit: IP limit", () => {
     const app = makeApp(sql, { ipLimit: 1000 });
     const res = await app.request("/api/ping");
     expect(res.status).toBe(429);
-    const body = await res.json();
+    const body = await readJson(res);
     expect(body.error).toBe("rate limit exceeded");
     expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
   });

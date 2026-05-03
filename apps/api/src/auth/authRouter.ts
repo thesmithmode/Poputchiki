@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
 import type postgres from "postgres";
-import { COOKIE_DEFAULTS } from "../lib/cookie";
+import { AUTH_COOKIE_DEFAULTS, CSRF_COOKIE_DEFAULTS } from "../lib/cookie";
 import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 
 const ACCESS_TTL = 24 * 60 * 60;
@@ -98,8 +98,8 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       ),
     ]);
 
-    setCookie(c, "tg_uid", String(tgUser.id), COOKIE_DEFAULTS);
-    setCookie(c, "csrf_token", crypto.randomUUID(), COOKIE_DEFAULTS);
+    setCookie(c, "tg_uid", String(tgUser.id), AUTH_COOKIE_DEFAULTS);
+    setCookie(c, "csrf_token", crypto.randomUUID(), CSRF_COOKIE_DEFAULTS);
 
     return c.json({
       access_token: accessToken,
@@ -250,9 +250,8 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       }
     }
 
-    const clearOpts = { ...COOKIE_DEFAULTS, maxAge: 0 };
-    setCookie(c, "tg_uid", "", clearOpts);
-    setCookie(c, "csrf_token", "", clearOpts);
+    setCookie(c, "tg_uid", "", { ...AUTH_COOKIE_DEFAULTS, maxAge: 0 });
+    setCookie(c, "csrf_token", "", { ...CSRF_COOKIE_DEFAULTS, maxAge: 0 });
 
     return c.json({ ok: true });
   });

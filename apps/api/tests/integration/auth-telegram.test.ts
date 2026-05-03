@@ -35,7 +35,7 @@ const BOT_TOKEN = process.env.BOT_TOKEN ?? "fake_token_for_test";
 
 beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
-  app = createApp(sql);
+  app = createApp(sql, process.env.JWT_SECRET);
   // Clean up any leftover state from previous runs
   await sql`DELETE FROM nonces WHERE hash LIKE '%'`.catch(() => null);
   await sql`DELETE FROM users WHERE tg_id = ${TG_ID}`.catch(() => null);
@@ -79,6 +79,14 @@ describe("POST /auth/telegram — happy path", () => {
     const hasCsrf = cookieHeader.includes("csrf_token=");
     expect(hasUid).toBe(true);
     expect(hasCsrf).toBe(true);
+    const tgUidPart = cookieHeader
+      .split(/,(?=\s*\w+=)/)
+      .find((p) => p.includes("tg_uid=")) ?? "";
+    const csrfPart = cookieHeader
+      .split(/,(?=\s*\w+=)/)
+      .find((p) => p.includes("csrf_token=")) ?? "";
+    expect(/HttpOnly/i.test(tgUidPart)).toBe(true);
+    expect(/HttpOnly/i.test(csrfPart)).toBe(false);
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 1}`.catch(() => null);
   });
 
@@ -147,5 +155,209 @@ describe("POST /auth/telegram — rejection cases", () => {
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /auth/refresh — refresh token endpoint", () => {
+  let refreshToken: string;
+  let userId: string;
+
+  beforeAll(async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 100, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 100}`.catch(() => null);
+    const res = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const body = await readJson(res);
+    refreshToken = body.refresh_token;
+    userId = body.user.id;
+  });
+
+  afterAll(async () => {
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 100}`.catch(() => null);
+  });
+
+  it("returns new tokens on valid refresh token", async () => {
+    const res = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(typeof body.access_token).toBe("string");
+    expect(typeof body.refresh_token).toBe("string");
+  });
+
+  it("missing refresh_token → 400", async () => {
+    const res = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("invalid token format → 401", async () => {
+    const res = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: "invalid_token_string" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("access token instead of refresh → 401", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 101, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 101}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const res = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: loginBody.access_token }),
+    });
+    expect(res.status).toBe(401);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 101}`.catch(() => null);
+  });
+
+  it("revoked token → 401", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 102, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 102}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const refreshTok = loginBody.refresh_token;
+    await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshTok }),
+    });
+    const res2 = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshTok }),
+    });
+    expect(res2.status).toBe(401);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 102}`.catch(() => null);
+  });
+
+  it("deleted user → 401", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 103, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 103}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const refreshTok = loginBody.refresh_token;
+    const uid = loginBody.user.id;
+    await sql`UPDATE users SET deleted_at = NOW() WHERE id = ${uid}`;
+    const res = await app.request("/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshTok }),
+    });
+    expect(res.status).toBe(401);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 103}`.catch(() => null);
+  });
+});
+
+describe("POST /auth/logout — logout endpoint", () => {
+  it("revokes both tokens and clears cookies", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 200, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 200}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const logoutRes = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        refresh_token: loginBody.refresh_token,
+        access_token: loginBody.access_token,
+      }),
+    });
+    expect(logoutRes.status).toBe(200);
+    const body = await readJson(logoutRes);
+    expect(body.ok).toBe(true);
+    const cookieHeader = logoutRes.headers.get("set-cookie") ?? "";
+    expect(cookieHeader).toContain("tg_uid=");
+    expect(cookieHeader).toContain("csrf_token=");
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 200}`.catch(() => null);
+  });
+
+  it("missing refresh_token → 400", async () => {
+    const res = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("invalid refresh token → 401", async () => {
+    const res = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: "bad_token" }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("access token type → 401", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 201, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 201}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const res = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: loginBody.access_token }),
+    });
+    expect(res.status).toBe(401);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 201}`.catch(() => null);
+  });
+
+  it("logout without access_token (only refresh)", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 202, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 202}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const res = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: loginBody.refresh_token }),
+    });
+    expect(res.status).toBe(200);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 202}`.catch(() => null);
   });
 });

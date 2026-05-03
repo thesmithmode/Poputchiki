@@ -162,3 +162,24 @@ CREATE POLICY ride_participation_update ON ride_participation
     passenger_id = app.current_user_id()
     OR ride_id IN (SELECT id FROM rides WHERE driver_id = app.current_user_id())
   );
+
+-- ---------------------------------------------------------------------------
+-- app.book_seat: SECURITY DEFINER seat reservation (bypasses RLS on rides)
+-- Passengers cannot UPDATE rides directly (driver-only RLS); this function
+-- enforces booking rules explicitly and runs as owner (superuser).
+-- ---------------------------------------------------------------------------
+CREATE FUNCTION app.book_seat(p_ride_id uuid)
+RETURNS SETOF rides
+LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  UPDATE rides
+     SET seats_taken = rides.seats_taken + 1
+   WHERE rides.id = p_ride_id
+     AND rides.status = 'active'
+     AND rides.seats_taken < rides.seats_total
+     AND app.current_user_id() IS NOT NULL
+     AND rides.driver_id <> app.current_user_id()
+  RETURNING rides.*;
+$$;
+
+REVOKE ALL ON FUNCTION app.book_seat(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION app.book_seat(uuid) TO poputchiki_app;

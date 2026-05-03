@@ -1,7 +1,4 @@
--- Migration 003 created rate_limit_buckets with token bucket schema.
--- Replace with sliding window schema for minute-based rate limiting.
-DROP TABLE IF EXISTS rate_limit_buckets;
-
+-- Migration 005: sliding window rate limiter table
 CREATE TABLE rate_limit_buckets (
   key          TEXT        NOT NULL,
   window_start TIMESTAMPTZ NOT NULL,

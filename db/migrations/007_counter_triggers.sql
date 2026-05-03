@@ -4,8 +4,11 @@
 -- ---------------------------------------------------------------------------
 -- likes_received_count: +1 on INSERT likes, -1 on DELETE likes
 -- ---------------------------------------------------------------------------
+-- SECURITY DEFINER: triggers update users rows for OTHER users (e.g. likes.target_id).
+-- Under FORCE RLS the UPDATE would be filtered by users_update_self → 0 rows → counter drift.
 CREATE OR REPLACE FUNCTION app.trg_likes_update_count()
-  RETURNS trigger LANGUAGE plpgsql AS $$
+  RETURNS trigger LANGUAGE plpgsql
+  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     UPDATE users SET likes_received_count = likes_received_count + 1
@@ -26,7 +29,8 @@ CREATE TRIGGER trg_likes_count
 -- rides_total_count: +1 on INSERT rides (driver)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app.trg_rides_insert_count()
-  RETURNS trigger LANGUAGE plpgsql AS $$
+  RETURNS trigger LANGUAGE plpgsql
+  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 BEGIN
   UPDATE users SET rides_total_count = rides_total_count + 1
   WHERE id = NEW.driver_id;
@@ -42,7 +46,8 @@ CREATE TRIGGER trg_rides_insert
 -- rides_completed_count: +1 when ride.status transitions to 'completed'
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app.trg_rides_completed_count()
-  RETURNS trigger LANGUAGE plpgsql AS $$
+  RETURNS trigger LANGUAGE plpgsql
+  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 BEGIN
   IF NEW.status = 'completed' AND OLD.status <> 'completed' THEN
     UPDATE users SET rides_completed_count = rides_completed_count + 1

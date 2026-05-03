@@ -131,6 +131,21 @@ CREATE POLICY complaints_insert ON complaints
 CREATE POLICY complaints_read ON complaints
   FOR SELECT USING (reporter_id = app.current_user_id() OR app.is_admin());
 
+-- Antispam: one complaint per reporter-target pair per calendar week.
+-- complaint_week_utc is IMMUTABLE (required for functional index on timestamptz).
+CREATE OR REPLACE FUNCTION complaint_week_utc(ts timestamptz)
+RETURNS timestamp AS $$
+  SELECT date_trunc('week', (ts AT TIME ZONE 'UTC'));
+$$ LANGUAGE sql IMMUTABLE;
+
+CREATE UNIQUE INDEX complaints_unique_per_week_idx
+  ON complaints (
+    reporter_id,
+    target_id,
+    COALESCE(ride_id, '00000000-0000-0000-0000-000000000000'::uuid),
+    complaint_week_utc(created_at)
+  );
+
 -- ---------------------------------------------------------------------------
 -- audit_log: immutable action log
 -- No INSERT policy — api uses privileged connection (bypass RLS) or SET ROLE

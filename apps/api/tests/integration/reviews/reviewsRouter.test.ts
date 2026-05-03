@@ -20,20 +20,24 @@ interface TestUser {
   role: "user" | "admin";
 }
 
-const DRIVER: TestUser = { id: "00000000-0000-4000-f000-400000000001", tgId: 9700001, role: "user" };
+const DRIVER: TestUser = {
+  id: "00000000-0000-4000-a000-400000000001",
+  tgId: 9700001,
+  role: "user",
+};
 const PASSENGER: TestUser = {
-  id: "00000000-0000-4000-f000-400000000002",
+  id: "00000000-0000-4000-a000-400000000002",
   tgId: 9700002,
   role: "user",
 };
 const STRANGER: TestUser = {
-  id: "00000000-0000-4000-f000-400000000003",
+  id: "00000000-0000-4000-a000-400000000003",
   tgId: 9700003,
   role: "user",
 };
 
-const RIDE_OK = "00000000-0000-4000-f000-4a0000000001";
-const RIDE_PENDING = "00000000-0000-4000-f000-4a0000000002";
+const RIDE_OK = "00000000-0000-4000-a000-4a0000000001";
+const RIDE_PENDING = "00000000-0000-4000-a000-4a0000000002";
 
 let sql: ReturnType<typeof createPool>;
 
@@ -199,7 +203,7 @@ describe("GET /api/reviews?driver_id=", () => {
     expect(res.status).toBe(200);
     const list = await readJson<Array<{ target_id: string; stars: number }>>(res);
     expect(list.length).toBeGreaterThanOrEqual(1);
-    expect(list[0]!.target_id).toBe(DRIVER.id);
+    expect(list[0]?.target_id).toBe(DRIVER.id);
   });
 
   it("422 — missing driver_id", async () => {

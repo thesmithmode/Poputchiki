@@ -69,7 +69,7 @@ afterAll(async () => {
 describe("POST /api/complaints", () => {
   it("201 — valid complaint", async () => {
     const app = makeApp();
-    const token = await makeToken(REPORTERS[0]!);
+    const token = await makeToken(REPORTERS[0] as NonNullable<(typeof REPORTERS)[0]>);
     const res = await app.request("/api/complaints", {
       method: "POST",
       headers: {
@@ -88,7 +88,7 @@ describe("POST /api/complaints", () => {
 
   it("409 — duplicate complaint same week same pair", async () => {
     const app = makeApp();
-    const token = await makeToken(REPORTERS[0]!);
+    const token = await makeToken(REPORTERS[0] as NonNullable<(typeof REPORTERS)[0]>);
     const res = await app.request("/api/complaints", {
       method: "POST",
       headers: {
@@ -103,7 +103,7 @@ describe("POST /api/complaints", () => {
 
   it("422 — invalid reason_code", async () => {
     const app = makeApp();
-    const token = await makeToken(REPORTERS[1]!);
+    const token = await makeToken(REPORTERS[1] as NonNullable<(typeof REPORTERS)[0]>);
     const res = await app.request("/api/complaints", {
       method: "POST",
       headers: {
@@ -118,7 +118,7 @@ describe("POST /api/complaints", () => {
 
   it("422 — cannot complain about self", async () => {
     const app = makeApp();
-    const token = await makeToken(REPORTERS[1]!);
+    const token = await makeToken(REPORTERS[1] as NonNullable<(typeof REPORTERS)[0]>);
     const res = await app.request("/api/complaints", {
       method: "POST",
       headers: {

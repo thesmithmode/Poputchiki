@@ -20,7 +20,11 @@ interface TestUser {
   role: "user" | "admin";
 }
 
-const DRIVER: TestUser = { id: "00000000-0000-4000-f000-300000000001", tgId: 9600001, role: "user" };
+const DRIVER: TestUser = {
+  id: "00000000-0000-4000-f000-300000000001",
+  tgId: 9600001,
+  role: "user",
+};
 const PASSENGER: TestUser = {
   id: "00000000-0000-4000-f000-300000000002",
   tgId: 9600002,
@@ -172,7 +176,7 @@ describe("DELETE /api/likes/:id", () => {
     const found = await sql<{ id: string }[]>`
       SELECT id FROM likes WHERE subject_id = ${PASSENGER.id} AND target_id = ${DRIVER.id} AND ride_id = ${RIDE_CONFIRMED}
     `;
-    const likeId = found[0]!.id;
+    const likeId = found[0]?.id;
     const res = await app.request(`/api/likes/${likeId}`, {
       method: "DELETE",
       headers: await authHeaders(PASSENGER),

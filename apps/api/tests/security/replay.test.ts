@@ -54,7 +54,7 @@ beforeAll(async () => {
   sql = postgres(buildDsn(), { max: 3 });
   // Clean nonces from previous runs
   const initData = buildInitData({});
-  const hash = new URLSearchParams(initData).get("hash")!;
+  const hash = new URLSearchParams(initData).get("hash") ?? "";
   await sql`DELETE FROM nonces WHERE hash = ${hash}`;
 });
 
@@ -142,8 +142,8 @@ describe("Replay attack protection — /auth/telegram", () => {
     const initData2 = buildInitData({ auth_date: date2 });
 
     // Both should be independent — clean first
-    const hash1 = new URLSearchParams(initData1).get("hash")!;
-    const hash2 = new URLSearchParams(initData2).get("hash")!;
+    const hash1 = new URLSearchParams(initData1).get("hash") ?? "";
+    const hash2 = new URLSearchParams(initData2).get("hash") ?? "";
     await sql`DELETE FROM nonces WHERE hash IN (${hash1}, ${hash2})`;
 
     const res1 = await app.request("/auth/telegram", {

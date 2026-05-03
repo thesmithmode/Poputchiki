@@ -1,13 +1,24 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
+import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
+
+type WindowWithTelegram = Window & {
+  Telegram?: {
+    WebApp?: {
+      colorScheme: "light" | "dark";
+      onEvent: (...args: unknown[]) => void;
+      ready: () => void;
+    };
+  };
+};
+
+const w = () => window as unknown as WindowWithTelegram;
 
 describe("App", () => {
   beforeEach(() => {
     document.documentElement.className = "";
-    // @ts-expect-error
-    delete (window as any).Telegram;
+    w().Telegram = undefined;
   });
 
   it("рендерит главный маршрут без ошибок", () => {
@@ -17,12 +28,11 @@ describe("App", () => {
 
   it("использует HashRouter (URL hash-based)", () => {
     render(<App />);
-    // HashRouter работает с window.location.hash; smoke: стартовый путь = /
     expect(window.location.hash === "" || window.location.hash.startsWith("#/")).toBe(true);
   });
 
   it("подхватывает Telegram colorScheme=dark → класс dark на html", () => {
-    (window as any).Telegram = {
+    w().Telegram = {
       WebApp: {
         colorScheme: "dark",
         onEvent: vi.fn(),
@@ -34,7 +44,7 @@ describe("App", () => {
   });
 
   it("colorScheme=light → нет класса dark", () => {
-    (window as any).Telegram = {
+    w().Telegram = {
       WebApp: {
         colorScheme: "light",
         onEvent: vi.fn(),

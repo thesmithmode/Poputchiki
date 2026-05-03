@@ -1,11 +1,22 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { applyTelegramTheme, getTelegramWebApp } from "../src/lib/telegram";
+
+type WindowWithTelegram = Window & {
+  Telegram?: {
+    WebApp?: {
+      colorScheme: "light" | "dark";
+      onEvent: (...args: unknown[]) => void;
+      ready: () => void;
+    };
+  };
+};
+
+const w = () => window as unknown as WindowWithTelegram;
 
 describe("telegram lib", () => {
   beforeEach(() => {
     document.documentElement.className = "";
-    // @ts-expect-error
-    delete (window as any).Telegram;
+    w().Telegram = undefined;
   });
 
   it("getTelegramWebApp → undefined без Telegram", () => {
@@ -13,8 +24,8 @@ describe("telegram lib", () => {
   });
 
   it("getTelegramWebApp → объект если присутствует", () => {
-    const wa = { colorScheme: "light", onEvent: vi.fn(), ready: vi.fn() };
-    (window as any).Telegram = { WebApp: wa };
+    const wa = { colorScheme: "light" as const, onEvent: vi.fn(), ready: vi.fn() };
+    w().Telegram = { WebApp: wa };
     expect(getTelegramWebApp()).toBe(wa);
   });
 

@@ -1,4 +1,4 @@
-import { CreateRideInput } from "@poputchiki/shared";
+import { CreateRideInput, MarkParticipantsInput } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -266,6 +266,83 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
     }
+  });
+
+  app.post("/:id/mark-participants", async (c) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    const rideId = c.req.param("id");
+    if (!UUID_RE.test(rideId)) return c.json({ error: "invalid ride id" }, 400);
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = MarkParticipantsInput.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "validation failed" }, 422);
+    }
+    const { passenger_ids } = parsed.data;
+
+    let rows: { ride_id: string; passenger_id: string; driver_marked: boolean }[];
+    try {
+      rows = await withIdentity(
+        sql,
+        user,
+        async (tx) => {
+          const [ride] = await tx<{ id: string; driver_id: string; departure_at: Date }[]>`
+          SELECT id, driver_id, departure_at FROM rides WHERE id = ${rideId}::uuid
+        `;
+
+          if (!ride) {
+            throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+          }
+
+          if (ride.driver_id !== user.id) {
+            throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+          }
+
+          if (ride.departure_at > new Date()) {
+            throw Object.assign(new Error("before_departure"), { code: "BEFORE_DEPARTURE" });
+          }
+
+          const upserted: { ride_id: string; passenger_id: string; driver_marked: boolean }[] = [];
+
+          for (const passengerId of passenger_ids) {
+            const [row] = await tx<
+              { ride_id: string; passenger_id: string; driver_marked: boolean }[]
+            >`
+            INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, marked_at)
+            VALUES (${rideId}::uuid, ${passengerId}::uuid, true, now())
+            ON CONFLICT (ride_id, passenger_id)
+            DO UPDATE SET driver_marked = true, marked_at = now()
+            RETURNING ride_id, passenger_id, driver_marked
+          `;
+            if (row) upserted.push(row);
+          }
+
+          return upserted;
+        },
+        "repeatable read",
+      );
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code;
+      if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      if (code === "BEFORE_DEPARTURE") return c.json({ error: "before_departure" }, 409);
+      /* c8 ignore next -- defensive: re-throw unknown errors */
+      throw err;
+    }
+
+    // Notify passengers (fire-and-forget via LISTEN/NOTIFY)
+    for (const passengerId of passenger_ids) {
+      sql`
+        SELECT pg_notify(
+          'participation_request',
+          ${JSON.stringify({ ride_id: rideId, passenger_id: passengerId, driver_id: user.id, category: "participation_request" })}
+        )
+      `.catch(/* c8 ignore next -- fire-and-forget notify never rejects in tests */ () => {});
+    }
+
+    return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);
   });
 
   return app;

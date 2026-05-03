@@ -65,3 +65,8 @@ export const RideDTO = z.object({
 
 export type RideDTO = z.infer<typeof RideDTO>;
 export type RideStatus = z.infer<typeof RideStatus>;
+
+export const MarkParticipantsInput = z.object({
+  passenger_ids: z.array(z.string().uuid()).min(1).max(50),
+});
+export type MarkParticipantsInput = z.infer<typeof MarkParticipantsInput>;

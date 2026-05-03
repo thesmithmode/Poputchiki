@@ -14,16 +14,22 @@ import { buildDsn } from "../setup";
 
 const JWT_SECRET = "test-secret-likes";
 
-const DRIVER = { id: "00000000-0000-4000-f000-300000000001", tgId: 9600001, role: "user" as const };
-const PASSENGER = {
+interface TestUser {
+  id: string;
+  tgId: number;
+  role: "user" | "admin";
+}
+
+const DRIVER: TestUser = { id: "00000000-0000-4000-f000-300000000001", tgId: 9600001, role: "user" };
+const PASSENGER: TestUser = {
   id: "00000000-0000-4000-f000-300000000002",
   tgId: 9600002,
-  role: "user" as const,
+  role: "user",
 };
-const STRANGER = {
+const STRANGER: TestUser = {
   id: "00000000-0000-4000-f000-300000000003",
   tgId: 9600003,
-  role: "user" as const,
+  role: "user",
 };
 
 const RIDE_CONFIRMED = "00000000-0000-4000-f000-3a0000000001";
@@ -31,12 +37,18 @@ const RIDE_UNCONFIRMED = "00000000-0000-4000-f000-3a0000000002";
 
 let sql: ReturnType<typeof createPool>;
 
-async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
+async function authHeaders(u: TestUser, json = false): Promise<Record<string, string>> {
   const now = Math.floor(Date.now() / 1000);
-  return sign(
+  const token = await sign(
     { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
+  const h: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Cookie: `tg_uid=${u.tgId}`,
+  };
+  if (json) h["Content-Type"] = "application/json";
+  return h;
 }
 
 function makeApp(): Hono {
@@ -91,10 +103,9 @@ afterAll(async () => {
 describe("POST /api/likes", () => {
   it("201 — passenger likes driver after confirmation", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_CONFIRMED, target_user_id: DRIVER.id }),
     });
     expect(res.status).toBe(201);
@@ -106,10 +117,9 @@ describe("POST /api/likes", () => {
 
   it("403 — like without confirmation", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_UNCONFIRMED, target_user_id: DRIVER.id }),
     });
     expect(res.status).toBe(403);
@@ -117,10 +127,9 @@ describe("POST /api/likes", () => {
 
   it("403 — stranger (not in ride) cannot like driver", async () => {
     const app = makeApp();
-    const token = await makeToken(STRANGER);
     const res = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(STRANGER, true),
       body: JSON.stringify({ ride_id: RIDE_CONFIRMED, target_user_id: DRIVER.id }),
     });
     expect(res.status).toBe(403);
@@ -128,10 +137,9 @@ describe("POST /api/likes", () => {
 
   it("409 — duplicate like", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_CONFIRMED, target_user_id: DRIVER.id }),
     });
     expect(res.status).toBe(409);
@@ -139,10 +147,9 @@ describe("POST /api/likes", () => {
 
   it("422 — like self", async () => {
     const app = makeApp();
-    const token = await makeToken(DRIVER);
     const res = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(DRIVER, true),
       body: JSON.stringify({ ride_id: RIDE_CONFIRMED, target_user_id: DRIVER.id }),
     });
     expect(res.status).toBe(422);
@@ -150,10 +157,9 @@ describe("POST /api/likes", () => {
 
   it("422 — invalid uuid", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: "not-uuid", target_user_id: DRIVER.id }),
     });
     expect(res.status).toBe(422);
@@ -163,35 +169,31 @@ describe("POST /api/likes", () => {
 describe("DELETE /api/likes/:id", () => {
   it("204 — delete own like within 24h", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const found = await sql<{ id: string }[]>`
       SELECT id FROM likes WHERE subject_id = ${PASSENGER.id} AND target_id = ${DRIVER.id} AND ride_id = ${RIDE_CONFIRMED}
     `;
     const likeId = found[0]!.id;
     const res = await app.request(`/api/likes/${likeId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(PASSENGER),
     });
     expect(res.status).toBe(204);
   });
 
   it("404 — non-existent id", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/likes/00000000-0000-4000-f000-3b0000000099", {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(PASSENGER),
     });
     expect(res.status).toBe(404);
   });
 
   it("410 — past 24h delete window", async () => {
     const app = makeApp();
-    // Re-insert a like and backdate its created_at past 24h
-    const token = await makeToken(PASSENGER);
     const post = await app.request("/api/likes", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_CONFIRMED, target_user_id: DRIVER.id }),
     });
     expect(post.status).toBe(201);
@@ -199,17 +201,16 @@ describe("DELETE /api/likes/:id", () => {
     await sql`UPDATE likes SET created_at = now() - interval '25 hours' WHERE id = ${created.id}`;
     const res = await app.request(`/api/likes/${created.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(PASSENGER),
     });
     expect(res.status).toBe(410);
   });
 
   it("400 — invalid uuid", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/likes/not-uuid", {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(PASSENGER),
     });
     expect(res.status).toBe(400);
   });

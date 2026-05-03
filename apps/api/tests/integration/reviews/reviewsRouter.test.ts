@@ -14,16 +14,22 @@ import { buildDsn } from "../setup";
 
 const JWT_SECRET = "test-secret-reviews";
 
-const DRIVER = { id: "00000000-0000-4000-f000-400000000001", tgId: 9700001, role: "user" as const };
-const PASSENGER = {
+interface TestUser {
+  id: string;
+  tgId: number;
+  role: "user" | "admin";
+}
+
+const DRIVER: TestUser = { id: "00000000-0000-4000-f000-400000000001", tgId: 9700001, role: "user" };
+const PASSENGER: TestUser = {
   id: "00000000-0000-4000-f000-400000000002",
   tgId: 9700002,
-  role: "user" as const,
+  role: "user",
 };
-const STRANGER = {
+const STRANGER: TestUser = {
   id: "00000000-0000-4000-f000-400000000003",
   tgId: 9700003,
-  role: "user" as const,
+  role: "user",
 };
 
 const RIDE_OK = "00000000-0000-4000-f000-4a0000000001";
@@ -31,12 +37,18 @@ const RIDE_PENDING = "00000000-0000-4000-f000-4a0000000002";
 
 let sql: ReturnType<typeof createPool>;
 
-async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
+async function authHeaders(u: TestUser, json = false): Promise<Record<string, string>> {
   const now = Math.floor(Date.now() / 1000);
-  return sign(
+  const token = await sign(
     { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
+  const h: Record<string, string> = {
+    Authorization: `Bearer ${token}`,
+    Cookie: `tg_uid=${u.tgId}`,
+  };
+  if (json) h["Content-Type"] = "application/json";
+  return h;
 }
 
 function makeApp(): Hono {
@@ -91,10 +103,9 @@ afterAll(async () => {
 describe("POST /api/reviews", () => {
   it("201 — passenger reviews driver after confirmation", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_OK, target_id: DRIVER.id, stars: 5, body: "great" }),
     });
     expect(res.status).toBe(201);
@@ -105,10 +116,9 @@ describe("POST /api/reviews", () => {
 
   it("403 — review without confirmation", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_PENDING, target_id: DRIVER.id, stars: 4 }),
     });
     expect(res.status).toBe(403);
@@ -116,10 +126,9 @@ describe("POST /api/reviews", () => {
 
   it("422 — stars=0", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_OK, target_id: DRIVER.id, stars: 0 }),
     });
     expect(res.status).toBe(422);
@@ -127,10 +136,9 @@ describe("POST /api/reviews", () => {
 
   it("422 — stars=6", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_OK, target_id: DRIVER.id, stars: 6 }),
     });
     expect(res.status).toBe(422);
@@ -138,10 +146,9 @@ describe("POST /api/reviews", () => {
 
   it("422 — body length >300", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({
         ride_id: RIDE_OK,
         target_id: DRIVER.id,
@@ -154,10 +161,9 @@ describe("POST /api/reviews", () => {
 
   it("422 — review self", async () => {
     const app = makeApp();
-    const token = await makeToken(DRIVER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(DRIVER, true),
       body: JSON.stringify({ ride_id: RIDE_OK, target_id: DRIVER.id, stars: 5 }),
     });
     expect(res.status).toBe(422);
@@ -165,10 +171,9 @@ describe("POST /api/reviews", () => {
 
   it("409 — duplicate review", async () => {
     const app = makeApp();
-    const token = await makeToken(PASSENGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(PASSENGER, true),
       body: JSON.stringify({ ride_id: RIDE_OK, target_id: DRIVER.id, stars: 4, body: "again" }),
     });
     expect(res.status).toBe(409);
@@ -176,10 +181,9 @@ describe("POST /api/reviews", () => {
 
   it("403 — stranger cannot review driver", async () => {
     const app = makeApp();
-    const token = await makeToken(STRANGER);
     const res = await app.request("/api/reviews", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: await authHeaders(STRANGER, true),
       body: JSON.stringify({ ride_id: RIDE_OK, target_id: DRIVER.id, stars: 4 }),
     });
     expect(res.status).toBe(403);
@@ -189,9 +193,8 @@ describe("POST /api/reviews", () => {
 describe("GET /api/reviews?driver_id=", () => {
   it("200 — list reviews for driver", async () => {
     const app = makeApp();
-    const token = await makeToken(STRANGER);
     const res = await app.request(`/api/reviews?driver_id=${DRIVER.id}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(STRANGER),
     });
     expect(res.status).toBe(200);
     const list = await readJson<Array<{ target_id: string; stars: number }>>(res);
@@ -201,18 +204,16 @@ describe("GET /api/reviews?driver_id=", () => {
 
   it("422 — missing driver_id", async () => {
     const app = makeApp();
-    const token = await makeToken(STRANGER);
     const res = await app.request("/api/reviews", {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(STRANGER),
     });
     expect(res.status).toBe(422);
   });
 
   it("422 — invalid driver_id uuid", async () => {
     const app = makeApp();
-    const token = await makeToken(STRANGER);
     const res = await app.request("/api/reviews?driver_id=not-uuid", {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: await authHeaders(STRANGER),
     });
     expect(res.status).toBe(422);
   });

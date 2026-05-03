@@ -209,6 +209,26 @@ describe("identityGuard: happy path", () => {
     expect(res.status).toBe(200);
   });
 
+  it("SENTINEL: expired JWT → 401", async () => {
+    const app = makeApp();
+    const now = Math.floor(Date.now() / 1000);
+    const token = await sign(
+      {
+        sub: String(TG_ID),
+        uid: USER_UUID,
+        typ: "access",
+        role: "user",
+        iat: now - 7200,
+        exp: now - 60,
+      },
+      SECRET,
+    );
+    const res = await app.request("/api/me", {
+      headers: withAuth(token, String(TG_ID)),
+    });
+    expect(res.status).toBe(401);
+  });
+
   it("no role in JWT → defaults to 'user'", async () => {
     const app = makeApp();
     const now = Math.floor(Date.now() / 1000);

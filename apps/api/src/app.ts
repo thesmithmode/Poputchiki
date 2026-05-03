@@ -5,6 +5,7 @@ import { createComplaintsRouter } from "./complaints/complaintsRouter";
 import { poolMetrics } from "./db/pool";
 import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { createLikesRouter } from "./likes/likesRouter";
+import { createReviewsRouter } from "./reviews/reviewsRouter";
 import { auditLog } from "./middleware/audit-log";
 import { authRateLimit } from "./middleware/auth-rate-limit";
 import { captureSocketIp } from "./middleware/capture-socket-ip";
@@ -46,6 +47,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
       app.route("/api/notifications", createNotificationsRouter(sql));
       app.route("/api/favorites", createFavoritesRouter(sql));
       app.route("/api/likes", createLikesRouter(sql));
+      app.route("/api/reviews", createReviewsRouter(sql));
       app.route("/api/complaints", createComplaintsRouter(sql));
       const { userRouter: supportUser, adminRouter: supportAdmin } = createSupportRouter(sql);
       app.route("/api/support", supportUser);

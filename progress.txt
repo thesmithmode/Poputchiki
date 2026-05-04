@@ -422,3 +422,5 @@
 [2026-05-04] TASK-113 done — production lifecycle: /readiness endpoint (SELECT 1), withRetry helper (exponential backoff), CircuitBreaker class (5xx threshold=5, open 30s), graceful shutdown SIGTERM→drain 30s→sql.end.
 
 2026-05-04T08:17:38Z TASK-107 done: TG Bot webhook receiver (apps/webhook) — POST /tg/webhook, secret auth, my_chat_member→notify_disabled, /start|/help→sendMessage, LRU dedup, scripts/setup-tg-webhook.sh, 21 vitest tests, CI green
+
+2026-05-04T09:25:16Z TASK-100 done: banned-user middleware (403 /api/** except /me), ban_reason+banned_at migration, GET /me returns ban fields, BannedScreen component, api.ts fetch wrapper, useMe hook, 6 unit tests + 3 integration tests, CI green

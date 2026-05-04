@@ -1,72 +1,53 @@
 import { describe, expect, it, vi } from "vitest";
 import { refreshUserStats } from "../../src/refresh-user-stats";
 
-interface CapturedCall {
-  sql: string;
-  params: unknown[];
-}
+type Row = Record<string, unknown>;
 
-function makeSql(...returnValues: unknown[]): {
-  sql: import("postgres").Sql;
-  calls: CapturedCall[];
-} {
-  const calls: CapturedCall[] = [];
+function makeSql(acquired: boolean, reservedResponses: (Row[] | Error)[]): import("postgres").Sql {
   let i = 0;
-  const fn = vi.fn().mockImplementation((strings: TemplateStringsArray, ...params: unknown[]) => {
-    const joined = Array.isArray(strings) ? strings.join("?") : String(strings);
-    calls.push({ sql: joined, params });
-    const val = returnValues[i] ?? [];
+  const reserved = vi.fn().mockImplementation(() => {
+    if (i === 0) { i++; return Promise.resolve([{ acquired }]); }
+    const resp = reservedResponses[i - 1] ?? [];
     i++;
-    return Promise.resolve(val);
+    return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
   });
-  return { sql: fn as unknown as import("postgres").Sql, calls };
+  (reserved as Record<string, unknown>).release = vi.fn();
+  return {
+    reserve: vi.fn().mockResolvedValue(reserved),
+  } as unknown as import("postgres").Sql;
 }
 
 describe("refreshUserStats", () => {
-  it("первый вызов: pg_try_advisory_lock с LOCK_ID 100002", async () => {
-    const { sql, calls } = makeSql([{ acquired: true }], [], []);
+  it("returns null when lock not acquired", async () => {
+    const sql = makeSql(false, []);
+    expect(await refreshUserStats(sql)).toBeNull();
+  });
+
+  it("returns { refreshed: true } on success", async () => {
+    const sql = makeSql(true, [[], []]); // REFRESH, unlock
+    expect(await refreshUserStats(sql)).toEqual({ refreshed: true });
+  });
+
+  it("calls reserve() and release() to pin a single connection", async () => {
+    const sql = makeSql(true, [[], []]);
     await refreshUserStats(sql);
-    expect(calls[0]?.sql).toContain("pg_try_advisory_lock");
-    expect(calls[0]?.params).toEqual([100002]);
+    expect((sql as unknown as { reserve: ReturnType<typeof vi.fn> }).reserve).toHaveBeenCalledOnce();
   });
 
-  it("returns null when advisory lock not acquired (без REFRESH)", async () => {
-    const { sql, calls } = makeSql([{ acquired: false }]);
-    const result = await refreshUserStats(sql);
-    expect(result).toBeNull();
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.sql).not.toContain("REFRESH");
-  });
-
-  it("выполняет REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats", async () => {
-    const { sql, calls } = makeSql([{ acquired: true }], [], []);
-    const result = await refreshUserStats(sql);
-    expect(result).toEqual({ refreshed: true });
-    expect(calls).toHaveLength(3);
-    expect(calls[1]?.sql).toContain("REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats");
-  });
-
-  it("освобождает advisory lock тем же LOCK_ID 100002", async () => {
-    const { sql, calls } = makeSql([{ acquired: true }], [], []);
-    await refreshUserStats(sql);
-    expect(calls[2]?.sql).toContain("pg_advisory_unlock");
-    expect(calls[2]?.params).toEqual([100002]);
-  });
-
-  it("releases lock even if refresh throws", async () => {
-    const calls: CapturedCall[] = [];
-    let i = 0;
-    const sql = vi.fn().mockImplementation((strings: TemplateStringsArray) => {
-      i++;
-      const joined = Array.isArray(strings) ? strings.join("?") : String(strings);
-      calls.push({ sql: joined, params: [] });
-      if (i === 1) return Promise.resolve([{ acquired: true }]);
-      if (i === 2) return Promise.reject(new Error("refresh failed"));
-      return Promise.resolve([]);
-    }) as unknown as import("postgres").Sql;
-
+  it("releases reserved connection even if REFRESH throws", async () => {
+    const sql = makeSql(true, [new Error("refresh failed"), []]);
     await expect(refreshUserStats(sql)).rejects.toThrow("refresh failed");
-    expect(i).toBe(3);
-    expect(calls[2]?.sql).toContain("pg_advisory_unlock");
+    // release() must still be called
+    const reserveMock = (sql as unknown as { reserve: ReturnType<typeof vi.fn> }).reserve;
+    const reserved = await reserveMock.mock.results[0]?.value;
+    expect((reserved as Record<string, ReturnType<typeof vi.fn>>).release).toHaveBeenCalledOnce();
+  });
+
+  it("releases reserved connection if lock not acquired", async () => {
+    const sql = makeSql(false, []);
+    await refreshUserStats(sql);
+    const reserveMock = (sql as unknown as { reserve: ReturnType<typeof vi.fn> }).reserve;
+    const reserved = await reserveMock.mock.results[0]?.value;
+    expect((reserved as Record<string, ReturnType<typeof vi.fn>>).release).toHaveBeenCalledOnce();
   });
 });

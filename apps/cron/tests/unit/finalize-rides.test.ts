@@ -3,13 +3,18 @@ import { finalizeRides } from "../../src/finalize-rides";
 
 type Row = Record<string, unknown>;
 
-function makeSql(responses: (Row[] | Error)[]): import("postgres").Sql {
-  let i = 0;
-  return vi.fn().mockImplementation(() => {
-    const resp = responses[i] ?? [];
-    i++;
-    return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
-  }) as unknown as import("postgres").Sql;
+function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
+  return {
+    begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      let i = 0;
+      const tx = vi.fn().mockImplementation(() => {
+        const resp = txResponses[i] ?? [];
+        i++;
+        return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
+      });
+      return fn(tx);
+    }),
+  } as unknown as import("postgres").Sql;
 }
 
 describe("finalizeRides", () => {
@@ -21,7 +26,8 @@ describe("finalizeRides", () => {
   });
 
   it("returns completed=0, archived=0 when no rides to process", async () => {
-    const sql = makeSql([[{ acquired: true }], [], [], []]);
+    // lock check, UPDATE completed (empty), UPDATE archived (empty)
+    const sql = makeSql([[{ acquired: true }], [], []]);
     const result = await finalizeRides(sql);
     expect(result).toEqual({ completed: 0, archived: 0 });
   });
@@ -32,9 +38,8 @@ describe("finalizeRides", () => {
       [{ acquired: true }],
       [completedRide], // UPDATE completed
       [], // UPDATE archived
-      [], // INSERT audit_log completed
-      [], // pg_notify
-      [], // pg_advisory_unlock
+      [], // INSERT audit_log
+      [], // pg_notify driver
     ]);
     const result = await finalizeRides(sql);
     expect(result?.completed).toBe(1);
@@ -47,22 +52,17 @@ describe("finalizeRides", () => {
       [], // UPDATE completed (no rides)
       [{ id: "rid-2" }], // UPDATE archived
       [], // INSERT audit_log archived
-      [], // pg_advisory_unlock
     ]);
     const result = await finalizeRides(sql);
     expect(result?.completed).toBe(0);
     expect(result?.archived).toBe(1);
   });
 
-  it("releases lock even if UPDATE throws", async () => {
-    let calls = 0;
-    const sql = vi.fn().mockImplementation(() => {
-      calls++;
-      if (calls === 1) return Promise.resolve([{ acquired: true }]);
-      if (calls === 2) return Promise.reject(new Error("DB fail"));
-      return Promise.resolve([]);
-    }) as unknown as import("postgres").Sql;
+  it("propagates error from UPDATE (transaction rollbacks, lock auto-released)", async () => {
+    const sql = makeSql([
+      [{ acquired: true }],
+      new Error("DB fail"), // UPDATE completed throws
+    ]);
     await expect(finalizeRides(sql)).rejects.toThrow("DB fail");
-    expect(calls).toBeGreaterThanOrEqual(3); // lock + fail + unlock
   });
 });

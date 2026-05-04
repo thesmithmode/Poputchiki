@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { withLock } from "../../../src/lib/with-lock";
 
 function makeSql(acquired: boolean) {
-  let i = 0;
-  return vi.fn().mockImplementation(() => {
-    i++;
-    if (i === 1) return Promise.resolve([{ acquired }]);
-    return Promise.resolve([]);
-  }) as unknown as import("postgres").Sql;
+  return {
+    begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = vi.fn().mockResolvedValueOnce([{ acquired }]);
+      return fn(tx);
+    }),
+  } as unknown as import("postgres").Sql;
 }
 
 describe("withLock", () => {
@@ -23,34 +23,22 @@ describe("withLock", () => {
     expect(result).toBeNull();
   });
 
-  it("releases lock after fn completes", async () => {
-    const calls: string[] = [];
-    let i = 0;
-    const sql = vi.fn().mockImplementation((strings: TemplateStringsArray) => {
-      const s = strings.join("?");
-      calls.push(s);
-      i++;
-      if (i === 1) return Promise.resolve([{ acquired: true }]);
-      return Promise.resolve([]);
-    }) as unknown as import("postgres").Sql;
-    await withLock(sql, 99, async () => "done");
-    expect(calls[1]).toContain("pg_advisory_unlock");
+  it("fn receives tx from begin", async () => {
+    let receivedTx: unknown;
+    const sql = makeSql(true);
+    await withLock(sql, 99, async (tx) => {
+      receivedTx = tx;
+    });
+    expect(receivedTx).toBeDefined();
+    expect(sql.begin).toHaveBeenCalledOnce();
   });
 
-  it("releases lock even if fn throws", async () => {
-    const calls: string[] = [];
-    let i = 0;
-    const sql = vi.fn().mockImplementation((strings: TemplateStringsArray) => {
-      calls.push(strings.join("?"));
-      i++;
-      if (i === 1) return Promise.resolve([{ acquired: true }]);
-      return Promise.resolve([]);
-    }) as unknown as import("postgres").Sql;
+  it("propagates error from fn (transaction rollbacks, lock auto-released)", async () => {
+    const sql = makeSql(true);
     await expect(
       withLock(sql, 99, async () => {
         throw new Error("boom");
       }),
     ).rejects.toThrow("boom");
-    expect(calls[1]).toContain("pg_advisory_unlock");
   });
 });

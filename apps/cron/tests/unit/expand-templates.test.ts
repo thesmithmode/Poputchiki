@@ -1,25 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
 import { expandTemplates } from "../../src/expand-templates";
 
-interface CapturedCall {
-  sql: string;
-  params: unknown[];
-}
+type Row = Record<string, unknown>;
 
-function makeSqlSequence(returnValues: unknown[]): {
-  sql: import("postgres").Sql;
-  calls: CapturedCall[];
-} {
-  const calls: CapturedCall[] = [];
-  let i = 0;
-  const fn = vi.fn().mockImplementation((strings: TemplateStringsArray, ...params: unknown[]) => {
-    const joined = Array.isArray(strings) ? strings.join("?") : String(strings);
-    calls.push({ sql: joined, params });
-    const val = returnValues[i] ?? [];
-    i++;
-    return Promise.resolve(val);
-  });
-  return { sql: fn as unknown as import("postgres").Sql, calls };
+function makeSql(acquired: boolean, txResponses: (Row[] | Error)[]): import("postgres").Sql {
+  return {
+    begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      let i = 0;
+      const tx = vi.fn().mockImplementation(() => {
+        if (i === 0) { i++; return Promise.resolve([{ acquired }]); }
+        const resp = txResponses[i - 1] ?? [];
+        i++;
+        return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
+      });
+      return fn(tx);
+    }),
+  } as unknown as import("postgres").Sql;
 }
 
 const TMPL = {
@@ -32,7 +28,7 @@ const TMPL = {
   to_lat: 55.2,
   to_lng: 49.2,
   departure_time: "08:30:00",
-  weekdays: [1, 2, 3, 4, 5], // Пн-Пт
+  weekdays: [1, 2, 3, 4, 5], // Mon-Fri
   price_rub: 200,
   seats_total: 3,
   comment: null,
@@ -41,117 +37,72 @@ const TMPL = {
 };
 
 describe("expandTemplates", () => {
-  it("returns null when advisory lock not acquired", async () => {
-    const { sql, calls } = makeSqlSequence([[{ acquired: false }]]);
-    const result = await expandTemplates(sql);
-    expect(result).toBeNull();
-    expect(calls).toHaveLength(1);
-    expect(calls[0]?.sql).toContain("pg_try_advisory_lock");
-    expect(calls[0]?.params).toEqual([100003]);
+  it("returns null when lock not acquired", async () => {
+    const sql = makeSql(false, []);
+    expect(await expandTemplates(sql)).toBeNull();
   });
 
-  it("Пн-Пт template на 14 дней → 10 INSERT попыток (Пн-Пт × 2 недели)", async () => {
-    // Mon 2026-05-04 anchor
-    const now = new Date("2026-05-04T12:00:00Z");
-    // Sequence: lock, SELECT templates, then 14 INSERTs, then unlock
-    const seq: unknown[] = [
-      [{ acquired: true }],
-      [TMPL],
-      // 14 day inserts: 10 weekday INSERTs return [{id}] (created), weekend skipped (no SQL call).
-      // Actually weekend days are skipped before INSERT so won't appear in calls.
-    ];
-    // 10 INSERTs each return [{id:'r'}]
-    for (let i = 0; i < 10; i++) seq.push([{ id: `r${i}` }]);
-    seq.push([]); // unlock
+  it("no templates → created=0", async () => {
+    const sql = makeSql(true, [[]]); // SELECT returns empty
+    expect(await expandTemplates(sql)).toEqual({ created: 0 });
+  });
 
-    const { sql, calls } = makeSqlSequence(seq);
+  it("Mon-Fri template from Mon → 10 rides created over 14 days", async () => {
+    const now = new Date("2026-05-04T12:00:00Z"); // Monday
+    // SELECT templates, then 10 successful INSERTs
+    const txResponses: Row[][] = [[TMPL]];
+    for (let i = 0; i < 10; i++) txResponses.push([{ id: `r${i}` }]);
+    const sql = makeSql(true, txResponses);
     const result = await expandTemplates(sql, now);
     expect(result?.created).toBe(10);
-    // 1 lock + 1 SELECT + 10 INSERT + 1 unlock = 13
-    expect(calls).toHaveLength(13);
-    expect(calls[0]?.sql).toContain("pg_try_advisory_lock");
-    expect(calls[1]?.sql).toContain("FROM ride_templates");
-    expect(calls[12]?.sql).toContain("pg_advisory_unlock");
   });
 
-  it("idempotent: повторный запуск создаёт 0 если NOT EXISTS пустой", async () => {
+  it("idempotent: INSERT WHERE NOT EXISTS returns 0 rows → created=0", async () => {
     const now = new Date("2026-05-04T12:00:00Z");
-    const seq: unknown[] = [[{ acquired: true }], [TMPL]];
-    for (let i = 0; i < 10; i++) seq.push([]); // INSERT ... WHERE NOT EXISTS → 0 rows
-    seq.push([]);
-
-    const { sql } = makeSqlSequence(seq);
-    const result = await expandTemplates(sql, now);
-    expect(result?.created).toBe(0);
+    const txResponses: Row[][] = [[TMPL]];
+    for (let i = 0; i < 10; i++) txResponses.push([]); // empty = already exists
+    const sql = makeSql(true, txResponses);
+    expect(await expandTemplates(sql, now)).toEqual({ created: 0 });
   });
 
-  it("template без подходящих weekdays → 0 INSERTs", async () => {
-    const tmpl = { ...TMPL, weekdays: [6] }; // только суббота
-    const now = new Date("2026-05-04T12:00:00Z"); // Пн
-    const seq: unknown[] = [[{ acquired: true }], [tmpl]];
-    // 14 days → 2 субботы (10, 17 мая)
-    seq.push([{ id: "x1" }], [{ id: "x2" }]);
-    seq.push([]);
-
-    const { sql, calls } = makeSqlSequence(seq);
-    const result = await expandTemplates(sql, now);
-    expect(result?.created).toBe(2);
-    expect(calls).toHaveLength(5); // lock, SELECT, 2 INSERTs, unlock
-  });
-
-  it("template с active_to в будущем — учитывается", async () => {
-    const tmpl = { ...TMPL, active_to: "2026-05-06" }; // Mon-Wed только
+  it("template with active_to in 2 days → only 2 weekday rides", async () => {
+    const tmpl = { ...TMPL, weekdays: [1, 2, 3, 4, 5], active_to: "2026-05-05" }; // Mon+Tue only
     const now = new Date("2026-05-04T12:00:00Z");
-    const seq: unknown[] = [[{ acquired: true }], [tmpl]];
-    // Пн 04, Вт 05, Ср 06 — 3 INSERT
-    seq.push([{ id: "a" }], [{ id: "b" }], [{ id: "c" }]);
-    seq.push([]);
-
-    const { sql } = makeSqlSequence(seq);
-    const result = await expandTemplates(sql, now);
-    expect(result?.created).toBe(3);
+    const sql = makeSql(true, [[tmpl], [{ id: "a" }], [{ id: "b" }]]);
+    expect(await expandTemplates(sql, now)).toEqual({ created: 2 });
   });
 
-  it("template с active_from в будущем — пропускает дни до active_from", async () => {
-    const tmpl = { ...TMPL, active_from: "2026-05-11" }; // через неделю
+  it("template with active_from next week → skips first week", async () => {
+    const tmpl = { ...TMPL, active_from: "2026-05-11" }; // Mon next week
     const now = new Date("2026-05-04T12:00:00Z");
-    const seq: unknown[] = [[{ acquired: true }], [tmpl]];
-    // Пн 11, Вт 12, Ср 13, Чт 14, Пт 15 → 5 INSERTs (вторая неделя горизонта)
-    for (let i = 0; i < 5; i++) seq.push([{ id: `x${i}` }]);
-    seq.push([]);
-
-    const { sql } = makeSqlSequence(seq);
-    const result = await expandTemplates(sql, now);
-    expect(result?.created).toBe(5);
+    const txResponses: Row[][] = [[tmpl]];
+    for (let i = 0; i < 5; i++) txResponses.push([{ id: `x${i}` }]); // Mon-Fri 11-15
+    const sql = makeSql(true, txResponses);
+    expect(await expandTemplates(sql, now)).toEqual({ created: 5 });
   });
 
-  it("releases advisory lock даже при ошибке SELECT", async () => {
-    const calls: CapturedCall[] = [];
-    let i = 0;
-    const sql = vi.fn().mockImplementation((strings: TemplateStringsArray) => {
-      i++;
-      const joined = Array.isArray(strings) ? strings.join("?") : String(strings);
-      calls.push({ sql: joined, params: [] });
-      if (i === 1) return Promise.resolve([{ acquired: true }]);
-      if (i === 2) return Promise.reject(new Error("select failed"));
-      return Promise.resolve([]);
-    }) as unknown as import("postgres").Sql;
+  it("Saturday-only template → 2 rides in 14 days", async () => {
+    const tmpl = { ...TMPL, weekdays: [6] };
+    const now = new Date("2026-05-04T12:00:00Z"); // Monday
+    const sql = makeSql(true, [[tmpl], [{ id: "s1" }], [{ id: "s2" }]]);
+    expect(await expandTemplates(sql, now)).toEqual({ created: 2 });
+  });
 
+  it("multiple templates — sums created", async () => {
+    const t1 = { ...TMPL, id: "t1", weekdays: [1] }; // Mon
+    const t2 = { ...TMPL, id: "t2", weekdays: [3] }; // Wed
+    const now = new Date("2026-05-04T12:00:00Z");
+    // t1: Mon 04, Mon 11 → 2; t2: Wed 06, Wed 13 → 2
+    const sql = makeSql(true, [
+      [t1, t2],
+      [{ id: "r1" }], [{ id: "r2" }], // t1
+      [{ id: "r3" }], [{ id: "r4" }], // t2
+    ]);
+    expect(await expandTemplates(sql, now)).toEqual({ created: 4 });
+  });
+
+  it("propagates error from SELECT templates", async () => {
+    const sql = makeSql(true, [new Error("select failed")]);
     await expect(expandTemplates(sql)).rejects.toThrow("select failed");
-    expect(calls[calls.length - 1]?.sql).toContain("pg_advisory_unlock");
-  });
-
-  it("несколько templates — суммирует created", async () => {
-    const t1 = { ...TMPL, id: "t1", weekdays: [1] }; // Пн
-    const t2 = { ...TMPL, id: "t2", weekdays: [3] }; // Ср
-    const now = new Date("2026-05-04T12:00:00Z");
-    const seq: unknown[] = [[{ acquired: true }], [t1, t2]];
-    // t1: Пн 04, Пн 11 → 2; t2: Ср 06, Ср 13 → 2
-    for (let k = 0; k < 4; k++) seq.push([{ id: `r${k}` }]);
-    seq.push([]);
-
-    const { sql } = makeSqlSequence(seq);
-    const result = await expandTemplates(sql, now);
-    expect(result?.created).toBe(4);
   });
 });

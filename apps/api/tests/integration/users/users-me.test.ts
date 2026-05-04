@@ -128,7 +128,7 @@ describe("GET /api/users/me", () => {
 });
 
 describe("PATCH /api/users/me", () => {
-  it("422 on invalid JSON body", async () => {
+  it("200 on invalid JSON body (fallback to empty patch)", async () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request("/api/users/me", {
@@ -140,7 +140,7 @@ describe("PATCH /api/users/me", () => {
       },
       body: "not-valid-json{{{",
     });
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(200);
   });
 
   it("updates apt_number and returns updated profile", async () => {

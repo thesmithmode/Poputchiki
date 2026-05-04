@@ -1,6 +1,6 @@
-import { describe, expect, it, mock } from "bun:test";
-import { handleMyChatMember } from "../src/handlers/my-chat-member";
-import type { TelegramMyChatMember } from "../src/types/telegram";
+import { describe, expect, it, vi } from "vitest";
+import { handleMyChatMember } from "../../src/handlers/my-chat-member";
+import type { TelegramMyChatMember } from "../../src/types/telegram";
 
 function makeEvent(status: string, fromId: number): TelegramMyChatMember {
   return {
@@ -16,14 +16,14 @@ function makeEvent(status: string, fromId: number): TelegramMyChatMember {
 
 describe("handleMyChatMember", () => {
   it("does nothing when status is not kicked", async () => {
-    const sqlMock = mock(() => Promise.resolve([]));
+    const sqlMock = vi.fn(() => Promise.resolve([]));
     const sql = sqlMock as unknown as import("postgres").Sql;
     await handleMyChatMember(sql, makeEvent("left", 123));
     expect(sqlMock).not.toHaveBeenCalled();
   });
 
   it("updates notify_disabled when status is kicked", async () => {
-    const sqlMock = mock(() => Promise.resolve([]));
+    const sqlMock = vi.fn(() => Promise.resolve([]));
     const sql = sqlMock as unknown as import("postgres").Sql;
     await handleMyChatMember(sql, makeEvent("kicked", 456));
     expect(sqlMock).toHaveBeenCalledTimes(1);
@@ -31,7 +31,7 @@ describe("handleMyChatMember", () => {
 
   it("uses from.id in the WHERE clause", async () => {
     let capturedArgs: unknown[] = [];
-    const sqlMock = mock((...args: unknown[]) => {
+    const sqlMock = vi.fn((...args: unknown[]) => {
       capturedArgs = args;
       return Promise.resolve([]);
     });

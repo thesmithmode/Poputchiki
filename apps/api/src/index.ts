@@ -20,11 +20,13 @@ if (import.meta.main) {
   } as any);
 
   const shutdown = async (signal: string) => {
+    // biome-ignore lint/suspicious/noConsoleLog: structured shutdown log
     console.log(JSON.stringify({ msg: "shutdown_initiated", signal }));
     server.stop(true); // stop accepting new connections
     // Give in-flight requests up to 30s to complete
     await new Promise<void>((resolve) => setTimeout(resolve, 30_000));
     await sql.end({ timeout: 5 });
+    // biome-ignore lint/suspicious/noConsoleLog: structured shutdown log
     console.log(JSON.stringify({ msg: "shutdown_complete" }));
     process.exit(0);
   };

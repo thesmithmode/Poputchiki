@@ -93,7 +93,7 @@ describe("DELETE /api/users/me", () => {
   });
 
   it("активные rides водителя отменяются при удалении", async () => {
-    let rideId: string;
+    let rideId = "";
     await withSystem(sql, async (tx) => {
       const [row] = await tx<{ id: string }[]>`
         INSERT INTO rides
@@ -103,7 +103,7 @@ describe("DELETE /api/users/me", () => {
           (${USER.id}, 'A', 55, 49, 'B', 56, 50, NOW() + INTERVAL '5 hours', 3)
         RETURNING id
       `;
-      rideId = row!.id;
+      rideId = row?.id ?? "";
     });
 
     const token = await makeToken(USER);
@@ -112,7 +112,7 @@ describe("DELETE /api/users/me", () => {
       headers: authHeaders(USER, token),
     });
 
-    const [ride] = await sql<{ status: string }[]>`SELECT status FROM rides WHERE id = ${rideId!}`;
+    const [ride] = await sql<{ status: string }[]>`SELECT status FROM rides WHERE id = ${rideId}`;
     expect(ride?.status).toBe("cancelled");
   });
 
@@ -131,8 +131,8 @@ describe("DELETE /api/users/me", () => {
   });
 
   it("ride_requests пассажиров отменяются", async () => {
-    let rideId: string;
-    let passengerId: string;
+    let rideId = "";
+    let passengerId = "";
     await withSystem(sql, async (tx) => {
       const [ride] = await tx<{ id: string }[]>`
         INSERT INTO rides
@@ -142,17 +142,17 @@ describe("DELETE /api/users/me", () => {
           (${USER.id}, 'A', 55, 49, 'B', 56, 50, NOW() + INTERVAL '5 hours', 3)
         RETURNING id
       `;
-      rideId = ride!.id;
+      rideId = ride?.id ?? "";
       const [pax] = await tx<{ id: string }[]>`
         INSERT INTO users (tg_id, display_name)
         VALUES (9760099, 'Passenger Test')
         ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
         RETURNING id
       `;
-      passengerId = pax!.id;
+      passengerId = pax?.id ?? "";
       await tx`
         INSERT INTO ride_requests (ride_id, passenger_id, status)
-        VALUES (${rideId!}, ${passengerId!}, 'accepted')
+        VALUES (${rideId}, ${passengerId}, 'accepted')
         ON CONFLICT DO NOTHING
       `;
     });
@@ -164,16 +164,16 @@ describe("DELETE /api/users/me", () => {
     });
 
     const [req] = await sql<{ status: string }[]>`
-      SELECT status FROM ride_requests WHERE ride_id = ${rideId!} AND passenger_id = ${passengerId!}
+      SELECT status FROM ride_requests WHERE ride_id = ${rideId} AND passenger_id = ${passengerId}
     `;
     expect(req?.status).toBe("cancelled");
 
-    await sql`DELETE FROM ride_requests WHERE ride_id = ${rideId!}`;
+    await sql`DELETE FROM ride_requests WHERE ride_id = ${rideId}`;
     await sql`DELETE FROM users WHERE tg_id = 9760099`;
   });
 
   it("favorites удаляются при удалении аккаунта", async () => {
-    let targetUserId: string;
+    let targetUserId = "";
     await withSystem(sql, async (tx) => {
       const [row] = await tx<{ id: string }[]>`
         INSERT INTO users (tg_id, display_name)
@@ -181,10 +181,10 @@ describe("DELETE /api/users/me", () => {
         ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
         RETURNING id
       `;
-      targetUserId = row!.id;
+      targetUserId = row?.id ?? "";
       await tx`
-        INSERT INTO favorites (user_id, target_user_id)
-        VALUES (${USER.id}, ${targetUserId!})
+        INSERT INTO favorites (user_id, target_id)
+        VALUES (${USER.id}, ${targetUserId})
         ON CONFLICT DO NOTHING
       `;
     });

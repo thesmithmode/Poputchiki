@@ -379,4 +379,36 @@ describe("processEvent", () => {
       expect(fetchFn).toHaveBeenCalledOnce();
     }
   });
+
+  it("skips when tryLogNotification returns false (db-level dedup)", async () => {
+    const db = makeDb({ tryLogNotification: vi.fn().mockResolvedValue(false) });
+    const fetchFn = makeFetch(200, true);
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({ user_id: "u1", category: "like_received", target_id: "t1" }),
+      BOT_TOKEN,
+    );
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("skips and marks skipped_disabled when circuit breaker is open", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(200, true);
+    const circuit = { isOpen: () => true, recordSuccess: vi.fn(), recordFailure: vi.fn() };
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({ user_id: "u1", category: "like_received", target_id: "t1" }),
+      BOT_TOKEN,
+      circuit,
+    );
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(db.updateNotificationStatus).toHaveBeenCalledWith(
+      expect.any(String),
+      "skipped_disabled",
+    );
+  });
 });

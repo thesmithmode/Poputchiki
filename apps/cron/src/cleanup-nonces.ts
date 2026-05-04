@@ -14,6 +14,7 @@ export async function cleanupNonces(sql: postgres.Sql): Promise<{ deleted: numbe
       )
       SELECT COUNT(*) AS count FROM deleted
     `;
+    /* c8 ignore next -- COUNT(*) always returns a row */
     const deleted = Number(countRows[0]?.count ?? 0);
     // biome-ignore lint/suspicious/noConsoleLog: structured cron log
     console.log(

@@ -11,7 +11,7 @@ function makeSql(acquired: boolean, reservedResponses: (Row[] | Error)[]): impor
     i++;
     return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
   });
-  (reserved as Record<string, unknown>).release = vi.fn();
+  (reserved as unknown as Record<string, unknown>).release = vi.fn();
   return {
     reserve: vi.fn().mockResolvedValue(reserved),
   } as unknown as import("postgres").Sql;

@@ -29,7 +29,7 @@ async function insertRide(): Promise<string> {
         (${TARGET.id}, 'A', 55, 49, 'B', 56, 50, NOW() - INTERVAL '2 hours', 2)
       RETURNING id
     `;
-    return row!.id;
+    return row?.id ?? "";
   });
 }
 
@@ -76,19 +76,21 @@ describe("avg_stars trigger", () => {
 
   it("DELETE одного → пересчёт", async () => {
     const rides = await Promise.all([insertRide(), insertRide(), insertRide()]);
-    let lastId: string;
+    let lastId = "";
     const starsArr = [5, 4, 3];
     await withSystem(sql, async (tx) => {
       for (let i = 0; i < rides.length; i++) {
+        const rideId = rides[i] ?? "";
+        const stars = starsArr[i] ?? 0;
         const [row] = await tx<{ id: string }[]>`
           INSERT INTO reviews (ride_id, subject_id, target_id, stars)
-          VALUES (${rides[i]!}, ${REVIEWER.id}, ${TARGET.id}, ${starsArr[i]!})
+          VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, ${stars})
           RETURNING id
         `;
-        lastId = row!.id;
+        lastId = row?.id ?? "";
       }
     });
-    await sql`DELETE FROM reviews WHERE id = ${lastId!}`;
+    await sql`DELETE FROM reviews WHERE id = ${lastId}`;
     const stats = await getStats(TARGET.id);
     expect(Number(stats.avg_stars)).toBeCloseTo(4.5, 2);
     expect(stats.reviews_count).toBe(2);
@@ -101,7 +103,7 @@ describe("avg_stars trigger", () => {
       VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, 3)
       RETURNING id
     `;
-    await sql`DELETE FROM reviews WHERE id = ${row!.id}`;
+    await sql`DELETE FROM reviews WHERE id = ${row?.id ?? ""}`;
     const stats = await getStats(TARGET.id);
     expect(stats.avg_stars).toBeNull();
     expect(stats.reviews_count).toBe(0);

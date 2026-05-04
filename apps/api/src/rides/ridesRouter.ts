@@ -436,6 +436,160 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     }
   });
 
+  app.patch("/:id", async (c) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    /* c8 ignore next -- identityGuard returns 401 before handler runs */
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    const rideId = c.req.param("id");
+    if (!UUID_RE.test(rideId)) return c.json({ error: "invalid ride id" }, 400);
+
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      body = {};
+    }
+    const PatchInput = z
+      .object({
+        from_label: z.string().min(1).max(120).optional(),
+        from_lat: z.number().gte(-90).lte(90).optional(),
+        from_lng: z.number().gte(-180).lte(180).optional(),
+        to_label: z.string().min(1).max(120).optional(),
+        to_lat: z.number().gte(-90).lte(90).optional(),
+        to_lng: z.number().gte(-180).lte(180).optional(),
+        departure_at: z.string().datetime().optional(),
+        price_rub: z.number().int().positive().nullable().optional(),
+        seats_total: z.number().int().gte(1).lte(4).optional(),
+        comment: z.string().max(200).nullable().optional(),
+      })
+      .refine((v) => Object.keys(v).length > 0, { message: "empty body" });
+    const parsed = PatchInput.safeParse(body);
+    if (!parsed.success) return c.json({ error: "invalid input" }, 422);
+    const p = parsed.data;
+
+    let result: {
+      row: Record<string, unknown>;
+      affectedPassengers: string[];
+      changedKeyFields: boolean;
+    };
+    try {
+      result = await withIdentity(
+        sql,
+        user,
+        async (tx) => {
+          const [ride] = await tx<
+            {
+              id: string;
+              driver_id: string;
+              status: string;
+              departure_at: Date;
+              seats_total: number;
+              seats_taken: number;
+            }[]
+          >`
+            SELECT id, driver_id, status, departure_at, seats_total, seats_taken
+            FROM rides WHERE id = ${rideId}::uuid
+          `;
+          if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+          if (ride.driver_id !== user.id)
+            throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+          if (ride.status !== "active")
+            throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
+          if (ride.departure_at <= new Date())
+            throw Object.assign(new Error("expired"), { code: "EXPIRED" });
+          if (p.seats_total !== undefined && p.seats_total < ride.seats_taken) {
+            throw Object.assign(new Error("seats_total_below_taken"), {
+              code: "SEATS_INVALID",
+            });
+          }
+
+          await tx`SELECT pg_advisory_xact_lock(hashtext(${rideId}::text))`;
+
+          // Apply each provided field
+          if (p.from_label !== undefined)
+            await tx`UPDATE rides SET from_label = ${p.from_label} WHERE id = ${rideId}`;
+          if (p.from_lat !== undefined)
+            await tx`UPDATE rides SET from_lat = ${p.from_lat} WHERE id = ${rideId}`;
+          if (p.from_lng !== undefined)
+            await tx`UPDATE rides SET from_lng = ${p.from_lng} WHERE id = ${rideId}`;
+          if (p.to_label !== undefined)
+            await tx`UPDATE rides SET to_label = ${p.to_label} WHERE id = ${rideId}`;
+          if (p.to_lat !== undefined)
+            await tx`UPDATE rides SET to_lat = ${p.to_lat} WHERE id = ${rideId}`;
+          if (p.to_lng !== undefined)
+            await tx`UPDATE rides SET to_lng = ${p.to_lng} WHERE id = ${rideId}`;
+          if (p.departure_at !== undefined)
+            await tx`UPDATE rides SET departure_at = ${p.departure_at}::timestamptz WHERE id = ${rideId}`;
+          if (p.price_rub !== undefined)
+            await tx`UPDATE rides SET price_rub = ${p.price_rub} WHERE id = ${rideId}`;
+          if (p.seats_total !== undefined)
+            await tx`UPDATE rides SET seats_total = ${p.seats_total} WHERE id = ${rideId}`;
+          if (p.comment !== undefined)
+            await tx`UPDATE rides SET comment = ${p.comment} WHERE id = ${rideId}`;
+
+          const changedKeyFields =
+            p.from_label !== undefined ||
+            p.from_lat !== undefined ||
+            p.from_lng !== undefined ||
+            p.to_label !== undefined ||
+            p.to_lat !== undefined ||
+            p.to_lng !== undefined ||
+            p.departure_at !== undefined;
+
+          const accepted = await tx<{ passenger_id: string }[]>`
+            SELECT passenger_id FROM ride_requests
+            WHERE ride_id = ${rideId} AND status = 'accepted'
+          `;
+
+          const [updated] = await tx<Record<string, unknown>[]>`
+            SELECT * FROM rides WHERE id = ${rideId}
+          `;
+
+          await tx`
+            INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+            VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
+                    ${tx.json({ fields: Object.keys(p), key_fields_changed: changedKeyFields })})
+          `;
+
+          return {
+            /* c8 ignore next -- defensive ?? {}; SELECT after UPDATE always returns row */
+            row: updated ?? {},
+            affectedPassengers: accepted.map((r) => r.passenger_id),
+            changedKeyFields,
+          };
+        },
+        "repeatable read",
+      );
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code;
+      if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      if (code === "INVALID_STATE") return c.json({ error: "invalid_state" }, 409);
+      if (code === "EXPIRED") return c.json({ error: "expired" }, 410);
+      if (code === "SEATS_INVALID") return c.json({ error: "seats_total_below_taken" }, 422);
+      /* c8 ignore next -- defensive: re-throw unknown errors */
+      throw err;
+    }
+
+    if (result.changedKeyFields) {
+      for (const passengerId of result.affectedPassengers) {
+        sql`
+          SELECT pg_notify(
+            'ride_request',
+            ${JSON.stringify({
+              ride_id: rideId,
+              user_id: passengerId,
+              category: "ride_changed",
+            })}
+          )
+        `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+      }
+    }
+
+    return c.json(result.row);
+  });
+
   app.patch("/:id/cancel", async (c) => {
     const user = c.get("user" as never) as AppUser | undefined;
     /* c8 ignore next -- identityGuard returns 401 before handler runs */
@@ -497,8 +651,8 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
           const dailyCancels = dailyResult[0]?.count ?? 0;
 
           await tx`
-            INSERT INTO audit_log (user_id, action, resource, resource_id, metadata)
-            VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId},
+            INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+            VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
                     ${tx.json({ daily_cancels: dailyCancels, passengers: cancelledRequests.length })})
           `;
 

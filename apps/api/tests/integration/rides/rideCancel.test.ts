@@ -139,7 +139,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
 
     const [audit] = await sql<{ action: string }[]>`
       SELECT action FROM audit_log
-      WHERE user_id = ${DRIVER.id} AND resource_id = ${rideId}::uuid AND action = 'ride_cancel'
+      WHERE user_id = ${DRIVER.id} AND entity_id = ${rideId}::uuid AND action = 'ride_cancel'
       ORDER BY created_at DESC LIMIT 1
     `;
     expect(audit?.action).toBe("ride_cancel");

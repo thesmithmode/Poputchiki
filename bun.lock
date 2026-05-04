@@ -49,6 +49,13 @@
     "apps/webhook": {
       "name": "@poputchiki/webhook",
       "version": "0.1.0",
+      "dependencies": {
+        "@poputchiki/shared": "workspace:*",
+        "hono": "^4.12.16",
+        "pino": "^9.6.0",
+        "postgres": "^3.4.9",
+        "zod": "^4.4.2",
+      },
     },
     "packages/shared": {
       "name": "@poputchiki/shared",

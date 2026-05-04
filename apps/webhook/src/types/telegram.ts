@@ -1,4 +1,10 @@
-export type ChatMemberStatus = "creator" | "administrator" | "member" | "restricted" | "left" | "kicked";
+export type ChatMemberStatus =
+  | "creator"
+  | "administrator"
+  | "member"
+  | "restricted"
+  | "left"
+  | "kicked";
 
 export interface TelegramUser {
   id: number;

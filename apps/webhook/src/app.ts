@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
-import { webhookSecret } from "./middleware/webhook-secret";
-import { LruDedup } from "./lib/lru-dedup";
-import { handleMyChatMember } from "./handlers/my-chat-member";
 import { handleMessage } from "./handlers/message";
+import { handleMyChatMember } from "./handlers/my-chat-member";
+import { LruDedup } from "./lib/lru-dedup";
+import { webhookSecret } from "./middleware/webhook-secret";
 import type { TelegramUpdate } from "./types/telegram";
 
 export function createApp(

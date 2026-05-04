@@ -10,5 +10,4 @@ export default app;
 
 if (import.meta.main) {
   Bun.serve({ port: env.WEBHOOK_PORT, fetch: app.fetch });
-  console.log(JSON.stringify({ msg: "webhook_started", port: env.WEBHOOK_PORT }));
 }

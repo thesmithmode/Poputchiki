@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { encryptPii } from "../db/crypto";
-import { withIdentity } from "../db/with-identity";
+import { withIdentity, withSystem } from "../db/with-identity";
 import type { AppUser } from "../middleware/identity-guard";
 
 const PatchMeInput = z.object({
@@ -209,6 +209,48 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     if (rows.length === 0) return c.json({ error: "not found" }, 404);
     c.header("Cache-Control", "private, no-store");
     return c.json(shapePublic(rows[0] as PublicRow));
+  });
+
+  app.delete("/me", async (c) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    /* c8 ignore next -- identityGuard returns 401 before handler runs */
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    await withIdentity(sql, user, async (tx) => {
+      // Cancel active rides as driver
+      await tx`
+        UPDATE rides SET status = 'cancelled'
+        WHERE driver_id = ${user.id} AND status = 'active'
+      `;
+      // Cancel pending/accepted ride_requests for cancelled rides
+      await tx`
+        UPDATE ride_requests SET status = 'cancelled'
+        WHERE ride_id IN (
+          SELECT id FROM rides WHERE driver_id = ${user.id} AND status = 'cancelled'
+        ) AND status IN ('pending', 'accepted')
+      `;
+      // Remove favorites
+      await tx`DELETE FROM favorites WHERE user_id = ${user.id}`;
+    });
+
+    // Anonymize (SECURITY DEFINER function bypasses RLS)
+    await sql`SELECT app.anonymize_user(${user.id}::uuid)`;
+
+    // Revoke all refresh tokens
+    await sql`
+      UPDATE revoked_tokens SET revoked_at = now()
+      WHERE user_id = ${user.id} AND revoked_at IS NULL
+    `;
+
+    // Audit log (withSystem to bypass FORCE RLS on audit_log)
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+        VALUES (${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb)
+      `;
+    });
+
+    return c.json({ deleted: true });
   });
 
   return app;

@@ -130,6 +130,94 @@ describe("DELETE /api/users/me", () => {
     expect(audit?.action).toBe("user_self_delete");
   });
 
+  it("ride_requests пассажиров отменяются", async () => {
+    let rideId: string;
+    let passengerId: string;
+    await withSystem(sql, async (tx) => {
+      const [ride] = await tx<{ id: string }[]>`
+        INSERT INTO rides
+          (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
+           departure_at, seats_total)
+        VALUES
+          (${USER.id}, 'A', 55, 49, 'B', 56, 50, NOW() + INTERVAL '5 hours', 3)
+        RETURNING id
+      `;
+      rideId = ride!.id;
+      const [pax] = await tx<{ id: string }[]>`
+        INSERT INTO users (tg_id, display_name)
+        VALUES (9760099, 'Passenger Test')
+        ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
+        RETURNING id
+      `;
+      passengerId = pax!.id;
+      await tx`
+        INSERT INTO ride_requests (ride_id, passenger_id, status)
+        VALUES (${rideId!}, ${passengerId!}, 'accepted')
+        ON CONFLICT DO NOTHING
+      `;
+    });
+
+    const token = await makeToken(USER);
+    await makeApp().request("/api/users/me", {
+      method: "DELETE",
+      headers: authHeaders(USER, token),
+    });
+
+    const [req] = await sql<{ status: string }[]>`
+      SELECT status FROM ride_requests WHERE ride_id = ${rideId!} AND passenger_id = ${passengerId!}
+    `;
+    expect(req?.status).toBe("cancelled");
+
+    await sql`DELETE FROM ride_requests WHERE ride_id = ${rideId!}`;
+    await sql`DELETE FROM users WHERE tg_id = 9760099`;
+  });
+
+  it("favorites удаляются при удалении аккаунта", async () => {
+    let targetUserId: string;
+    await withSystem(sql, async (tx) => {
+      const [row] = await tx<{ id: string }[]>`
+        INSERT INTO users (tg_id, display_name)
+        VALUES (9760098, 'Fav Target')
+        ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
+        RETURNING id
+      `;
+      targetUserId = row!.id;
+      await tx`
+        INSERT INTO favorites (user_id, target_user_id)
+        VALUES (${USER.id}, ${targetUserId!})
+        ON CONFLICT DO NOTHING
+      `;
+    });
+
+    const token = await makeToken(USER);
+    await makeApp().request("/api/users/me", {
+      method: "DELETE",
+      headers: authHeaders(USER, token),
+    });
+
+    const [fav] = await sql<{ user_id: string }[]>`
+      SELECT user_id FROM favorites WHERE user_id = ${USER.id}
+    `;
+    expect(fav).toBeUndefined();
+
+    await sql`DELETE FROM users WHERE tg_id = 9760098`;
+  });
+
+  it("повторный DELETE /me идемпотентен — возвращает 200", async () => {
+    const token = await makeToken(USER);
+    const app = makeApp();
+    await app.request("/api/users/me", {
+      method: "DELETE",
+      headers: authHeaders(USER, token),
+    });
+    // Second call — user already anonymized (deleted_at IS NOT NULL), audit ON CONFLICT DO NOTHING
+    const res = await app.request("/api/users/me", {
+      method: "DELETE",
+      headers: authHeaders(USER, token),
+    });
+    expect(res.status).toBe(200);
+  });
+
   it("401 без auth", async () => {
     const res = await makeApp().request("/api/users/me", { method: "DELETE" });
     expect(res.status).toBe(401);

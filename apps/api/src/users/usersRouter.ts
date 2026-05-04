@@ -216,13 +216,30 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     /* c8 ignore next -- identityGuard returns 401 before handler runs */
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    await withIdentity(sql, user, async (tx) => {
+    // Audit first — if subsequent steps fail, the erasure intent is recorded
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+        VALUES (${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb)
+        ON CONFLICT DO NOTHING
+      `;
+    });
+
+    // Collect affected passengers before cancelling rides (for notifications)
+    const affectedPassengers = await withIdentity(sql, user, async (tx) => {
+      const rows = await tx<{ passenger_id: string; ride_id: string }[]>`
+        SELECT rr.passenger_id, rr.ride_id
+        FROM ride_requests rr
+        JOIN rides r ON r.id = rr.ride_id
+        WHERE r.driver_id = ${user.id} AND r.status = 'active'
+          AND rr.status IN ('pending', 'accepted')
+      `;
       // Cancel active rides as driver
       await tx`
         UPDATE rides SET status = 'cancelled'
         WHERE driver_id = ${user.id} AND status = 'active'
       `;
-      // Cancel pending/accepted ride_requests for cancelled rides
+      // Cancel pending/accepted ride_requests for those rides
       await tx`
         UPDATE ride_requests SET status = 'cancelled'
         WHERE ride_id IN (
@@ -231,24 +248,27 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       `;
       // Remove favorites
       await tx`DELETE FROM favorites WHERE user_id = ${user.id}`;
+      return rows;
     });
 
     // Anonymize (SECURITY DEFINER function bypasses RLS)
     await sql`SELECT app.anonymize_user(${user.id}::uuid)`;
 
-    // Revoke all refresh tokens
+    // Revoke all refresh tokens (revoked_tokens deny-all for app role — bare sql ok)
     await sql`
       UPDATE revoked_tokens SET revoked_at = now()
       WHERE user_id = ${user.id} AND revoked_at IS NULL
     `;
 
-    // Audit log (withSystem to bypass FORCE RLS on audit_log)
-    await withSystem(sql, async (tx) => {
-      await tx`
-        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-        VALUES (${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb)
-      `;
-    });
+    // Notify affected passengers (fire-and-forget)
+    for (const { passenger_id, ride_id } of affectedPassengers) {
+      sql`
+        SELECT pg_notify(
+          'ride_cancelled',
+          ${JSON.stringify({ ride_id, passenger_id, driver_id: user.id, category: "ride_cancelled" })}
+        )
+      `.catch(() => {});
+    }
 
     return c.json({ deleted: true });
   });

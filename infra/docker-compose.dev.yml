@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./.docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - poputchiki-dev
+
+  nominatim:
+    image: mediagis/nominatim:4.4
+    restart: unless-stopped
+    environment:
+      PBF_URL: https://download.geofabrik.de/russia/volga-fed-district-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district-updates/
+      NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./.docker-data/nominatim:/var/lib/postgresql/14/main
+    networks:
+      - poputchiki-dev
+    profiles:
+      - nominatim
+
+networks:
+  poputchiki-dev:
+    driver: bridge

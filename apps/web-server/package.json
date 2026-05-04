@@ -1,0 +1,9 @@
+{
+  "name": "@poputchiki/web-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'web-server: built via Docker (Caddy image + web dist)'"
+  }
+}

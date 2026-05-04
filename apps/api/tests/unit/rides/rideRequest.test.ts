@@ -1,0 +1,114 @@
+import { Hono } from "hono";
+import { describe, expect, it, vi } from "vitest";
+import type { AppUser } from "../../../src/middleware/identity-guard";
+import { createRidesRouter } from "../../../src/rides/ridesRouter";
+
+vi.mock("../../../src/db/with-identity", () => ({
+  withIdentity: vi.fn(),
+}));
+
+import { withIdentity } from "../../../src/db/with-identity";
+import { readJson } from "../../helpers/json";
+
+const USER: AppUser = { id: "00000000-0000-4000-a000-000000000001", tgId: 1001, role: "user" };
+const DRIVER_ID = "00000000-0000-4000-a000-000000000002";
+const RIDE_ID = "aaaaaaaa-0000-4000-a000-000000000001";
+
+// biome-ignore lint/suspicious/noExplicitAny: mock
+const mockSql = vi.fn() as any;
+
+function makeApp() {
+  const app = new Hono();
+  app.use("/rides/*", async (c, next) => {
+    c.set("user" as never, USER);
+    await next();
+  });
+  app.route("/rides", createRidesRouter(mockSql));
+  return app;
+}
+
+describe("POST /rides/:id/request", () => {
+  it("valid request → 201 with ride_request object", async () => {
+    const mockRequest = {
+      id: "req-uuid",
+      ride_id: RIDE_ID,
+      passenger_id: USER.id,
+      status: "pending",
+    };
+    vi.mocked(withIdentity).mockResolvedValueOnce({
+      rideRequest: mockRequest,
+      driverId: DRIVER_ID,
+      // biome-ignore lint/suspicious/noExplicitAny: mock
+    } as any);
+    mockSql.mockResolvedValueOnce([]); // pg_notify fire-and-forget
+
+    const app = makeApp();
+    const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    expect(res.status).toBe(201);
+    const body = await readJson(res);
+    expect(body.id).toBe("req-uuid");
+    expect(body.ride_id).toBe(RIDE_ID);
+  });
+
+  it("no seats available → 409 with error='no_seats'", async () => {
+    const noSeatsErr = Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
+    vi.mocked(withIdentity).mockRejectedValueOnce(noSeatsErr);
+
+    const app = makeApp();
+    const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    expect(res.status).toBe(409);
+    const body = await readJson(res);
+    expect(body.error).toBe("no_seats");
+  });
+
+  it("already requested (unique violation 23505) → 409 with error='already_requested'", async () => {
+    const uniqueErr = { code: "23505", message: "duplicate key" };
+    vi.mocked(withIdentity).mockRejectedValueOnce(uniqueErr);
+
+    const app = makeApp();
+    const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    expect(res.status).toBe(409);
+    const body = await readJson(res);
+    expect(body.error).toBe("already_requested");
+  });
+
+  it("invalid ride UUID → 400", async () => {
+    const app = makeApp();
+    const res = await app.request("/rides/not-a-uuid/request", { method: "POST" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("no user in context → 401", async () => {
+    const appNoUser = new Hono();
+    appNoUser.route("/rides", createRidesRouter(mockSql));
+    const res = await appNoUser.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("withIdentity called with 'repeatable read' isolation", async () => {
+    const mockRequest = {
+      id: "req-uuid",
+      ride_id: RIDE_ID,
+      passenger_id: USER.id,
+      status: "pending",
+    };
+    vi.mocked(withIdentity).mockResolvedValueOnce({
+      rideRequest: mockRequest,
+      driverId: DRIVER_ID,
+      // biome-ignore lint/suspicious/noExplicitAny: mock
+    } as any);
+    mockSql.mockResolvedValueOnce([]); // pg_notify
+
+    const app = makeApp();
+    await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    const callArgs = vi.mocked(withIdentity).mock.calls.at(-1);
+    // 4th arg is isolation level
+    expect(callArgs?.[3]).toBe("repeatable read");
+  });
+});

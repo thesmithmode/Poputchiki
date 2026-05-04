@@ -1,0 +1,422 @@
+# Progress Log — Poputchiki
+
+## Формат записи
+
+Каждый агент после завершения задачи ОБЯЗАН добавить запись в формате:
+
+```
+## [TASK-XXX] Краткое название
+**Дата:** YYYY-MM-DD HH:MM (UTC)
+**Статус:** done | blocked | partial
+
+### Что сделано
+- Пункт 1
+- Пункт 2
+
+### Тесты
+- [x] Тест 1 — прошёл
+- [x] Тест 2 — прошёл
+- Coverage: X%
+
+### Заметки
+Любые важные наблюдения для следующих итераций.
+
+---
+```
+
+При BLOCKED — заменить раздел «Что сделано» на:
+```
+### BLOCKED:<краткая причина>
+- Подробное описание что мешает продолжать
+- Что нужно сделать вручную чтобы разблокировать
+```
+
+## История
+
+## [TASK-001] Bun monorepo + Biome + tsconfig.base
+**Дата:** 2026-05-02 (UTC)
+**Статус:** done
+
+### Что сделано
+- package.json root с workspaces: apps/*, packages/*, web
+- biome.json lint+format (ignore: docs, saas, tasks.json, node_modules)
+- tsconfig.base.json strict ES2022, exclude saas/ docs/
+- package.json + tsconfig.json для всех 5 apps + packages/shared + web
+- packages/shared/src/index.ts stub (заполнится в TASK-003)
+- node_modules/ добавлен в .gitignore (платформо-специфичные бинарники)
+
+### Тесты
+- [x] bun install — 6 packages, OK
+- [x] bun run lint — 18 files checked, 0 errors
+- [x] bun run typecheck — OK (exit 0)
+- Coverage: N/A (инфра задача)
+
+---
+
+## [TASK-002] Vitest setup + coverage gate ≥95%
+**Дата:** 2026-05-02 (UTC)
+**Статус:** done
+
+### Что сделано
+- vitest.config.ts: v8, reporters text+json+json-summary+html, thresholds 95/90/95/95
+- scripts/check-coverage.js: парсит coverage-summary.json, exit 1 если ниже порога
+- packages/shared/tests/sanity.test.ts: sanity (1+1=2)
+- package.json: type=module добавлен
+
+### Тесты
+- [x] bun run test:unit — 2 passed
+- [x] bun run coverage:check — coverage-summary.json генерируется
+- [x] node scripts/check-coverage.js — exit 0
+- Coverage: Unknown (нет src кода ещё) → OK
+
+---
+
+## [TASK-010] Telegram initData HMAC верификатор
+**Дата:** 2026-05-02 07:55 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/auth/verifyInitData.ts`: verifyInitData(initData, botToken, clock) → VerifiedInitData
+- Ключ: HMAC-SHA256("WebAppData", botToken) — по протоколу Telegram WebApp
+- Constant-time compare: timingSafeEqual на UTF-8 буферах hex-строк
+- Окно auth_date: |now − authDate| ≤ 300s (±5 мин, симметрично)
+- TelegramAuthError extends Error с полем reason
+- Парсинг user JSON + проверка user.id > 0
+
+### Тесты
+- [x] 18 юнит-тестов в apps/api/tests/unit/auth/telegram-hmac.test.ts
+- [x] Happy path: valid, boundary ±4m59s, boundary 5m00s
+- [x] Invalid hash: missing, tampered, wrong length, all-zeros, field tampered, wrong botToken
+- [x] Expired: >5min old, >5min future, exactly 5m01s, boundary 5m00s pass
+- [x] Malformed: missing user, bad JSON, missing user.id
+- Coverage: ожидается 100% для verifyInitData.ts
+
+---
+## [TASK-010] Telegram initData HMAC верификатор
+**Дата:** 2026-05-02 08:35 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/auth/verifyInitData.ts`: verifyInitData(initData, botToken, clock) → VerifiedInitData
+- HMAC-SHA256("WebAppData", botToken) → secretKey; HMAC(secretKey, dataCheckString) → hash
+- Constant-time compare через timingSafeEqual
+- auth_date окно ±5 мин (симметрично), TelegramAuthError с reason
+- `apps/api/src/bun.d.ts`: добавлены URLSearchParams, Buffer, node:crypto декларации
+- Паттерн проекта: ручные декларации в bun.d.ts вместо @types/node
+
+### Тесты
+- [x] 18 юнит-тестов: happy path, invalid hash (6), expired (3), malformed (4), default clock, missing auth_date
+- [x] Coverage: 100% verifyInitData.ts (statements/branches/functions/lines)
+- [x] CI зелёный
+
+---
+
+## TASK-011 — Endpoint POST /auth/telegram (2026-05-02)
+
+### Сделано
+- `db/migrations/004_nonces.sql`: таблица nonces (PK hash, idx on created_at)
+- `apps/api/src/auth/authRouter.ts`: Hono router, нonce replay-protection, upsert users, JWT access+refresh, cookie tg_uid+csrf_token
+- `apps/api/src/app.ts`: подключён authRouter + cors + secure-headers middleware
+- `apps/api/src/index.ts`: postgres client, Bun.serve entry
+
+### Тесты
+- [x] 8 интеграционных тестов: 200+JWT+cookie, replay 401, tampered 401, expired 401, missing initData 400, last_seen_at update
+- [x] CI зелёный
+
+---
+
+## TASK-078 — CORS middleware (2026-05-02)
+
+### Сделано
+- `apps/api/src/middleware/cors.ts`: точный match origin = https://app.${DOMAIN}, preflight OPTIONS 204, c.body/c.header API
+- 6 юнит-тестов: allowed origin, evil origin, no origin, wildcard rejected
+
+### Тесты
+- [x] 6 юнит-тестов
+- [x] CI зелёный
+
+---
+
+## TASK-024 — CSP/HSTS/secure-headers middleware (2026-05-02)
+
+### Сделано
+- `apps/api/src/middleware/secure-headers.ts`: CSP с DOMAIN interpolation, HSTS, X-Content-Type-Options nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy, Permissions-Policy
+- 7 юнит-тестов
+
+### Тесты
+- [x] 7 юнит-тестов
+- [x] CI зелёный
+
+---
+
+## [TASK-101] Postgres connection pool + transaction isolation defaults
+**Дата:** 2026-05-02 22:27 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/db/pool.ts`: createPool (max=20, idle_timeout=20s, connect_timeout=5s), withTx(level, fn), withSerializable(fn), poolMetrics.snapshot()
+- `apps/api/src/db/index.ts`: ре-экспорт из pool.ts
+- `apps/api/src/app.ts`: GET /metrics endpoint → poolMetrics.snapshot()
+- `apps/api/src/index.ts`: переключён на createPool вместо прямого postgres({ max: 10 })
+
+### Тесты
+- [x] 7 unit-тестов: POOL_CONFIG значения, createPool lazy init, withTx/withSerializable isolation args, in_use increment/decrement, reset on throw
+- [x] 3 integration-теста: connectivity, REPEATABLE READ snapshot isolation, SERIALIZABLE return value
+- [x] Coverage: 100% functions, 98.93% statements, 96.96% branches — все пороги ≥95%
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-012] Identity-guard middleware + withIdentity DB helper
+**Дата:** 2026-05-02 22:34 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/identity-guard.ts`: identityGuard(jwtSecret) middleware — читает Authorization Bearer + cookie tg_uid, mismatch → 401 + очищает cookie, передаёт AppUser в контекст через c.set
+- `apps/api/src/db/with-identity.ts`: withIdentity(sql, user, fn) — устанавливает 3 GUC + SET LOCAL ROLE poputchiki_app; withSystem(sql, fn) — для bootstrap /auth/** без RLS
+- `apps/api/src/auth/authRouter.ts`: добавлен role в RETURNING + JWT payload (sub, uid, role, typ, iat, exp)
+- AppUser type экспортирован из identity-guard.ts для использования в route handlers
+
+### Тесты
+- [x] 13 unit-тестов identity-guard: missing creds, invalid JWT, wrong secret, typ=refresh, cookie mismatch + cookie clear, happy path, Bearer prefix-less, no role default
+- [x] 4 unit-теста with-identity/withSystem: GUC calls verified, return values, system bypass
+- [x] 3 integration-теста: withIdentity → RLS allows own row; без withIdentity → 0 rows; wrong user → 0 rows
+- [x] Coverage: 97.77% branches, 100% functions — все пороги ≥95%
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-013] Rate-limit middleware на основе rate_limit_buckets
+**Дата:** 2026-05-02 22:37 (UTC)
+**Статус:** done
+
+### Что сделано
+- `db/migrations/005_rate_limit_buckets.sql`: таблица rate_limit_buckets (key, window_start, count, PK), индекс по window_start, GRANT poputchiki_app
+- `apps/api/src/middleware/rate-limit.ts`: rateLimit(sql, opts?) — IP limit (X-Forwarded-For → X-Real-IP → "unknown"), user limit (если AppUser в контексте), атомарный INSERT ON CONFLICT UPDATE, 429 + Retry-After
+- Конфигурируемые лимиты (userLimit/ipLimit) для тестируемости; дефолты 100/1000
+
+### Тесты
+- [x] 8 unit-тестов: IP limit pass/fail, X-Forwarded-For parsing, X-Real-IP fallback, unknown fallback, user limit pass/fail, SQL call count (2=IP+user, 1=IP only)
+- [x] 3 integration-теста: first 2 pass/3rd → 429, independent counters per user, window reset
+- [x] Coverage: 95.16% branches global — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-014] POST /api/rides — создание поездки
+**Дата:** 2026-05-02 23:00 (UTC)
+**Статус:** done
+
+### Что сделано
+- `packages/shared/src/schemas/ride.ts`: добавлена `CreateRideInput` (Zod v4) с полями from/to/departure_at/seats/price/comment/template_id; refine: departure_at > now И ≤ +30 дней
+- `packages/api/package.json`: добавлена зависимость `@poputchiki/shared: workspace:*`
+- `apps/api/src/rides/ridesRouter.ts`: POST / с Zod-валидацией, withIdentity-транзакцией, anti-bot проверками, INSERT rides, аудит-логом через привилегированное соединение
+- `apps/api/src/app.ts`: wire-up — /api/* через identityGuard + rateLimit, mount /api/rides
+- `apps/api/src/index.ts`: передача JWT_SECRET в createApp
+
+### Anti-bot логика
+- Аккаунт <24h: max 1 активная поездка (status='active') → 403
+- Нет лайков: max 3 поездки за текущие сутки (date_trunc day) → 403
+- Оба check'а внутри withIdentity-транзакции (RLS контекст)
+
+### Тесты
+- [x] 8 unit-тестов: validation 422 (bad label/seats/departure past/>30d/negative price/non-JSON), 201 happy path, 403 antibot
+- [x] 6 integration-тестов: 201 + ride в БД + audit_log, 422 past date/seats=0, 403 new account 2nd ride, 403 no-likes 4th ride today, 401 без auth
+- [x] Coverage: 95.31% branches global — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-015] GET /api/rides — лента с фильтрами + cursor pagination
+**Дата:** 2026-05-02 23:15 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/rides/ridesRouter.ts`: GET / handler с Zod-валидацией query params (GetRidesQuery)
+- Query params: fromLat/Lng/radiusKm (bbox фильтр), fromAt/toAt, priceMax, seatsMin, trustMinAccountAgeDays, trustMinLikes, favoritesOnly, cursor
+- Cursor pagination: LIMIT 51 → если 51 результат, есть следующая страница; nextCursor = base64url(departure_at + id)
+- Trust-фильтры через JOIN users на стороне БД (trustMinAccountAgeDays, trustMinLikes)
+- favoritesOnly → подзапрос favorites WHERE user_id = app.current_user_id()
+- Geo bbox: latDelta = radiusKm/111, lngDelta = radiusKm/(111*cos(lat))
+- bun.d.ts обновлён: Buffer.from с 1 аргументом + toString(), btoa/atob globals
+- zod добавлен в apps/api/package.json зависимости
+
+### Тесты
+- [x] 6 unit-тестов: пустой результат, <50 rides без nextCursor, 51 rides → 50+nextCursor, cursor forwarded, invalid cursor → 400, bad radiusKm → 422
+- [x] 5 integration-тестов: page 1 = 50, page 2 cursor = 15 (из 65 total), non-overlapping pages, trustMinLikes фильтр, seatsMin фильтр
+- [x] Coverage: 95.31% branches — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-020] pgcrypto: шифрование phone/apt_number
+**Дата:** 2026-05-02 23:25 (UTC)
+**Статус:** done
+
+### Что сделано
+- `db/migrations/006_pgcrypto_pii.sql`: `app.encrypt_pii(text)→bytea` и `app.decrypt_user_pii(uuid)→TABLE(phone,apt_number)` — SECURITY DEFINER, ключ через `set_config('pgcrypto.key',...,true)`
+- `apps/api/src/db/crypto.ts`: `encryptPii(sql,plaintext,key)` и `decryptUserPii(sql,userId,key)` — принимают `Sql | TransactionSql`
+- `apps/api/src/db/index.ts`: экспорт crypto helpers
+- down migration: `006_pgcrypto_pii.down.sql`
+
+### Безопасность
+- `decrypt_user_pii` возвращает 0 rows если `app.current_user_id() != target_user_id` — ownership guard на уровне SQL
+- Ключ передаётся через `set_config` с флагом local=true, не утекает между транзакциями
+- Шифротекст хранится как `bytea` (не текст)
+
+### Тесты
+- [x] 4 unit-теста: encryptPii двойной вызов SQL / пустой результат, decryptUserPii двойной вызов / null при пустом
+- [x] 3 integration-теста: round-trip encrypt→store→decrypt, phone_enc — bytea не plaintext, чужой юзер → null (0 rows)
+- [x] Coverage: 95.58% branches — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-023] Audit log middleware
+**Дата:** 2026-05-02 23:35 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/audit-log.ts`: Hono middleware для POST/PUT/PATCH/DELETE
+- Записывает: user_id (из JWT контекста), action (METHOD + path), entity (из path), entity_id (UUID из path если есть), meta={ip, ua, payload_hash}
+- Не пишет при 4xx/5xx (проверка `c.res.status`)
+- Fire-and-forget: `.catch` логирует ошибку, не блокирует request
+- sha256 хэш тела через `node:crypto` createHash
+- `apps/api/src/app.ts`: auditLog middleware подключён к `/api/*` после identityGuard + rateLimit
+- `apps/api/src/bun.d.ts`: добавлен `createHash` в node:crypto декларации, `console` global
+
+### Тесты
+- [x] 6 unit-тестов: POST 201→INSERT, GET→без INSERT, POST 422→без INSERT, DELETE с UUID→entity_id в запросе, INSERT ошибка→не бросает, action field корректный, payload_hash 64-char hex
+- [x] Coverage: 95.4% branches — порог ≥95% выдержан
+- [x] lint 0 errors, typecheck чистый
+
+---
+
+## [TASK-021] Триггеры counters: likes_received_count, rides_total_count, rides_completed_count
+**Дата:** 2026-05-02 23:10 (UTC)
+**Статус:** done
+
+### Что сделано
+- `db/migrations/007_counter_triggers.sql`: три trigger-функции в схеме `app`:
+  - `trg_likes_update_count`: AFTER INSERT/DELETE ON likes → UPDATE users.likes_received_count (GREATEST(0,...) при DELETE)
+  - `trg_rides_insert_count`: AFTER INSERT ON rides → UPDATE users.rides_total_count для driver_id
+  - `trg_rides_completed_count`: AFTER UPDATE OF status ON rides — при переходе → 'completed' → rides_completed_count++
+- `db/migrations/007_counter_triggers.down.sql`: DROP TRIGGER + DROP FUNCTION
+- `apps/api/tests/integration/db/triggers.test.ts`: интеграционные тесты
+
+### Тесты
+- [x] Integration: INSERT лайка → likes_received_count+1
+- [x] Integration: DELETE лайка → likes_received_count-1 (не ниже 0)
+- [x] Integration: INSERT ride → rides_total_count++ для driver
+- [x] Integration: UPDATE ride.status='completed' → rides_completed_count++
+
+---
+
+## [TASK-025] CSRF protection middleware
+**Дата:** 2026-05-02 23:10 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/csrf.ts`: double-submit cookie проверка для POST/PUT/PATCH/DELETE
+- Сравнивает `X-CSRF-Token` header с `csrf_token` cookie — 403 при несовпадении или отсутствии
+- Опциональная Origin/Referer проверка через `allowedOrigin` параметр
+- GET-запросы пропускаются без проверки
+- `apps/api/src/app.ts`: csrf подключён к `/api/*` (после identityGuard + rateLimit, перед idempotency + auditLog)
+- `apps/api/tests/unit/middleware/csrf.test.ts`: 8 unit-тестов
+
+### Тесты
+- [x] GET → без CSRF проверки → 200
+- [x] POST с правильным token → 200
+- [x] POST без X-CSRF-Token → 403
+- [x] POST с неверным token → 403
+- [x] POST без cookie → 403
+- [x] Origin check: правильный origin → 200; неверный → 403; отсутствует при required → 403
+- [x] allowedOrigin не задан → origin не проверяется
+
+---
+
+## [TASK-026] Idempotency middleware
+**Дата:** 2026-05-02 23:10 (UTC)
+**Статус:** done
+
+### Что сделано
+- `apps/api/src/middleware/idempotency.ts`: при наличии `Idempotency-Key` header в POST
+  - SELECT FROM idempotency_keys WHERE key=... AND created_at > NOW()-24h
+  - Если найден — вернуть закэшированный response (статус + body), без выполнения хэндлера
+  - Если нет — выполнить хэндлер, при 2xx → INSERT INTO idempotency_keys ON CONFLICT DO NOTHING
+  - INSERT ошибка игнорируется (best-effort)
+- `apps/api/src/app.ts`: idempotency подключён к `/api/*` после csrf, перед auditLog
+- `apps/api/tests/unit/middleware/idempotency.test.ts`: 4 unit-теста с mock sql
+
+### Тесты
+- [x] GET → не вызывает sql вообще → 200
+- [x] POST без Idempotency-Key → проходит без проверки → 201
+- [x] POST с ключом, нет кэша → выполняет + кэширует (2 sql вызова)
+- [x] POST с ключом, кэш-хит → возвращает кэш (1 sql вызов, хэндлер не вызван)
+- [x] INSERT ошибка → 201 (not thrown)
+
+---
+
+[2026-05-03] TASK-064 done — centralized COOKIE_DEFAULTS helper in apps/api/src/lib/cookie.ts; authRouter uses it; sentinel tests verify SameSite=None+Secure on all Set-Cookie headers.
+[2026-05-03] TASK-065 done — CSP sentinel tests: img-src/connect-src/frame-ancestors/object-src/base-uri/font-src. Added font-src 'self' data: and https://t.me to img-src per SPEC §11.1.
+[2026-05-03] TASK-066 done — refresh token: migration 008_revoked_tokens, POST /auth/refresh with jti rotation, identity-guard revocation check, tokens now include jti field.
+[2026-05-03] TASK-068 done — migration 009: complaints_unique_per_week_idx partial UNIQUE INDEX with COALESCE(ride_id, nil_uuid). db-errors helper isUniqueViolation + sentinel test for 23505→409 pattern.
+[2026-05-03] TASK-069 done — POST /api/rides/:id/request with REPEATABLE READ isolation; atomic UPDATE+INSERT; 409 on no_seats or duplicate; pg_notify to driver. withIdentity updated for isolation level.
+[2026-05-03] TASK-079 done — getClientIp helper with CIDR trusted proxy support (TRUSTED_PROXIES env var, default 172.16.0.0/12). rate-limit and audit-log now use centralized helper. 8 unit tests covering all edge cases.
+[2026-05-03] TASK-129 done — integration test infra: setup.ts helpers (buildDsn, withTestUser, truncateAll), sanity.spec.ts sentinel (DB connectivity + RLS isolation + withSystem), README.md with integration tests section.
+[2026-05-03] TASK-130 done — UGC sanitization + SQL-injection sentinel: packages/shared/src/sanitize/index.ts (stripHtml, normalizeWhitespace, limitLength, sanitizeText), Zod transforms в CreateRideInput/CreateReviewInput/UserProfileInput/ComplaintInput/SupportMessageInput, vitest.security.config.ts, 20+ SQL-injection payloads sentinel, parameterization proof test.
+[2026-05-03] TASK-056 done — deny-by-default RLS security test: apps/api/tests/security/rls-deny.test.ts охватывает 11 таблиц с RLS (анонимный SELECT/INSERT → отказ, изоляция userA/userB, чужой UPDATE/DELETE блокируется).
+[2026-05-03] TASK-067 done — POST /auth/logout: верификация refresh-токена, INSERT jti в revoked_tokens (best-effort), Set-Cookie tg_uid=; csrf_token= Max-Age=0. 6 unit-тестов.
+[2026-05-03] TASK-053 done — anti-bot serverside правила: специфические error codes (too_new/unverified_daily_limit), admin bypass, обновлены unit-тесты для конкретных error codes.
+[2026-05-03] TASK-054 done — bun audit --audit-level high в CI (fail на high/critical), .github/dependency-allowlist.json для false-positives, lefthook.yml с pre-commit audit.
+[2026-05-03] TASK-055 done — gitleaks: .gitleaks.toml с кастомными правилами (BOT_TOKEN, JWT_SECRET, POSTGRES_URL), gitleaks-action@v2 в CI, lefthook pre-commit secrets scan.
+[2026-05-03] TASK-081 done — parseApiEnv: packages/shared/src/env.ts (Zod schema для всех env), apps/api/src/index.ts fail-fast при старте, 9 unit-тестов (отсутствие обязательных vars, короткий JWT_SECRET, невалидный PORT).
+[2026-05-03] TASK-080 done — /auth/* IP rate-limit: apps/api/src/middleware/auth-rate-limit.ts (10 req/min per IP, rate_limit_buckets, getClientIp), интеграция в app.ts перед /auth/*, 4 unit-теста.
+[2026-05-03] TASK-082 done — pino logger: apps/api/src/lib/logger.ts с REDACT_PATHS (authorization, cookie, initData, tokens, PII), createLogger(), apps/api/package.json добавлен pino@9. 9 unit-тестов.
+[2026-05-03] TASK-084 done — middleware-stack sentinel: apps/api/tests/security/middleware-stack.test.ts — все /api/* mutating routes без токена → 401, CSRF-check, /auth/* не требует identity-guard.
+[2026-05-03] TASK-085 done — sentinel seats-race: apps/api/tests/security/seats-race.test.ts — 10 concurrent withIdentity(repeatable read) на ride seats_total=1 → ровно 1 успех, seats_taken=1, ride_requests=1.
+[2026-05-03] TASK-086 done — sentinel likes-race: apps/api/tests/security/likes-race.test.ts — 100 concurrent INSERT likes (10 subjects × 10 rides) → likes_received_count=100 (trigger trg_likes_update_count атомичен).
+[2026-05-03] TASK-087 done — cron nonce cleanup: apps/cron/src/cleanup-nonces.ts (pg_try_advisory_lock, DELETE WHERE created_at < now()-10min, release), apps/cron/src/index.ts (setInterval 5min), 4 unit-тесты.
+[2026-05-03] TASK-022 done — materialized view user_stats (db/migrations/010): rides_as_driver_completed, rides_as_passenger, likes_received, avg_stars, reviews_count + UNIQUE INDEX(user_id) для CONCURRENTLY. apps/cron/src/refresh-user-stats.ts (advisory lock 100002 + REFRESH MV CONCURRENTLY), 3 unit-теста, добавлен в setInterval 5min.
+[2026-05-03] TASK-114 done — sentinel migrations + rls-identity-leak: apps/api/tests/integration/migrations.test.ts (ephemeral DB, all up→down→up, schema fingerprint stable), apps/api/tests/security/rls-identity-leak.test.ts (sql.reserve() pinned connection, set_config local=true не утекает между tx).
+
+[2026-05-03] TASK-016 done — web/ Vite+React+TS skeleton: HashRouter, Tailwind (darkMode class), Telegram WebApp colorScheme adopt + ready + themeChanged listener, lib/telegram.ts, vitest jsdom config + @testing-library, dev:web/test:web root scripts, CI step Web tests (jsdom).
+
+[2026-05-03] TASK-133 started — integration test hardening: 003 schema duplicates removed (nonces, rate_limit_buckets), 000.down REASSIGN OWNED instead of DROP ROLE, vitest fileParallelism=false, rate-limit LIKE параметризован, getRides pre-clean, identity-guard assertion aligned with users_read_public policy, fixtures/uuids.ts registry, docs/POSTGRES-JS-GOTCHAS.md.
+[2026-05-03] TASK-073 done — GET /api/users/me: реализован (был уже написан + интеграционные тесты), помечен done. Возвращает id/tg_id/role/onboarded/notify_disabled/created_at/last_seen_at/stats, без phone/apt_number, Cache-Control: private, no-store.
+[2026-05-03] TASK-074 done — GET /api/users/:id: исправлен баг (role утекал в публичный профиль), удалён u.role из SQL/interface/shapePublic, добавлен expect(body).not.toHaveProperty("role") в тест. Соответствует AC: без role/tg_id/onboarded/notify_disabled/last_seen_at, 404 для is_banned.
+[2026-05-03] TASK-075 done — PATCH /api/users/me: display_name (1-50 chars, sanitized), phone/apt_number через encryptPii (pgcrypto bytea), RLS via withIdentity, Cache-Control: private, no-store. Возвращает обновлённый профиль. 6 интеграционных тестов: обновление display_name, phone шифруется + не в ответе, audit_log plaintext sentinel, 422 на пустое/длинное display_name, empty body → 200 no-op, 401 без авторизации.
+[2026-05-03] TASK-133 done — статус исправлен (работа была выполнена ранее: schema dedup, REASSIGN OWNED, fileParallelism=false, LIKE fix, coverage 95%+).
+
+[2026-05-04] TASK-028 done — POST /api/rides/:id/confirm-participation (committed afb56eb earlier; verified marked done).
+[2026-05-04] TASK-031 done — favorites POST/DELETE/GET/PATCH (committed d41a7e1).
+[2026-05-04] TASK-032 done — complaints endpoints (committed afb56eb).
+[2026-05-04] TASK-033 done — support messages endpoints (committed afb56eb).
+[2026-05-04] TASK-035 done — GET/PUT /api/notifications/preferences (committed e876e09).
+[2026-05-04] TASK-057 done — replay attack security tests for /auth/telegram: tampered hash, stale/future auth_date, replay nonce, false-positive guard (apps/api/tests/security/replay.test.ts).
+[2026-05-04] TASK-083 done — request-id middleware: reads/generates X-Request-ID, echoes header, child pino logger with requestId in context. Integration tests cover echo+uuid+uniqueness.
+[2026-05-04] TASK-029 done — POST /api/likes (precondition: ride_participation confirmed обеими сторонами; 403 если нет; 409 на дубль через UNIQUE; 422 на self-like) + DELETE /api/likes/:id (24h окно, 410 после; 404 на отсутствие). 9 интеграционных тестов.
+[2026-05-04] TASK-030 done — POST /api/reviews (precondition: ride_participation подтверждение обеими сторонами; UNIQUE ride+subject+target → 409 на дубль; 422 на stars вне 1-5 / body >300 / self-review; 403 без подтверждения). GET /api/reviews?driver_id=&limit&offset (публичная лента, пагинация 1-100). Reviews immutable per schema (no UPDATE policy) — PATCH из AC не реализован. 11 интеграционных тестов.
+[2026-05-04] TASK-034 done — apps/notifier Bun worker: LISTEN notify_user, processEvent с категориями+preferences (system bypass), formatMessage для 9 категорий, in-memory dedup 5мин TTL, 403→notify_disabled, 429→sleep+retry, sanitizeErr для BOT_TOKEN в логах, LISTEN reconnect с backoff. 48 unit + 6 integration тестов, coverage 99.5%.
+
+[2026-05-04] TASK-036 done — ride_templates CRUD: POST/GET-me/PATCH/DELETE (apps/api/src/ride-templates/rideTemplatesRouter.ts), Zod валидация (weekdays 0-6 min1, seats 1-4, lat/lng, HH:MM regex), soft delete (is_active=false), RLS owner-only через withIdentity. PATCH через серию tx UPDATE по полям после exists-check (postgres.js dynamic SET conflict). 17 интеграционных тестов, mounted в app.ts.
+
+[2026-05-04] TASK-077 done — GET /api/users/:id/schedule: возвращает active ride_templates юзера (is_active=true, active_to NULL OR >= current_date), отсортированы по departure_time. Public read (любой авторизованный). 5 интеграционных тестов: 3 шаблона+expired+soft-deleted, public viewer access, empty list, 400 invalid uuid, 401.
+
+[2026-05-04] TASK-037 done — apps/cron/src/expand-templates.ts: разворачивание active ride_templates в rides на 14 дней вперёд. Advisory lock 100003, фильтр active_from/active_to/weekdays, INSERT...WHERE NOT EXISTS для идемпотентности (template_id+departure_at). Cron-style guard в index.ts: hourly tick, fires only at UTC 03:00. 8 unit тестов: lock contention, weekday subset, idempotent NOT EXISTS, active_to bound, active_from future, multi-template sum, error releases lock.
+
+[2026-05-04] TASK-059 done — db:reset + db:seed: scripts/db-reset.sh (docker compose down -v + healthcheck wait + migrate + seed, NODE_ENV=production guard), scripts/db-seed.ts (5 mock users + 10 rides + 4 likes/reviews с participation preconditions, ON CONFLICT идемпотентность, lazy postgres import чтобы не падать при unit-импорте). Vitest config расширен на scripts/__tests__/. 8 unit тестов: assertNotProduction (5), SEED_USERS shape (3).
+
+[2026-05-04] TASK-070 done — POST /api/ride-requests/:id/{accept,reject,cancel}: state machine с pg_advisory_xact_lock на hashtext(ride_id), reject/cancel возвращают seat через app.unbook_seat (миграция 012). RLS isolation: SELECT JOIN rides для driver/passenger авторизации. Notify через pg_notify (категории ride_request_accepted/rejected/cancelled). 12 unit тестов (mockTx) + 11 integration тестов на реальной БД (seats_taken assertion после рефанда).
+
+[2026-05-04] TASK-072 done — PATCH /api/rides/:id/cancel: driver-only active→cancelled, cascade UPDATE ride_requests pending|accepted→cancelled, audit_log entry с metadata.daily_cancels, anti-abuse: 4+ отмен/день → flagged_for_review=true + admin_review_cancellation_abuse pg_notify. pg_advisory_xact_lock. 7 интеграционных тестов: cascade, RLS 403, 409 already cancelled, 404, 400, abuse threshold, 401. Также fix TASK-070 теста (RLS hides → 404, не 403).
+
+[2026-05-04] TASK-071 done — PATCH /api/rides/:id: driver edits future ride. Zod валидация полей from/to/lat/lng/departure_at/price_rub/seats_total/comment с refine non-empty. Guards: NOT_FOUND/FORBIDDEN/INVALID_STATE/EXPIRED(410)/SEATS_INVALID(422 при seats_total<seats_taken). pg_advisory_xact_lock. audit_log entry. pg_notify category=ride_changed для accepted passengers при изменении key fields (from/to/departure_at). 10 интеграционных тестов.
+
+[2026-05-04] TASK-091 done — updated_at триггеры (verified existing): app.set_updated_at() + trg_updated_at_{rides,ride_templates,users,support_messages,notification_preferences} реализованы в миграции 007_counter_triggers. Integration тест apps/api/tests/integration/db/updated-at-triggers.test.ts покрывает поведение.
+[2026-05-04] TASK-112 done — avg_stars trigger: migration 013_avg_stars_trigger.sql, AFTER INSERT/UPDATE/DELETE on reviews FOR EACH ROW → UPDATE users SET avg_stars/reviews_count. Integration тесты: 5 reviews → avg=4.2, DELETE → пересчёт, 100 concurrent → count=100.
+[2026-05-04] TASK-088 done — audit_log cleanup cron: cleanup-audit-log.ts DELETE WHERE created_at < NOW()-12months, advisory lock 100004, monthly (day=1 hour=2 UTC). TASK-110 done — notifier idempotency: notification_log table (migration 014), sha256 5-min window dedup key, tryLogNotification ON CONFLICT DO NOTHING, updateNotificationStatus.
+[2026-05-04] TASK-089 done — withLock helper: apps/cron/src/lib/with-lock.ts, pg_try_advisory_lock/unlock pattern. Все 4 cron jobs используют уникальные lock IDs (100001-100004).
+[2026-05-04] TASK-108 done — finalize-rides cron: active+24h→completed, completed+72h→archived, audit_log INSERT, pg_notify confirm_participation для водителя, advisory lock 100005.
+[2026-05-04] TASK-109 done — confirm-participation-push cron: каждые 30 мин, advisory lock 100006, SELECT driver_marked=true && NOT confirmed && marked_at в 47h окне, pg_notify + UPDATE notified_at. Миграция 015 добавляет notified_at в ride_participation.
+[2026-05-04] TASK-113 done — production lifecycle: /readiness endpoint (SELECT 1), withRetry helper (exponential backoff), CircuitBreaker class (5xx threshold=5, open 30s), graceful shutdown SIGTERM→drain 30s→sql.end.

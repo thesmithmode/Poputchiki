@@ -1,0 +1,59 @@
+Files to compile (3):
+  - 2026-05-01.md
+  - 2026-05-02.md
+  - 2026-05-03.md
+
+[1/3] Compiling 2026-05-01.md...
+  Cost: $0.2276
+  Done.
+
+[2/3] Compiling 2026-05-02.md...
+  Cost: $0.1407
+  Done.
+
+[3/3] Compiling 2026-05-03.md...
+  Cost: $0.7093
+  Done.
+
+Compilation complete. Total cost: $1.08
+Knowledge base: 16 articles
+Files to compile (1):
+  - 2026-05-03.md
+
+[1/1] Compiling 2026-05-03.md...
+  Cost: $0.3800
+  Done.
+
+Compilation complete. Total cost: $0.38
+Knowledge base: 18 articles
+Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Files to compile (1):
+  - 2026-05-03.md
+
+[1/1] Compiling 2026-05-03.md...
+  Cost: $0.0000
+  Error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+  Done.
+
+Compilation complete. Total cost: $0.00
+Knowledge base: 18 articles
+Files to compile (1):
+  - 2026-05-03.md
+
+[1/1] Compiling 2026-05-03.md...
+  Cost: $0.6330
+  Done.
+
+Compilation complete. Total cost: $0.63
+Knowledge base: 20 articles
+Files to compile (1):
+  - 2026-05-03.md
+
+[1/1] Compiling 2026-05-03.md...
+  Cost: $0.5441
+  Done.
+
+Compilation complete. Total cost: $0.54
+Knowledge base: 22 articles

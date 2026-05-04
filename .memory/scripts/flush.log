@@ -1,0 +1,577 @@
+2026-05-02 22:01:35 INFO [hook] SessionEnd fired: session=28b6d8b1-88e2-43c6-af12-02ade334212b source=unknown
+2026-05-02 22:01:35 INFO [hook] Spawned flush.py for session 28b6d8b1-88e2-43c6-af12-02ade334212b (7 turns, 2094 chars)
+2026-05-02 22:01:35 INFO flush.py started for session 28b6d8b1-88e2-43c6-af12-02ade334212b, context: /home/user/Poputchiki/.memory/scripts/session-flush-28b6d8b1-88e2-43c6-af12-02ade334212b-20260502-220135.md
+2026-05-02 22:01:35 INFO Flushing session 28b6d8b1-88e2-43c6-af12-02ade334212b: 2093 chars
+2026-05-02 22:08:47 INFO [hook] SessionEnd fired: session=d148b91f-d93e-4d7b-a344-16c5becc7917 source=unknown
+2026-05-02 22:08:47 INFO [hook] Spawned flush.py for session d148b91f-d93e-4d7b-a344-16c5becc7917 (12 turns, 3389 chars)
+2026-05-02 22:08:47 INFO flush.py started for session d148b91f-d93e-4d7b-a344-16c5becc7917, context: /home/user/Poputchiki/.memory/scripts/session-flush-d148b91f-d93e-4d7b-a344-16c5becc7917-20260502-220847.md
+2026-05-02 22:08:47 INFO Flushing session d148b91f-d93e-4d7b-a344-16c5becc7917: 3388 chars
+2026-05-02 22:39:29 INFO [pre-compact] PreCompact fired: session=44d2f236-2e38-40c0-870e-275f4a4b8183
+2026-05-02 22:39:29 INFO [pre-compact] Spawned flush.py for session 44d2f236-2e38-40c0-870e-275f4a4b8183 (30 turns, 2765 chars)
+2026-05-02 22:39:30 INFO flush.py started for session 44d2f236-2e38-40c0-870e-275f4a4b8183, context: /home/user/Poputchiki/.memory/scripts/flush-context-44d2f236-2e38-40c0-870e-275f4a4b8183-20260502-223929.md
+2026-05-02 22:39:30 INFO Flushing session 44d2f236-2e38-40c0-870e-275f4a4b8183: 2764 chars
+2026-05-02 22:39:31 INFO Using bundled Claude Code CLI: /home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude
+2026-05-02 22:43:11 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-02 22:43:11 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "/home/user/Poputchiki/.memory/scripts/flush.py", line 120, in run_flush
+    async for message in query(
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/query.py", line 122, in query
+    async for message in client.process_query(
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_internal/client.py", line 147, in process_query
+    async for data in query.receive_messages():
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_internal/query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-02 22:43:11 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-02 22:43:11 INFO End-of-day compilation triggered (after 18:00)
+2026-05-02 22:43:11 INFO Flush complete for session 44d2f236-2e38-40c0-870e-275f4a4b8183
+2026-05-02 23:09:47 INFO [pre-compact] PreCompact fired: session=44d2f236-2e38-40c0-870e-275f4a4b8183
+2026-05-02 23:09:47 INFO [pre-compact] Spawned flush.py for session 44d2f236-2e38-40c0-870e-275f4a4b8183 (30 turns, 3278 chars)
+2026-05-02 23:09:47 INFO flush.py started for session 44d2f236-2e38-40c0-870e-275f4a4b8183, context: /home/user/Poputchiki/.memory/scripts/flush-context-44d2f236-2e38-40c0-870e-275f4a4b8183-20260502-230947.md
+2026-05-02 23:09:47 INFO Flushing session 44d2f236-2e38-40c0-870e-275f4a4b8183: 3277 chars
+2026-05-02 23:09:47 INFO Using bundled Claude Code CLI: /home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude
+2026-05-02 23:10:04 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-02 23:10:04 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "/home/user/Poputchiki/.memory/scripts/flush.py", line 120, in run_flush
+    async for message in query(
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/query.py", line 122, in query
+    async for message in client.process_query(
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_internal/client.py", line 147, in process_query
+    async for data in query.receive_messages():
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_internal/query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-02 23:10:04 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-02 23:10:04 INFO End-of-day compilation triggered (after 18:00)
+2026-05-02 23:10:04 INFO Flush complete for session 44d2f236-2e38-40c0-870e-275f4a4b8183
+2026-05-02 23:21:34 INFO [hook] SessionEnd fired: session=44d2f236-2e38-40c0-870e-275f4a4b8183 source=unknown
+2026-05-02 23:21:34 INFO [hook] Spawned flush.py for session 44d2f236-2e38-40c0-870e-275f4a4b8183 (30 turns, 2653 chars)
+2026-05-02 23:21:34 INFO flush.py started for session 44d2f236-2e38-40c0-870e-275f4a4b8183, context: /home/user/Poputchiki/.memory/scripts/session-flush-44d2f236-2e38-40c0-870e-275f4a4b8183-20260502-232134.md
+2026-05-02 23:21:34 INFO Flushing session 44d2f236-2e38-40c0-870e-275f4a4b8183: 2652 chars
+2026-05-02 23:21:35 INFO Using bundled Claude Code CLI: /home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude
+2026-05-03 08:00:58 INFO [pre-compact] PreCompact fired: session=6f2d084a-c3b5-473b-b1b9-a88b2251f34a
+2026-05-03 08:00:58 INFO [pre-compact] Spawned flush.py for session 6f2d084a-c3b5-473b-b1b9-a88b2251f34a (30 turns, 2169 chars)
+2026-05-03 08:00:58 INFO flush.py started for session 6f2d084a-c3b5-473b-b1b9-a88b2251f34a, context: /home/user/Poputchiki/.memory/scripts/flush-context-6f2d084a-c3b5-473b-b1b9-a88b2251f34a-20260503-080058.md
+2026-05-03 08:00:58 INFO Flushing session 6f2d084a-c3b5-473b-b1b9-a88b2251f34a: 2168 chars
+2026-05-03 08:00:59 INFO Using bundled Claude Code CLI: /home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_bundled/claude
+2026-05-03 08:02:33 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 08:02:33 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "/home/user/Poputchiki/.memory/scripts/flush.py", line 120, in run_flush
+    async for message in query(
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/query.py", line 122, in query
+    async for message in client.process_query(
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_internal/client.py", line 147, in process_query
+    async for data in query.receive_messages():
+  File "/home/user/Poputchiki/.memory/.venv/lib/python3.12/site-packages/claude_agent_sdk/_internal/query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 08:02:33 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 08:02:33 INFO Flush complete for session 6f2d084a-c3b5-473b-b1b9-a88b2251f34a
+2026-05-03 11:53:45 INFO [hook] SessionEnd fired: session=8de5d403-d104-4111-b302-87538f90206d source=unknown
+2026-05-03 11:53:45 INFO [hook] Spawned flush.py for session 8de5d403-d104-4111-b302-87538f90206d (30 turns, 8695 chars)
+2026-05-03 11:53:46 INFO flush.py started for session 8de5d403-d104-4111-b302-87538f90206d, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-8de5d403-d104-4111-b302-87538f90206d-20260503-115345.md
+2026-05-03 11:53:46 INFO Flushing session 8de5d403-d104-4111-b302-87538f90206d: 8694 chars
+2026-05-03 11:53:49 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 11:54:15 INFO Result: saved to daily log (1358 chars)
+2026-05-03 11:54:15 INFO Flush complete for session 8de5d403-d104-4111-b302-87538f90206d
+2026-05-03 12:12:26 INFO [hook] SessionEnd fired: session=b4439a9d-83ca-4f66-9ad0-13e53ba68cf2 source=unknown
+2026-05-03 12:12:26 INFO [hook] Spawned flush.py for session b4439a9d-83ca-4f66-9ad0-13e53ba68cf2 (30 turns, 9329 chars)
+2026-05-03 12:12:27 INFO flush.py started for session b4439a9d-83ca-4f66-9ad0-13e53ba68cf2, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-b4439a9d-83ca-4f66-9ad0-13e53ba68cf2-20260503-121226.md
+2026-05-03 12:12:27 INFO Flushing session b4439a9d-83ca-4f66-9ad0-13e53ba68cf2: 9328 chars
+2026-05-03 12:12:28 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 12:12:56 INFO Result: saved to daily log (1458 chars)
+2026-05-03 12:12:56 INFO Flush complete for session b4439a9d-83ca-4f66-9ad0-13e53ba68cf2
+2026-05-03 12:20:48 INFO [hook] SessionEnd fired: session=86bb5661-0e8c-4d18-928f-2fc7bf77e994 source=unknown
+2026-05-03 12:20:48 INFO [hook] Spawned flush.py for session 86bb5661-0e8c-4d18-928f-2fc7bf77e994 (8 turns, 2333 chars)
+2026-05-03 12:20:48 INFO flush.py started for session 86bb5661-0e8c-4d18-928f-2fc7bf77e994, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-86bb5661-0e8c-4d18-928f-2fc7bf77e994-20260503-122048.md
+2026-05-03 12:20:48 INFO Flushing session 86bb5661-0e8c-4d18-928f-2fc7bf77e994: 2332 chars
+2026-05-03 12:20:50 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 12:21:05 INFO Result: FLUSH_OK
+2026-05-03 12:21:05 INFO Flush complete for session 86bb5661-0e8c-4d18-928f-2fc7bf77e994
+2026-05-03 12:37:45 INFO [pre-compact] PreCompact fired: session=8c4a1297-61bd-453e-be87-11d481d603bd
+2026-05-03 12:37:45 INFO [pre-compact] Spawned flush.py for session 8c4a1297-61bd-453e-be87-11d481d603bd (26 turns, 2507 chars)
+2026-05-03 12:37:46 INFO flush.py started for session 8c4a1297-61bd-453e-be87-11d481d603bd, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-8c4a1297-61bd-453e-be87-11d481d603bd-20260503-123745.md
+2026-05-03 12:37:46 INFO Flushing session 8c4a1297-61bd-453e-be87-11d481d603bd: 2506 chars
+2026-05-03 12:37:47 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 12:38:02 INFO Result: FLUSH_OK
+2026-05-03 12:38:02 INFO Flush complete for session 8c4a1297-61bd-453e-be87-11d481d603bd
+2026-05-03 12:43:53 INFO [hook] SessionEnd fired: session=8c4a1297-61bd-453e-be87-11d481d603bd source=unknown
+2026-05-03 12:43:53 INFO [hook] Spawned flush.py for session 8c4a1297-61bd-453e-be87-11d481d603bd (30 turns, 4659 chars)
+2026-05-03 12:43:54 INFO flush.py started for session 8c4a1297-61bd-453e-be87-11d481d603bd, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-8c4a1297-61bd-453e-be87-11d481d603bd-20260503-124353.md
+2026-05-03 12:43:54 INFO Flushing session 8c4a1297-61bd-453e-be87-11d481d603bd: 4658 chars
+2026-05-03 12:43:55 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 12:44:16 INFO Result: saved to daily log (1007 chars)
+2026-05-03 12:44:16 INFO Flush complete for session 8c4a1297-61bd-453e-be87-11d481d603bd
+2026-05-03 12:52:21 INFO [pre-compact] PreCompact fired: session=9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 12:52:21 INFO [pre-compact] SKIP: only 4 turns (min 5)
+2026-05-03 12:52:43 INFO [pre-compact] PreCompact fired: session=9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 12:52:43 INFO [pre-compact] SKIP: only 4 turns (min 5)
+2026-05-03 12:57:32 INFO [pre-compact] PreCompact fired: session=9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 12:57:32 INFO [pre-compact] Spawned flush.py for session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113 (8 turns, 10917 chars)
+2026-05-03 12:57:32 INFO flush.py started for session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-9c3c8bb4-703b-46fd-8d67-206ff7ad0113-20260503-125732.md
+2026-05-03 12:57:32 INFO Flushing session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113: 10916 chars
+2026-05-03 12:57:33 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 12:57:52 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 12:57:52 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 12:57:52 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 12:57:52 INFO Flush complete for session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 13:18:47 INFO [hook] SessionEnd fired: session=9c3c8bb4-703b-46fd-8d67-206ff7ad0113 source=unknown
+2026-05-03 13:18:47 INFO [hook] Spawned flush.py for session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113 (25 turns, 10137 chars)
+2026-05-03 13:18:47 INFO flush.py started for session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-9c3c8bb4-703b-46fd-8d67-206ff7ad0113-20260503-131847.md
+2026-05-03 13:18:47 INFO Flushing session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113: 10136 chars
+2026-05-03 13:18:49 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 13:19:01 INFO Result: FLUSH_OK
+2026-05-03 13:19:01 INFO Flush complete for session 9c3c8bb4-703b-46fd-8d67-206ff7ad0113
+2026-05-03 13:27:16 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 13:27:16 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (20 turns, 2426 chars)
+2026-05-03 13:27:16 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-132716.md
+2026-05-03 13:27:16 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 2425 chars
+2026-05-03 13:27:17 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 13:28:15 INFO Result: saved to daily log (7804 chars)
+2026-05-03 13:28:15 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 13:35:05 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 13:35:05 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (24 turns, 13418 chars)
+2026-05-03 13:35:05 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-133505.md
+2026-05-03 13:35:05 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 13417 chars
+2026-05-03 13:35:07 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 13:36:00 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 13:36:00 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 13:36:00 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 13:36:00 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 13:52:12 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 13:52:12 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 12142 chars)
+2026-05-03 13:52:13 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-135212.md
+2026-05-03 13:52:13 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 12141 chars
+2026-05-03 13:52:15 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 13:52:35 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 13:52:35 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 13:52:35 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 13:52:35 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:05:41 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:05:41 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 14350 chars)
+2026-05-03 14:05:41 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-140541.md
+2026-05-03 14:05:41 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 14349 chars
+2026-05-03 14:05:42 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:08:09 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:08:09 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 14:08:09 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:08:09 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:27:29 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:27:29 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 14734 chars)
+2026-05-03 14:27:30 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-142729.md
+2026-05-03 14:27:30 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 14733 chars
+2026-05-03 14:27:32 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:28:38 ERROR Agent SDK error: Control request timeout: initialize
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 124, in fail_after
+    yield cancel_scope
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 407, in _send_control_request
+    await event.wait()
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1804, in wait
+    await self._event.wait()
+  File "C:\Users\thesm\AppData\Local\Programs\Python\Python313\Lib\asyncio\locks.py", line 213, in wait
+    await fut
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 2620d1f9b50; reason: deadline exceeded
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 406, in _send_control_request
+    with anyio.fail_after(timeout):
+         ~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\thesm\AppData\Local\Programs\Python\Python313\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\anyio\_core\_tasks.py", line 127, in fail_after
+    raise TimeoutError
+TimeoutError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 128, in process_query
+    await query.initialize()
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 159, in initialize
+    response = await self._send_control_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        request, timeout=self._initialize_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 420, in _send_control_request
+    raise Exception(f"Control request timeout: {request.get('subtype')}") from e
+Exception: Control request timeout: initialize
+
+2026-05-03 14:28:38 ERROR Result: FLUSH_ERROR: Exception: Control request timeout: initialize
+2026-05-03 14:28:38 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:31:51 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:31:51 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 14555 chars)
+2026-05-03 14:31:51 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-143151.md
+2026-05-03 14:31:51 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 14554 chars
+2026-05-03 14:31:52 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:32:29 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:32:29 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 14:32:29 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:32:29 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:39:15 INFO [pre-compact] PreCompact fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 14:39:15 INFO [pre-compact] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 10501 chars)
+2026-05-03 14:39:15 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-143915.md
+2026-05-03 14:39:15 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 10500 chars
+2026-05-03 14:39:17 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 14:40:21 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:40:21 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 14:40:21 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 14:40:21 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 15:05:14 INFO [hook] SessionEnd fired: session=24ca4feb-ad80-4f40-8c66-f39cfe763df0 source=unknown
+2026-05-03 15:05:14 INFO [hook] Spawned flush.py for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0 (30 turns, 7649 chars)
+2026-05-03 15:05:15 INFO flush.py started for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-24ca4feb-ad80-4f40-8c66-f39cfe763df0-20260503-150514.md
+2026-05-03 15:05:15 INFO Flushing session 24ca4feb-ad80-4f40-8c66-f39cfe763df0: 7648 chars
+2026-05-03 15:05:16 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 15:05:43 INFO Result: saved to daily log (1909 chars)
+2026-05-03 15:05:43 INFO Flush complete for session 24ca4feb-ad80-4f40-8c66-f39cfe763df0
+2026-05-03 15:20:24 INFO [pre-compact] PreCompact fired: session=c9494bad-7676-45de-ad1a-d687eeec211f
+2026-05-03 15:20:24 INFO [pre-compact] Spawned flush.py for session c9494bad-7676-45de-ad1a-d687eeec211f (30 turns, 14195 chars)
+2026-05-03 15:20:25 INFO flush.py started for session c9494bad-7676-45de-ad1a-d687eeec211f, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-c9494bad-7676-45de-ad1a-d687eeec211f-20260503-152024.md
+2026-05-03 15:20:25 INFO Flushing session c9494bad-7676-45de-ad1a-d687eeec211f: 14194 chars
+2026-05-03 15:20:26 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 15:20:42 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 15:20:42 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 15:20:42 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 15:20:42 INFO Flush complete for session c9494bad-7676-45de-ad1a-d687eeec211f
+2026-05-03 15:37:21 INFO [hook] SessionEnd fired: session=c9494bad-7676-45de-ad1a-d687eeec211f source=unknown
+2026-05-03 15:37:21 INFO [hook] Spawned flush.py for session c9494bad-7676-45de-ad1a-d687eeec211f (30 turns, 4837 chars)
+2026-05-03 15:37:22 INFO flush.py started for session c9494bad-7676-45de-ad1a-d687eeec211f, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-c9494bad-7676-45de-ad1a-d687eeec211f-20260503-153721.md
+2026-05-03 15:37:22 INFO Flushing session c9494bad-7676-45de-ad1a-d687eeec211f: 4836 chars
+2026-05-03 15:37:23 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 15:37:52 INFO Result: saved to daily log (1693 chars)
+2026-05-03 15:37:52 INFO Flush complete for session c9494bad-7676-45de-ad1a-d687eeec211f
+2026-05-03 15:54:34 INFO [pre-compact] PreCompact fired: session=1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4
+2026-05-03 15:54:34 INFO [pre-compact] Spawned flush.py for session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4 (24 turns, 6555 chars)
+2026-05-03 15:54:34 INFO flush.py started for session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4-20260503-155434.md
+2026-05-03 15:54:34 INFO Flushing session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4: 6554 chars
+2026-05-03 15:54:36 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 15:54:59 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 15:54:59 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 15:54:59 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 15:54:59 INFO Flush complete for session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4
+2026-05-03 15:59:25 INFO [hook] SessionEnd fired: session=1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4 source=unknown
+2026-05-03 15:59:25 INFO [hook] Spawned flush.py for session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4 (30 turns, 14721 chars)
+2026-05-03 15:59:25 INFO flush.py started for session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4-20260503-155925.md
+2026-05-03 15:59:25 INFO Flushing session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4: 14720 chars
+2026-05-03 15:59:27 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 15:59:57 INFO Result: saved to daily log (2045 chars)
+2026-05-03 15:59:57 INFO Flush complete for session 1b2c8d5c-6872-4fb4-aa08-8c02fcf225b4
+2026-05-03 18:58:27 INFO [hook] SessionEnd fired: session=e41897d5-2580-49f4-b82c-39986a5bc9d4 source=unknown
+2026-05-03 18:58:27 INFO [hook] Spawned flush.py for session e41897d5-2580-49f4-b82c-39986a5bc9d4 (30 turns, 12806 chars)
+2026-05-03 18:58:27 INFO flush.py started for session e41897d5-2580-49f4-b82c-39986a5bc9d4, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-e41897d5-2580-49f4-b82c-39986a5bc9d4-20260503-185827.md
+2026-05-03 18:58:27 INFO Flushing session e41897d5-2580-49f4-b82c-39986a5bc9d4: 12805 chars
+2026-05-03 18:58:29 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 18:58:58 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 18:58:58 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-03 18:58:58 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-03 18:58:58 INFO End-of-day compilation triggered (after 18:00)
+2026-05-03 18:58:58 INFO Flush complete for session e41897d5-2580-49f4-b82c-39986a5bc9d4
+2026-05-03 19:44:59 INFO [pre-compact] PreCompact fired: session=a813a97d-f36f-45c6-b7b1-4f7c56b72351
+2026-05-03 19:44:59 INFO [pre-compact] Spawned flush.py for session a813a97d-f36f-45c6-b7b1-4f7c56b72351 (30 turns, 3440 chars)
+2026-05-03 19:45:00 INFO flush.py started for session a813a97d-f36f-45c6-b7b1-4f7c56b72351, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-a813a97d-f36f-45c6-b7b1-4f7c56b72351-20260503-194459.md
+2026-05-03 19:45:00 INFO Flushing session a813a97d-f36f-45c6-b7b1-4f7c56b72351: 3439 chars
+2026-05-03 19:45:01 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 19:46:54 INFO Result: saved to daily log (17453 chars)
+2026-05-03 19:46:55 INFO End-of-day compilation triggered (after 18:00)
+2026-05-03 19:46:55 INFO Flush complete for session a813a97d-f36f-45c6-b7b1-4f7c56b72351
+2026-05-03 19:51:04 INFO [hook] SessionEnd fired: session=a813a97d-f36f-45c6-b7b1-4f7c56b72351 source=unknown
+2026-05-03 19:51:04 INFO [hook] Spawned flush.py for session a813a97d-f36f-45c6-b7b1-4f7c56b72351 (30 turns, 10335 chars)
+2026-05-03 19:51:05 INFO flush.py started for session a813a97d-f36f-45c6-b7b1-4f7c56b72351, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-a813a97d-f36f-45c6-b7b1-4f7c56b72351-20260503-195104.md
+2026-05-03 19:51:05 INFO Flushing session a813a97d-f36f-45c6-b7b1-4f7c56b72351: 10334 chars
+2026-05-03 19:51:06 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 19:51:26 INFO Result: saved to daily log (1381 chars)
+2026-05-03 19:51:27 INFO End-of-day compilation triggered (after 18:00)
+2026-05-03 19:51:27 INFO Flush complete for session a813a97d-f36f-45c6-b7b1-4f7c56b72351
+2026-05-03 22:26:15 INFO [hook] SessionEnd fired: session=72ac0d9e-8b89-43c3-9a7d-be6d5a95849a source=unknown
+2026-05-03 22:26:15 INFO [hook] Spawned flush.py for session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a (30 turns, 3422 chars)
+2026-05-03 22:26:15 INFO flush.py started for session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-72ac0d9e-8b89-43c3-9a7d-be6d5a95849a-20260503-222615.md
+2026-05-03 22:26:15 INFO Flushing session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a: 3421 chars
+2026-05-03 22:26:17 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 22:26:24 INFO [hook] SessionEnd fired: session=23145c4c-a1bd-4a4d-b8dd-120512ceeb56 source=unknown
+2026-05-03 22:26:24 INFO [hook] SKIP: transcript missing: C:\Users\thesm\.claude\projects\C--Soft-Projects-Poputchiki\23145c4c-a1bd-4a4d-b8dd-120512ceeb56.jsonl
+2026-05-03 22:26:49 INFO Result: saved to daily log (1335 chars)
+2026-05-03 22:26:49 INFO End-of-day compilation triggered (after 18:00)
+2026-05-03 22:26:49 INFO Flush complete for session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a
+2026-05-03 22:29:38 INFO [hook] SessionEnd fired: session=72ac0d9e-8b89-43c3-9a7d-be6d5a95849a source=unknown
+2026-05-03 22:29:38 INFO [hook] Spawned flush.py for session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a (30 turns, 4263 chars)
+2026-05-03 22:29:39 INFO flush.py started for session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-72ac0d9e-8b89-43c3-9a7d-be6d5a95849a-20260503-222938.md
+2026-05-03 22:29:39 INFO Flushing session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a: 4262 chars
+2026-05-03 22:29:40 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-03 22:30:02 INFO Result: saved to daily log (1091 chars)
+2026-05-03 22:30:02 INFO End-of-day compilation triggered (after 18:00)
+2026-05-03 22:30:02 INFO Flush complete for session 72ac0d9e-8b89-43c3-9a7d-be6d5a95849a
+2026-05-04 00:18:38 INFO [pre-compact] PreCompact fired: session=8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 00:18:38 INFO [pre-compact] Spawned flush.py for session 8f49076a-aa02-4283-ab09-b7a0ca19316c (30 turns, 4394 chars)
+2026-05-04 00:18:39 INFO flush.py started for session 8f49076a-aa02-4283-ab09-b7a0ca19316c, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-8f49076a-aa02-4283-ab09-b7a0ca19316c-20260504-001838.md
+2026-05-04 00:18:39 INFO Flushing session 8f49076a-aa02-4283-ab09-b7a0ca19316c: 4393 chars
+2026-05-04 00:18:41 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-04 00:19:54 INFO Result: saved to daily log (925 chars)
+2026-05-04 00:19:54 INFO Flush complete for session 8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 00:20:31 INFO [pre-compact] PreCompact fired: session=8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 00:20:31 INFO [pre-compact] Spawned flush.py for session 8f49076a-aa02-4283-ab09-b7a0ca19316c (30 turns, 4738 chars)
+2026-05-04 00:20:31 INFO flush.py started for session 8f49076a-aa02-4283-ab09-b7a0ca19316c, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-8f49076a-aa02-4283-ab09-b7a0ca19316c-20260504-002031.md
+2026-05-04 00:20:31 INFO Skipping duplicate flush for session 8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 00:30:08 INFO [pre-compact] PreCompact fired: session=8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 00:30:08 INFO [pre-compact] Spawned flush.py for session 8f49076a-aa02-4283-ab09-b7a0ca19316c (30 turns, 14971 chars)
+2026-05-04 00:30:08 INFO flush.py started for session 8f49076a-aa02-4283-ab09-b7a0ca19316c, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-8f49076a-aa02-4283-ab09-b7a0ca19316c-20260504-003008.md
+2026-05-04 00:30:09 INFO Flushing session 8f49076a-aa02-4283-ab09-b7a0ca19316c: 14970 chars
+2026-05-04 00:30:10 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-04 00:30:31 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-04 00:30:31 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-04 00:30:31 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-04 00:30:31 INFO Flush complete for session 8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 01:17:15 INFO [hook] SessionEnd fired: session=8f49076a-aa02-4283-ab09-b7a0ca19316c source=unknown
+2026-05-04 01:17:15 INFO [hook] Spawned flush.py for session 8f49076a-aa02-4283-ab09-b7a0ca19316c (30 turns, 3794 chars)
+2026-05-04 01:17:15 INFO flush.py started for session 8f49076a-aa02-4283-ab09-b7a0ca19316c, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-8f49076a-aa02-4283-ab09-b7a0ca19316c-20260504-011715.md
+2026-05-04 01:17:15 INFO Flushing session 8f49076a-aa02-4283-ab09-b7a0ca19316c: 3793 chars
+2026-05-04 01:17:17 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-04 01:17:42 INFO Result: saved to daily log (1226 chars)
+2026-05-04 01:17:42 INFO Flush complete for session 8f49076a-aa02-4283-ab09-b7a0ca19316c
+2026-05-04 08:42:09 INFO [pre-compact] PreCompact fired: session=61a3defb-bd2d-48c5-95e4-9eeb9aa6c0ea
+2026-05-04 08:42:09 INFO [pre-compact] Spawned flush.py for session 61a3defb-bd2d-48c5-95e4-9eeb9aa6c0ea (30 turns, 3288 chars)
+2026-05-04 08:42:09 INFO flush.py started for session 61a3defb-bd2d-48c5-95e4-9eeb9aa6c0ea, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-61a3defb-bd2d-48c5-95e4-9eeb9aa6c0ea-20260504-084209.md
+2026-05-04 08:42:09 INFO Flushing session 61a3defb-bd2d-48c5-95e4-9eeb9aa6c0ea: 3287 chars
+2026-05-04 08:42:11 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-04 08:42:31 INFO Result: FLUSH_OK
+2026-05-04 08:42:31 INFO Flush complete for session 61a3defb-bd2d-48c5-95e4-9eeb9aa6c0ea

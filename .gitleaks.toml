@@ -1,0 +1,35 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram Bot Token"
+regex = '''[0-9]{8,10}:[A-Za-z0-9_-]{35}'''
+keywords = ["bot_token", "BOT_TOKEN"]
+
+[[rules]]
+id = "jwt-secret"
+description = "JWT Secret key"
+regex = '''(?i)(jwt[_-]?secret|JWT_SECRET)\s*[=:]\s*['""]?([A-Za-z0-9+/=_-]{16,})'''
+keywords = ["jwt_secret", "JWT_SECRET"]
+
+[[rules]]
+id = "postgres-password"
+description = "PostgreSQL password in URL or env"
+regex = '''postgres(?:ql)?://[^:]+:([^@]{8,})@'''
+keywords = ["POSTGRES_PASSWORD", "postgres"]
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''\.gitleaks\.toml$''',
+  '''\.env\.example$''',
+  '''^docs/''',
+  '''.*\.md$''',
+  '''apps/api/tests/''',
+]
+regexes = [
+  '''\$\{process\.env\.''',
+  '''postgres://[a-z]+/[a-z]+''',
+  '''test-secret-''',
+]

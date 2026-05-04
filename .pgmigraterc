@@ -1,0 +1,4 @@
+{
+  "migrations-dir": "db/migrations",
+  "database-url-var": "DATABASE_URL"
+}

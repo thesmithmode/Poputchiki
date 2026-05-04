@@ -1,0 +1,111 @@
+/**
+ * Integration: avg_stars trigger (migration 013).
+ * AFTER INSERT/UPDATE/DELETE on reviews → users.avg_stars + reviews_count.
+ */
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { createPool } from "../../../src/db/pool";
+import { buildDsn } from "../setup";
+
+const REVIEWER = { id: "00000000-0000-4000-f000-130000000001", tgId: 9130001 };
+const TARGET = { id: "00000000-0000-4000-f000-130000000002", tgId: 9130002 };
+
+let sql: ReturnType<typeof createPool>;
+
+async function getStats(userId: string) {
+  const [row] = await sql<{ avg_stars: string | null; reviews_count: number }[]>`
+    SELECT avg_stars, reviews_count FROM users WHERE id = ${userId}
+  `;
+  return row ?? { avg_stars: null, reviews_count: 0 };
+}
+
+async function insertRide(): Promise<string> {
+  const [row] = await sql<{ id: string }[]>`
+    INSERT INTO rides
+      (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
+       departure_at, seats_total)
+    VALUES
+      (${TARGET.id}, 'A', 55, 49, 'B', 56, 50, NOW() - INTERVAL '2 hours', 2)
+    RETURNING id
+  `;
+  return row?.id ?? "";
+}
+
+beforeAll(async () => {
+  sql = createPool(buildDsn());
+  await sql`
+    INSERT INTO users (id, tg_id, display_name)
+    VALUES
+      (${REVIEWER.id}, ${REVIEWER.tgId}, 'Avg Stars Reviewer'),
+      (${TARGET.id}, ${TARGET.tgId}, 'Avg Stars Target')
+    ON CONFLICT (tg_id) DO UPDATE SET avg_stars = NULL, reviews_count = 0
+  `;
+});
+
+afterAll(async () => {
+  await sql`DELETE FROM reviews WHERE subject_id = ${REVIEWER.id}`;
+  await sql`DELETE FROM rides WHERE driver_id = ${TARGET.id}`;
+  await sql`DELETE FROM users WHERE id IN (${REVIEWER.id}, ${TARGET.id})`;
+  await sql.end();
+});
+
+beforeEach(async () => {
+  await sql`DELETE FROM reviews WHERE subject_id = ${REVIEWER.id}`;
+  await sql`UPDATE users SET avg_stars = NULL, reviews_count = 0 WHERE id = ${TARGET.id}`;
+});
+
+describe("avg_stars trigger", () => {
+  it("INSERT 5 reviews → avg_stars=4.20, reviews_count=5", async () => {
+    for (const stars of [5, 4, 3, 4, 5]) {
+      const rideId = await insertRide();
+      await sql`
+        INSERT INTO reviews (ride_id, subject_id, target_id, stars)
+        VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, ${stars})
+      `;
+    }
+    const stats = await getStats(TARGET.id);
+    expect(Number(stats.avg_stars)).toBeCloseTo(4.2, 2);
+    expect(stats.reviews_count).toBe(5);
+  });
+
+  it("DELETE одного → пересчёт", async () => {
+    let lastId = "";
+    for (const stars of [5, 4, 3]) {
+      const rideId = await insertRide();
+      const [row] = await sql<{ id: string }[]>`
+        INSERT INTO reviews (ride_id, subject_id, target_id, stars)
+        VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, ${stars})
+        RETURNING id
+      `;
+      lastId = row?.id ?? "";
+    }
+    await sql`DELETE FROM reviews WHERE id = ${lastId}`;
+    const stats = await getStats(TARGET.id);
+    expect(Number(stats.avg_stars)).toBeCloseTo(4.5, 2);
+    expect(stats.reviews_count).toBe(2);
+  });
+
+  it("last DELETE → avg_stars=NULL, reviews_count=0", async () => {
+    const rideId = await insertRide();
+    const [row] = await sql<{ id: string }[]>`
+      INSERT INTO reviews (ride_id, subject_id, target_id, stars)
+      VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, 3)
+      RETURNING id
+    `;
+    await sql`DELETE FROM reviews WHERE id = ${row?.id ?? ""}`;
+    const stats = await getStats(TARGET.id);
+    expect(stats.avg_stars).toBeNull();
+    expect(stats.reviews_count).toBe(0);
+  });
+
+  it("30 sequential INSERT → reviews_count=30 (счётчик корректен под нагрузкой)", async () => {
+    for (let i = 0; i < 30; i++) {
+      const rideId = await insertRide();
+      await sql`
+        INSERT INTO reviews (ride_id, subject_id, target_id, stars)
+        VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, ${(i % 5) + 1})
+      `;
+    }
+    const stats = await getStats(TARGET.id);
+    expect(stats.reviews_count).toBe(30);
+  });
+});

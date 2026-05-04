@@ -1,0 +1,4 @@
+{
+  "_comment": "Known false-positives or accepted-risk vulnerabilities. Each entry must have an expiry and a reason.",
+  "allowlist": []
+}

@@ -1,0 +1,20 @@
+# Force LF line endings in all text files (Windows ↔ Linux CI consistency)
+* text=auto eol=lf
+*.sql text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.env text eol=lf
+
+# Binary files — no line ending conversion
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

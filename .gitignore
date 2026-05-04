@@ -1,0 +1,28 @@
+# Только секреты и runtime data volumes — всё остальное коммитим (правило проекта).
+# node_modules — исключение: платформо-специфичные бинарники (biome, bun) ломают Linux CI.
+# bun.lock обеспечивает reproducibility вместо коммита node_modules.
+node_modules/
+.env
+.env.local
+.env.*.local
+.env.prod
+*.pem
+*.key
+secrets/
+
+# Runtime data внутри проекта (см. CLAUDE.md, договорено 2026-05-01)
+.docker-data/
+backups/*.dump
+backups/*.dump.zst
+backups/*.dump.zst.gpg
+backups/wal/
+backups/base-*
+
+# Coverage reports — generated artifacts, меняются каждый CI run
+coverage/
+coverage-integration/
+
+# Python bytecode
+__pycache__/
+*.pyc
+

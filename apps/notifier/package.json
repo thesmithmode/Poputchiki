@@ -1,0 +1,15 @@
+{
+  "name": "@poputchiki/notifier",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "echo 'notifier: no build step (bun runtime)'"
+  },
+  "dependencies": {
+    "postgres": "^3.4.9"
+  }
+}

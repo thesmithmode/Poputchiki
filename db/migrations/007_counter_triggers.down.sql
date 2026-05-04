@@ -1,0 +1,14 @@
+DROP TRIGGER IF EXISTS trg_updated_at_notification_preferences ON notification_preferences;
+DROP TRIGGER IF EXISTS trg_complaints_auto_ban ON complaints;
+DROP FUNCTION IF EXISTS app.trg_complaints_auto_ban();
+DROP TRIGGER IF EXISTS trg_updated_at_support_messages ON support_messages;
+DROP TRIGGER IF EXISTS trg_updated_at_users ON users;
+DROP TRIGGER IF EXISTS trg_updated_at_ride_templates ON ride_templates;
+DROP TRIGGER IF EXISTS trg_updated_at_rides ON rides;
+DROP FUNCTION IF EXISTS app.set_updated_at();
+DROP TRIGGER IF EXISTS trg_rides_completed ON rides;
+DROP TRIGGER IF EXISTS trg_rides_insert ON rides;
+DROP TRIGGER IF EXISTS trg_likes_count ON likes;
+DROP FUNCTION IF EXISTS app.trg_rides_completed_count();
+DROP FUNCTION IF EXISTS app.trg_rides_insert_count();
+DROP FUNCTION IF EXISTS app.trg_likes_update_count();

@@ -1,7 +1,10 @@
 -- Trigger: recalculate users.avg_stars + reviews_count after INSERT/UPDATE/DELETE on reviews
 
+-- SECURITY DEFINER: trigger updates users row for the reviewed user (target_id).
+-- Under FORCE RLS the UPDATE would be filtered by users_update_self → 0 rows → counter drift.
 CREATE OR REPLACE FUNCTION app.update_user_avg_stars()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = pg_catalog, public AS $$
 DECLARE
   v_target_id uuid;
 BEGIN

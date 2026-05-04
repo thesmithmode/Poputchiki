@@ -20,15 +20,17 @@ async function getStats(userId: string) {
 }
 
 async function insertRide(): Promise<string> {
-  const [row] = await sql<{ id: string }[]>`
-    INSERT INTO rides
-      (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
-       departure_at, seats_total)
-    VALUES
-      (${TARGET.id}, 'A', 55, 49, 'B', 56, 50, NOW() - INTERVAL '2 hours', 2)
-    RETURNING id
-  `;
-  return row!.id;
+  return await withSystem(sql, async (tx) => {
+    const [row] = await tx<{ id: string }[]>`
+      INSERT INTO rides
+        (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
+         departure_at, seats_total)
+      VALUES
+        (${TARGET.id}, 'A', 55, 49, 'B', 56, 50, NOW() - INTERVAL '2 hours', 2)
+      RETURNING id
+    `;
+    return row!.id;
+  });
 }
 
 beforeAll(async () => {

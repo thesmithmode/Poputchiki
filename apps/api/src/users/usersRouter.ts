@@ -158,6 +158,39 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     return c.json(shapeMe(rows[0] as MeRow));
   });
 
+  app.get("/:id/schedule", async (c) => {
+    const id = c.req.param("id");
+    if (!UUID_RE.test(id)) return c.json({ error: "invalid id" }, 400);
+
+    const user = c.get("user" as never) as AppUser;
+    const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<
+        {
+          id: string;
+          weekdays: number[];
+          departure_time: string;
+          from_label: string;
+          to_label: string;
+          price_rub: number | null;
+          seats_total: number;
+          active_from: string;
+          active_to: string | null;
+        }[]
+      >`
+        SELECT id, weekdays,
+               to_char(departure_time, 'HH24:MI') AS departure_time,
+               from_label, to_label, price_rub, seats_total,
+               active_from, active_to
+        FROM ride_templates
+        WHERE driver_id = ${id}
+          AND is_active = true
+          AND (active_to IS NULL OR active_to >= current_date)
+        ORDER BY departure_time ASC
+      `;
+    });
+    return c.json(rows);
+  });
+
   app.get("/:id", async (c) => {
     const id = c.req.param("id");
     if (!UUID_RE.test(id)) return c.json({ error: "invalid id" }, 400);

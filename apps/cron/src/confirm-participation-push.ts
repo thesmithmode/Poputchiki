@@ -10,9 +10,9 @@ export interface ConfirmPushResult {
 export async function confirmParticipationPush(
   sql: postgres.Sql,
 ): Promise<ConfirmPushResult | null> {
-  return withLock(sql, LOCK_ID, async () => {
+  return withLock(sql, LOCK_ID, async (tx) => {
     // Passengers driver_marked=true, not yet confirmed, not yet notified (or re-notify after 24h)
-    const rows = await sql<{ ride_id: string; passenger_id: string }[]>`
+    const rows = await tx<{ ride_id: string; passenger_id: string }[]>`
       SELECT ride_id, passenger_id
       FROM ride_participation
       WHERE driver_marked = true
@@ -25,7 +25,7 @@ export async function confirmParticipationPush(
     `;
 
     for (const row of rows) {
-      await sql`
+      await tx`
         SELECT pg_notify(
           'notify_user',
           ${JSON.stringify({
@@ -35,7 +35,7 @@ export async function confirmParticipationPush(
           })}
         )
       `;
-      await sql`
+      await tx`
         UPDATE ride_participation
         SET notified_at = now()
         WHERE ride_id = ${row.ride_id} AND passenger_id = ${row.passenger_id}

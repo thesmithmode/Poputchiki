@@ -115,14 +115,14 @@ describe("POST /api/ride-requests/:id/accept", () => {
     expect(ride?.seats_taken).toBe(1);
   });
 
-  it("403 — чужой driver", async () => {
+  it("404 — чужой driver (RLS скрывает запрос — не утечка существования)", async () => {
     const reqId = await makeRequest("pending");
     const token = await makeToken(STRANGER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/accept`, {
       method: "POST",
       headers: authHeaders(STRANGER, token),
     });
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(404);
   });
 
   it("404 — несуществующий request", async () => {

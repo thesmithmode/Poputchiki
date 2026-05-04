@@ -436,5 +436,125 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     }
   });
 
+  app.patch("/:id/cancel", async (c) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    /* c8 ignore next -- identityGuard returns 401 before handler runs */
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    const rideId = c.req.param("id");
+    if (!UUID_RE.test(rideId)) return c.json({ error: "invalid ride id" }, 400);
+
+    let result: {
+      ride: { id: string; driver_id: string };
+      affectedPassengers: string[];
+      dailyCancels: number;
+    };
+    try {
+      result = await withIdentity(
+        sql,
+        user,
+        async (tx) => {
+          const [ride] = await tx<
+            { id: string; driver_id: string; status: string; departure_at: Date }[]
+          >`
+            SELECT id, driver_id, status, departure_at FROM rides WHERE id = ${rideId}::uuid
+          `;
+          if (!ride) {
+            throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+          }
+          if (ride.driver_id !== user.id) {
+            throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+          }
+          if (ride.status !== "active") {
+            throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
+          }
+
+          await tx`SELECT pg_advisory_xact_lock(hashtext(${rideId}::text))`;
+
+          const upd = await tx<{ id: string }[]>`
+            UPDATE rides SET status = 'cancelled'
+            WHERE id = ${rideId} AND status = 'active'
+            RETURNING id
+          `;
+          /* c8 ignore next -- defensive: locked row should always update */
+          if (upd.length === 0) {
+            throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
+          }
+
+          const cancelledRequests = await tx<{ passenger_id: string }[]>`
+            UPDATE ride_requests SET status = 'cancelled'
+            WHERE ride_id = ${rideId} AND status IN ('pending', 'accepted')
+            RETURNING passenger_id
+          `;
+
+          const dailyResult = await tx<{ count: number }[]>`
+            SELECT COUNT(*)::int AS count FROM rides
+            WHERE driver_id = ${user.id}
+              AND status = 'cancelled'
+              AND updated_at >= date_trunc('day', NOW())
+          `;
+          /* c8 ignore next -- defensive ?? 0 */
+          const dailyCancels = dailyResult[0]?.count ?? 0;
+
+          await tx`
+            INSERT INTO audit_log (user_id, action, resource, resource_id, metadata)
+            VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId},
+                    ${tx.json({ daily_cancels: dailyCancels, passengers: cancelledRequests.length })})
+          `;
+
+          return {
+            ride: { id: ride.id, driver_id: ride.driver_id },
+            affectedPassengers: cancelledRequests.map((r) => r.passenger_id),
+            dailyCancels,
+          };
+        },
+        "repeatable read",
+      );
+    } catch (err) {
+      const code = (err as Error & { code?: string }).code;
+      if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      if (code === "INVALID_STATE") return c.json({ error: "invalid_state" }, 409);
+      /* c8 ignore next -- defensive: re-throw unknown errors */
+      throw err;
+    }
+
+    // Notify each affected passenger (fire-and-forget)
+    for (const passengerId of result.affectedPassengers) {
+      sql`
+        SELECT pg_notify(
+          'ride_request',
+          ${JSON.stringify({
+            ride_id: rideId,
+            user_id: passengerId,
+            category: "ride_cancelled",
+          })}
+        )
+      `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+    }
+
+    // Admin alert if abuse threshold exceeded
+    if (result.dailyCancels > 3) {
+      sql`
+        SELECT pg_notify(
+          'ride_request',
+          ${JSON.stringify({
+            ride_id: rideId,
+            user_id: user.id,
+            category: "admin_review_cancellation_abuse",
+            daily_cancels: result.dailyCancels,
+          })}
+        )
+      `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+    }
+
+    return c.json({
+      id: result.ride.id,
+      status: "cancelled",
+      cancelled_requests: result.affectedPassengers.length,
+      flagged_for_review: result.dailyCancels > 3,
+    });
+  });
+
   return app;
 }

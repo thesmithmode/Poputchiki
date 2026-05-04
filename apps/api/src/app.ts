@@ -32,6 +32,15 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
   app.use("*", secureHeadersMiddleware);
   app.get("/health", (c) => c.json({ status: "ok", ts: new Date().toISOString() }));
   app.get("/metrics", (c) => c.json(poolMetrics.snapshot()));
+  app.get("/readiness", async (c) => {
+    if (!sql) return c.json({ status: "degraded", reason: "no_db" }, 503);
+    try {
+      await sql`SELECT 1`;
+      return c.json({ status: "ok" });
+    } catch {
+      return c.json({ status: "degraded", reason: "db_unreachable" }, 503);
+    }
+  });
 
   if (sql) {
     app.use("/auth/*", authRateLimit(sql, { ipLimit: 10 }));

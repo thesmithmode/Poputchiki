@@ -1,3 +1,4 @@
+import type { CircuitBreaker } from "./circuit-breaker.js";
 import { buildDedupKey, checkAndSet } from "./dedup.js";
 import { formatMessage } from "./format.js";
 import type { Category, NotifierDb, NotifyPayload } from "./types.js";
@@ -35,6 +36,7 @@ export async function processEvent(
   cache: Map<string, number>,
   raw: string,
   botToken: string,
+  circuit?: CircuitBreaker,
 ): Promise<void> {
   let payload: NotifyPayload;
   try {
@@ -84,6 +86,13 @@ export async function processEvent(
   if (category !== "system" && !recipient.pref_enabled) {
     // biome-ignore lint/suspicious/noConsoleLog: structured worker log
     console.log(JSON.stringify({ msg: "notifier_pref_skip", user_id, category }));
+    return;
+  }
+
+  if (circuit?.isOpen()) {
+    // biome-ignore lint/suspicious/noConsoleLog: structured worker log
+    console.log(JSON.stringify({ msg: "notifier_circuit_open_skip", user_id, category }));
+    await db.updateNotificationStatus(key, "skipped_disabled");
     return;
   }
 
@@ -139,5 +148,10 @@ export async function processEvent(
   if (!resp.ok) {
     console.error(JSON.stringify({ msg: "notifier_send_failed", user_id, status: resp.status }));
     await db.updateNotificationStatus(key, "failed");
+    // 5xx → record failure in circuit breaker
+    if (resp.status >= 500) circuit?.recordFailure();
+    return;
   }
+
+  circuit?.recordSuccess();
 }

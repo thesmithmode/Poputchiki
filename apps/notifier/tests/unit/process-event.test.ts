@@ -396,7 +396,11 @@ describe("processEvent", () => {
   it("skips and marks skipped_disabled when circuit breaker is open", async () => {
     const db = makeDb();
     const fetchFn = makeFetch(200, true);
-    const circuit = { isOpen: () => true, recordSuccess: vi.fn(), recordFailure: vi.fn() };
+    const circuit = {
+      isOpen: () => true,
+      recordSuccess: vi.fn(),
+      recordFailure: vi.fn(),
+    } as unknown as import("../../src/circuit-breaker.js").CircuitBreaker;
     await processEvent(
       db,
       fetchFn as FetchFn,

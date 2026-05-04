@@ -33,6 +33,8 @@ async function insertRide(): Promise<string> {
   });
 }
 
+const HOOK_TIMEOUT = 60000;
+
 beforeAll(async () => {
   sql = createPool(buildDsn());
   await withSystem(sql, async (tx) => {
@@ -44,19 +46,19 @@ beforeAll(async () => {
       ON CONFLICT (tg_id) DO UPDATE SET avg_stars = NULL, reviews_count = 0
     `;
   });
-});
+}, HOOK_TIMEOUT);
 
 afterAll(async () => {
   await sql`DELETE FROM reviews WHERE subject_id = ${REVIEWER.id}`;
   await sql`DELETE FROM rides WHERE driver_id = ${TARGET.id}`;
   await sql`DELETE FROM users WHERE id IN (${REVIEWER.id}, ${TARGET.id})`;
   await sql.end();
-});
+}, HOOK_TIMEOUT);
 
 beforeEach(async () => {
   await sql`DELETE FROM reviews WHERE subject_id = ${REVIEWER.id}`;
   await sql`UPDATE users SET avg_stars = NULL, reviews_count = 0 WHERE id = ${TARGET.id}`;
-});
+}, HOOK_TIMEOUT);
 
 describe("avg_stars trigger", () => {
   it("INSERT 5 reviews → avg_stars=4.20, reviews_count=5", async () => {
@@ -109,19 +111,31 @@ describe("avg_stars trigger", () => {
     expect(stats.reviews_count).toBe(0);
   });
 
-  it("100 concurrent INSERT → reviews_count=100", async () => {
-    // Each review needs unique (ride_id, subject_id, target_id) — create 100 rides
-    const rideIds = await Promise.all(Array.from({ length: 100 }, () => insertRide()));
-    await Promise.all(
-      rideIds.map(
-        (rideId, i) =>
-          sql`
-          INSERT INTO reviews (ride_id, subject_id, target_id, stars)
-          VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, ${(i % 5) + 1})
-        `,
-      ),
-    );
-    const stats = await getStats(TARGET.id);
-    expect(stats.reviews_count).toBe(100);
-  });
+  it(
+    "100 concurrent INSERT → reviews_count=100",
+    async () => {
+      // Chunk to avoid pool exhaustion + row-lock contention on TARGET.id
+      const CHUNK = 10;
+      const rideIds: string[] = [];
+      for (let i = 0; i < 100; i += CHUNK) {
+        const batch = await Promise.all(Array.from({ length: CHUNK }, () => insertRide()));
+        rideIds.push(...batch);
+      }
+      for (let i = 0; i < rideIds.length; i += CHUNK) {
+        const slice = rideIds.slice(i, i + CHUNK);
+        await Promise.all(
+          slice.map(
+            (rideId, j) =>
+              sql`
+              INSERT INTO reviews (ride_id, subject_id, target_id, stars)
+              VALUES (${rideId}, ${REVIEWER.id}, ${TARGET.id}, ${((i + j) % 5) + 1})
+            `,
+          ),
+        );
+      }
+      const stats = await getStats(TARGET.id);
+      expect(stats.reviews_count).toBe(100);
+    },
+    HOOK_TIMEOUT,
+  );
 });

@@ -41,10 +41,7 @@ describe("confirmParticipationPush", () => {
   });
 
   it("propagates error from SELECT (transaction rollbacks, lock auto-released)", async () => {
-    const sql = makeSql([
-      [{ acquired: true }],
-      new Error("DB error"),
-    ]);
+    const sql = makeSql([[{ acquired: true }], new Error("DB error")]);
     await expect(confirmParticipationPush(sql)).rejects.toThrow("DB error");
   });
 });

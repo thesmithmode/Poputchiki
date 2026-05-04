@@ -8,7 +8,10 @@ function makeSql(acquired: boolean, txResponses: (Row[] | Error)[]): import("pos
     begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       let i = 0;
       const tx = vi.fn().mockImplementation(() => {
-        if (i === 0) { i++; return Promise.resolve([{ acquired }]); }
+        if (i === 0) {
+          i++;
+          return Promise.resolve([{ acquired }]);
+        }
         const resp = txResponses[i - 1] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
@@ -95,8 +98,10 @@ describe("expandTemplates", () => {
     // t1: Mon 04, Mon 11 → 2; t2: Wed 06, Wed 13 → 2
     const sql = makeSql(true, [
       [t1, t2],
-      [{ id: "r1" }], [{ id: "r2" }], // t1
-      [{ id: "r3" }], [{ id: "r4" }], // t2
+      [{ id: "r1" }],
+      [{ id: "r2" }], // t1
+      [{ id: "r3" }],
+      [{ id: "r4" }], // t2
     ]);
     expect(await expandTemplates(sql, now)).toEqual({ created: 4 });
   });

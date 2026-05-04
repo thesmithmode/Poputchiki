@@ -6,7 +6,10 @@ type Row = Record<string, unknown>;
 function makeSql(acquired: boolean, reservedResponses: (Row[] | Error)[]): import("postgres").Sql {
   let i = 0;
   const reserved = vi.fn().mockImplementation(() => {
-    if (i === 0) { i++; return Promise.resolve([{ acquired }]); }
+    if (i === 0) {
+      i++;
+      return Promise.resolve([{ acquired }]);
+    }
     const resp = reservedResponses[i - 1] ?? [];
     i++;
     return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
@@ -31,7 +34,9 @@ describe("refreshUserStats", () => {
   it("calls reserve() and release() to pin a single connection", async () => {
     const sql = makeSql(true, [[], []]);
     await refreshUserStats(sql);
-    expect((sql as unknown as { reserve: ReturnType<typeof vi.fn> }).reserve).toHaveBeenCalledOnce();
+    expect(
+      (sql as unknown as { reserve: ReturnType<typeof vi.fn> }).reserve,
+    ).toHaveBeenCalledOnce();
   });
 
   it("releases reserved connection even if REFRESH throws", async () => {

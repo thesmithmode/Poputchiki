@@ -415,3 +415,4 @@
 
 [2026-05-04] TASK-091 done — updated_at триггеры (verified existing): app.set_updated_at() + trg_updated_at_{rides,ride_templates,users,support_messages,notification_preferences} реализованы в миграции 007_counter_triggers. Integration тест apps/api/tests/integration/db/updated-at-triggers.test.ts покрывает поведение.
 [2026-05-04] TASK-112 done — avg_stars trigger: migration 013_avg_stars_trigger.sql, AFTER INSERT/UPDATE/DELETE on reviews FOR EACH ROW → UPDATE users SET avg_stars/reviews_count. Integration тесты: 5 reviews → avg=4.2, DELETE → пересчёт, 100 concurrent → count=100.
+[2026-05-04] TASK-088 done — audit_log cleanup cron: cleanup-audit-log.ts DELETE WHERE created_at < NOW()-12months, advisory lock 100004, monthly (day=1 hour=2 UTC). TASK-110 done — notifier idempotency: notification_log table (migration 014), sha256 5-min window dedup key, tryLogNotification ON CONFLICT DO NOTHING, updateNotificationStatus.

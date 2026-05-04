@@ -1,4 +1,5 @@
 import postgres from "postgres";
+import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
 import { expandTemplates } from "./expand-templates";
 import { refreshUserStats } from "./refresh-user-stats";
@@ -22,6 +23,15 @@ async function runRefreshUserStats() {
   );
 }
 
+async function runAuditLogCleanup() {
+  // Monthly cleanup — only fire if UTC day === 1 and hour === 2
+  const now = new Date();
+  if (now.getUTCDate() !== 1 || now.getUTCHours() !== 2) return;
+  await cleanupAuditLog(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "audit_log_cleanup_error", error: String(err) })),
+  );
+}
+
 async function runExpandTemplates() {
   // Cron-style guard: only fire if current UTC hour === 3.
   if (new Date().getUTCHours() !== 3) return;
@@ -33,6 +43,8 @@ async function runExpandTemplates() {
 runCleanup();
 runRefreshUserStats();
 runExpandTemplates();
+runAuditLogCleanup();
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
+setInterval(runAuditLogCleanup, ONE_HOUR);

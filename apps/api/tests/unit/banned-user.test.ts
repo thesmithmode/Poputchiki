@@ -8,7 +8,11 @@ type BanRow = { is_banned: boolean; ban_reason: string | null; banned_at: string
 
 function makeSql(row?: BanRow): postgres.Sql {
   const fn = vi.fn().mockResolvedValue(row ? [row] : []);
-  return Object.assign(fn, { begin: vi.fn(), end: vi.fn(), reserve: vi.fn() }) as unknown as postgres.Sql;
+  return Object.assign(fn, {
+    begin: vi.fn(),
+    end: vi.fn(),
+    reserve: vi.fn(),
+  }) as unknown as postgres.Sql;
 }
 
 function makeApp(sql: postgres.Sql, user?: AppUser) {

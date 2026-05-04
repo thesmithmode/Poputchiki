@@ -2,7 +2,7 @@ import { CreateRideInput, MarkParticipantsInput } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
-import { withIdentity } from "../db/with-identity";
+import { withIdentity, withSystem } from "../db/with-identity";
 import { isUniqueViolation } from "../lib/db-errors";
 import type { AppUser } from "../middleware/identity-guard";
 
@@ -472,6 +472,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       row: Record<string, unknown>;
       affectedPassengers: string[];
       changedKeyFields: boolean;
+      patchedFields: string[];
     };
     try {
       result = await withIdentity(
@@ -546,17 +547,12 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
             SELECT * FROM rides WHERE id = ${rideId}
           `;
 
-          await tx`
-            INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-            VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
-                    ${tx.json({ fields: Object.keys(p), key_fields_changed: changedKeyFields })})
-          `;
-
           return {
             /* c8 ignore next -- defensive ?? {}; SELECT after UPDATE always returns row */
             row: updated ?? {},
             affectedPassengers: accepted.map((r) => r.passenger_id),
             changedKeyFields,
+            patchedFields: Object.keys(p),
           };
         },
         "repeatable read",
@@ -571,6 +567,14 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
     }
+
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+        VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
+                ${tx.json({ fields: result.patchedFields, key_fields_changed: result.changedKeyFields })})
+      `;
+    });
 
     if (result.changedKeyFields) {
       for (const passengerId of result.affectedPassengers) {
@@ -602,6 +606,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       ride: { id: string; driver_id: string };
       affectedPassengers: string[];
       dailyCancels: number;
+      cancelledCount: number;
     };
     try {
       result = await withIdentity(
@@ -650,16 +655,11 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
           /* c8 ignore next -- defensive ?? 0 */
           const dailyCancels = dailyResult[0]?.count ?? 0;
 
-          await tx`
-            INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-            VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
-                    ${tx.json({ daily_cancels: dailyCancels, passengers: cancelledRequests.length })})
-          `;
-
           return {
             ride: { id: ride.id, driver_id: ride.driver_id },
             affectedPassengers: cancelledRequests.map((r) => r.passenger_id),
             dailyCancels,
+            cancelledCount: cancelledRequests.length,
           };
         },
         "repeatable read",
@@ -672,6 +672,14 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
     }
+
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+        VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
+                ${tx.json({ daily_cancels: result.dailyCancels, passengers: result.cancelledCount })})
+      `;
+    });
 
     // Notify each affected passenger (fire-and-forget)
     for (const passengerId of result.affectedPassengers) {

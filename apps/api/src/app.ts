@@ -7,6 +7,7 @@ import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { createLikesRouter } from "./likes/likesRouter";
 import { auditLog } from "./middleware/audit-log";
 import { authRateLimit } from "./middleware/auth-rate-limit";
+import { bannedUser } from "./middleware/banned-user";
 import { captureSocketIp } from "./middleware/capture-socket-ip";
 import { corsMiddleware } from "./middleware/cors";
 import { csrf } from "./middleware/csrf";
@@ -49,6 +50,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
     if (jwtSecret) {
       const allowedOrigin = process.env.DOMAIN ? `https://${process.env.DOMAIN}` : undefined;
       app.use("/api/*", identityGuard(jwtSecret, sql));
+      app.use("/api/*", bannedUser(sql));
       app.use("/api/*", rateLimit(sql));
       app.use("/api/*", csrf(allowedOrigin));
       app.use("/api/*", idempotency(sql));

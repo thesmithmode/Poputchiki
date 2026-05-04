@@ -35,6 +35,9 @@ interface MeRow {
   likes_received: number | string | null;
   avg_stars: number | string | null;
   reviews_count: number | string | null;
+  is_banned: boolean;
+  ban_reason: string | null;
+  banned_at: Date | null;
 }
 
 // postgres.js: timestamptz → Date всегда, BIGINT → string всегда. Без ternary.
@@ -60,6 +63,13 @@ function shapeMe(r: MeRow) {
       avg_stars: r.avg_stars === null ? null : Number(r.avg_stars),
       reviews_count: Number(r.reviews_count ?? 0),
     },
+    ...(r.is_banned
+      ? {
+          is_banned: true,
+          ban_reason: r.ban_reason,
+          banned_at: r.banned_at ? toIso(r.banned_at) : null,
+        }
+      : {}),
   };
 }
 
@@ -103,6 +113,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       return tx<MeRow[]>`
         SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
+               u.is_banned, u.ban_reason, u.banned_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
                s.likes_received, s.avg_stars, s.reviews_count
         FROM users u
@@ -145,6 +156,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       return tx<MeRow[]>`
         SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
+               u.is_banned, u.ban_reason, u.banned_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
                s.likes_received, s.avg_stars, s.reviews_count
         FROM users u

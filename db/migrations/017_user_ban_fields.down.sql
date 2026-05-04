@@ -1,0 +1,2 @@
+ALTER TABLE users DROP COLUMN IF EXISTS ban_reason;
+ALTER TABLE users DROP COLUMN IF EXISTS banned_at;

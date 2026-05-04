@@ -112,6 +112,53 @@ describe("GET /api/users/me", () => {
     const res = await app.request("/api/users/me");
     expect(res.status).toBe(401);
   });
+
+  it("returns is_banned=true and ban fields when user is banned", async () => {
+    const app = makeApp();
+    const token = await makeToken(BANNED);
+    const res = await app.request("/api/users/me", {
+      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${BANNED.tgId}` },
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.is_banned).toBe(true);
+    expect(body).toHaveProperty("ban_reason");
+    expect(body).toHaveProperty("banned_at");
+  });
+});
+
+describe("PATCH /api/users/me", () => {
+  it("422 on invalid JSON body", async () => {
+    const app = makeApp();
+    const token = await makeToken(ME);
+    const res = await app.request("/api/users/me", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${ME.tgId}`,
+        "Content-Type": "application/json",
+      },
+      body: "not-valid-json{{{",
+    });
+    expect(res.status).toBe(422);
+  });
+
+  it("updates apt_number and returns updated profile", async () => {
+    const app = makeApp();
+    const token = await makeToken(ME);
+    const res = await app.request("/api/users/me", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${ME.tgId}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ apt_number: "42A" }),
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.id).toBe(ME.id);
+  });
 });
 
 describe("GET /api/users/:id", () => {

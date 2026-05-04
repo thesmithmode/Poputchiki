@@ -133,7 +133,7 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
 
     const rows = await withIdentity(sql, user, async (tx) => {
       const exists = await tx<{ id: string }[]>`
-        SELECT id FROM ride_templates WHERE id = ${id}
+        SELECT id FROM ride_templates WHERE id = ${id} AND driver_id = ${user.id}
       `;
       if (exists.length === 0) return [] as Row[];
 

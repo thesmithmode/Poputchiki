@@ -420,3 +420,5 @@
 [2026-05-04] TASK-108 done — finalize-rides cron: active+24h→completed, completed+72h→archived, audit_log INSERT, pg_notify confirm_participation для водителя, advisory lock 100005.
 [2026-05-04] TASK-109 done — confirm-participation-push cron: каждые 30 мин, advisory lock 100006, SELECT driver_marked=true && NOT confirmed && marked_at в 47h окне, pg_notify + UPDATE notified_at. Миграция 015 добавляет notified_at в ride_participation.
 [2026-05-04] TASK-113 done — production lifecycle: /readiness endpoint (SELECT 1), withRetry helper (exponential backoff), CircuitBreaker class (5xx threshold=5, open 30s), graceful shutdown SIGTERM→drain 30s→sql.end.
+
+2026-05-04T08:17:38Z TASK-107 done: TG Bot webhook receiver (apps/webhook) — POST /tg/webhook, secret auth, my_chat_member→notify_disabled, /start|/help→sendMessage, LRU dedup, scripts/setup-tg-webhook.sh, 21 vitest tests, CI green

@@ -1,18 +1,12 @@
 import type postgres from "postgres";
+import { withLock } from "./lib/with-lock.js";
 
 const LOCK_ID = 100001;
 const NONCE_TTL = "10 minutes";
 
 export async function cleanupNonces(sql: postgres.Sql): Promise<{ deleted: number } | null> {
-  const lockRows = await sql<{ acquired: boolean }[]>`
-    SELECT pg_try_advisory_lock(${LOCK_ID}) AS acquired
-  `;
-  const acquired = lockRows[0]?.acquired;
-
-  if (!acquired) return null;
-
-  try {
-    const countRows = await sql<{ count: number | string }[]>`
+  return withLock(sql, LOCK_ID, async (tx) => {
+    const countRows = await tx<{ count: number | string }[]>`
       WITH deleted AS (
         DELETE FROM nonces
         WHERE created_at < now() - ${NONCE_TTL}::interval
@@ -30,7 +24,5 @@ export async function cleanupNonces(sql: postgres.Sql): Promise<{ deleted: numbe
       }),
     );
     return { deleted };
-  } finally {
-    await sql`SELECT pg_advisory_unlock(${LOCK_ID})`;
-  }
+  });
 }

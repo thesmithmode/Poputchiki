@@ -5,13 +5,6 @@ export interface RetryOptions {
   retryIf?: (err: unknown) => boolean;
 }
 
-const DEFAULT: Required<RetryOptions> = {
-  maxAttempts: 5,
-  baseMs: 100,
-  factor: 2,
-  retryIf: () => true,
-};
-
 function isTransient(err: unknown): boolean {
   if (err == null) return false;
   const code = (err as { code?: string }).code ?? "";
@@ -24,6 +17,13 @@ function isTransient(err: unknown): boolean {
   );
 }
 
+const DEFAULT: Required<RetryOptions> = {
+  maxAttempts: 5,
+  baseMs: 100,
+  factor: 2,
+  retryIf: isTransient,
+};
+
 export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}): Promise<T> {
   const { maxAttempts, baseMs, factor, retryIf } = { ...DEFAULT, ...opts };
   let lastErr: unknown;
@@ -32,7 +32,7 @@ export async function withRetry<T>(fn: () => Promise<T>, opts: RetryOptions = {}
       return await fn();
     } catch (err) {
       lastErr = err;
-      const shouldRetry = opts.retryIf ? retryIf(err) : isTransient(err);
+      const shouldRetry = retryIf(err);
       if (!shouldRetry || attempt === maxAttempts) throw err;
       const delay = baseMs * factor ** (attempt - 1);
       await new Promise((r) => setTimeout(r, delay));

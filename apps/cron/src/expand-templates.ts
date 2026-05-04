@@ -1,4 +1,5 @@
 import type postgres from "postgres";
+import { withLock } from "./lib/with-lock.js";
 
 const LOCK_ID = 100003;
 const HORIZON_DAYS = 14;
@@ -25,15 +26,10 @@ export async function expandTemplates(
   sql: postgres.Sql,
   now: Date = new Date(),
 ): Promise<{ created: number } | null> {
-  const lockRows = await sql<{ acquired: boolean }[]>`
-    SELECT pg_try_advisory_lock(${LOCK_ID}) AS acquired
-  `;
-  if (!lockRows[0]?.acquired) return null;
-
-  try {
+  return withLock(sql, LOCK_ID, async (tx) => {
     const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
-    const templates = await sql<TemplateRow[]>`
+    const templates = await tx<TemplateRow[]>`
       SELECT id, driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
              to_char(departure_time, 'HH24:MI:SS') AS departure_time,
              weekdays, price_rub, seats_total, comment,
@@ -60,7 +56,7 @@ export async function expandTemplates(
         const dateIso = date.toISOString().slice(0, 10);
         const departureAt = `${dateIso} ${t.departure_time}+00`;
 
-        const result = await sql<{ id: string }[]>`
+        const result = await tx<{ id: string }[]>`
           INSERT INTO rides
             (driver_id, template_id, from_label, from_lat, from_lng,
              to_label, to_lat, to_lng, departure_at, price_rub, seats_total, comment)
@@ -89,7 +85,5 @@ export async function expandTemplates(
       }),
     );
     return { created };
-  } finally {
-    await sql`SELECT pg_advisory_unlock(${LOCK_ID})`;
-  }
+  });
 }

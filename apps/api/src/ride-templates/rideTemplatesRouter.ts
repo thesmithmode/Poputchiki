@@ -95,7 +95,7 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
           ${d.to_label}, ${d.to_lat}, ${d.to_lng},
           ${d.departure_time}::time, ${d.weekdays as unknown as number[]},
           ${d.price_rub ?? null}, ${d.seats_total}, ${d.comment ?? null},
-          ${d.active_from ?? null}::date, ${d.active_to ?? null}::date
+          COALESCE(${d.active_from ?? null}::date, current_date), ${d.active_to ?? null}::date
         )
         RETURNING ${tx.unsafe(COLS)}
       `;

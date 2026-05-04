@@ -1,11 +1,14 @@
+import { createHash } from "node:crypto";
 import type { NotifyPayload } from "./types.js";
 
 const DEDUP_TTL_MS = 5 * 60 * 1000;
+const WINDOW_SECS = 300;
 
-export function buildDedupKey(payload: NotifyPayload): string {
+export function buildDedupKey(payload: NotifyPayload, nowMs = Date.now()): string {
   const targetId = payload.target_id ?? payload.message_id ?? payload.ride_id ?? "";
-  const date = new Date().toISOString().slice(0, 10);
-  return `${payload.user_id}:${payload.category}:${targetId}:${date}`;
+  const window = Math.floor(nowMs / 1000 / WINDOW_SECS);
+  const raw = `${payload.user_id}:${payload.category}:${targetId}:${window}`;
+  return createHash("sha256").update(raw).digest("hex");
 }
 
 export function checkAndSet(cache: Map<string, number>, key: string, now = Date.now()): boolean {

@@ -59,6 +59,13 @@ export async function processEvent(
     return;
   }
 
+  const isNew = await db.tryLogNotification(key, user_id, category);
+  if (!isNew) {
+    // biome-ignore lint/suspicious/noConsoleLog: structured worker log
+    console.log(JSON.stringify({ msg: "notifier_dedup_db_skip", user_id, category }));
+    return;
+  }
+
   const recipient = await db.getRecipient(user_id, category);
   if (!recipient) {
     // biome-ignore lint/suspicious/noConsoleLog: structured worker log
@@ -131,5 +138,6 @@ export async function processEvent(
 
   if (!resp.ok) {
     console.error(JSON.stringify({ msg: "notifier_send_failed", user_id, status: resp.status }));
+    await db.updateNotificationStatus(key, "failed");
   }
 }

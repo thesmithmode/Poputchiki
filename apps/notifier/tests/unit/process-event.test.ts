@@ -13,6 +13,8 @@ function makeDb(overrides: Partial<NotifierDb> = {}): NotifierDb {
       pref_enabled: true,
     } satisfies Recipient),
     markNotifyDisabled: vi.fn().mockResolvedValue(undefined),
+    tryLogNotification: vi.fn().mockResolvedValue(true),
+    updateNotificationStatus: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

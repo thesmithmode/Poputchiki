@@ -26,7 +26,12 @@ export interface Recipient {
   pref_enabled: boolean;
 }
 
+export type NotifStatus = "sent" | "failed" | "skipped_dup" | "skipped_disabled";
+
 export interface NotifierDb {
   getRecipient(userId: string, category: Category): Promise<Recipient | null>;
   markNotifyDisabled(userId: string): Promise<void>;
+  /** Returns true if this is a new notification (inserted), false if duplicate (skipped). */
+  tryLogNotification(notificationId: string, userId: string, category: string): Promise<boolean>;
+  updateNotificationStatus(notificationId: string, status: NotifStatus): Promise<void>;
 }

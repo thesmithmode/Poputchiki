@@ -1,5 +1,5 @@
 import type postgres from "postgres";
-import type { Category, NotifierDb, Recipient } from "./types.js";
+import type { Category, NotifStatus, NotifierDb, Recipient } from "./types.js";
 
 /* c8 ignore start -- SQL layer; covered by integration tests only */
 export function createDb(sql: postgres.Sql): NotifierDb {
@@ -24,6 +24,26 @@ export function createDb(sql: postgres.Sql): NotifierDb {
 
     async markNotifyDisabled(userId: string): Promise<void> {
       await sql`UPDATE users SET notify_disabled = true WHERE id = ${userId}`;
+    },
+
+    async tryLogNotification(
+      notificationId: string,
+      userId: string,
+      category: string,
+    ): Promise<boolean> {
+      const rows = await sql`
+        INSERT INTO notification_log (notification_id, user_id, category, status)
+        VALUES (${notificationId}, ${userId}::uuid, ${category}, 'sent')
+        ON CONFLICT (notification_id) DO NOTHING
+        RETURNING notification_id
+      `;
+      return rows.length > 0;
+    },
+
+    async updateNotificationStatus(notificationId: string, status: NotifStatus): Promise<void> {
+      await sql`
+        UPDATE notification_log SET status = ${status} WHERE notification_id = ${notificationId}
+      `;
     },
   };
 }

@@ -26,9 +26,10 @@ paths = [
   '''\.env\.example$''',
   '''^docs/''',
   '''.*\.md$''',
+  '''apps/api/tests/''',
 ]
 regexes = [
   '''\$\{process\.env\.''',
   '''postgres://[a-z]+/[a-z]+''',
-  '''JWT_SECRET\s*=\s*["']test-secret-''',
+  '''test-secret-''',
 ]

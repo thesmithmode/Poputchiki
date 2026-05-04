@@ -203,19 +203,24 @@ describe("DELETE /api/users/me", () => {
     await sql`DELETE FROM users WHERE tg_id = 9760098`;
   });
 
-  it("повторный DELETE /me идемпотентен — возвращает 200", async () => {
+  it("повторный DELETE /me идемпотентен — audit_log запись одна", async () => {
     const token = await makeToken(USER);
     const app = makeApp();
     await app.request("/api/users/me", {
       method: "DELETE",
       headers: authHeaders(USER, token),
     });
-    // Second call — user already anonymized (deleted_at IS NOT NULL), audit ON CONFLICT DO NOTHING
     const res = await app.request("/api/users/me", {
       method: "DELETE",
       headers: authHeaders(USER, token),
     });
     expect(res.status).toBe(200);
+
+    const rows = await sql<{ action: string }[]>`
+      SELECT action FROM audit_log
+      WHERE user_id = ${USER.id} AND action = 'user_self_delete'
+    `;
+    expect(rows.length).toBe(1);
   });
 
   it("401 без auth", async () => {

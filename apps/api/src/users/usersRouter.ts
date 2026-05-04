@@ -220,8 +220,10 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     await withSystem(sql, async (tx) => {
       await tx`
         INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-        VALUES (${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb)
-        ON CONFLICT DO NOTHING
+        SELECT ${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb
+        WHERE NOT EXISTS (
+          SELECT 1 FROM audit_log WHERE user_id = ${user.id} AND action = 'user_self_delete'
+        )
       `;
     });
 

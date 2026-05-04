@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
+import { confirmParticipationPush } from "./confirm-participation-push";
 import { expandTemplates } from "./expand-templates";
 import { finalizeRides } from "./finalize-rides";
 import { refreshUserStats } from "./refresh-user-stats";
@@ -47,13 +48,21 @@ async function runFinalizeRides() {
   );
 }
 
+async function runConfirmParticipationPush() {
+  await confirmParticipationPush(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "confirm_participation_push_error", error: String(err) })),
+  );
+}
+
 runCleanup();
 runRefreshUserStats();
 runExpandTemplates();
 runAuditLogCleanup();
 runFinalizeRides();
+runConfirmParticipationPush();
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
 setInterval(runAuditLogCleanup, ONE_HOUR);
 setInterval(runFinalizeRides, ONE_HOUR);
+setInterval(runConfirmParticipationPush, 30 * 60 * 1000);

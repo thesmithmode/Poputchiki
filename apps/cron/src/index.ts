@@ -2,6 +2,7 @@ import postgres from "postgres";
 import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
 import { expandTemplates } from "./expand-templates";
+import { finalizeRides } from "./finalize-rides";
 import { refreshUserStats } from "./refresh-user-stats";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -40,11 +41,19 @@ async function runExpandTemplates() {
   );
 }
 
+async function runFinalizeRides() {
+  await finalizeRides(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "finalize_rides_error", error: String(err) })),
+  );
+}
+
 runCleanup();
 runRefreshUserStats();
 runExpandTemplates();
 runAuditLogCleanup();
+runFinalizeRides();
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
 setInterval(runAuditLogCleanup, ONE_HOUR);
+setInterval(runFinalizeRides, ONE_HOUR);

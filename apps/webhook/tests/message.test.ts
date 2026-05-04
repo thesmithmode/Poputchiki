@@ -33,8 +33,8 @@ describe("handleMessage", () => {
     expect(url).toContain("mytoken");
   });
 
-  it("sends sendMessage for /help", async () => {
-    await handleMessage("mytoken", undefined, makeMessage("/help"));
+  it("sends sendMessage for /help with domain", async () => {
+    await handleMessage("mytoken", "domain.com", makeMessage("/help"));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
@@ -46,10 +46,8 @@ describe("handleMessage", () => {
     expect(body.chat_id).toBe(222);
   });
 
-  it("uses fallback URL when domain is undefined", async () => {
+  it("does nothing when domain is undefined (no useful link)", async () => {
     await handleMessage("tok", undefined, makeMessage("/start"));
-    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    const body = JSON.parse(init.body as string);
-    expect(body.text).toContain("https://t.me/YourBot/app");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

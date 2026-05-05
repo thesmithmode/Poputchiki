@@ -5,11 +5,17 @@ import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { FeedScreen } from "./screens/FeedScreen";
+import { ProfileScreen } from "./screens/ProfileScreen";
 import { RideDetailScreen } from "./screens/RideDetailScreen";
 
 function RideDetailRoute() {
   const { id = "" } = useParams<{ id: string }>();
   return <RideDetailScreen id={id} />;
+}
+
+function ProfileRoute() {
+  const { id = "" } = useParams<{ id: string }>();
+  return <ProfileScreen id={id} />;
 }
 
 const queryClient = new QueryClient();
@@ -51,6 +57,7 @@ function AppRoutes() {
         <Route path="/" element={<FeedScreen />} />
         <Route path="/rides" element={<FeedScreen />} />
         <Route path="/rides/:id" element={<RideDetailRoute />} />
+        <Route path="/users/:id" element={<ProfileRoute />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </HashRouter>

@@ -99,6 +99,7 @@ function startServer(app: Hono): Promise<{ server: http.Server; baseUrl: string 
       }
 
       res.writeHead(honoRes.status, Object.fromEntries(honoRes.headers.entries()));
+      res.flushHeaders(); // отправить заголовки немедленно, не ждать первого chunk
 
       if (honoRes.body) {
         const reader = honoRes.body.getReader();

@@ -32,7 +32,14 @@ let rideId: string;
 async function makeToken(user: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(user.tgId), uid: user.id, role: user.role, typ: "access", iat: now, exp: now + 3600 },
+    {
+      sub: String(user.tgId),
+      uid: user.id,
+      role: user.role,
+      typ: "access",
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -67,12 +74,12 @@ beforeAll(async () => {
     VALUES (${DRIVER.id}, 'ЖК Царёво', 55.75, 37.61, 'ул. Баумана', 55.8, 37.65, NOW() + INTERVAL '2 hours', 3, 150)
     RETURNING id
   `;
-  rideId = rows[0].id as string;
+  rideId = (rows[0] as { id: string }).id;
 
   // Insert accepted ride request for passenger
   await sql`
-    INSERT INTO ride_requests (ride_id, passenger_id, status, seats_requested)
-    VALUES (${rideId}, ${PASSENGER.id}, 'accepted', 1)
+    INSERT INTO ride_requests (ride_id, passenger_id, status)
+    VALUES (${rideId}, ${PASSENGER.id}, 'accepted')
   `;
 });
 
@@ -89,7 +96,11 @@ describe("GET /api/rides/:id", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request(`/api/rides/${rideId}`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${DRIVER.tgId}`, "X-Forwarded-For": TEST_IP },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -106,7 +117,11 @@ describe("GET /api/rides/:id", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request("/api/rides/not-a-valid-uuid", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${DRIVER.tgId}`, "X-Forwarded-For": TEST_IP },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
     });
     expect(res.status).toBe(422);
   });
@@ -115,7 +130,11 @@ describe("GET /api/rides/:id", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request("/api/rides/00000000-0000-4000-c000-000000000000", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${DRIVER.tgId}`, "X-Forwarded-For": TEST_IP },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${DRIVER.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
     });
     expect(res.status).toBe(404);
     const body = await readJson(res);
@@ -126,7 +145,11 @@ describe("GET /api/rides/:id", () => {
     const app = makeApp();
     const token = await makeToken(PASSENGER);
     const res = await app.request(`/api/rides/${rideId}`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${PASSENGER.tgId}`, "X-Forwarded-For": TEST_IP },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${PASSENGER.tgId}`,
+        "X-Forwarded-For": TEST_IP,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);

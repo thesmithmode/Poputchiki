@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FeedScreen } from "../src/screens/FeedScreen";
 import type { Ride } from "../src/types/ride";
 
+vi.mock("../src/hooks/useRealtime", () => ({
+  useRealtime: vi.fn(),
+}));
+
 vi.mock("../src/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/lib/api")>();
   return {

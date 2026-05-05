@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { RideCard } from "../components/RideCard";
+import { useRealtime } from "../hooks/useRealtime";
 import { useRides } from "../hooks/useRides";
 import type { Ride } from "../types/ride";
 
 export function FeedScreen() {
   const { data, isLoading, isError } = useRides();
+  useRealtime();
   const [view, setView] = useState<"list" | "map">("list");
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);

@@ -254,7 +254,7 @@ describe("GET /api/realtime/rides — SSE", () => {
     expect(res.headers.get("content-type")).toContain("text/event-stream");
 
     controller.abort();
-    await res.body?.cancel();
+    await res.body?.cancel().catch(() => {});
   });
 
   it("heartbeat события приходят с заданным интервалом", async () => {

@@ -6,6 +6,7 @@ import { useRides } from "../hooks/useRides";
 import type { Ride } from "../types/ride";
 
 export function FeedScreen() {
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useRides();
   useRealtime();
   const [view, setView] = useState<"list" | "map">("list");
@@ -69,7 +70,6 @@ export function FeedScreen() {
     );
   }
 
-  const navigate = useNavigate();
   const handleCardClick = (ride: Ride) => {
     navigate(`/rides/${ride.id}`);
   };

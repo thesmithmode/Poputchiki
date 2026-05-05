@@ -26,9 +26,11 @@ const DRIVER = {
 
 let sql: ReturnType<typeof createPool>;
 
-async function makeToken(user: { id: string; tgId: number; role: string }): Promise<string> {
+async function makeAuthHeaders(user: { id: string; tgId: number; role: string }): Promise<
+  Record<string, string>
+> {
   const now = Math.floor(Date.now() / 1000);
-  return sign(
+  const token = await sign(
     {
       sub: String(user.tgId),
       uid: user.id,
@@ -40,6 +42,10 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
     },
     JWT_SECRET,
   );
+  return {
+    Authorization: `Bearer ${token}`,
+    Cookie: `tg_uid=${user.tgId}`,
+  };
 }
 
 function makeApp(heartbeatMs = 15000) {
@@ -152,11 +158,15 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("200 + Content-Type: text/event-stream при успешной авторизации", async () => {
     const app = makeApp();
-    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
+    const headers = await makeAuthHeaders({
+      id: DRIVER.id,
+      tgId: DRIVER.tgId,
+      role: DRIVER.jwtRole,
+    });
 
     const res = await app.request("/api/realtime/rides", {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
     });
 
     expect(res.status).toBe(200);
@@ -168,11 +178,15 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("heartbeat события приходят с заданным интервалом", async () => {
     const app = makeApp(150); // heartbeatMs = 150ms для теста
-    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
+    const headers = await makeAuthHeaders({
+      id: DRIVER.id,
+      tgId: DRIVER.tgId,
+      role: DRIVER.jwtRole,
+    });
 
     const res = await app.request("/api/realtime/rides", {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
     });
 
     expect(res.status).toBe(200);
@@ -185,12 +199,16 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("ride_changed приходит после создания поездки", async () => {
     const app = makeApp(5000); // heartbeat редко чтобы не мешал
-    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
+    const authHeaders = await makeAuthHeaders({
+      id: DRIVER.id,
+      tgId: DRIVER.tgId,
+      role: DRIVER.jwtRole,
+    });
 
     // Подключаемся к SSE
     const sseRes = await app.request("/api/realtime/rides", {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders,
     });
     expect(sseRes.status).toBe(200);
 
@@ -204,7 +222,7 @@ describe("GET /api/realtime/rides — SSE", () => {
     const createRes = await app.request("/api/rides", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authHeaders,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
@@ -226,13 +244,17 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("ride_changed приходит после отмены поездки", async () => {
     const app = makeApp(5000);
-    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
+    const authHeaders = await makeAuthHeaders({
+      id: DRIVER.id,
+      tgId: DRIVER.tgId,
+      role: DRIVER.jwtRole,
+    });
 
     // Сначала создаём поездку (без SSE)
     const createRes = await app.request("/api/rides", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        ...authHeaders,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
@@ -244,7 +266,7 @@ describe("GET /api/realtime/rides — SSE", () => {
     // Подключаемся к SSE
     const sseRes = await app.request("/api/realtime/rides", {
       method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders,
     });
     expect(sseRes.status).toBe(200);
 
@@ -256,7 +278,7 @@ describe("GET /api/realtime/rides — SSE", () => {
     // Отменяем поездку
     const cancelRes = await app.request(`/api/rides/${rideId}/cancel`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders,
     });
     expect(cancelRes.status).toBe(200);
 

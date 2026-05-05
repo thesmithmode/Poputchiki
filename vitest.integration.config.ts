@@ -18,6 +18,7 @@ export default defineConfig({
         "apps/api/src/auth/authRouter.ts",
         "apps/api/src/users/usersRouter.ts",
         "apps/api/src/rides/ridesRouter.ts",
+        "apps/api/src/realtime/realtimeRouter.ts",
       ],
       thresholds: {
         lines: 95,

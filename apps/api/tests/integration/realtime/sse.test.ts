@@ -20,7 +20,8 @@ const TEST_IP = "10.0.3.1";
 const DRIVER = {
   id: "00000000-0000-4000-c000-300000000001",
   tgId: 9001,
-  role: "driver" as const,
+  dbRole: "user" as const, // users.role constraint: only 'user'|'admin'
+  jwtRole: "driver" as const, // JWT role for business logic
 };
 
 let sql: ReturnType<typeof createPool>;
@@ -117,7 +118,7 @@ beforeAll(async () => {
     await tx`
       INSERT INTO users (id, tg_id, display_name, role, likes_received_count, created_at)
       VALUES (
-        ${DRIVER.id}, ${DRIVER.tgId}, 'SSE Test Driver', ${DRIVER.role}, 5,
+        ${DRIVER.id}, ${DRIVER.tgId}, 'SSE Test Driver', ${DRIVER.dbRole}, 5,
         NOW() - INTERVAL '2 days'
       )
       ON CONFLICT (tg_id) DO UPDATE SET
@@ -151,7 +152,7 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("200 + Content-Type: text/event-stream при успешной авторизации", async () => {
     const app = makeApp();
-    const token = await makeToken(DRIVER);
+    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
 
     const res = await app.request("/api/realtime/rides", {
       method: "GET",
@@ -167,7 +168,7 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("heartbeat события приходят с заданным интервалом", async () => {
     const app = makeApp(150); // heartbeatMs = 150ms для теста
-    const token = await makeToken(DRIVER);
+    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
 
     const res = await app.request("/api/realtime/rides", {
       method: "GET",
@@ -184,7 +185,7 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("ride_changed приходит после создания поездки", async () => {
     const app = makeApp(5000); // heartbeat редко чтобы не мешал
-    const token = await makeToken(DRIVER);
+    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
 
     // Подключаемся к SSE
     const sseRes = await app.request("/api/realtime/rides", {
@@ -225,7 +226,7 @@ describe("GET /api/realtime/rides — SSE", () => {
 
   it("ride_changed приходит после отмены поездки", async () => {
     const app = makeApp(5000);
-    const token = await makeToken(DRIVER);
+    const token = await makeToken({ id: DRIVER.id, tgId: DRIVER.tgId, role: DRIVER.jwtRole });
 
     // Сначала создаём поездку (без SSE)
     const createRes = await app.request("/api/rides", {

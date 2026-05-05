@@ -272,10 +272,9 @@ describe("GET /rides/:id", () => {
       tg_id: 8888,
       likes_received_count: 2,
     };
-    // biome-ignore lint/suspicious/noExplicitAny: mock
     vi.mocked(withIdentity).mockResolvedValueOnce([
       { ...MOCK_RIDE_DETAIL, passengers: [passenger] },
-    ] as any);
+    ] as unknown as Awaited<ReturnType<typeof withIdentity>>);
 
     const app = makeApp(USER);
     const res = await app.request(`/rides/${VALID_UUID}`);

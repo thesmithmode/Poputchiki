@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MapScreen } from "../src/screens/MapScreen";
@@ -160,9 +160,7 @@ describe("MapScreen", () => {
     mockedApiFetch.mockResolvedValueOnce({ rides: [] });
     renderScreen();
     await waitFor(() => {
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/rides?fromLat="),
-      );
+      expect(mockedApiFetch).toHaveBeenCalledWith(expect.stringContaining("/rides?fromLat="));
     });
   });
 

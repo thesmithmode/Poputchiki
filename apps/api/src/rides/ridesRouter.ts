@@ -151,8 +151,8 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
           r.*,
           json_build_object(
             'id', u.id,
-            'first_name', u.first_name,
-            'last_name', u.last_name,
+            'first_name', u.display_name,
+            'last_name', NULL,
             'tg_id', u.tg_id,
             'likes_received_count', u.likes_received_count,
             'created_at', u.created_at
@@ -161,8 +161,8 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
             json_agg(
               json_build_object(
                 'id', pu.id,
-                'first_name', pu.first_name,
-                'last_name', pu.last_name,
+                'first_name', pu.display_name,
+                'last_name', NULL,
                 'tg_id', pu.tg_id,
                 'likes_received_count', pu.likes_received_count
               ) ORDER BY rr.created_at

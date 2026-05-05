@@ -418,7 +418,9 @@ export function RideDetailScreen({ id }: Props) {
         <button
           type="button"
           data-testid="respond-btn"
-          onClick={() => console.log("respond", id)}
+          onClick={() => {
+            /* TODO: TASK-041 — submit ride request */
+          }}
           style={{
             flex: 1.6,
             padding: "12px 16px",

@@ -26,6 +26,7 @@ export function MapScreen() {
 
       const [L] = await Promise.all([
         import("leaflet"),
+        // @ts-ignore — leaflet.markercluster augments leaflet, no module types
         import("leaflet.markercluster"),
       ]);
 
@@ -57,10 +58,7 @@ export function MapScreen() {
         const center = bounds.getCenter();
         const ne = bounds.getNorthEast();
         const radiusKm =
-          Math.max(
-            center.distanceTo(ne),
-            center.distanceTo(bounds.getSouthWest()),
-          ) / 1000;
+          Math.max(center.distanceTo(ne), center.distanceTo(bounds.getSouthWest())) / 1000;
 
         try {
           const data = await apiFetch<{ rides: Ride[] }>(
@@ -94,11 +92,7 @@ export function MapScreen() {
     };
   }, []);
 
-  function renderMarkers(
-    map: unknown,
-    L: typeof import("leaflet"),
-    rideList: Ride[],
-  ) {
+  function renderMarkers(map: unknown, L: typeof import("leaflet"), rideList: Ride[]) {
     const lMap = map as ReturnType<typeof L.map>;
 
     // Clear old markers + polylines
@@ -109,15 +103,18 @@ export function MapScreen() {
       lMap.removeLayer(p as Parameters<typeof lMap.removeLayer>[0]);
     }
     if (clusterGroupRef.current) {
-      lMap.removeLayer(clusterGroupRef.current as unknown as Parameters<typeof lMap.removeLayer>[0]);
+      lMap.removeLayer(
+        clusterGroupRef.current as unknown as Parameters<typeof lMap.removeLayer>[0],
+      );
     }
     markersRef.current = [];
     polylinesRef.current = [];
 
     if (rideList.length >= CLUSTER_THRESHOLD) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const MC = (window as any).L?.MarkerClusterGroup ?? (L as any).MarkerClusterGroup;
-      const GroupClass: new () => { addLayer: (l: unknown) => void } = MC;
+      const winL = (window as unknown as { L?: { MarkerClusterGroup?: unknown } }).L;
+      const lAny = L as unknown as { MarkerClusterGroup?: unknown };
+      const MC = winL?.MarkerClusterGroup ?? lAny.MarkerClusterGroup;
+      const GroupClass = MC as new () => { addLayer: (l: unknown) => void };
       const group = new GroupClass();
       for (const ride of rideList) {
         const marker = L.marker([ride.from_lat, ride.from_lng]);
@@ -150,7 +147,10 @@ export function MapScreen() {
   const seatsLeft = selected ? selected.seats_total - selected.seats_taken : 0;
 
   return (
-    <div data-testid="map-screen" style={{ position: "relative", height: "100vh", overflow: "hidden" }}>
+    <div
+      data-testid="map-screen"
+      style={{ position: "relative", height: "100vh", overflow: "hidden" }}
+    >
       {loading && (
         <div
           data-testid="map-loading"
@@ -199,9 +199,7 @@ export function MapScreen() {
             gap: 6,
           }}
         >
-          <span
-            style={{ width: 6, height: 6, borderRadius: "50%", background: "#4DAB6E" }}
-          />
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4DAB6E" }} />
           {rides.length} поездок
         </div>
       )}
@@ -324,9 +322,7 @@ export function MapScreen() {
                 color: "#15191f",
               }}
             >
-              <span>
-                {selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}
-              </span>
+              <span>{selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}</span>
               <span style={{ color: seatsLeft === 0 ? "#e54e5c" : "#4dab6e" }}>
                 {seatsLeft === 0 ? "Нет мест" : `${seatsLeft} мест`}
               </span>

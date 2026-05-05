@@ -219,6 +219,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     }
 
     // Audit recorded by global auditLog middleware — no manual INSERT here.
+    sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: ride.id, type: "created" })})`.catch(
+      /* c8 ignore next -- fire-and-forget */ () => {},
+    );
     return c.json(ride, 201);
   });
 
@@ -591,6 +594,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       }
     }
 
+    sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "updated" })})`.catch(
+      /* c8 ignore next -- fire-and-forget */ () => {},
+    );
     return c.json(result.row);
   });
 
@@ -710,6 +716,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
+    sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "cancelled" })})`.catch(
+      /* c8 ignore next -- fire-and-forget */ () => {},
+    );
     return c.json({
       id: result.ride.id,
       status: "cancelled",

@@ -17,6 +17,7 @@ import { rateLimit } from "./middleware/rate-limit";
 import { requestId } from "./middleware/request-id";
 import { secureHeadersMiddleware } from "./middleware/secure-headers";
 import { createNotificationsRouter } from "./notifications/notificationsRouter";
+import { createRealtimeRouter } from "./realtime/realtimeRouter";
 import { createReviewsRouter } from "./reviews/reviewsRouter";
 import { createRideRequestsRouter } from "./ride-requests/rideRequestsRouter";
 import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter";
@@ -57,6 +58,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
       app.use("/api/*", auditLog(sql));
       app.route("/api/rides", createRidesRouter(sql));
       app.route("/api/ride-templates", createRideTemplatesRouter(sql));
+      app.route("/api/realtime", createRealtimeRouter(sql));
       app.route("/api/ride-requests", createRideRequestsRouter(sql));
       app.route("/api/users", createUsersRouter(sql));
       app.route("/api/notifications", createNotificationsRouter(sql));

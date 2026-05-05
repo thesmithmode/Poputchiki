@@ -1,16 +1,12 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
+import { FeedScreen } from "./screens/FeedScreen";
 
-function HomePage() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <h1 className="text-2xl font-semibold">Poputchiki</h1>
-    </main>
-  );
-}
+const queryClient = new QueryClient();
 
 function NotFoundPage() {
   return (
@@ -46,7 +42,8 @@ function AppRoutes() {
   return (
     <HashRouter>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<FeedScreen />} />
+        <Route path="/rides" element={<FeedScreen />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </HashRouter>
@@ -70,8 +67,10 @@ export function App() {
   }, []);
 
   return (
-    <div data-testid="app-root">
-      <AppRoutes />
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <div data-testid="app-root">
+        <AppRoutes />
+      </div>
+    </QueryClientProvider>
   );
 }

@@ -1,10 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { HashRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { FeedScreen } from "./screens/FeedScreen";
+import { RideDetailScreen } from "./screens/RideDetailScreen";
+
+function RideDetailRoute() {
+  const { id = "" } = useParams<{ id: string }>();
+  return <RideDetailScreen id={id} />;
+}
 
 const queryClient = new QueryClient();
 
@@ -44,6 +50,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<FeedScreen />} />
         <Route path="/rides" element={<FeedScreen />} />
+        <Route path="/rides/:id" element={<RideDetailRoute />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </HashRouter>

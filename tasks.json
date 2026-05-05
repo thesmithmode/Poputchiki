@@ -1,4 +1,4 @@
-﻿{
+﻿﻿{
     "project":  {
                     "name":  "Poputchiki",
                     "version":  "0.4.0",
@@ -1032,7 +1032,8 @@
                                            "TASK-029",
                                            "TASK-038"
                                        ],
-                      "status":  "pending"
+                      "status":  "done",
+                      "completed_at":  "2026-05-05T12:52:29Z"
                   },
                   {
                       "id":  "TASK-040",

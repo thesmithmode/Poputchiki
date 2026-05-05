@@ -138,6 +138,50 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     return c.json({ rides, nextCursor });
   });
 
+  app.get("/:id", async (c) => {
+    const { id } = c.req.param();
+    if (!UUID_RE.test(id)) {
+      return c.json({ error: "validation failed" }, 422);
+    }
+    const user = c.get("user" as never) as AppUser;
+
+    const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<Record<string, unknown>[]>`
+        SELECT
+          r.*,
+          json_build_object(
+            'id', u.id,
+            'first_name', u.first_name,
+            'last_name', u.last_name,
+            'tg_id', u.tg_id,
+            'likes_received_count', u.likes_received_count,
+            'created_at', u.created_at
+          ) AS driver,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', pu.id,
+                'first_name', pu.first_name,
+                'last_name', pu.last_name,
+                'tg_id', pu.tg_id,
+                'likes_received_count', pu.likes_received_count
+              ) ORDER BY rr.created_at
+            ) FILTER (WHERE rr.id IS NOT NULL),
+            '[]'::json
+          ) AS passengers
+        FROM rides r
+        JOIN users u ON r.driver_id = u.id
+        LEFT JOIN ride_requests rr ON rr.ride_id = r.id AND rr.status = 'accepted'
+        LEFT JOIN users pu ON pu.id = rr.passenger_id
+        WHERE r.id = ${id}
+        GROUP BY r.id, u.id
+      `;
+    });
+
+    if (!rows.length) return c.json({ error: "not found" }, 404);
+    return c.json(rows[0]);
+  });
+
   app.post("/", async (c) => {
     const body = await c.req.json().catch(
       /* c8 ignore next -- json always valid in tests; fallback for malformed request bodies */

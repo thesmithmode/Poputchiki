@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { RideCard } from "../components/RideCard";
 import { useRealtime } from "../hooks/useRealtime";
 import { useRides } from "../hooks/useRides";
@@ -68,8 +69,9 @@ export function FeedScreen() {
     );
   }
 
-  const handleCardClick = (_ride: Ride) => {
-    // TODO: navigate to ride detail screen
+  const navigate = useNavigate();
+  const handleCardClick = (ride: Ride) => {
+    navigate(`/rides/${ride.id}`);
   };
 
   return (

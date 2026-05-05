@@ -54,7 +54,7 @@ beforeAll(async () => {
         (${BANNED.id}, ${BANNED.tgId}, 'banned_user', 'Banned User', NULL, 'user', true, false, NULL, NULL)
       ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
     `;
-    await tx`UPDATE users SET is_banned = true WHERE id = ${BANNED.id}`;
+    await tx`UPDATE users SET is_banned = true, banned_at = NOW() WHERE id = ${BANNED.id}`;
   });
 });
 
@@ -158,6 +158,27 @@ describe("PATCH /api/users/me", () => {
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(body.id).toBe(ME.id);
+  });
+
+  it("200 когда PGCRYPTO_KEY не задан (fallback на пустую строку)", async () => {
+    const saved = process.env.PGCRYPTO_KEY;
+    process.env.PGCRYPTO_KEY = undefined;
+    try {
+      const app = makeApp();
+      const token = await makeToken(ME);
+      const res = await app.request("/api/users/me", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Cookie: `tg_uid=${ME.tgId}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ display_name: "Updated Name" }),
+      });
+      expect(res.status).toBe(200);
+    } finally {
+      if (saved !== undefined) process.env.PGCRYPTO_KEY = saved;
+    }
   });
 });
 

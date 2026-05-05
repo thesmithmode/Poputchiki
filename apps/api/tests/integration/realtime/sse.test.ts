@@ -83,10 +83,15 @@ function startServer(app: Hono): Promise<{ server: http.Server; baseUrl: string 
         if (chunks.length > 0) bodyInit = Buffer.concat(chunks);
       }
 
+      // Wire AbortController to HTTP connection close → Hono stream.onAbort fires
+      const abortCtrl = new AbortController();
+      res.on("close", () => abortCtrl.abort());
+
       const request = new Request(url, {
         method: req.method ?? "GET",
         headers,
         body: bodyInit,
+        signal: abortCtrl.signal,
       });
 
       let honoRes: Response;

@@ -6,6 +6,7 @@ import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
 import { FeedScreen } from "./screens/FeedScreen";
+import { MapScreen } from "./screens/MapScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { RideDetailScreen } from "./screens/RideDetailScreen";
 
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/" element={<FeedScreen />} />
         <Route path="/rides" element={<FeedScreen />} />
         <Route path="/rides/new" element={<CreateRideScreen />} />
+        <Route path="/map" element={<MapScreen />} />
         <Route path="/rides/:id" element={<RideDetailRoute />} />
         <Route path="/users/:id" element={<ProfileRoute />} />
         <Route path="*" element={<NotFoundPage />} />

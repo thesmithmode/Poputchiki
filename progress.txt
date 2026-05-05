@@ -424,3 +424,6 @@
 2026-05-04T08:17:38Z TASK-107 done: TG Bot webhook receiver (apps/webhook) — POST /tg/webhook, secret auth, my_chat_member→notify_disabled, /start|/help→sendMessage, LRU dedup, scripts/setup-tg-webhook.sh, 21 vitest tests, CI green
 
 2026-05-04T09:25:16Z TASK-100 done: banned-user middleware (403 /api/** except /me), ban_reason+banned_at migration, GET /me returns ban fields, BannedScreen component, api.ts fetch wrapper, useMe hook, 6 unit tests + 3 integration tests, CI green
+
+[2026-05-05] TASK-017 done — главный экран ленты поездок: web/src/pages/RidesPage.tsx (список+карта Leaflet, переключатель, TanStack Query), RideCard компонент, useRealtime хук (SSE+fallback polling). 8 unit тестов RideCard, typecheck clean.
+[2026-05-05] TASK-038 done — SSE realtime endpoint: GET /api/realtime/rides через Hono streamSSE + Postgres LISTEN/NOTIFY (канал rides_changed). Heartbeat интервал настраиваемый. 5 интеграционных тестов на реальном HTTP сервере (Node http.createServer): 401, 200+content-type, heartbeat, ride_changed на создание, ride_changed на отмену. c8 ignore запрещён — finally block покрыт через AbortController abort.

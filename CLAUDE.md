@@ -35,6 +35,7 @@ RLS identity: НЕТ Supabase `auth.uid()`/`auth.jwt()`. GUC `app.current_user_i
 - Bun не Node: `bun run`, `bun test`, `bun add`, `bun install`
 - Локальные проверки ДО push (без Docker, быстро): `bun run typecheck` (~2с) + `bun run lint` (~0.1с) + `bun run test:unit` (~4с, unit-only без DB). Интеграция/E2E/security — только CI. Запускать обязательно перед каждым push.
 - Самоостанов: 5 итераций подряд BLOCKED → стоп, доложи Антону
+- Нет idle CI waiting: пока CI бежит — проводи код ревью открытых файлов, pending задач нет → всё равно review, не сиди без дела
 
 ## .gitignore — ТОЛЬКО для секретов
 

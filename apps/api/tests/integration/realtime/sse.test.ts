@@ -1,7 +1,7 @@
 /**
  * Integration tests: GET /api/realtime/rides — SSE endpoint.
  * Requires: Postgres + migrations applied.
- * TDD: tests written before implementation (TASK-038).
+ * Uses Bun.serve (real HTTP) so stream.onAbort fires and finally block is covered.
  */
 import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
@@ -20,11 +20,13 @@ const TEST_IP = "10.0.3.1";
 const DRIVER = {
   id: "00000000-0000-4000-c000-300000000001",
   tgId: 9001,
-  dbRole: "user" as const, // users.role constraint: only 'user'|'admin'
-  jwtRole: "driver" as const, // JWT role for business logic
+  dbRole: "user" as const,
+  jwtRole: "driver" as const,
 };
 
 let sql: ReturnType<typeof createPool>;
+let server: ReturnType<typeof Bun.serve>;
+let baseUrl: string;
 
 async function makeAuthHeaders(user: { id: string; tgId: number; role: string }): Promise<
   Record<string, string>
@@ -75,7 +77,7 @@ const BASE_RIDE = {
 };
 
 /**
- * Reads SSE events from a Response stream.
+ * Reads SSE events from a real fetch() Response stream.
  * Stops when `count` events collected OR timeout reached.
  * Returns array of "eventName:data" strings.
  */
@@ -83,6 +85,7 @@ async function collectSSEEvents(
   response: Response,
   count: number,
   timeoutMs: number,
+  controller?: AbortController,
 ): Promise<string[]> {
   const events: string[] = [];
   const reader = response.body?.getReader();
@@ -112,6 +115,7 @@ async function collectSSEEvents(
     }
   } finally {
     await reader.cancel().catch(() => {});
+    controller?.abort();
   }
 
   return events;
@@ -134,6 +138,11 @@ beforeAll(async () => {
         created_at = NOW() - INTERVAL '2 days'
     `;
   });
+
+  // Start real HTTP server on random port so stream.onAbort fires
+  const app = makeApp();
+  server = Bun.serve({ fetch: app.fetch, port: 0 });
+  baseUrl = `http://localhost:${server.port}`;
 });
 
 afterEach(async () => {
@@ -143,6 +152,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
+  server?.stop(true);
   await sql`DELETE FROM audit_log WHERE user_id = ${DRIVER.id}`;
   await sql`DELETE FROM rides WHERE driver_id = ${DRIVER.id}`;
   await sql`DELETE FROM users WHERE id = ${DRIVER.id}`;
@@ -151,144 +161,161 @@ afterAll(async () => {
 
 describe("GET /api/realtime/rides — SSE", () => {
   it("401 без авторизации", async () => {
-    const app = makeApp();
-    const res = await app.request("/api/realtime/rides", { method: "GET" });
+    const res = await fetch(`${baseUrl}/api/realtime/rides`);
     expect(res.status).toBe(401);
+    await res.body?.cancel();
   });
 
   it("200 + Content-Type: text/event-stream при успешной авторизации", async () => {
-    const app = makeApp();
     const headers = await makeAuthHeaders({
       id: DRIVER.id,
       tgId: DRIVER.tgId,
       role: DRIVER.jwtRole,
     });
 
-    const res = await app.request("/api/realtime/rides", {
-      method: "GET",
+    const controller = new AbortController();
+    const res = await fetch(`${baseUrl}/api/realtime/rides`, {
       headers,
+      signal: controller.signal,
     });
 
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
 
-    // Закрываем поток
+    controller.abort();
     await res.body?.cancel();
   });
 
   it("heartbeat события приходят с заданным интервалом", async () => {
-    const app = makeApp(150); // heartbeatMs = 150ms для теста
-    const headers = await makeAuthHeaders({
-      id: DRIVER.id,
-      tgId: DRIVER.tgId,
-      role: DRIVER.jwtRole,
-    });
+    // heartbeatMs=150ms — нужен отдельный сервер с этим параметром
+    const app = makeApp(150);
+    const srv = Bun.serve({ fetch: app.fetch, port: 0 });
+    const url = `http://localhost:${srv.port}`;
+    try {
+      const headers = await makeAuthHeaders({
+        id: DRIVER.id,
+        tgId: DRIVER.tgId,
+        role: DRIVER.jwtRole,
+      });
 
-    const res = await app.request("/api/realtime/rides", {
-      method: "GET",
-      headers,
-    });
+      const controller = new AbortController();
+      const res = await fetch(`${url}/api/realtime/rides`, {
+        headers,
+        signal: controller.signal,
+      });
 
-    expect(res.status).toBe(200);
+      expect(res.status).toBe(200);
 
-    // За 600ms при интервале 150ms должны прийти минимум 2 heartbeat
-    const events = await collectSSEEvents(res, 2, 600);
-    const heartbeats = events.filter((e) => e.startsWith("heartbeat:"));
-    expect(heartbeats.length).toBeGreaterThanOrEqual(2);
+      // За 600ms при интервале 150ms должны прийти минимум 2 heartbeat
+      const events = await collectSSEEvents(res, 2, 600, controller);
+      const heartbeats = events.filter((e) => e.startsWith("heartbeat:"));
+      expect(heartbeats.length).toBeGreaterThanOrEqual(2);
+    } finally {
+      srv.stop(true);
+    }
   }, 10_000);
 
   it("ride_changed приходит после создания поездки", async () => {
-    const app = makeApp(5000); // heartbeat редко чтобы не мешал
-    const authHeaders = await makeAuthHeaders({
-      id: DRIVER.id,
-      tgId: DRIVER.tgId,
-      role: DRIVER.jwtRole,
-    });
+    // heartbeatMs=5000 — редко чтобы не мешал
+    const app = makeApp(5000);
+    const srv = Bun.serve({ fetch: app.fetch, port: 0 });
+    const url = `http://localhost:${srv.port}`;
+    try {
+      const authHeaders = await makeAuthHeaders({
+        id: DRIVER.id,
+        tgId: DRIVER.tgId,
+        role: DRIVER.jwtRole,
+      });
 
-    // Подключаемся к SSE
-    const sseRes = await app.request("/api/realtime/rides", {
-      method: "GET",
-      headers: authHeaders,
-    });
-    expect(sseRes.status).toBe(200);
+      const controller = new AbortController();
+      const sseRes = await fetch(`${url}/api/realtime/rides`, {
+        headers: authHeaders,
+        signal: controller.signal,
+      });
+      expect(sseRes.status).toBe(200);
 
-    // Запускаем чтение событий в фоне (до 2 событий или 3с)
-    const collectPromise = collectSSEEvents(sseRes, 1, 3000);
+      const collectPromise = collectSSEEvents(sseRes, 1, 3000, controller);
 
-    // Небольшая задержка чтобы SSE соединение установилось + PG LISTEN активирован
-    await new Promise((r) => setTimeout(r, 100));
+      // Задержка чтобы SSE соединение установилось + PG LISTEN активирован
+      await new Promise((r) => setTimeout(r, 100));
 
-    // Создаём поездку
-    const createRes = await app.request("/api/rides", {
-      method: "POST",
-      headers: {
-        ...authHeaders,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
-    });
-    expect(createRes.status).toBe(201);
-    const created = (await createRes.json()) as { data?: { id: string }; id?: string };
-    const rideId: string = (created.data?.id ?? created.id) as string;
+      // Создаём поездку через основной сервер (baseUrl)
+      const createRes = await fetch(`${baseUrl}/api/rides`, {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
+      });
+      expect(createRes.status).toBe(201);
+      const created = (await createRes.json()) as { data?: { id: string }; id?: string };
+      const rideId: string = (created.data?.id ?? created.id) as string;
 
-    // Ждём событие
-    const events = await collectPromise;
-    const rideChangedEvents = events.filter((e) => e.startsWith("ride_changed:"));
-    expect(rideChangedEvents.length).toBeGreaterThanOrEqual(1);
+      const events = await collectPromise;
+      const rideChangedEvents = events.filter((e) => e.startsWith("ride_changed:"));
+      expect(rideChangedEvents.length).toBeGreaterThanOrEqual(1);
 
-    // Данные события содержат ride_id
-    const eventData = (rideChangedEvents[0] as string).slice("ride_changed:".length);
-    const parsed = JSON.parse(eventData);
-    expect(parsed).toMatchObject({ ride_id: rideId });
+      const eventData = (rideChangedEvents[0] as string).slice("ride_changed:".length);
+      const parsed = JSON.parse(eventData);
+      expect(parsed).toMatchObject({ ride_id: rideId });
+    } finally {
+      srv.stop(true);
+    }
   }, 10_000);
 
   it("ride_changed приходит после отмены поездки", async () => {
     const app = makeApp(5000);
-    const authHeaders = await makeAuthHeaders({
-      id: DRIVER.id,
-      tgId: DRIVER.tgId,
-      role: DRIVER.jwtRole,
-    });
+    const srv = Bun.serve({ fetch: app.fetch, port: 0 });
+    const url = `http://localhost:${srv.port}`;
+    try {
+      const authHeaders = await makeAuthHeaders({
+        id: DRIVER.id,
+        tgId: DRIVER.tgId,
+        role: DRIVER.jwtRole,
+      });
 
-    // Сначала создаём поездку (без SSE)
-    const createRes = await app.request("/api/rides", {
-      method: "POST",
-      headers: {
-        ...authHeaders,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
-    });
-    expect(createRes.status).toBe(201);
-    const created = (await createRes.json()) as { data?: { id: string }; id?: string };
-    const rideId: string = (created.data?.id ?? created.id) as string;
+      // Создаём поездку через основной сервер
+      const createRes = await fetch(`${baseUrl}/api/rides`, {
+        method: "POST",
+        headers: {
+          ...authHeaders,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
+      });
+      expect(createRes.status).toBe(201);
+      const created = (await createRes.json()) as { data?: { id: string }; id?: string };
+      const rideId: string = (created.data?.id ?? created.id) as string;
 
-    // Подключаемся к SSE
-    const sseRes = await app.request("/api/realtime/rides", {
-      method: "GET",
-      headers: authHeaders,
-    });
-    expect(sseRes.status).toBe(200);
+      const controller = new AbortController();
+      const sseRes = await fetch(`${url}/api/realtime/rides`, {
+        headers: authHeaders,
+        signal: controller.signal,
+      });
+      expect(sseRes.status).toBe(200);
 
-    const collectPromise = collectSSEEvents(sseRes, 1, 3000);
+      const collectPromise = collectSSEEvents(sseRes, 1, 3000, controller);
 
-    // Задержка для установки LISTEN
-    await new Promise((r) => setTimeout(r, 100));
+      // Задержка для установки LISTEN
+      await new Promise((r) => setTimeout(r, 100));
 
-    // Отменяем поездку
-    const cancelRes = await app.request(`/api/rides/${rideId}/cancel`, {
-      method: "PATCH",
-      headers: authHeaders,
-    });
-    expect(cancelRes.status).toBe(200);
+      // Отменяем через основной сервер
+      const cancelRes = await fetch(`${baseUrl}/api/rides/${rideId}/cancel`, {
+        method: "PATCH",
+        headers: authHeaders,
+      });
+      expect(cancelRes.status).toBe(200);
 
-    // Ждём ride_changed
-    const events = await collectPromise;
-    const rideChangedEvents = events.filter((e) => e.startsWith("ride_changed:"));
-    expect(rideChangedEvents.length).toBeGreaterThanOrEqual(1);
+      const events = await collectPromise;
+      const rideChangedEvents = events.filter((e) => e.startsWith("ride_changed:"));
+      expect(rideChangedEvents.length).toBeGreaterThanOrEqual(1);
 
-    const eventData = (rideChangedEvents[0] as string).slice("ride_changed:".length);
-    const parsed = JSON.parse(eventData);
-    expect(parsed).toMatchObject({ ride_id: rideId });
+      const eventData = (rideChangedEvents[0] as string).slice("ride_changed:".length);
+      const parsed = JSON.parse(eventData);
+      expect(parsed).toMatchObject({ ride_id: rideId });
+    } finally {
+      srv.stop(true);
+    }
   }, 10_000);
 });

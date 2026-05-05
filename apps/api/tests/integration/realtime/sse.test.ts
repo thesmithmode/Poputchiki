@@ -192,8 +192,10 @@ async function collectSSEEvents(
       }
     }
   } finally {
-    await reader.cancel().catch(() => {});
     controller?.abort();
+    await reader.cancel().catch(() => {});
+    // дать async chain: TCP close → req.on(close) → abortCtrl → Hono finally block
+    await new Promise((r) => setTimeout(r, 100));
   }
 
   return events;
@@ -261,6 +263,8 @@ describe("GET /api/realtime/rides — SSE", () => {
 
     controller.abort();
     await res.body?.cancel().catch(() => {});
+    // дать async chain: TCP close → req.on(close) → abortCtrl → Hono finally block
+    await new Promise((r) => setTimeout(r, 100));
   });
 
   it("heartbeat события приходят с заданным интервалом", async () => {

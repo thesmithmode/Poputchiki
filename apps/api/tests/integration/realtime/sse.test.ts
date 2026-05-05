@@ -1,9 +1,11 @@
 /**
  * Integration tests: GET /api/realtime/rides — SSE endpoint.
  * Requires: Postgres + migrations applied.
- * Uses Bun.serve (real HTTP) so stream.onAbort fires and finally block is covered.
+ * Uses Node http.createServer (real HTTP) so stream.onAbort fires → finally block covered.
  */
 import { randomUUID } from "node:crypto";
+import * as http from "node:http";
+import type { AddressInfo } from "node:net";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -25,8 +27,8 @@ const DRIVER = {
 };
 
 let sql: ReturnType<typeof createPool>;
-let server: ReturnType<typeof Bun.serve>;
-let baseUrl: string;
+let mainServer: http.Server;
+let mainBaseUrl: string;
 
 async function makeAuthHeaders(user: { id: string; tgId: number; role: string }): Promise<
   Record<string, string>
@@ -50,7 +52,7 @@ async function makeAuthHeaders(user: { id: string; tgId: number; role: string })
   };
 }
 
-function makeApp(heartbeatMs = 15000) {
+function buildHonoApp(heartbeatMs = 15000) {
   const app = new Hono();
   app.use("/api/*", async (c, next) => {
     c.set("socketIp" as never, TEST_IP);
@@ -60,6 +62,75 @@ function makeApp(heartbeatMs = 15000) {
   app.route("/api/realtime", createRealtimeRouter(sql, { heartbeatMs }));
   app.route("/api/rides", createRidesRouter(sql));
   return app;
+}
+
+/** Start a Node http.Server wrapping a Hono app; returns {server, baseUrl}. */
+function startServer(app: Hono): Promise<{ server: http.Server; baseUrl: string }> {
+  return new Promise((resolve, reject) => {
+    const server = http.createServer(async (req, res) => {
+      const url = `http://localhost${req.url}`;
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (typeof v === "string") headers[k] = v;
+        else if (Array.isArray(v)) headers[k] = v.join(", ");
+      }
+
+      // Read body for non-GET/HEAD
+      let bodyInit: Buffer | undefined;
+      if (req.method !== "GET" && req.method !== "HEAD") {
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) chunks.push(chunk as Buffer);
+        if (chunks.length > 0) bodyInit = Buffer.concat(chunks);
+      }
+
+      const request = new Request(url, {
+        method: req.method ?? "GET",
+        headers,
+        body: bodyInit,
+      });
+
+      let honoRes: Response;
+      try {
+        honoRes = await app.fetch(request);
+      } catch (e) {
+        res.writeHead(500);
+        res.end(String(e));
+        return;
+      }
+
+      res.writeHead(honoRes.status, Object.fromEntries(honoRes.headers.entries()));
+
+      if (honoRes.body) {
+        const reader = honoRes.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const canContinue = res.write(value);
+            if (!canContinue) {
+              // backpressure — wait for drain
+              await new Promise<void>((r) => res.once("drain", r));
+            }
+          }
+        } catch {
+          // client disconnected
+        } finally {
+          reader.cancel().catch(() => {});
+        }
+      }
+      res.end();
+    });
+
+    server.listen(0, "127.0.0.1", () => {
+      const port = (server.address() as AddressInfo).port;
+      resolve({ server, baseUrl: `http://127.0.0.1:${port}` });
+    });
+    server.once("error", reject);
+  });
+}
+
+function stopServer(server: http.Server): Promise<void> {
+  return new Promise((resolve) => server.close(() => resolve()));
 }
 
 function futureDate(hoursFromNow = 2): string {
@@ -77,9 +148,9 @@ const BASE_RIDE = {
 };
 
 /**
- * Reads SSE events from a real fetch() Response stream.
+ * Reads SSE events from a fetch Response stream.
  * Stops when `count` events collected OR timeout reached.
- * Returns array of "eventName:data" strings.
+ * Calls controller.abort() on exit to close the SSE connection.
  */
 async function collectSSEEvents(
   response: Response,
@@ -139,10 +210,9 @@ beforeAll(async () => {
     `;
   });
 
-  // Start real HTTP server on random port so stream.onAbort fires
-  const app = makeApp();
-  server = Bun.serve({ fetch: app.fetch, port: 0 });
-  baseUrl = `http://localhost:${server.port}`;
+  const { server, baseUrl } = await startServer(buildHonoApp());
+  mainServer = server;
+  mainBaseUrl = baseUrl;
 });
 
 afterEach(async () => {
@@ -152,7 +222,7 @@ afterEach(async () => {
 });
 
 afterAll(async () => {
-  server?.stop(true);
+  await stopServer(mainServer);
   await sql`DELETE FROM audit_log WHERE user_id = ${DRIVER.id}`;
   await sql`DELETE FROM rides WHERE driver_id = ${DRIVER.id}`;
   await sql`DELETE FROM users WHERE id = ${DRIVER.id}`;
@@ -161,7 +231,7 @@ afterAll(async () => {
 
 describe("GET /api/realtime/rides — SSE", () => {
   it("401 без авторизации", async () => {
-    const res = await fetch(`${baseUrl}/api/realtime/rides`);
+    const res = await fetch(`${mainBaseUrl}/api/realtime/rides`);
     expect(res.status).toBe(401);
     await res.body?.cancel();
   });
@@ -174,7 +244,7 @@ describe("GET /api/realtime/rides — SSE", () => {
     });
 
     const controller = new AbortController();
-    const res = await fetch(`${baseUrl}/api/realtime/rides`, {
+    const res = await fetch(`${mainBaseUrl}/api/realtime/rides`, {
       headers,
       signal: controller.signal,
     });
@@ -187,10 +257,7 @@ describe("GET /api/realtime/rides — SSE", () => {
   });
 
   it("heartbeat события приходят с заданным интервалом", async () => {
-    // heartbeatMs=150ms — нужен отдельный сервер с этим параметром
-    const app = makeApp(150);
-    const srv = Bun.serve({ fetch: app.fetch, port: 0 });
-    const url = `http://localhost:${srv.port}`;
+    const { server: srv, baseUrl: url } = await startServer(buildHonoApp(150));
     try {
       const headers = await makeAuthHeaders({
         id: DRIVER.id,
@@ -206,20 +273,17 @@ describe("GET /api/realtime/rides — SSE", () => {
 
       expect(res.status).toBe(200);
 
-      // За 600ms при интервале 150ms должны прийти минимум 2 heartbeat
+      // За 600ms при интервале 150ms ≥2 heartbeat
       const events = await collectSSEEvents(res, 2, 600, controller);
       const heartbeats = events.filter((e) => e.startsWith("heartbeat:"));
       expect(heartbeats.length).toBeGreaterThanOrEqual(2);
     } finally {
-      srv.stop(true);
+      await stopServer(srv);
     }
   }, 10_000);
 
   it("ride_changed приходит после создания поездки", async () => {
-    // heartbeatMs=5000 — редко чтобы не мешал
-    const app = makeApp(5000);
-    const srv = Bun.serve({ fetch: app.fetch, port: 0 });
-    const url = `http://localhost:${srv.port}`;
+    const { server: srv, baseUrl: url } = await startServer(buildHonoApp(5000));
     try {
       const authHeaders = await makeAuthHeaders({
         id: DRIVER.id,
@@ -236,16 +300,13 @@ describe("GET /api/realtime/rides — SSE", () => {
 
       const collectPromise = collectSSEEvents(sseRes, 1, 3000, controller);
 
-      // Задержка чтобы SSE соединение установилось + PG LISTEN активирован
+      // Задержка чтобы LISTEN установился
       await new Promise((r) => setTimeout(r, 100));
 
-      // Создаём поездку через основной сервер (baseUrl)
-      const createRes = await fetch(`${baseUrl}/api/rides`, {
+      // Создаём поездку через основной сервер
+      const createRes = await fetch(`${mainBaseUrl}/api/rides`, {
         method: "POST",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...authHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
       });
       expect(createRes.status).toBe(201);
@@ -260,14 +321,12 @@ describe("GET /api/realtime/rides — SSE", () => {
       const parsed = JSON.parse(eventData);
       expect(parsed).toMatchObject({ ride_id: rideId });
     } finally {
-      srv.stop(true);
+      await stopServer(srv);
     }
   }, 10_000);
 
   it("ride_changed приходит после отмены поездки", async () => {
-    const app = makeApp(5000);
-    const srv = Bun.serve({ fetch: app.fetch, port: 0 });
-    const url = `http://localhost:${srv.port}`;
+    const { server: srv, baseUrl: url } = await startServer(buildHonoApp(5000));
     try {
       const authHeaders = await makeAuthHeaders({
         id: DRIVER.id,
@@ -275,13 +334,10 @@ describe("GET /api/realtime/rides — SSE", () => {
         role: DRIVER.jwtRole,
       });
 
-      // Создаём поездку через основной сервер
-      const createRes = await fetch(`${baseUrl}/api/rides`, {
+      // Создаём поездку
+      const createRes = await fetch(`${mainBaseUrl}/api/rides`, {
         method: "POST",
-        headers: {
-          ...authHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...authHeaders, "Content-Type": "application/json" },
         body: JSON.stringify({ ...BASE_RIDE, departure_at: futureDate() }),
       });
       expect(createRes.status).toBe(201);
@@ -297,11 +353,11 @@ describe("GET /api/realtime/rides — SSE", () => {
 
       const collectPromise = collectSSEEvents(sseRes, 1, 3000, controller);
 
-      // Задержка для установки LISTEN
+      // Задержка для LISTEN
       await new Promise((r) => setTimeout(r, 100));
 
       // Отменяем через основной сервер
-      const cancelRes = await fetch(`${baseUrl}/api/rides/${rideId}/cancel`, {
+      const cancelRes = await fetch(`${mainBaseUrl}/api/rides/${rideId}/cancel`, {
         method: "PATCH",
         headers: authHeaders,
       });
@@ -315,7 +371,7 @@ describe("GET /api/realtime/rides — SSE", () => {
       const parsed = JSON.parse(eventData);
       expect(parsed).toMatchObject({ ride_id: rideId });
     } finally {
-      srv.stop(true);
+      await stopServer(srv);
     }
   }, 10_000);
 });

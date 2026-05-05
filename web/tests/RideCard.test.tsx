@@ -44,8 +44,8 @@ describe("RideCard", () => {
 
   it("отображает количество свободных мест (seats_total - seats_taken)", () => {
     render(<RideCard ride={mockRide} />);
-    // 3 total - 1 taken = 2 free
-    expect(screen.getByText(/2/)).toBeInTheDocument();
+    // 3 total - 1 taken = 2 free — ищем элемент с "2" + " мест"
+    expect(screen.getByText(/2\s+мест/)).toBeInTheDocument();
   });
 
   it("отображает 'Бесплатно' при price_rub = null", () => {

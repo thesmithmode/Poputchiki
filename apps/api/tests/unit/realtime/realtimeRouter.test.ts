@@ -143,4 +143,21 @@ describe("realtimeRouter unit", () => {
 
     expect(sql.listen).toHaveBeenCalledWith("rides_changed", expect.any(Function));
   }, 5000);
+
+  it("finally: sql.listen throws → heartbeatTimer/unlisten undefined → нет краша", async () => {
+    const sql = { listen: vi.fn().mockRejectedValue(new Error("DB down")) };
+    const app = buildApp(sql as never);
+    const token = await makeToken();
+    const ctrl = new AbortController();
+
+    const res = await app.request("/api/realtime/rides", {
+      headers: makeAuthHeaders(token),
+      signal: ctrl.signal,
+    });
+    // Stream closes with error — body may be empty or closed
+    await res.body?.cancel().catch(() => {});
+    await new Promise<void>((r) => setTimeout(r, 20));
+
+    expect(sql.listen).toHaveBeenCalledOnce();
+  }, 5000);
 });

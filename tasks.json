@@ -2907,7 +2907,8 @@
         "TASK-115",
         "TASK-116"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T12:00:00.000Z"
     },
     {
       "id": "TASK-120",
@@ -2931,7 +2932,8 @@
         "TASK-101",
         "TASK-062"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T12:00:00.000Z"
     },
     {
       "id": "TASK-121",
@@ -2956,7 +2958,8 @@
         "TASK-019",
         "TASK-115"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T12:00:00.000Z"
     },
     {
       "id": "TASK-122",
@@ -3220,7 +3223,8 @@
         "TASK-115",
         "TASK-116"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T12:00:00.000Z"
     },
     {
       "id": "TASK-132",

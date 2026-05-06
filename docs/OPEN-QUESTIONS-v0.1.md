@@ -190,7 +190,7 @@
 1. **Какой домен/поддомен** закрепить за Poputchiki? Свой? DuckDNS?
 2. **`ADMIN_TG_CHAT_ID`** — куда слать админ-алерты (личный чат с ботом, отдельная группа, канал)?
 3. **Список техподдержки** — только Антон, или есть ещё доверенные модераторы (тогда нужна роль `moderator` в `users`)?
-4. **Observability stack** — поднимаем Prometheus+Grafana+Uptime Kuma сейчас или откладываем до post-launch (есть только Sentry / собственный error_log + admin TG)?
+4. **Observability stack** — RESOLVED (TASK-098): план Б реализован — `error_log` таблица + `app.onError` middleware + `POST /api/client-errors` (публичный endpoint для фронтенд ошибок). Prometheus+Grafana+Uptime Kuma — опционально post-launch.
 5. **Разрешать ли `git push origin dev`** автономно (без подтверждения каждый раз) — RESOLVED, разрешено по CLAUDE.md.
 
 ### Ответы заказчика 2026-05-01 на предыдущие вопросы (v0.3 → v0.4)

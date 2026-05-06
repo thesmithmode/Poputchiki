@@ -407,6 +407,10 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 - Парные кнопки fixed bottom bar: «✉️ Telegram» + «Откликнуться»/«Управлять».
 - Кнопка лайка водителю для пассажира после подтверждения.
 
+**Observability (TASK-098, реализовано):**
+- Error tracking план Б: таблица `error_log` + `app.onError` перехват API ошибок + `POST /api/client-errors` публичный endpoint для фронтенд ошибок с PII-sanitization.
+- Frontend: `setupErrorReporting()` в `main.tsx` — автоматический отчёт о window.error и unhandledrejection через sendBeacon.
+
 ### v0.5 (2026-05-01)
 
 **Удалено из MVP и roadmap полностью:**

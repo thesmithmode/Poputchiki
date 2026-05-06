@@ -480,6 +480,25 @@ CREATE TABLE idempotency_keys (
   expires_at     timestamptz NOT NULL
 );
 CREATE INDEX idx_idem_expires ON idempotency_keys (expires_at);
+
+-- revoked_tokens: JWT revocation list (logout + refresh rotation)
+CREATE TABLE revoked_tokens (
+  jti        text PRIMARY KEY,
+  user_id    uuid REFERENCES users(id) ON DELETE CASCADE,
+  revoked_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_revoked_tokens_user ON revoked_tokens (user_id);
+
+-- error_log: план B observability (вместо Sentry self-hosted)
+CREATE TABLE error_log (
+  id         bigserial PRIMARY KEY,
+  message    text        NOT NULL,
+  stack      text        NOT NULL DEFAULT '',
+  path       text        NOT NULL DEFAULT '',
+  method     text        NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_error_log_created_at ON error_log (created_at DESC);
 ```
 
 ### 4.2 Materialized view `user_stats`

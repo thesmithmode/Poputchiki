@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { createAuthRouter } from "./auth/authRouter";
 import { createComplaintsRouter } from "./complaints/complaintsRouter";
+import { createGeocodeRouter } from "./geocode/geocodeRouter";
 import { poolMetrics } from "./db/pool";
 import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { createLikesRouter } from "./likes/likesRouter";
@@ -66,6 +67,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
       app.route("/api/likes", createLikesRouter(sql));
       app.route("/api/reviews", createReviewsRouter(sql));
       app.route("/api/complaints", createComplaintsRouter(sql));
+      app.route("/api/geocode", createGeocodeRouter());
       const { userRouter: supportUser, adminRouter: supportAdmin } = createSupportRouter(sql);
       app.route("/api/support", supportUser);
       app.route("/api/admin/support", supportAdmin);

@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { HashRouter, Route, Routes, useParams } from "react-router-dom";
+import { HashRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
@@ -29,15 +30,82 @@ function ProfileRoute() {
   return <ProfileScreen id={id} />;
 }
 
-const queryClient = new QueryClient();
-
 function NotFoundPage() {
+  const navigate = useNavigate();
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
-      <p>404</p>
-    </main>
+    <div
+      data-testid="not-found"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        gap: 16,
+        padding: 24,
+        background: "#f8f9fa",
+      }}
+    >
+      <div style={{ fontSize: 48 }}>🔍</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: "#15191f" }}>Страница не найдена</div>
+      <div style={{ fontSize: 14, color: "#7c8694", textAlign: "center" }}>
+        Такой страницы не существует
+      </div>
+      <button
+        type="button"
+        onClick={() => navigate("/")}
+        style={{
+          marginTop: 8,
+          padding: "12px 24px",
+          background: "#0ea5e9",
+          border: "none",
+          borderRadius: 10,
+          fontSize: 15,
+          fontWeight: 700,
+          color: "#fff",
+          cursor: "pointer",
+        }}
+      >
+        На главную
+      </button>
+    </div>
   );
 }
+
+function OfflineBanner() {
+  const online = useOnlineStatus();
+  if (online) return null;
+  return (
+    <div
+      data-testid="offline-banner"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 9999,
+        background: "#374151",
+        color: "#fff",
+        textAlign: "center",
+        padding: "8px 16px",
+        fontSize: 13,
+        fontWeight: 600,
+      }}
+    >
+      Нет связи — показываем сохранённые данные
+    </div>
+  );
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      gcTime: 5 * 60_000,
+      networkMode: "offlineFirst",
+    },
+  },
+});
 
 function AppRoutes() {
   const me = useMe();
@@ -73,6 +141,7 @@ function AppRoutes() {
   // "ok" or "error" (401 / network) — show routes normally
   return (
     <HashRouter>
+      <OfflineBanner />
       <Routes>
         <Route path="/" element={<FeedScreen />} />
         <Route path="/rides" element={<FeedScreen />} />

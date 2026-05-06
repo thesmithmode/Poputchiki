@@ -16,6 +16,7 @@ import { NotificationPreferencesScreen } from "./screens/NotificationPreferences
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { RideDetailScreen } from "./screens/RideDetailScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
 import { SupportScreen } from "./screens/SupportScreen";
 import { PrivacyScreen } from "./screens/legal/PrivacyScreen";
 import { TermsScreen } from "./screens/legal/TermsScreen";
@@ -151,6 +152,7 @@ function AppRoutes() {
         <Route path="/rides/:id" element={<RideDetailRoute />} />
         <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
         <Route path="/users/:id" element={<ProfileRoute />} />
+        <Route path="/settings" element={<SettingsScreen />} />
         <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
         <Route path="/support" element={<SupportScreen />} />
         <Route path="/admin" element={<AdminScreen />} />

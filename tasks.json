@@ -2881,7 +2881,8 @@
         "TASK-062",
         "TASK-113"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T13:00:00.000Z"
     },
     {
       "id": "TASK-119",
@@ -3032,7 +3033,8 @@
         "TASK-082",
         "TASK-118"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T13:00:00.000Z"
     },
     {
       "id": "TASK-125",
@@ -3063,7 +3065,8 @@
         "TASK-060",
         "TASK-131"
       ],
-      "status": "pending"
+      "status": "done",
+      "completed_at": "2026-05-06T13:10:00.000Z"
     },
     {
       "id": "TASK-126",

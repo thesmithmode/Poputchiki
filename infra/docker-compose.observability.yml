@@ -1,0 +1,127 @@
+name: poputchiki-observability
+
+networks:
+  poputchiki-internal:
+    external: true
+  traefik-public:
+    external: true
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  uptime-kuma-data:
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    restart: unless-stopped
+    networks: [poputchiki-internal]
+    volumes:
+      - prometheus-data:/prometheus
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    deploy:
+      resources:
+        limits: { memory: 512m }
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    restart: unless-stopped
+    networks: [poputchiki-internal, traefik-public]
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme}
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.grafana.rule: Host(`grafana.${DOMAIN}`)
+      traefik.http.routers.grafana.entrypoints: websecure
+      traefik.http.routers.grafana.tls.certresolver: letsencrypt
+      traefik.http.services.grafana.loadbalancer.server.port: "3000"
+    depends_on: [prometheus]
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    restart: unless-stopped
+    networks: [poputchiki-internal, traefik-public]
+    volumes:
+      - uptime-kuma-data:/app/data
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.uptime.rule: Host(`status.${DOMAIN}`)
+      traefik.http.routers.uptime.entrypoints: websecure
+      traefik.http.routers.uptime.tls.certresolver: letsencrypt
+      traefik.http.services.uptime.loadbalancer.server.port: "3001"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    restart: unless-stopped
+    networks: [poputchiki-internal]
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 64m }
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.0
+    restart: unless-stopped
+    networks: [poputchiki-internal]
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 64m }
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    restart: unless-stopped
+    networks: [poputchiki-internal]
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 128m }

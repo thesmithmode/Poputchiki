@@ -15,6 +15,7 @@ const PatchMeInput = z.object({
     .optional(),
   phone: z.string().min(1).max(30).optional(),
   apt_number: z.string().min(1).max(20).optional(),
+  onboarded: z.boolean().optional(),
 });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -152,6 +153,9 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       if (data.apt_number !== undefined) {
         const enc = await encryptPii(tx, data.apt_number, pgcryptoKey);
         await tx`UPDATE users SET apt_number_enc = ${new Uint8Array(enc)} WHERE id = ${user.id}`;
+      }
+      if (data.onboarded !== undefined) {
+        await tx`UPDATE users SET onboarded = ${data.onboarded} WHERE id = ${user.id}`;
       }
       return tx<MeRow[]>`
         SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,

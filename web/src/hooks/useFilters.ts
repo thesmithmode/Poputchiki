@@ -18,7 +18,7 @@ export const DEFAULT_FILTERS: Filters = {
   verifiedOnly: false,
   direction: "",
   priceMax: null,
-  seatsMin: 1,
+  seatsMin: 0,
 };
 
 const STORAGE_KEY = "poputchiki:filters";
@@ -69,8 +69,10 @@ export function applyFilters(rides: Ride[], filters: Filters): Ride[] {
       if (ride.price_rub !== null && ride.price_rub > filters.priceMax) return false;
     }
 
-    const freeSeats = ride.seats_total - ride.seats_taken;
-    if (freeSeats < filters.seatsMin) return false;
+    if (filters.seatsMin > 0) {
+      const freeSeats = ride.seats_total - ride.seats_taken;
+      if (freeSeats < filters.seatsMin) return false;
+    }
 
     return true;
   });

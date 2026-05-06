@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
+import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -50,6 +51,15 @@ function AppRoutes() {
 
   if (me.status === "banned") {
     return <BannedScreen reason={me.reason} bannedAt={me.banned_at} />;
+  }
+
+  if (me.status === "ok" && !me.user.onboarded) {
+    return (
+      <OnboardingScreen
+        displayName={me.user.display_name}
+        onComplete={() => window.location.reload()}
+      />
+    );
   }
 
   // "ok" or "error" (401 / network) — show routes normally

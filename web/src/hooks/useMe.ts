@@ -4,6 +4,7 @@ import { ApiError, apiFetch } from "../lib/api";
 export type MeUser = {
   id: string;
   display_name: string;
+  onboarded: boolean;
   is_banned: boolean;
   ban_reason: string | null;
   banned_at: string | null;

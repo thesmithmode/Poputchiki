@@ -87,15 +87,15 @@ describe("applyFilters", () => {
   it("фильтрует по direction (from_label)", () => {
     const result = applyFilters(rides, { ...DEFAULT_FILTERS, direction: "царёво" });
     expect(result).toHaveLength(2);
-    result.forEach((r) => {
+    for (const r of result) {
       expect(r.from_label.toLowerCase() + r.to_label.toLowerCase()).toContain("царёво");
-    });
+    }
   });
 
   it("фильтрует по direction (to_label)", () => {
     const result = applyFilters(rides, { ...DEFAULT_FILTERS, direction: "аэропорт" });
     expect(result).toHaveLength(1);
-    expect(result[0].to_label).toBe("Аэропорт");
+    expect(result[0]?.to_label).toBe("Аэропорт");
   });
 
   it("direction поиск нечувствителен к регистру", () => {
@@ -117,7 +117,7 @@ describe("applyFilters", () => {
     // ride[0]: 3-1=2 свободных, ride[1]: 4-3=1 свободных, ride[2]: 2-2=0 свободных
     const result = applyFilters(rides, { ...DEFAULT_FILTERS, seatsMin: 2 });
     expect(result).toHaveLength(1);
-    expect(result[0].from_label).toBe("ЖК Царёво");
+    expect(result[0]?.from_label).toBe("ЖК Царёво");
   });
 
   it("пустой список rides → пустой результат", () => {

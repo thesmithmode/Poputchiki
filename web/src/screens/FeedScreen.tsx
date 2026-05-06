@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { RideCard } from "../components/RideCard";
@@ -16,7 +16,7 @@ export function FeedScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
-  const filteredRides = applyFilters(data?.rides ?? [], filters);
+  const filteredRides = useMemo(() => applyFilters(data?.rides ?? [], filters), [data, filters]);
 
   useEffect(() => {
     if (view !== "map" || !mapRef.current || !filteredRides.length) return;
@@ -26,7 +26,6 @@ export function FeedScreen() {
     import("leaflet").then((L) => {
       if (destroyed || !mapRef.current) return;
 
-      // Cleanup previous instance
       if (mapInstanceRef.current) {
         (mapInstanceRef.current as { remove: () => void }).remove();
         mapInstanceRef.current = null;
@@ -47,9 +46,8 @@ export function FeedScreen() {
     return () => {
       destroyed = true;
     };
-  }, [view, data, filters]);
+  }, [view, filteredRides]);
 
-  // Cleanup map on unmount
   useEffect(() => {
     return () => {
       if (mapInstanceRef.current) {
@@ -81,21 +79,21 @@ export function FeedScreen() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
-      <header className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
         <h1 className="text-lg font-semibold text-gray-900">Попутчики</h1>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="flex gap-2">
           <button
             type="button"
             data-testid="toggle-filters"
             onClick={() => setShowFilters((v) => !v)}
-            className="text-sm font-medium text-gray-600 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="rounded-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-200"
           >
             Фильтры
           </button>
           <button
             type="button"
             onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
-            className="text-sm font-medium text-blue-600 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+            className="rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
           >
             {view === "list" ? "Карта" : "Список"}
           </button>
@@ -107,10 +105,10 @@ export function FeedScreen() {
       )}
 
       {view === "list" ? (
-        <div data-testid="ride-list" className="flex-1 p-4 space-y-3">
+        <div data-testid="ride-list" className="flex-1 space-y-3 p-4">
           {!filteredRides.length ? (
-            <div className="flex items-center justify-center h-48">
-              <p className="text-gray-400 text-sm">Ничего не найдено</p>
+            <div className="flex h-48 items-center justify-center">
+              <p className="text-sm text-gray-400">Ничего не найдено</p>
             </div>
           ) : (
             filteredRides.map((ride) => (

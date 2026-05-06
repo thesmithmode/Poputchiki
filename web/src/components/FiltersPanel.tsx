@@ -20,36 +20,20 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
   return (
     <div
       data-testid="filters-panel"
-      style={{
-        padding: "12px 16px",
-        background: "#f9fafb",
-        borderBottom: "1px solid #e5e7eb",
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-      }}
+      className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3"
     >
-      {/* Направление */}
       <input
         data-testid="filter-direction"
         type="text"
         placeholder="Поиск по направлению"
         value={filters.direction}
         onChange={(e) => onChange({ direction: e.target.value })}
-        style={{
-          width: "100%",
-          padding: "6px 10px",
-          border: "1px solid #d1d5db",
-          borderRadius: 6,
-          fontSize: 14,
-          boxSizing: "border-box",
-        }}
+        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
       />
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        {/* Цена макс */}
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-          Цена макс:&nbsp;
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <span>Цена макс:</span>
           <input
             data-testid="filter-price-max"
             type="range"
@@ -61,31 +45,27 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
               const v = Number(e.target.value);
               onChange({ priceMax: v >= 2000 ? null : v });
             }}
-            style={{ width: 100 }}
+            className="w-24"
           />
-          &nbsp;
           <span>{filters.priceMax === null ? "любая" : `${filters.priceMax} ₽`}</span>
         </label>
 
-        {/* Мест мин */}
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-          Мест мин:&nbsp;
+        <label className="flex items-center gap-2 text-sm">
+          <span>Мест мин:</span>
           <input
             data-testid="filter-seats-min"
             type="range"
-            min={1}
+            min={0}
             max={4}
             value={filters.seatsMin}
             onChange={(e) => onChange({ seatsMin: Number(e.target.value) })}
-            style={{ width: 80 }}
+            className="w-20"
           />
-          &nbsp;
-          <span>{filters.seatsMin}</span>
+          <span>{filters.seatsMin === 0 ? "любое" : filters.seatsMin}</span>
         </label>
 
-        {/* Доверие — минимальный возраст аккаунта */}
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-          Возраст акк:&nbsp;
+        <label className="flex items-center gap-2 text-sm">
+          <span>Возраст акк:</span>
           <input
             data-testid="filter-trust-age"
             type="range"
@@ -93,15 +73,15 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             max={30}
             value={filters.trustMinAccountAgeDays}
             onChange={(e) => onChange({ trustMinAccountAgeDays: Number(e.target.value) })}
-            style={{ width: 80 }}
+            className="w-20"
           />
-          &nbsp;
-          <span>{filters.trustMinAccountAgeDays === 0 ? "любой" : `${filters.trustMinAccountAgeDays}д`}</span>
+          <span>
+            {filters.trustMinAccountAgeDays === 0 ? "любой" : `${filters.trustMinAccountAgeDays}д`}
+          </span>
         </label>
 
-        {/* Лайки мин */}
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-          Лайков мин:&nbsp;
+        <label className="flex items-center gap-2 text-sm">
+          <span>Лайков мин:</span>
           <input
             data-testid="filter-trust-likes"
             type="range"
@@ -109,16 +89,14 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             max={10}
             value={filters.trustMinLikes}
             onChange={(e) => onChange({ trustMinLikes: Number(e.target.value) })}
-            style={{ width: 80 }}
+            className="w-20"
           />
-          &nbsp;
           <span>{filters.trustMinLikes}</span>
         </label>
       </div>
 
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-        {/* Только верифицированные */}
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="flex items-center gap-2 text-sm">
           <input
             data-testid="filter-verified"
             type="checkbox"
@@ -128,8 +106,7 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
           Только верифицированные
         </label>
 
-        {/* Только избранные */}
-        <label style={{ fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+        <label className="flex items-center gap-2 text-sm">
           <input
             data-testid="filter-favorites"
             type="checkbox"
@@ -139,21 +116,12 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
           Только избранные ♥
         </label>
 
-        {/* Сброс */}
         {hasActive && (
           <button
             data-testid="filter-reset"
             type="button"
             onClick={onReset}
-            style={{
-              marginLeft: "auto",
-              fontSize: 12,
-              color: "#6b7280",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              textDecoration: "underline",
-            }}
+            className="ml-auto text-xs text-gray-500 underline"
           >
             Сбросить фильтры
           </button>

@@ -12,6 +12,7 @@ import { NotificationPreferencesScreen } from "./screens/NotificationPreferences
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { RideDetailScreen } from "./screens/RideDetailScreen";
+import { SupportScreen } from "./screens/SupportScreen";
 
 function RideDetailRoute() {
   const { id = "" } = useParams<{ id: string }>();
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="/rides/:id" element={<RideDetailRoute />} />
         <Route path="/users/:id" element={<ProfileRoute />} />
         <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
+        <Route path="/support" element={<SupportScreen />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </HashRouter>

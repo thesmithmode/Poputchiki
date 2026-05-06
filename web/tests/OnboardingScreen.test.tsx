@@ -106,7 +106,8 @@ describe("OnboardingScreen", () => {
 
     await waitFor(() => {
       const call = mockedApiFetch.mock.calls[0];
-      const body = JSON.parse((call?.[1] as RequestInit)?.body as string ?? "{}");
+      const init = call?.[1] as RequestInit | undefined;
+      const body = JSON.parse((init?.body as string) ?? "{}");
       expect(body.apt_number).toBeUndefined();
     });
   });

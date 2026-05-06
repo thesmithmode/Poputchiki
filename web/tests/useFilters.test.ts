@@ -75,9 +75,27 @@ describe("useFilters", () => {
 
 describe("applyFilters", () => {
   const rides = [
-    makeRide({ from_label: "ЖК Царёво", to_label: "Москва Центр", price_rub: 100, seats_total: 3, seats_taken: 1 }),
-    makeRide({ from_label: "Казань", to_label: "Аэропорт", price_rub: 500, seats_total: 4, seats_taken: 3 }),
-    makeRide({ from_label: "Центр", to_label: "ЖК Царёво", price_rub: null, seats_total: 2, seats_taken: 2 }),
+    makeRide({
+      from_label: "ЖК Царёво",
+      to_label: "Москва Центр",
+      price_rub: 100,
+      seats_total: 3,
+      seats_taken: 1,
+    }),
+    makeRide({
+      from_label: "Казань",
+      to_label: "Аэропорт",
+      price_rub: 500,
+      seats_total: 4,
+      seats_taken: 3,
+    }),
+    makeRide({
+      from_label: "Центр",
+      to_label: "ЖК Царёво",
+      price_rub: null,
+      seats_total: 2,
+      seats_taken: 2,
+    }),
   ];
 
   it("без фильтров возвращает все поездки", () => {

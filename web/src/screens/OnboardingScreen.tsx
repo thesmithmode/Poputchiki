@@ -43,8 +43,11 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
 
       {step === 1 && (
         <div data-testid="onboarding-step-1" className="w-full max-w-sm">
-          <label className="mb-1 block text-sm font-medium text-gray-700">Ваше имя</label>
+          <label htmlFor="onboarding-name" className="mb-1 block text-sm font-medium text-gray-700">
+            Ваше имя
+          </label>
           <input
+            id="onboarding-name"
             data-testid="onboarding-name"
             type="text"
             value={name}
@@ -66,11 +69,12 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
 
       {step === 2 && (
         <div data-testid="onboarding-step-2" className="w-full max-w-sm">
-          <label className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="onboarding-apt" className="mb-1 block text-sm font-medium text-gray-700">
             Номер квартиры{" "}
             <span className="font-normal text-gray-400">(необязательно)</span>
           </label>
           <input
+            id="onboarding-apt"
             data-testid="onboarding-apt"
             type="text"
             value={aptNumber}

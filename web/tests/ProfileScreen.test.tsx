@@ -130,6 +130,7 @@ describe("ProfileScreen", () => {
       user: {
         id: "other-id",
         display_name: "Other",
+        onboarded: true,
         is_banned: false,
         ban_reason: null,
         banned_at: null,
@@ -150,6 +151,7 @@ describe("ProfileScreen", () => {
       user: {
         id: USER_ID,
         display_name: "Иван Иванов",
+        onboarded: true,
         is_banned: false,
         ban_reason: null,
         banned_at: null,

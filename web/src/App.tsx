@@ -3,11 +3,12 @@ import { useEffect } from "react";
 import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
-import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { MapScreen } from "./screens/MapScreen";
+import { NotificationPreferencesScreen } from "./screens/NotificationPreferencesScreen";
+import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { RideDetailScreen } from "./screens/RideDetailScreen";
 
@@ -72,6 +73,7 @@ function AppRoutes() {
         <Route path="/map" element={<MapScreen />} />
         <Route path="/rides/:id" element={<RideDetailRoute />} />
         <Route path="/users/:id" element={<ProfileRoute />} />
+        <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </HashRouter>

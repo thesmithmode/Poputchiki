@@ -6,9 +6,7 @@ import { DEFAULT_FILTERS } from "../src/hooks/useFilters";
 
 describe("FiltersPanel", () => {
   it("рендерится с дефолтными фильтрами", () => {
-    render(
-      <FiltersPanel filters={DEFAULT_FILTERS} onChange={vi.fn()} onReset={vi.fn()} />,
-    );
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={vi.fn()} onReset={vi.fn()} />);
     expect(screen.getByTestId("filters-panel")).toBeInTheDocument();
     expect(screen.getByTestId("filter-direction")).toBeInTheDocument();
     expect(screen.getByTestId("filter-price-max")).toBeInTheDocument();
@@ -18,9 +16,7 @@ describe("FiltersPanel", () => {
   });
 
   it("кнопка сброса скрыта при дефолтных фильтрах", () => {
-    render(
-      <FiltersPanel filters={DEFAULT_FILTERS} onChange={vi.fn()} onReset={vi.fn()} />,
-    );
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={vi.fn()} onReset={vi.fn()} />);
     expect(screen.queryByTestId("filter-reset")).not.toBeInTheDocument();
   });
 
@@ -37,36 +33,28 @@ describe("FiltersPanel", () => {
 
   it("onChange вызывается при вводе в поле direction", () => {
     const onChange = vi.fn();
-    render(
-      <FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />,
-    );
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
     fireEvent.change(screen.getByTestId("filter-direction"), { target: { value: "Царёво" } });
     expect(onChange).toHaveBeenCalledWith({ direction: "Царёво" });
   });
 
   it("onChange вызывается при изменении seatsMin", () => {
     const onChange = vi.fn();
-    render(
-      <FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />,
-    );
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
     fireEvent.change(screen.getByTestId("filter-seats-min"), { target: { value: "3" } });
     expect(onChange).toHaveBeenCalledWith({ seatsMin: 3 });
   });
 
   it("onChange вызывается при переключении verifiedOnly", () => {
     const onChange = vi.fn();
-    render(
-      <FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />,
-    );
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
     fireEvent.click(screen.getByTestId("filter-verified"));
     expect(onChange).toHaveBeenCalledWith({ verifiedOnly: true });
   });
 
   it("onChange вызывается при переключении favoritesOnly", () => {
     const onChange = vi.fn();
-    render(
-      <FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />,
-    );
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
     fireEvent.click(screen.getByTestId("filter-favorites"));
     expect(onChange).toHaveBeenCalledWith({ favoritesOnly: true });
   });

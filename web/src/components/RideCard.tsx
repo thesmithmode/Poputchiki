@@ -1,3 +1,4 @@
+import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import type { Ride } from "../types/ride";
 
 interface RideCardProps {
@@ -8,6 +9,7 @@ interface RideCardProps {
 }
 
 export function RideCard({ ride, onClick, isFavorited, onToggleFavorite }: RideCardProps) {
+  const { selection } = useTelegramHaptic();
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -46,6 +48,7 @@ export function RideCard({ ride, onClick, isFavorited, onToggleFavorite }: RideC
             data-testid="fav-toggle"
             onClick={(e) => {
               e.stopPropagation();
+              selection();
               onToggleFavorite();
             }}
             aria-label={isFavorited ? "Убрать из избранного" : "Добавить в избранное"}

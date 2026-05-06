@@ -101,6 +101,7 @@ export function App() {
     applyThemeParams(wa.themeParams ?? {});
     try {
       wa.ready();
+      wa.expand?.();
     } catch {
       // noop
     }

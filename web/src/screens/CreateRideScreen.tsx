@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTelegramBack } from "../hooks/useTelegramBack";
+import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import { apiFetch } from "../lib/api";
 import { getTelegramWebApp } from "../lib/telegram";
 
@@ -31,6 +33,8 @@ function nowTimePlus(minutes: number) {
 
 export function CreateRideScreen() {
   const navigate = useNavigate();
+  useTelegramBack(() => navigate(-1));
+  const { impact, notification } = useTelegramHaptic();
   const [form, setForm] = useState<FormState>({
     from_label: "",
     to_label: "",
@@ -96,8 +100,10 @@ export function CreateRideScreen() {
           comment: form.comment.trim() || null,
         }),
       });
+      notification("success");
       navigate("/");
     } catch {
+      notification("error");
       setError("Не удалось создать поездку. Попробуйте ещё раз.");
     } finally {
       setSubmitting(false);

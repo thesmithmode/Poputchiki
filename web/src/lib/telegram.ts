@@ -10,9 +10,49 @@ export interface TelegramThemeParams {
   secondary_bg_color?: string;
 }
 
+export interface TelegramBackButton {
+  show: () => void;
+  hide: () => void;
+  onClick: (fn: () => void) => void;
+  offClick: (fn: () => void) => void;
+}
+
+export interface TelegramMainButton {
+  text: string;
+  show: () => void;
+  hide: () => void;
+  onClick: (fn: () => void) => void;
+  offClick: (fn: () => void) => void;
+  enable: () => void;
+  disable: () => void;
+  showProgress: (leaveActive?: boolean) => void;
+  hideProgress: () => void;
+}
+
+export type HapticImpactStyle = "light" | "medium" | "heavy" | "rigid" | "soft";
+export type HapticNotificationType = "error" | "success" | "warning";
+
+export interface TelegramHapticFeedback {
+  impactOccurred: (style: HapticImpactStyle) => void;
+  notificationOccurred: (type: HapticNotificationType) => void;
+  selectionChanged: () => void;
+}
+
+export interface TelegramViewport {
+  expand: () => void;
+  height: number;
+  isExpanded: boolean;
+}
+
 export interface TelegramWebApp {
   colorScheme: TelegramColorScheme;
   themeParams?: TelegramThemeParams;
+  BackButton?: TelegramBackButton;
+  MainButton?: TelegramMainButton;
+  HapticFeedback?: TelegramHapticFeedback;
+  viewportHeight?: number;
+  expand?: () => void;
+  disableSwipeClose?: boolean;
   onEvent: (event: string, handler: (...args: unknown[]) => void) => void;
   ready: () => void;
   initData?: string;

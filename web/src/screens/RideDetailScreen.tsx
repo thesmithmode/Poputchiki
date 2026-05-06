@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useTelegramBack } from "../hooks/useTelegramBack";
 import { useRide } from "../hooks/useRide";
 import { ApiError } from "../lib/api";
 
@@ -30,6 +31,7 @@ function isNew(createdAt: string) {
 
 export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
+  useTelegramBack(() => navigate(-1));
   const { data: ride, isLoading, isError, error } = useRide(id);
 
   if (isLoading) {

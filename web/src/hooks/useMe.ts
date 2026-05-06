@@ -8,6 +8,7 @@ export type MeUser = {
   is_banned: boolean;
   ban_reason: string | null;
   banned_at: string | null;
+  role: "user" | "admin";
 };
 
 export type MeState =

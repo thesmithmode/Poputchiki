@@ -145,6 +145,7 @@ describe("ProfileScreen", () => {
         is_banned: false,
         ban_reason: null,
         banned_at: null,
+        role: "user",
       },
     });
     renderScreen();
@@ -166,6 +167,7 @@ describe("ProfileScreen", () => {
         is_banned: false,
         ban_reason: null,
         banned_at: null,
+        role: "user",
       },
     });
     renderScreen();
@@ -185,6 +187,7 @@ describe("ProfileScreen", () => {
         is_banned: false,
         ban_reason: null,
         banned_at: null,
+        role: "user",
       },
     });
     renderScreen(USER_ID);
@@ -205,6 +208,7 @@ describe("ProfileScreen", () => {
         is_banned: false,
         ban_reason: null,
         banned_at: null,
+        role: "user",
       },
     });
     renderScreen(USER_ID);

@@ -1,6 +1,12 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 const SAMPLE_RATE = import.meta.env.PROD ? 0.1 : 1;
 
+let _initialized = false;
+
+export function _resetForTesting(): void {
+  _initialized = false;
+}
+
 function send(payload: { message: string; stack?: string; url?: string }): void {
   if (Math.random() > SAMPLE_RATE) return;
   navigator.sendBeacon(
@@ -10,6 +16,9 @@ function send(payload: { message: string; stack?: string; url?: string }): void 
 }
 
 export function setupErrorReporting(): void {
+  if (_initialized) return;
+  _initialized = true;
+
   window.addEventListener("error", (event) => {
     const payload: { message: string; stack?: string; url?: string } = {
       message: event.message ?? "unknown error",

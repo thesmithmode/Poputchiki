@@ -11,11 +11,17 @@ const mockSql = vi.fn().mockResolvedValue([]) as any;
 const app = createApp(mockSql, JWT_SECRET);
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+// Public endpoints that intentionally accept unauthenticated requests
+const PUBLIC_PATHS = new Set(["/api/client-errors"]);
 
 function getApiMutatingRoutes(): { method: string; path: string }[] {
   return app.routes
     .filter(
-      (r) => MUTATING_METHODS.has(r.method) && r.path.startsWith("/api/") && !r.path.includes("*"),
+      (r) =>
+        MUTATING_METHODS.has(r.method) &&
+        r.path.startsWith("/api/") &&
+        !r.path.includes("*") &&
+        !PUBLIC_PATHS.has(r.path),
     )
     .map((r) => ({ method: r.method, path: r.path }));
 }
@@ -33,7 +39,11 @@ describe("Middleware-stack completeness", () => {
 
 describe("identity-guard: все /api/* mutating routes требуют JWT", () => {
   const routes = app.routes.filter(
-    (r) => MUTATING_METHODS.has(r.method) && r.path.startsWith("/api/") && !r.path.includes("*"),
+    (r) =>
+      MUTATING_METHODS.has(r.method) &&
+      r.path.startsWith("/api/") &&
+      !r.path.includes("*") &&
+      !PUBLIC_PATHS.has(r.path),
   );
 
   for (const route of routes) {

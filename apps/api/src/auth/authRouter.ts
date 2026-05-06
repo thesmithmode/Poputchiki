@@ -231,6 +231,11 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const userId = typeof payload.uid === "string" ? payload.uid : null;
     /* c8 ignore stop */
 
+    if (refreshJti) {
+      const [already] = await sql`SELECT 1 FROM revoked_tokens WHERE jti = ${refreshJti} LIMIT 1`;
+      if (already) return c.json({ error: "token already revoked" }, 401);
+    }
+
     // Optionally revoke the access-token jti so it dies immediately, not at exp.
     let accessJti: string | null = null;
     const accessToken = body.access_token;

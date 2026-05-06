@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { setupErrorReporting } from "../src/lib/error-reporter";
+import { _resetForTesting, setupErrorReporting } from "../src/lib/error-reporter";
 
 const mockSendBeacon = vi.fn().mockReturnValue(true);
 
@@ -10,6 +10,7 @@ Object.defineProperty(navigator, "sendBeacon", {
 
 afterEach(() => {
   mockSendBeacon.mockClear();
+  _resetForTesting();
 });
 
 describe("setupErrorReporting", () => {

@@ -74,4 +74,31 @@ describe("setupErrorCapture / onError handler", () => {
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.error).toBe("internal server error");
   });
+
+  it("sql INSERT throws → catch поглощает ошибку, всё равно 500", async () => {
+    const sql = vi.fn().mockRejectedValue(new Error("db down")) as ReturnType<typeof makeSql>;
+    const { app } = makeApp(sql, { sampleRate: 1 });
+    const res = await app.request("/fail");
+    expect(res.status).toBe(500);
+  });
+
+  it("NODE_ENV=production → default sampleRate 0.1", async () => {
+    const origEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    const sql = makeSql();
+    const app = new Hono();
+    setupErrorCapture(app, sql);
+    app.get("/fail", () => {
+      throw new Error("prod-err");
+    });
+    vi.spyOn(Math, "random").mockReturnValue(0.05);
+    await app.request("/fail");
+    expect(sql).toHaveBeenCalledTimes(1);
+    if (origEnv === undefined) {
+      // biome-ignore lint/performance/noDelete: restoring undefined env var
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = origEnv;
+    }
+  });
 });

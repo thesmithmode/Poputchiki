@@ -7,3 +7,41 @@ body,
 #root {
   height: 100%;
 }
+
+/* WCAG AA focus-visible ring for keyboard navigation */
+:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove outline for mouse/touch interactions */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Ensure sufficient color contrast for disabled states */
+button:disabled,
+input:disabled,
+textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Skip-to-content link for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #0ea5e9;
+  color: #fff;
+  padding: 8px 16px;
+  font-weight: 700;
+  z-index: 10000;
+  border-radius: 0 0 4px 0;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 0;
+}

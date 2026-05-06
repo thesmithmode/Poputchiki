@@ -144,8 +144,11 @@ function AppRoutes() {
   // "ok" or "error" (401 / network) — show routes normally
   return (
     <HashRouter>
+      <a href="#main-content" className="skip-link">
+        Перейти к основному контенту
+      </a>
       <OfflineBanner />
-      <main>
+      <main id="main-content">
         <Routes>
           <Route path="/" element={<FeedScreen />} />
           <Route path="/rides" element={<FeedScreen />} />

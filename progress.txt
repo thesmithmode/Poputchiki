@@ -436,3 +436,4 @@ TASK-042 done: web/MapScreen — Leaflet карта со всеми активн
 [2026-05-06] TASK-048 done — ConfirmParticipationScreen: /rides/:id/confirm, POST confirm-participation, модалка благодарности с кнопками «Оставить отзыв»+«Позже», 409 already_confirmed. 8 unit тестов. 157/157 web тестов зелёные.
 TASK-049 [done] web: admin dashboard — тикеты + жалобы + role guard (2026-05-06)
 TASK-052 [done] web: ErrorBoundary + Loading/Skeleton/Empty/ErrorView (2026-05-06)
+TASK-111 [done] contract tests: Zod schema parity api<>web + JSON snapshots (2026-05-06)

@@ -37,9 +37,9 @@ describe("setupErrorReporting", () => {
 
   it("unhandledrejection → sendBeacon вызывается", () => {
     setupErrorReporting();
-    const event = new PromiseRejectionEvent("unhandledrejection", {
-      promise: Promise.reject(new Error("rejected")),
+    const event = Object.assign(new Event("unhandledrejection"), {
       reason: new Error("rejected"),
+      promise: Promise.resolve(),
     });
     window.dispatchEvent(event);
     expect(mockSendBeacon).toHaveBeenCalledTimes(1);

@@ -231,6 +231,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const userId = typeof payload.uid === "string" ? payload.uid : null;
     /* c8 ignore stop */
 
+    /* c8 ignore next -- defensive: signed JWT always has jti */
     if (refreshJti) {
       const [already] = await sql`SELECT 1 FROM revoked_tokens WHERE jti = ${refreshJti} LIMIT 1`;
       if (already) return c.json({ error: "token already revoked" }, 401);

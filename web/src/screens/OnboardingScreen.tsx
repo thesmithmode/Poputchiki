@@ -113,7 +113,7 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
             <span className="text-sm text-gray-700">
               Я соглашаюсь с{" "}
               <a
-                href="/terms"
+                href="#/terms"
                 className="underline text-blue-600"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -122,7 +122,7 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
               </a>{" "}
               и{" "}
               <a
-                href="/privacy"
+                href="#/privacy"
                 className="underline text-blue-600"
                 target="_blank"
                 rel="noopener noreferrer"

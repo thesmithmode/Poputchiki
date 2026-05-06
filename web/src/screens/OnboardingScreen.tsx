@@ -70,8 +70,7 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
       {step === 2 && (
         <div data-testid="onboarding-step-2" className="w-full max-w-sm">
           <label htmlFor="onboarding-apt" className="mb-1 block text-sm font-medium text-gray-700">
-            Номер квартиры{" "}
-            <span className="font-normal text-gray-400">(необязательно)</span>
+            Номер квартиры <span className="font-normal text-gray-400">(необязательно)</span>
           </label>
           <input
             id="onboarding-apt"

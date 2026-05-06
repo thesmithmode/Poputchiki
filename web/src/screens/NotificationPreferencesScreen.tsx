@@ -80,9 +80,7 @@ export function NotificationPreferencesScreen() {
     qc.setQueryData(["notif-prefs"], next);
   }
 
-  const isGlobalMuted = prefs
-    ? MUTABLE_CATEGORIES.every((k) => !prefs[k])
-    : false;
+  const isGlobalMuted = prefs ? MUTABLE_CATEGORIES.every((k) => !prefs[k]) : false;
 
   if (isLoading || !prefs) {
     return (
@@ -95,11 +93,7 @@ export function NotificationPreferencesScreen() {
   return (
     <div data-testid="notif-pref-screen" className="flex min-h-screen flex-col bg-white">
       <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-3">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="text-sm text-blue-600"
-        >
+        <button type="button" onClick={() => navigate(-1)} className="text-sm text-blue-600">
           ← Назад
         </button>
         <h1 className="text-lg font-semibold text-gray-900">Уведомления</h1>

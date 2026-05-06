@@ -83,7 +83,7 @@ describe("NotificationPreferencesScreen", () => {
     const putCall = mockedApiFetch.mock.calls.find(
       (c) => c[1] && (c[1] as RequestInit).method === "PUT",
     );
-    const body = JSON.parse((putCall?.[1] as RequestInit)?.body as string ?? "{}");
+    const body = JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? "{}");
     expect(body.system).toBeUndefined();
     expect(body.ride_request).toBe(false);
   });
@@ -103,7 +103,7 @@ describe("NotificationPreferencesScreen", () => {
         (c) => c[1] && (c[1] as RequestInit).method === "PUT",
       );
       expect(putCall).toBeDefined();
-      const body = JSON.parse((putCall?.[1] as RequestInit)?.body as string ?? "{}");
+      const body = JSON.parse(((putCall?.[1] as RequestInit)?.body as string) ?? "{}");
       expect(body.like_received).toBe(false);
     });
   });

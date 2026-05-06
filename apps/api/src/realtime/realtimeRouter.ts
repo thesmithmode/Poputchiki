@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import type postgres from "postgres";
+import { poolMetrics } from "../db/pool";
+import { listenWithBackoff } from "./listen";
 
 interface RealtimeOptions {
   heartbeatMs?: number;
@@ -22,16 +24,14 @@ export function createRealtimeRouter(sql: postgres.Sql, options: RealtimeOptions
         stream.onAbort(resolve);
       });
 
+      poolMetrics.incListenConnections();
       try {
-        const listenResult = await sql.listen("rides_changed", (payload) => {
-          stream
-            .writeSSE({
-              event: "ride_changed",
-              data: payload,
-            })
-            .catch(() => {});
+        await listenWithBackoff(async () => {
+          const result = await sql.listen("rides_changed", (payload) => {
+            stream.writeSSE({ event: "ride_changed", data: payload }).catch(() => {});
+          });
+          unlisten = result.unlisten;
         });
-        unlisten = listenResult.unlisten;
 
         heartbeatTimer = setInterval(() => {
           stream.writeSSE({ event: "heartbeat", data: "" }).catch(() => {});
@@ -39,6 +39,7 @@ export function createRealtimeRouter(sql: postgres.Sql, options: RealtimeOptions
 
         await aborted;
       } finally {
+        poolMetrics.decListenConnections();
         if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer);
         if (unlisten) await unlisten().catch(() => {});
       }

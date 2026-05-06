@@ -1,92 +1,61 @@
 # Poputchiki
 
-Telegram MiniApp для попутчиков ЖК Царёво.
+Telegram Mini App для совместных поездок жителей ЖК Царёво (Казань).
+
+Житель открывает бот в Telegram → видит карту с попутчиками → создаёт поездку или присоединяется к чужой → договаривается прямо в интерфейсе. Никаких внешних аккаунтов — авторизация через Telegram Identity.
+
+## Что умеет
+
+- Создание поездок с маршрутом, временем, количеством мест
+- Карта активных поездок (Leaflet + OpenStreetMap)
+- Запросы на участие, подтверждение водителем
+- Избранные маршруты, повторяющиеся шаблоны поездок
+- Лайки, отзывы, жалобы на пользователей
+- Push-уведомления через Telegram Bot API
+- Геокодинг адресов (self-hosted Nominatim, регион Татарстан)
+- Realtime-обновления через SSE
+
+## Из чего состоит
+
+```
+apps/
+  api          — HTTP API (Hono + Bun, порт 3000)
+  web-server   — отдаёт собранный React SPA
+  notifier     — слушает Postgres NOTIFY, шлёт TG-уведомления
+  cron         — периодические задачи (бэкапы, шаблоны, аудит)
+  webhook      — принимает апдейты от Telegram Bot API
+
+web/           — React SPA (Vite), отображается внутри Telegram
+packages/
+  shared       — Zod-схемы и TypeScript-типы, общие для api и web
+
+infra/         — Docker Compose (dev/prod/observability), Postgres конфиг
+db/            — SQL-миграции
+scripts/       — deploy, rollback, backup, preflight
+.github/       — CI (lint/test/coverage) + deploy workflow
+```
 
 ## Стек
 
-- **Backend**: TypeScript + Hono + Bun (`apps/api`)
-- **Frontend**: TypeScript + Vite + React SPA (`web/`)
-- **БД**: self-hosted PostgreSQL 16 в Docker
-- **Auth**: собственный JWT (HS256) после HMAC-проверки Telegram initData
-- **Realtime**: SSE + Postgres LISTEN/NOTIFY
-- **Карта**: Leaflet + OpenStreetMap + self-hosted Nominatim
+| Слой | Технологии |
+|------|-----------|
+| Backend | TypeScript, Hono, Bun |
+| Frontend | TypeScript, React 18, Vite, Leaflet |
+| База данных | PostgreSQL 16 (self-hosted Docker) |
+| Auth | HMAC-валидация Telegram initData → JWT HS256 |
+| Realtime | SSE + Postgres LISTEN/NOTIFY |
+| Геокодинг | self-hosted Nominatim (Татарстан OSM) |
+| Деплой | GitHub Actions → GHCR → SSH → Docker Compose |
 
-## Быстрый старт (локально)
+## Целевая нагрузка
 
-```bash
-cp .env.example .env   # заполни переменные
-bun install
-bun run db:up:dev      # поднять dev postgres + nominatim
-bun run db:migrate     # накатить миграции
-bun run dev            # запустить API (apps/api) + Web (web/)
-```
+50 000 одновременных пользователей. Все архитектурные решения (пул соединений, RLS, connection limits) принимались с учётом этого.
 
-## Unit-тесты
+## Документация
 
-```bash
-bun run test:unit      # запуск unit-тестов (без БД)
-bun run coverage:check # unit + coverage report (95%+ gate)
-```
-
-Unit-тесты живут в `apps/*/tests/unit/**`. Не требуют запущенной БД.
-
-## Integration tests
-
-Integration-тесты требуют запущенный Postgres с применёнными миграциями.
-
-### Локальный запуск
-
-```bash
-# 1. Поднять dev-postgres (если ещё не запущен)
-docker compose -f infra/docker-compose.dev.yml up -d postgres
-
-# 2. Применить миграции
-bun run db:migrate
-
-# 3. Запустить integration-тесты
-bun run test:integration
-```
-
-По умолчанию тесты подключаются к БД через `DATABASE_URL` (или `POSTGRES_*` env-переменные). Для отдельной тестовой БД задай `DATABASE_URL_TEST`.
-
-### Вспомогательные хелперы (TASK-129)
-
-`apps/api/tests/integration/setup.ts` предоставляет:
-
-- `buildDsn()` — собирает DSN из `DATABASE_URL_TEST` / `DATABASE_URL` / `POSTGRES_*`
-- `withTestUser(sql, tgId, role?)` — вставляет тестового пользователя, возвращает `{ id, tgId, role, cleanup() }`
-- `truncateAll(sql)` — очищает все таблицы (TRUNCATE CASCADE) для полного сброса состояния
-
-Пример использования:
-
-```typescript
-import { createPool } from "../../src/db/pool";
-import { buildDsn, withTestUser } from "./setup";
-
-let sql: ReturnType<typeof createPool>;
-
-beforeAll(async () => { sql = createPool(buildDsn()); });
-afterAll(async () => { await sql.end(); });
-
-it("user sees own record", async () => {
-  const user = await withTestUser(sql, 12345);
-  try {
-    // ... test via withIdentity(sql, user, ...) ...
-  } finally {
-    await user.cleanup();
-  }
-});
-```
-
-### CI
-
-Integration-тесты автоматически запускаются в GHA (`ci.yml`) на каждый push в `dev`/`main`. CI поднимает postgres сервис, накатывает миграции и выполняет `bun run test:integration`.
-
-## Деплой
-
-```bash
-# Production деплой (только через GHA или вручную)
-./scripts/deploy.sh <SHA>
-# Rollback
-./scripts/rollback.sh
-```
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — модули, зависимости, взаимодействие
+- [`docs/modules/`](docs/modules/) — технические доки по каждому сервису
+- [`docs/SPEC-Architecture-v0.1.md`](docs/SPEC-Architecture-v0.1.md) — полная архитектурная спецификация
+- [`docs/PRD-Poputchiki-v0.1.md`](docs/PRD-Poputchiki-v0.1.md) — продуктовые требования
+- [`docs/PRE-LAUNCH-CHECKLIST.md`](docs/PRE-LAUNCH-CHECKLIST.md) — чеклист перед запуском
+- [`docs/runbook/`](docs/runbook/) — операционные runbook-ы

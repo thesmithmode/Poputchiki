@@ -205,8 +205,8 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       /* c8 ignore start -- antibot error path tested in unit, not integration */
       const e = err as Error & { code?: string; antibot?: string };
       if (e.code === "ANTIBOT") return c.json({ error: e.antibot ?? "antibot" }, 403);
-      /* c8 ignore stop */
       throw err;
+      /* c8 ignore stop */
     }
 
     // Audit recorded by global auditLog middleware — no manual INSERT here.

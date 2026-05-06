@@ -78,6 +78,8 @@ function OfflineBanner() {
   if (online) return null;
   return (
     <div
+      aria-live="polite"
+      aria-atomic="true"
       data-testid="offline-banner"
       style={{
         position: "fixed",
@@ -143,23 +145,25 @@ function AppRoutes() {
   return (
     <HashRouter>
       <OfflineBanner />
-      <Routes>
-        <Route path="/" element={<FeedScreen />} />
-        <Route path="/rides" element={<FeedScreen />} />
-        <Route path="/rides/new" element={<CreateRideScreen />} />
-        <Route path="/favorites" element={<FavoritesScreen />} />
-        <Route path="/map" element={<MapScreen />} />
-        <Route path="/rides/:id" element={<RideDetailRoute />} />
-        <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
-        <Route path="/users/:id" element={<ProfileRoute />} />
-        <Route path="/settings" element={<SettingsScreen />} />
-        <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
-        <Route path="/support" element={<SupportScreen />} />
-        <Route path="/admin" element={<AdminScreen />} />
-        <Route path="/privacy" element={<PrivacyScreen />} />
-        <Route path="/terms" element={<TermsScreen />} />
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+      <main>
+        <Routes>
+          <Route path="/" element={<FeedScreen />} />
+          <Route path="/rides" element={<FeedScreen />} />
+          <Route path="/rides/new" element={<CreateRideScreen />} />
+          <Route path="/favorites" element={<FavoritesScreen />} />
+          <Route path="/map" element={<MapScreen />} />
+          <Route path="/rides/:id" element={<RideDetailRoute />} />
+          <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
+          <Route path="/users/:id" element={<ProfileRoute />} />
+          <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
+          <Route path="/support" element={<SupportScreen />} />
+          <Route path="/admin" element={<AdminScreen />} />
+          <Route path="/privacy" element={<PrivacyScreen />} />
+          <Route path="/terms" element={<TermsScreen />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </main>
     </HashRouter>
   );
 }

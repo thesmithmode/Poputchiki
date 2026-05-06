@@ -17,6 +17,17 @@
       },
       "style": {
         "noNonNullAssertion": "warn"
+      },
+      "a11y": {
+        "recommended": true,
+        "noSvgWithoutTitle": "warn",
+        "useButtonType": "error",
+        "useAltText": "error",
+        "useAnchorContent": "error",
+        "useAriaPropsForRole": "error",
+        "useValidAriaRole": "error",
+        "noAccessKey": "warn",
+        "noAutofocus": "warn"
       }
     }
   },

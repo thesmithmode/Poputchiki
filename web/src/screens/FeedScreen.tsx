@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiltersPanel } from "../components/FiltersPanel";
 import { RideCard } from "../components/RideCard";
+import { applyFilters, useFilters } from "../hooks/useFilters";
 import { useRealtime } from "../hooks/useRealtime";
 import { useRides } from "../hooks/useRides";
 import type { Ride } from "../types/ride";
@@ -9,12 +11,15 @@ export function FeedScreen() {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useRides();
   useRealtime();
+  const { filters, setFilters, resetFilters } = useFilters();
   const [view, setView] = useState<"list" | "map">("list");
+  const [showFilters, setShowFilters] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
+  const filteredRides = applyFilters(data?.rides ?? [], filters);
 
   useEffect(() => {
-    if (view !== "map" || !mapRef.current || !data?.rides.length) return;
+    if (view !== "map" || !mapRef.current || !filteredRides.length) return;
 
     let destroyed = false;
 
@@ -32,7 +37,7 @@ export function FeedScreen() {
         attribution: "© OpenStreetMap contributors",
       }).addTo(map);
 
-      for (const ride of data.rides) {
+      for (const ride of filteredRides) {
         L.marker([ride.from_lat, ride.from_lng]).addTo(map).bindPopup(ride.from_label);
       }
 
@@ -42,7 +47,7 @@ export function FeedScreen() {
     return () => {
       destroyed = true;
     };
-  }, [view, data]);
+  }, [view, data, filters]);
 
   // Cleanup map on unmount
   useEffect(() => {
@@ -78,23 +83,37 @@ export function FeedScreen() {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <header className="flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 sticky top-0 z-10">
         <h1 className="text-lg font-semibold text-gray-900">Попутчики</h1>
-        <button
-          type="button"
-          onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
-          className="text-sm font-medium text-blue-600 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
-        >
-          {view === "list" ? "Карта" : "Список"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            data-testid="toggle-filters"
+            onClick={() => setShowFilters((v) => !v)}
+            className="text-sm font-medium text-gray-600 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            Фильтры
+          </button>
+          <button
+            type="button"
+            onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
+            className="text-sm font-medium text-blue-600 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+          >
+            {view === "list" ? "Карта" : "Список"}
+          </button>
+        </div>
       </header>
+
+      {showFilters && (
+        <FiltersPanel filters={filters} onChange={setFilters} onReset={resetFilters} />
+      )}
 
       {view === "list" ? (
         <div data-testid="ride-list" className="flex-1 p-4 space-y-3">
-          {!data?.rides.length ? (
+          {!filteredRides.length ? (
             <div className="flex items-center justify-center h-48">
               <p className="text-gray-400 text-sm">Ничего не найдено</p>
             </div>
           ) : (
-            data.rides.map((ride) => (
+            filteredRides.map((ride) => (
               <RideCard key={ride.id} ride={ride} onClick={handleCardClick} />
             ))
           )}

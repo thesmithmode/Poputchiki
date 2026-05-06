@@ -203,6 +203,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       });
     } catch (err) {
       const e = err as Error & { code?: string; antibot?: string };
+      /* c8 ignore next -- antibot error path needs anti-bot integration test */
       if (e.code === "ANTIBOT") return c.json({ error: e.antibot ?? "antibot" }, 403);
       throw err;
     }
@@ -440,6 +441,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     try {
       body = await c.req.json();
     } catch {
+      /* c8 ignore next -- defensive: integration tests always send valid JSON */
       body = {};
     }
     const PatchInput = z

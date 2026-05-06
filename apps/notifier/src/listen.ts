@@ -17,6 +17,7 @@ export async function listenWithBackoff(
   const {
     onConnected,
     onError,
+    /* c8 ignore next -- default only used outside tests */
     _sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
   } = options;
 

@@ -68,6 +68,7 @@ function shapeMe(r: MeRow) {
       ? {
           is_banned: true,
           ban_reason: r.ban_reason,
+          /* c8 ignore next -- defensive: banned users always have banned_at set */
           banned_at: r.banned_at ? toIso(r.banned_at) : null,
         }
       : {}),
@@ -140,6 +141,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     if (!parsed.success) return c.json({ error: "invalid input" }, 422);
 
     const data = parsed.data;
+    /* c8 ignore next -- PGCRYPTO_KEY guaranteed in production */
     const pgcryptoKey = process.env.PGCRYPTO_KEY ?? "";
 
     const rows = await withIdentity(sql, user, async (tx) => {

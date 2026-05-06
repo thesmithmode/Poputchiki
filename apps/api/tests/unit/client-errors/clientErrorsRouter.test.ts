@@ -74,4 +74,15 @@ describe("POST /api/client-errors", () => {
     });
     expect(res.status).toBe(422);
   });
+
+  it("sql INSERT throws → catch поглощает ошибку, всё равно 200", async () => {
+    const sql = vi.fn().mockRejectedValue(new Error("db down")) as ReturnType<typeof makeSql>;
+    const { app } = makeApp(sql);
+    const res = await app.request("/api/client-errors", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "test error" }),
+    });
+    expect(res.status).toBe(200);
+  });
 });

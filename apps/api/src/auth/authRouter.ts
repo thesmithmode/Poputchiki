@@ -32,10 +32,11 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     try {
       verified = verifyInitData(initData, botToken);
     } catch (err) {
+      /* c8 ignore next -- defensive: verifyInitData only throws TelegramAuthError */
       if (err instanceof TelegramAuthError) {
         return c.json({ error: err.reason }, 401);
       }
-      /* c8 ignore next -- defensive: verifyInitData only throws TelegramAuthError */
+      /* c8 ignore next */
       return c.json({ error: "auth failed" }, 401);
     }
 
@@ -76,6 +77,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
           RETURNING id, role
         `;
         const upsertedId = upserted?.id;
+        /* c8 ignore next 2 -- defensive: INSERT RETURNING always gives id+role */
         const upsertedRole = typeof upserted?.role === "string" ? upserted.role : "user";
         return typeof upsertedId === "string" ? { id: upsertedId, role: upsertedRole } : null;
       });

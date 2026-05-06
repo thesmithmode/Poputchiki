@@ -10,6 +10,7 @@ volumes:
   prometheus-data:
   grafana-data:
   uptime-kuma-data:
+  loki-data:
 
 services:
   prometheus:
@@ -119,6 +120,37 @@ services:
       - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 128m }
+
+  loki:
+    image: grafana/loki:2.9.8
+    restart: unless-stopped
+    networks: [poputchiki-internal]
+    volumes:
+      - loki-data:/loki
+      - ./infra/loki/config.yml:/etc/loki/config.yml:ro
+    command: -config.file=/etc/loki/config.yml
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }
+    deploy:
+      resources:
+        limits: { memory: 256m }
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    restart: unless-stopped
+    networks: [poputchiki-internal]
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/promtail/config.yml:/etc/promtail/config.yml:ro
+    command: -config.file=/etc/promtail/config.yml
     logging:
       driver: json-file
       options: { max-size: "5m", max-file: "3" }

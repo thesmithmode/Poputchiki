@@ -4,7 +4,7 @@ import { createApp } from "./app";
 
 const env = parseWebhookEnv(process.env as Record<string, string | undefined>);
 const sql = postgres(env.DATABASE_URL);
-const app = createApp(sql, env.BOT_TOKEN, env.BOT_WEBHOOK_SECRET, env.DOMAIN);
+const app = createApp(sql, env.BOT_TOKEN, env.WEBHOOK_SECRET, env.DOMAIN);
 
 export default app;
 

@@ -60,7 +60,7 @@ describe("parseApiEnv", () => {
 const VALID_WEBHOOK_ENV = {
   DATABASE_URL: "postgres://user:pass@localhost:5432/db",
   BOT_TOKEN: "1234567890:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefg",
-  BOT_WEBHOOK_SECRET: "super-secret-webhook-token-32chars",
+  WEBHOOK_SECRET: "super-secret-webhook-token-32chars",
   DOMAIN: "example.com",
 };
 
@@ -69,7 +69,7 @@ describe("parseWebhookEnv", () => {
     const env = parseWebhookEnv(VALID_WEBHOOK_ENV);
     expect(env.DATABASE_URL).toBe(VALID_WEBHOOK_ENV.DATABASE_URL);
     expect(env.BOT_TOKEN).toBe(VALID_WEBHOOK_ENV.BOT_TOKEN);
-    expect(env.BOT_WEBHOOK_SECRET).toBe(VALID_WEBHOOK_ENV.BOT_WEBHOOK_SECRET);
+    expect(env.WEBHOOK_SECRET).toBe(VALID_WEBHOOK_ENV.WEBHOOK_SECRET);
     expect(env.DOMAIN).toBe("example.com");
   });
 
@@ -78,13 +78,13 @@ describe("parseWebhookEnv", () => {
     expect(env.WEBHOOK_PORT).toBe(3002);
   });
 
-  it("BOT_WEBHOOK_SECRET отсутствует → бросает ошибку", () => {
-    const { BOT_WEBHOOK_SECRET: _, ...noSecret } = VALID_WEBHOOK_ENV;
+  it("WEBHOOK_SECRET отсутствует → бросает ошибку", () => {
+    const { WEBHOOK_SECRET: _, ...noSecret } = VALID_WEBHOOK_ENV;
     expect(() => parseWebhookEnv(noSecret)).toThrow();
   });
 
-  it("BOT_WEBHOOK_SECRET короче 16 символов → бросает ошибку", () => {
-    expect(() => parseWebhookEnv({ ...VALID_WEBHOOK_ENV, BOT_WEBHOOK_SECRET: "short" })).toThrow();
+  it("WEBHOOK_SECRET короче 16 символов → бросает ошибку", () => {
+    expect(() => parseWebhookEnv({ ...VALID_WEBHOOK_ENV, WEBHOOK_SECRET: "short" })).toThrow();
   });
 
   it("DATABASE_URL отсутствует → бросает ошибку", () => {

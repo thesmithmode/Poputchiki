@@ -3,7 +3,7 @@ import { z } from "zod";
 const WebhookEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
   BOT_TOKEN: z.string().min(1),
-  BOT_WEBHOOK_SECRET: z.string().min(16),
+  WEBHOOK_SECRET: z.string().min(16),
   DOMAIN: z.string().optional(),
   WEBHOOK_PORT: z.coerce.number().int().positive().optional().default(3002),
   NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),

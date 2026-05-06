@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type postgres from "postgres";
 import { handleMessage } from "./handlers/message";
 import { handleMyChatMember } from "./handlers/my-chat-member";
@@ -15,7 +16,7 @@ export function createApp(
   const app = new Hono();
   const dedup = new LruDedup();
 
-  app.post("/tg/webhook", webhookSecret(webhookSecretToken), async (c) => {
+  async function handleUpdate(c: Context) {
     const update = await c.req.json<TelegramUpdate>();
     if (dedup.has(update.update_id)) return c.json({ ok: true });
     dedup.add(update.update_id);
@@ -26,8 +27,17 @@ export function createApp(
     if (update.message) {
       await handleMessage(botToken, domain, update.message);
     }
+    if (update.callback_query) {
+      console.log("[webhook] callback_query", update.update_id, update.callback_query.data);
+    }
     return c.json({ ok: true });
-  });
+  }
+
+  // Canonical path expected by Telegram (POST /webhook/tg)
+  app.post("/webhook/tg", webhookSecret(webhookSecretToken), handleUpdate);
+
+  // Legacy path kept for backward compatibility
+  app.post("/tg/webhook", webhookSecret(webhookSecretToken), handleUpdate);
 
   return app;
 }

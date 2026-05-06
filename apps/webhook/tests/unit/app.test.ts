@@ -9,10 +9,15 @@ function makeSql() {
   return vi.fn(() => Promise.resolve([])) as unknown as import("postgres").Sql;
 }
 
-function post(app: ReturnType<typeof createApp>, update: TelegramUpdate, secret?: string) {
+function post(
+  app: ReturnType<typeof createApp>,
+  update: TelegramUpdate,
+  secret?: string,
+  path = "/tg/webhook",
+) {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (secret !== undefined) headers["X-Telegram-Bot-Api-Secret-Token"] = secret;
-  return app.request("/tg/webhook", {
+  return app.request(path, {
     method: "POST",
     headers,
     body: JSON.stringify(update),
@@ -23,7 +28,7 @@ function baseUpdate(id = 1): TelegramUpdate {
   return { update_id: id };
 }
 
-describe("POST /tg/webhook", () => {
+describe("webhook handlers", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
@@ -35,16 +40,16 @@ describe("POST /tg/webhook", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns 401 without secret header", async () => {
+  it("returns 403 without secret header", async () => {
     const app = createApp(makeSql(), BOT_TOKEN, SECRET);
     const res = await post(app, baseUpdate(), undefined);
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
-  it("returns 401 with wrong secret", async () => {
+  it("returns 403 with wrong secret", async () => {
     const app = createApp(makeSql(), BOT_TOKEN, SECRET);
     const res = await post(app, baseUpdate(), "wrong");
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
   });
 
   it("returns 200 for deduplicated update", async () => {
@@ -89,5 +94,31 @@ describe("POST /tg/webhook", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0] as [string, ...unknown[]];
     expect(url).toContain("sendMessage");
+  });
+
+  it("canonical /webhook/tg path returns 200 with valid secret", async () => {
+    const app = createApp(makeSql(), BOT_TOKEN, SECRET);
+    const res = await post(app, baseUpdate(400), SECRET, "/webhook/tg");
+    expect(res.status).toBe(200);
+  });
+
+  it("canonical /webhook/tg path returns 403 without secret", async () => {
+    const app = createApp(makeSql(), BOT_TOKEN, SECRET);
+    const res = await post(app, baseUpdate(401), undefined, "/webhook/tg");
+    expect(res.status).toBe(403);
+  });
+
+  it("handles callback_query and returns 200", async () => {
+    const app = createApp(makeSql(), BOT_TOKEN, SECRET);
+    const update: TelegramUpdate = {
+      update_id: 500,
+      callback_query: {
+        id: "cq1",
+        from: { id: 10, is_bot: false, first_name: "Bob" },
+        data: "action:confirm",
+      },
+    };
+    const res = await post(app, update, SECRET);
+    expect(res.status).toBe(200);
   });
 });

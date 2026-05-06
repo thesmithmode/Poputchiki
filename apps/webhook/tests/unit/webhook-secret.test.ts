@@ -11,23 +11,23 @@ function buildApp(secret: string) {
 describe("webhookSecret middleware", () => {
   const SECRET = "my-secret-token-1234";
 
-  it("returns 401 when header is missing", async () => {
+  it("returns 403 when header is missing", async () => {
     const app = buildApp(SECRET);
     const res = await app.request("/test", { method: "POST" });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toBe("unauthorized");
+    expect(body.error).toBe("forbidden");
   });
 
-  it("returns 401 when header is wrong", async () => {
+  it("returns 403 when header is wrong", async () => {
     const app = buildApp(SECRET);
     const res = await app.request("/test", {
       method: "POST",
       headers: { "X-Telegram-Bot-Api-Secret-Token": "wrong-token" },
     });
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(403);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toBe("unauthorized");
+    expect(body.error).toBe("forbidden");
   });
 
   it("calls next and returns 200 when header matches", async () => {

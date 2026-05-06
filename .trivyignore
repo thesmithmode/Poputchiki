@@ -1,0 +1,3 @@
+# Trivy vulnerability allowlist
+# Add CVE IDs here to suppress known false positives
+# Example: CVE-2023-12345

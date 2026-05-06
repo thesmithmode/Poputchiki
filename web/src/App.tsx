@@ -4,6 +4,7 @@ import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
+import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
 import { FavoritesScreen } from "./screens/FavoritesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
@@ -75,6 +76,7 @@ function AppRoutes() {
         <Route path="/favorites" element={<FavoritesScreen />} />
         <Route path="/map" element={<MapScreen />} />
         <Route path="/rides/:id" element={<RideDetailRoute />} />
+        <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
         <Route path="/users/:id" element={<ProfileRoute />} />
         <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
         <Route path="/support" element={<SupportScreen />} />

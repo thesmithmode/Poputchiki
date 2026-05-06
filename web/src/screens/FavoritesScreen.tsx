@@ -25,7 +25,12 @@ export function FavoritesScreen() {
   return (
     <div
       data-testid="favorites-screen"
-      style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "#f8f9fa" }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        background: "#f8f9fa",
+      }}
     >
       <header
         style={{
@@ -43,7 +48,14 @@ export function FavoritesScreen() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", padding: 4, color: "#333" }}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: 20,
+            cursor: "pointer",
+            padding: 4,
+            color: "#333",
+          }}
           aria-label="Назад"
         >
           ←
@@ -101,7 +113,14 @@ function FavoriteRow({ entry, onNavigate, onToggleNotify, onRemove }: FavoriteRo
       <button
         type="button"
         onClick={onNavigate}
-        style={{ flex: 1, textAlign: "left", background: "none", border: "none", cursor: "pointer", padding: 0 }}
+        style={{
+          flex: 1,
+          textAlign: "left",
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+        }}
       >
         <div style={{ fontSize: 15, fontWeight: 600, color: "#15191f" }}>{entry.display_name}</div>
         {entry.tg_username && (

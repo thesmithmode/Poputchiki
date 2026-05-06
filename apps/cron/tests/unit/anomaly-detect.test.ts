@@ -1,18 +1,17 @@
+import type { Sql } from "postgres";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { detectAnomalies } from "../../src/anomaly-detect";
 
 type FetcherArgs = [string, { body: string }];
 
-function makeSql(newUserCount: number): import("postgres").Sql {
-  return vi
-    .fn()
-    .mockResolvedValue([{ count: String(newUserCount) }]) as unknown as import("postgres").Sql;
+function makeSql(newUserCount: number): Sql {
+  return vi.fn().mockResolvedValue([{ count: String(newUserCount) }]) as unknown as Sql;
 }
 
 describe("detectAnomalies", () => {
   afterEach(() => {
-    delete process.env.BOT_TOKEN;
-    delete process.env.ADMIN_TG_CHAT_ID;
+    process.env.BOT_TOKEN = "";
+    process.env.ADMIN_TG_CHAT_ID = "";
   });
 
   it("не отправляет алерт когда новых юзеров меньше порога", async () => {

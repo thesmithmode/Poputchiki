@@ -27,7 +27,7 @@ export async function detectAnomalies(
   const newUsers = Number(row?.count ?? 0);
 
   if (newUsers > NEW_USER_ALERT_THRESHOLD) {
-    console.log(
+    console.info(
       JSON.stringify({
         msg: "anomaly_new_users_spike",
         new_users_24h: newUsers,

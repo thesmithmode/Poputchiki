@@ -7,6 +7,10 @@ vi.mock("../../../src/db/with-identity", () => ({
   withIdentity: vi.fn(),
 }));
 
+vi.mock("../../../src/middleware/anti-bot", () => ({
+  antiBot: () => async (_c: unknown, next: () => Promise<void>) => next(),
+}));
+
 import { withIdentity } from "../../../src/db/with-identity";
 import { readJson } from "../../helpers/json";
 

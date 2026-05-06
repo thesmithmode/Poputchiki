@@ -1,10 +1,10 @@
 import postgres from "postgres";
+import { detectAnomalies } from "./anomaly-detect";
 import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
 import { confirmParticipationPush } from "./confirm-participation-push";
 import { expandTemplates } from "./expand-templates";
 import { finalizeRides } from "./finalize-rides";
-import { detectAnomalies } from "./anomaly-detect";
 import { refreshUserStats } from "./refresh-user-stats";
 
 const DATABASE_URL = process.env.DATABASE_URL;

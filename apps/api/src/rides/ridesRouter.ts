@@ -4,19 +4,10 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity, withSystem } from "../db/with-identity";
 import { isUniqueViolation } from "../lib/db-errors";
+import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
-
-const MS_24H = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function isAntibotError(err: unknown): err is Error & { code: "ANTIBOT"; antibot: string } {
-  return (
-    err instanceof Error &&
-    (err as Error & { code?: string }).code === "ANTIBOT" &&
-    typeof (err as Error & { antibot?: string }).antibot === "string"
-  );
-}
 
 function isNoSeatsError(err: unknown): boolean {
   return err instanceof Error && (err as Error & { code?: string }).code === "NO_SEATS";
@@ -182,7 +173,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     return c.json(rows[0]);
   });
 
-  app.post("/", async (c) => {
+  app.post("/", antiBot(sql), async (c) => {
     const body = await c.req.json().catch(
       /* c8 ignore next -- json always valid in tests; fallback for malformed request bodies */
       () => null,
@@ -197,50 +188,6 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     let ride: Record<string, unknown>;
     try {
       ride = await withIdentity(sql, user, async (tx) => {
-        if (user.role !== "admin") {
-          const [userRow] = await tx<
-            { created_at: Date; likes_received_count: number }[]
-          >`SELECT created_at, likes_received_count FROM users WHERE id = ${user.id}`;
-
-          /* c8 ignore next 3 -- defensive: identity-guard validates user exists */
-          if (!userRow) {
-            throw Object.assign(new Error("user not found"), { code: "NOT_FOUND" });
-          }
-
-          const isNewAccount = Date.now() - userRow.created_at.getTime() < MS_24H;
-
-          if (isNewAccount) {
-            const result = await tx<{ count: number }[]>`
-              SELECT COUNT(*)::int AS count FROM rides
-              WHERE driver_id = ${user.id} AND status = 'active'
-            `;
-            /* c8 ignore next -- defensive ?? 0: COUNT(*) always returns row */
-            const activeCount = result[0]?.count ?? 0;
-            if (activeCount >= 1) {
-              throw Object.assign(new Error("anti-bot: new account limit"), {
-                code: "ANTIBOT",
-                antibot: "too_new",
-              });
-            }
-          }
-
-          if (userRow.likes_received_count === 0) {
-            const result = await tx<{ count: number }[]>`
-              SELECT COUNT(*)::int AS count FROM rides
-              WHERE driver_id = ${user.id}
-                AND created_at >= date_trunc('day', NOW())
-            `;
-            /* c8 ignore next -- defensive ?? 0: COUNT(*) always returns row */
-            const dailyCount = result[0]?.count ?? 0;
-            if (dailyCount >= 3) {
-              throw Object.assign(new Error("anti-bot: daily limit for unliked accounts"), {
-                code: "ANTIBOT",
-                antibot: "unverified_daily_limit",
-              });
-            }
-          }
-        }
-
         const rows = await tx`
           INSERT INTO rides
             (driver_id, template_id, from_label, from_lat, from_lng,
@@ -254,11 +201,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
         `;
         return rows[0] as Record<string, unknown>;
       });
-    } catch (err: unknown) {
-      if (isAntibotError(err)) {
-        return c.json({ error: err.antibot }, 403);
-      }
-      /* c8 ignore next -- defensive: re-throw non-antibot errors to global handler */
+    } catch (err) {
+      const e = err as Error & { code?: string; antibot?: string };
+      if (e.code === "ANTIBOT") return c.json({ error: e.antibot ?? "antibot" }, 403);
       throw err;
     }
 

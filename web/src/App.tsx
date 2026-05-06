@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { AdminScreen } from "./screens/AdminScreen";
@@ -105,10 +106,12 @@ export function App() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div data-testid="app-root">
-        <AppRoutes />
-      </div>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <div data-testid="app-root">
+          <AppRoutes />
+        </div>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

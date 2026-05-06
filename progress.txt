@@ -437,3 +437,6 @@ TASK-042 done: web/MapScreen — Leaflet карта со всеми активн
 TASK-049 [done] web: admin dashboard — тикеты + жалобы + role guard (2026-05-06)
 TASK-052 [done] web: ErrorBoundary + Loading/Skeleton/Empty/ErrorView (2026-05-06)
 TASK-111 [done] contract tests: Zod schema parity api<>web + JSON snapshots (2026-05-06)
+[2026-05-06] TASK-106 done — фінальна синхронізація SPEC v0.5/PRD v0.6/OPEN-QUESTIONS: revoked_tokens+error_log схеми в SPEC §4.1, observability resolved в OPEN-QUESTIONS, changelog в PRD.
+[2026-05-06] TASK-061 done — scripts/backup-db.sh (pg_dump+zstd+gpg, retention daily30/weekly12/monthly24), scripts/restore-test.sh (decrypt+restore до tmp DB+smoke), apps/cron/src/backup.ts (runBackup/runBaseBackup/runRestoreTest з advisory lock), scheduler в cron/index.ts 03:00/04:00/05:00 UTC. 10 unit тестів.
+[2026-05-06] TASK-062 done — infra/docker-compose.prod.yml: bind mounts /opt/poputchiki/*, healthchecks (curl /health + pg_isready), logging json-file max-size=10m, resource limits (postgres 1GB, решта 256MB), BACKUP_KEY env для cron.

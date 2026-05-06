@@ -45,7 +45,11 @@ test.beforeEach(async ({ page }) => {
 
   // Mock /api/users/me
   await page.route("**/api/users/me", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(MOCK_USER) })
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(MOCK_USER),
+    }),
   );
 
   // Mock GET /api/rides — empty feed initially
@@ -85,7 +89,7 @@ test("пользователь видит ленту и создаёт поез�
 
   // Дата — завтра
   const tomorrow = new Date(Date.now() + 86_400_000);
-  const dateStr = tomorrow.toISOString().split("T")[0];
+  const dateStr = tomorrow.toISOString().split("T")[0] ?? "";
   const timeStr = "10:00";
 
   const dateInput = page.locator('input[type="date"]').first();

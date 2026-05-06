@@ -111,7 +111,25 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
               className="mt-0.5"
             />
             <span className="text-sm text-gray-700">
-              Я соглашаюсь на обработку персональных данных в рамках сервиса Попутчики ЖК Царёво
+              Я соглашаюсь с{" "}
+              <a
+                href="/terms"
+                className="underline text-blue-600"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                условиями использования
+              </a>{" "}
+              и{" "}
+              <a
+                href="/privacy"
+                className="underline text-blue-600"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                политикой конфиденциальности
+              </a>{" "}
+              сервиса Попутчики ЖК Царёво
             </span>
           </label>
           {error && <p className="mb-4 text-sm text-red-500">{error}</p>}

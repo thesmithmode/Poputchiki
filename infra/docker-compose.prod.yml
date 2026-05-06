@@ -1,0 +1,120 @@
+networks:
+  traefik-public:
+    external: true
+  poputchiki-internal:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  nominatim-data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  api:
+    image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      BOT_TOKEN: ${BOT_TOKEN}
+      PGCRYPTO_KEY: ${PGCRYPTO_KEY}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - traefik-public
+      - poputchiki-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-api.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-api.loadbalancer.server.port=3000"
+
+  web:
+    image: ghcr.io/thesmithmode/poputchiki-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-web.rule=Host(`app.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-web.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-web.loadbalancer.server.port=80"
+
+  notifier:
+    image: ghcr.io/thesmithmode/poputchiki-notifier:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - poputchiki-internal
+
+  cron:
+    image: ghcr.io/thesmithmode/poputchiki-cron:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - poputchiki-internal
+
+  webhook:
+    image: ghcr.io/thesmithmode/poputchiki-webhook:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - traefik-public
+      - poputchiki-internal
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-webhook.rule=Host(`webhook.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-webhook.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-webhook.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-webhook.loadbalancer.server.port=3001"
+
+  nominatim:
+    image: mediagis/nominatim:4.4
+    restart: unless-stopped
+    environment:
+      PBF_URL: https://download.geofabrik.de/russia/volga-fed-district-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district-updates/
+      NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - nominatim-data:/var/lib/postgresql/14/main
+    networks:
+      - poputchiki-internal

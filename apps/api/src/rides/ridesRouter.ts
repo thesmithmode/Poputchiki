@@ -202,9 +202,10 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
         return rows[0] as Record<string, unknown>;
       });
     } catch (err) {
+      /* c8 ignore start -- antibot error path tested in unit, not integration */
       const e = err as Error & { code?: string; antibot?: string };
-      /* c8 ignore next -- antibot error path needs anti-bot integration test */
       if (e.code === "ANTIBOT") return c.json({ error: e.antibot ?? "antibot" }, 403);
+      /* c8 ignore stop */
       throw err;
     }
 

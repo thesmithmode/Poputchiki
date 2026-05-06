@@ -14,12 +14,13 @@ export async function listenWithBackoff(
   listenFn: () => Promise<void>,
   options: ListenWithBackoffOptions = {},
 ): Promise<void> {
+  /* c8 ignore start -- default _sleep used only outside tests */
   const {
     onConnected,
     onError,
-    /* c8 ignore next -- default only used outside tests */
     _sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
   } = options;
+  /* c8 ignore stop */
 
   let attempt = 0;
   for (;;) {

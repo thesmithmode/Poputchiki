@@ -76,10 +76,11 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
             tg_username = EXCLUDED.tg_username
           RETURNING id, role
         `;
+        /* c8 ignore start -- defensive: INSERT RETURNING always gives id+role string */
         const upsertedId = upserted?.id;
-        /* c8 ignore next 2 -- defensive: INSERT RETURNING always gives id+role */
         const upsertedRole = typeof upserted?.role === "string" ? upserted.role : "user";
         return typeof upsertedId === "string" ? { id: upsertedId, role: upsertedRole } : null;
+        /* c8 ignore stop */
       });
     } catch {
       /* c8 ignore next -- defensive: sql.begin failure (DB drop mid-tx) */

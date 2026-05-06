@@ -4,6 +4,7 @@ import { cleanupNonces } from "./cleanup-nonces";
 import { confirmParticipationPush } from "./confirm-participation-push";
 import { expandTemplates } from "./expand-templates";
 import { finalizeRides } from "./finalize-rides";
+import { detectAnomalies } from "./anomaly-detect";
 import { refreshUserStats } from "./refresh-user-stats";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -60,9 +61,19 @@ runExpandTemplates();
 runAuditLogCleanup();
 runFinalizeRides();
 runConfirmParticipationPush();
+detectAnomalies(sql).catch((err: unknown) =>
+  console.error(JSON.stringify({ msg: "anomaly_detect_error", error: String(err) })),
+);
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
 setInterval(runAuditLogCleanup, ONE_HOUR);
 setInterval(runFinalizeRides, ONE_HOUR);
 setInterval(runConfirmParticipationPush, 30 * 60 * 1000);
+setInterval(
+  () =>
+    detectAnomalies(sql).catch((err: unknown) =>
+      console.error(JSON.stringify({ msg: "anomaly_detect_error", error: String(err) })),
+    ),
+  ONE_HOUR,
+);

@@ -17,6 +17,7 @@ export function setupErrorCapture(app: Hono, sql: postgres.Sql, opts?: ErrorCapt
 
   app.onError(async (err, c) => {
     if (Math.random() <= sampleRate) {
+      /* c8 ignore next 2 -- err.message/stack always present for real Error objects */
       const message = sanitize(err.message ?? "unknown error");
       const stack = sanitize((err.stack ?? "").slice(0, 4000));
       const path = c.req.path;

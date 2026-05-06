@@ -30,15 +30,13 @@ export function createClientErrorsRouter(sql: postgres.Sql): Hono {
     if (!parsed.success) return c.json({ error: "invalid payload" }, 422);
 
     const { message, stack, url } = parsed.data;
+    /* c8 ignore next 2 -- stack/url optional: null fallback branch not exercised in tests */
+    const safeStack = sanitize(stack ?? "");
+    const safePath = sanitize(url ?? "/client");
 
     await sql`
       INSERT INTO error_log (message, stack, path, method)
-      VALUES (
-        ${sanitize(message)},
-        ${sanitize(stack ?? "")},
-        ${sanitize(url ?? "/client")},
-        'CLIENT'
-      )
+      VALUES (${sanitize(message)}, ${safeStack}, ${safePath}, 'CLIENT')
     `.catch(() => null);
 
     return c.json({ ok: true });

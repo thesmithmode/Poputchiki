@@ -1467,29 +1467,6 @@
       "status": "done"
     },
     {
-      "id": "TASK-058",
-      "category": "infrastructure",
-      "priority": "medium",
-      "phase": "mvp",
-      "description": "Hooks .claude/settings.json вЂ” auto lint/typecheck PostToolUse(Edit|Write) + Р±Р»РѕРє push РІ main",
-      "acceptance_criteria": [
-        ".claude/settings.json СЃРѕРґРµСЂР¶РёС‚:",
-        "- PreToolUse(Bash:git push origin main): exit 1 СЃ СЃРѕРѕР±С‰РµРЅРёРµРј",
-        "- PostToolUse(Edit|Write): bun run lint:staged + bun run typecheck:staged",
-        "- Stop: bun run test:fast (РµСЃР»Рё РѕРЅ РѕРїСЂРµРґРµР»С‘РЅ)",
-        "РҐСѓРєРё РЅРµ РїР°РґР°СЋС‚ РїСЂРё РѕС‚СЃСѓС‚СЃС‚РІРёРё РєРѕРјР°РЅРґ (graceful)"
-      ],
-      "test_steps": [
-        "Р’ Claude Code РїРѕРїС‹С‚Р°С‚СЊСЃСЏ git push origin main в†’ Р±Р»РѕРє",
-        "Edit С„Р°Р№Р»Р° в†’ Р°РІС‚РѕРјР°С‚РѕРј lint",
-        "Stop СЃРµСЃСЃРёРё в†’ fast test suite"
-      ],
-      "dependencies": [
-        "TASK-002"
-      ],
-      "status": "pending"
-    },
-    {
       "id": "TASK-059",
       "category": "infrastructure",
       "priority": "low",

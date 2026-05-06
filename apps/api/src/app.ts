@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { createAuthRouter } from "./auth/authRouter";
+import { createClientErrorsRouter } from "./client-errors/clientErrorsRouter";
 import { createComplaintsRouter } from "./complaints/complaintsRouter";
 import { poolMetrics } from "./db/pool";
 import { createFavoritesRouter } from "./favorites/favoritesRouter";
@@ -12,6 +13,7 @@ import { bannedUser } from "./middleware/banned-user";
 import { captureSocketIp } from "./middleware/capture-socket-ip";
 import { corsMiddleware } from "./middleware/cors";
 import { csrf } from "./middleware/csrf";
+import { setupErrorCapture } from "./middleware/error-capture";
 import { idempotency } from "./middleware/idempotency";
 import { identityGuard } from "./middleware/identity-guard";
 import { rateLimit } from "./middleware/rate-limit";
@@ -46,6 +48,8 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string): Hono {
   });
 
   if (sql) {
+    setupErrorCapture(app, sql);
+    app.route("/api/client-errors", createClientErrorsRouter(sql));
     app.use("/auth/*", authRateLimit(sql, { ipLimit: 10 }));
     app.route("/auth", createAuthRouter(sql));
 

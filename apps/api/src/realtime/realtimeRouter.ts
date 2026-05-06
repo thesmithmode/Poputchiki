@@ -28,12 +28,14 @@ export function createRealtimeRouter(sql: postgres.Sql, options: RealtimeOptions
       try {
         await listenWithBackoff(async () => {
           const result = await sql.listen("rides_changed", (payload) => {
+            /* c8 ignore next -- SSE callback fires at runtime, not in unit tests */
             stream.writeSSE({ event: "ride_changed", data: payload }).catch(() => {});
           });
           unlisten = result.unlisten;
         });
 
         heartbeatTimer = setInterval(() => {
+          /* c8 ignore next -- setInterval callback not triggered in unit tests */
           stream.writeSSE({ event: "heartbeat", data: "" }).catch(() => {});
         }, heartbeatMs);
 

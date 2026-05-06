@@ -83,7 +83,7 @@ describe("ConfirmParticipationScreen", () => {
   });
 
   it("кнопка задизейблена во время запроса (loading state)", async () => {
-    let resolve: (v: unknown) => void;
+    let resolve: ((v: unknown) => void) | undefined;
     mockedApiFetch.mockReturnValueOnce(
       new Promise((r) => {
         resolve = r;
@@ -92,7 +92,7 @@ describe("ConfirmParticipationScreen", () => {
     renderScreen();
     fireEvent.click(screen.getByTestId("confirm-btn"));
     expect(screen.getByTestId("confirm-btn")).toBeDisabled();
-    resolve!({ ok: true });
+    resolve?.({ ok: true });
     await waitFor(() => screen.getByTestId("thank-you-modal"));
   });
 

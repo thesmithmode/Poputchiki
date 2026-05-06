@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTelegramBack } from "../hooks/useTelegramBack";
+import { useMe } from "../hooks/useMe";
 import { useRide } from "../hooks/useRide";
-import { ApiError } from "../lib/api";
+import { useTelegramBack } from "../hooks/useTelegramBack";
+import { ApiError, apiFetch } from "../lib/api";
 
 interface Props {
   id: string;
@@ -29,10 +31,16 @@ function isNew(createdAt: string) {
   return Date.now() - new Date(createdAt).getTime() < 30 * 24 * 60 * 60 * 1000;
 }
 
+type RequestStatus = "idle" | "loading" | "sent" | "full" | "duplicate" | "error";
+type LikeStatus = "idle" | "loading" | "liked" | "error";
+
 export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
   useTelegramBack(() => navigate(-1));
   const { data: ride, isLoading, isError, error } = useRide(id);
+  const me = useMe();
+  const [reqStatus, setReqStatus] = useState<RequestStatus>("idle");
+  const [likeStatus, setLikeStatus] = useState<LikeStatus>("idle");
 
   if (isLoading) {
     return (
@@ -70,6 +78,36 @@ export function RideDetailScreen({ id }: Props) {
   }
 
   if (!ride) return null;
+
+  const isOwnRide = me.status === "ok" && me.user.id === ride.driver.id;
+
+  async function handleRespond() {
+    setReqStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}/request`, { method: "POST" });
+      setReqStatus("sent");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.body as { code?: string } | undefined;
+        setReqStatus(body?.code === "no_seats" ? "full" : "duplicate");
+      } else {
+        setReqStatus("error");
+      }
+    }
+  }
+
+  async function handleLike() {
+    setLikeStatus("loading");
+    try {
+      await apiFetch("/likes", {
+        method: "POST",
+        body: JSON.stringify({ ride_id: id, target_user_id: ride?.driver.id }),
+      });
+      setLikeStatus("liked");
+    } catch {
+      setLikeStatus("error");
+    }
+  }
 
   const departure = formatDeparture(ride.departure_at);
   const seatsLeft = ride.seats_total - ride.seats_taken;
@@ -305,6 +343,36 @@ export function RideDetailScreen({ id }: Props) {
           </div>
         </button>
 
+        {/* Like driver button — shown to non-drivers */}
+        {!isOwnRide && (
+          <button
+            type="button"
+            data-testid="like-driver-btn"
+            disabled={likeStatus !== "idle"}
+            onClick={handleLike}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              background: likeStatus === "liked" ? "#22c55e" : "#f0f1f3",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              color: likeStatus === "liked" ? "#fff" : "#374151",
+              cursor: likeStatus !== "idle" ? "not-allowed" : "pointer",
+              marginBottom: 12,
+            }}
+          >
+            {likeStatus === "liked"
+              ? "👍 Лайк поставлен!"
+              : likeStatus === "loading"
+                ? "..."
+                : likeStatus === "error"
+                  ? "Ошибка"
+                  : "👍 Поставить лайк водителю"}
+          </button>
+        )}
+
         {/* Passengers */}
         {ride.passengers.length > 0 && (
           <>
@@ -417,26 +485,38 @@ export function RideDetailScreen({ id }: Props) {
         >
           ✉️ В Telegram
         </a>
-        <button
-          type="button"
-          data-testid="respond-btn"
-          onClick={() => {
-            /* TODO: TASK-041 — submit ride request */
-          }}
-          style={{
-            flex: 1.6,
-            padding: "12px 16px",
-            background: "#0ea5e9",
-            border: "none",
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 600,
-            color: "#fff",
-            cursor: "pointer",
-          }}
-        >
-          Откликнуться
-        </button>
+        {!isOwnRide && (
+          <button
+            type="button"
+            data-testid="respond-btn"
+            disabled={reqStatus !== "idle"}
+            onClick={handleRespond}
+            style={{
+              flex: 1.6,
+              padding: "12px 16px",
+              background:
+                reqStatus === "sent" ? "#22c55e" : reqStatus !== "idle" ? "#93c5fd" : "#0ea5e9",
+              border: "none",
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#fff",
+              cursor: reqStatus !== "idle" ? "not-allowed" : "pointer",
+            }}
+          >
+            {reqStatus === "sent"
+              ? "Заявка отправлена"
+              : reqStatus === "loading"
+                ? "Отправляем..."
+                : reqStatus === "full"
+                  ? "Мест нет"
+                  : reqStatus === "duplicate"
+                    ? "Уже отправлено"
+                    : reqStatus === "error"
+                      ? "Ошибка, повторите"
+                      : "Откликнуться"}
+          </button>
+        )}
       </div>
     </div>
   );

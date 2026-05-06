@@ -5,9 +5,9 @@ function parseInline(text: string): ReactNode {
   if (parts.length === 1) return text;
   return (
     <>
-      {parts.map((p, i) => {
+      {parts.map((p) => {
         const m = p.match(/^\*\*(.+)\*\*$/);
-        return m ? <strong key={i}>{m[1]}</strong> : p;
+        return m ? <strong key={p}>{m[1]}</strong> : p;
       })}
     </>
   );
@@ -28,7 +28,11 @@ export function parseMarkdown(markdown: string): ReactNode[] {
   };
   const flushTable = () => {
     if (tableRows.length > 0) {
-      nodes.push(<table key={`tbl-${nodes.length}`}><tbody>{tableRows}</tbody></table>);
+      nodes.push(
+        <table key={`tbl-${nodes.length}`}>
+          <tbody>{tableRows}</tbody>
+        </table>,
+      );
       tableRows = [];
       inTable = false;
     }
@@ -41,16 +45,38 @@ export function parseMarkdown(markdown: string): ReactNode[] {
     const h2 = line.match(/^## (.+)/);
     const h1 = line.match(/^# (.+)/);
 
-    if (h3?.[1]) { flushList(); flushTable(); nodes.push(<h3 key={i}>{parseInline(h3[1])}</h3>); continue; }
-    if (h2?.[1]) { flushList(); flushTable(); nodes.push(<h2 key={i}>{parseInline(h2[1])}</h2>); continue; }
-    if (h1?.[1]) { flushList(); flushTable(); nodes.push(<h1 key={i}>{parseInline(h1[1])}</h1>); continue; }
+    if (h3?.[1]) {
+      flushList();
+      flushTable();
+      nodes.push(<h3 key={i}>{parseInline(h3[1])}</h3>);
+      continue;
+    }
+    if (h2?.[1]) {
+      flushList();
+      flushTable();
+      nodes.push(<h2 key={i}>{parseInline(h2[1])}</h2>);
+      continue;
+    }
+    if (h1?.[1]) {
+      flushList();
+      flushTable();
+      nodes.push(<h1 key={i}>{parseInline(h1[1])}</h1>);
+      continue;
+    }
 
     if (line.startsWith("|")) {
       if (/^\|[\s\-:|]+\|/.test(line)) continue;
       flushList();
-      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      const cells = line
+        .split("|")
+        .slice(1, -1)
+        .map((c) => c.trim());
       tableRows.push(
-        <tr key={i}>{cells.map((c, ci) => <td key={ci}>{parseInline(c ?? "")}</td>)}</tr>,
+        <tr key={i}>
+          {cells.map((c) => (
+            <td key={c}>{parseInline(c ?? "")}</td>
+          ))}
+        </tr>,
       );
       inTable = true;
       continue;

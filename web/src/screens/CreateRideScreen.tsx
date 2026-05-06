@@ -34,7 +34,7 @@ function nowTimePlus(minutes: number) {
 export function CreateRideScreen() {
   const navigate = useNavigate();
   useTelegramBack(() => navigate(-1));
-  const { impact, notification } = useTelegramHaptic();
+  const { notification } = useTelegramHaptic();
   const [form, setForm] = useState<FormState>({
     from_label: "",
     to_label: "",

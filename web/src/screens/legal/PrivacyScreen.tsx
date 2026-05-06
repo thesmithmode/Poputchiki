@@ -1,5 +1,5 @@
-import { parseMarkdown } from "../../lib/parseMarkdown";
 import privacyRaw from "../../../../docs/legal/privacy-policy.md?raw";
+import { parseMarkdown } from "../../lib/parseMarkdown";
 
 interface Props {
   _content?: string;

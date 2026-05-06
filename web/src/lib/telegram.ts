@@ -76,8 +76,14 @@ export function applyThemeParams(params: TelegramThemeParams): void {
   root.style.setProperty("--tg-hint", params.hint_color ?? FALLBACK_LIGHT.hint_color);
   root.style.setProperty("--tg-link", params.link_color ?? FALLBACK_LIGHT.link_color);
   root.style.setProperty("--tg-accent", params.button_color ?? FALLBACK_LIGHT.button_color);
-  root.style.setProperty("--tg-button-text", params.button_text_color ?? FALLBACK_LIGHT.button_text_color);
-  root.style.setProperty("--tg-secondary-bg", params.secondary_bg_color ?? FALLBACK_LIGHT.secondary_bg_color);
+  root.style.setProperty(
+    "--tg-button-text",
+    params.button_text_color ?? FALLBACK_LIGHT.button_text_color,
+  );
+  root.style.setProperty(
+    "--tg-secondary-bg",
+    params.secondary_bg_color ?? FALLBACK_LIGHT.secondary_bg_color,
+  );
 }
 
 export function getTelegramWebApp(): TelegramWebApp | undefined {

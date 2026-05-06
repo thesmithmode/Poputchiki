@@ -85,7 +85,9 @@ describe("applyThemeParams", () => {
       }),
       ready: vi.fn(),
     };
-    (window as unknown as { Telegram: { WebApp: typeof mockWebApp } }).Telegram = { WebApp: mockWebApp };
+    (window as unknown as { Telegram: { WebApp: typeof mockWebApp } }).Telegram = {
+      WebApp: mockWebApp,
+    };
 
     // Simulate themeChanged event
     applyThemeParams(mockWebApp.themeParams);

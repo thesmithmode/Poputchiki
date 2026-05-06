@@ -63,13 +63,11 @@ describe("GET /api/geocode/search", () => {
   });
 
   it("200 — проксирует ответ Nominatim", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify(NOMINATIM_RESULT), {
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(NOMINATIM_RESULT), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     const app = makeApp(mockFetch as unknown as typeof fetch);
     const res = await app.request("/api/geocode/search?q=Царёво", {
       headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
@@ -80,13 +78,11 @@ describe("GET /api/geocode/search", () => {
   });
 
   it("кэширует повторный запрос — Nominatim вызывается один раз", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify(NOMINATIM_RESULT), {
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(NOMINATIM_RESULT), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     const cache = new GeoCache();
     const app = makeApp(mockFetch as unknown as typeof fetch, cache);
     const headers = { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` };

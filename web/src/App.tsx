@@ -4,7 +4,7 @@ import { HashRouter, Route, Routes, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
-import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
+import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
@@ -98,6 +98,7 @@ export function App() {
     const wa = getTelegramWebApp();
     if (!wa) return;
     applyTelegramTheme(wa.colorScheme);
+    applyThemeParams(wa.themeParams ?? {});
     try {
       wa.ready();
     } catch {
@@ -105,7 +106,10 @@ export function App() {
     }
     wa.onEvent("themeChanged", () => {
       const next = getTelegramWebApp();
-      if (next) applyTelegramTheme(next.colorScheme);
+      if (next) {
+        applyTelegramTheme(next.colorScheme);
+        applyThemeParams(next.themeParams ?? {});
+      }
     });
   }, []);
 

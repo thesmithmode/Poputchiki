@@ -1,11 +1,43 @@
 export type TelegramColorScheme = "light" | "dark";
 
+export interface TelegramThemeParams {
+  bg_color?: string;
+  text_color?: string;
+  hint_color?: string;
+  link_color?: string;
+  button_color?: string;
+  button_text_color?: string;
+  secondary_bg_color?: string;
+}
+
 export interface TelegramWebApp {
   colorScheme: TelegramColorScheme;
+  themeParams?: TelegramThemeParams;
   onEvent: (event: string, handler: (...args: unknown[]) => void) => void;
   ready: () => void;
   initData?: string;
   initDataUnsafe?: Record<string, unknown>;
+}
+
+const FALLBACK_LIGHT: Required<TelegramThemeParams> = {
+  bg_color: "#ffffff",
+  text_color: "#000000",
+  hint_color: "#999999",
+  link_color: "#2481cc",
+  button_color: "#2481cc",
+  button_text_color: "#ffffff",
+  secondary_bg_color: "#f1f1f1",
+};
+
+export function applyThemeParams(params: TelegramThemeParams): void {
+  const root = document.documentElement;
+  root.style.setProperty("--tg-bg", params.bg_color ?? FALLBACK_LIGHT.bg_color);
+  root.style.setProperty("--tg-text", params.text_color ?? FALLBACK_LIGHT.text_color);
+  root.style.setProperty("--tg-hint", params.hint_color ?? FALLBACK_LIGHT.hint_color);
+  root.style.setProperty("--tg-link", params.link_color ?? FALLBACK_LIGHT.link_color);
+  root.style.setProperty("--tg-accent", params.button_color ?? FALLBACK_LIGHT.button_color);
+  root.style.setProperty("--tg-button-text", params.button_text_color ?? FALLBACK_LIGHT.button_text_color);
+  root.style.setProperty("--tg-secondary-bg", params.secondary_bg_color ?? FALLBACK_LIGHT.secondary_bg_color);
 }
 
 export function getTelegramWebApp(): TelegramWebApp | undefined {

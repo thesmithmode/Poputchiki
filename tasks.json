@@ -3108,7 +3108,7 @@
         "TASK-123",
         "TASK-126"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-128",
@@ -3132,7 +3132,7 @@
         "TASK-126",
         "TASK-127"
       ],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": "TASK-129",
@@ -3238,7 +3238,7 @@
       "dependencies": [
         "TASK-001"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-133",

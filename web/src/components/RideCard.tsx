@@ -3,9 +3,11 @@ import type { Ride } from "../types/ride";
 interface RideCardProps {
   ride: Ride;
   onClick?: (ride: Ride) => void;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
-export function RideCard({ ride, onClick }: RideCardProps) {
+export function RideCard({ ride, onClick, isFavorited, onToggleFavorite }: RideCardProps) {
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -38,6 +40,20 @@ export function RideCard({ ride, onClick }: RideCardProps) {
             <div className="mt-2 text-sm text-gray-500 italic">{ride.comment}</div>
           )}
         </div>
+        {onToggleFavorite && (
+          <button
+            type="button"
+            data-testid="fav-toggle"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleFavorite();
+            }}
+            aria-label={isFavorited ? "Убрать из избранного" : "Добавить в избранное"}
+            className="shrink-0 p-1 text-xl leading-none"
+          >
+            {isFavorited ? "❤️" : "🤍"}
+          </button>
+        )}
       </div>
     </button>
   );

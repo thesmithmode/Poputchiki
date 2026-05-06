@@ -56,8 +56,12 @@ export function useFilters() {
   return { filters, setFilters, resetFilters };
 }
 
-export function applyFilters(rides: Ride[], filters: Filters): Ride[] {
+export function applyFilters(rides: Ride[], filters: Filters, favoriteIds?: Set<string>): Ride[] {
   return rides.filter((ride) => {
+    if (filters.favoritesOnly && favoriteIds !== undefined) {
+      if (!favoriteIds.has(ride.driver_id)) return false;
+    }
+
     if (filters.direction) {
       const q = filters.direction.toLowerCase();
       const match =

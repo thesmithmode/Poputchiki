@@ -14,6 +14,17 @@ vi.mock("../src/hooks/useMe", () => ({
   useMe: vi.fn(() => ({ status: "loading" })),
 }));
 
+vi.mock("../src/hooks/useFavorites", () => ({
+  useFavorites: vi.fn(() => ({
+    favorites: [],
+    isLoading: false,
+    isFavorite: () => false,
+    toggle: vi.fn(),
+    setNotify: vi.fn(),
+    favoriteIds: new Set(),
+  })),
+}));
+
 import { useMe } from "../src/hooks/useMe";
 import { ApiError, apiFetch } from "../src/lib/api";
 
@@ -142,6 +153,45 @@ describe("ProfileScreen", () => {
     });
     expect(screen.queryByTestId("edit-btn")).not.toBeInTheDocument();
     expect(screen.queryByTestId("notifications-btn")).not.toBeInTheDocument();
+  });
+
+  it("показывает кнопку избранного для чужого профиля", async () => {
+    mockedApiFetch.mockResolvedValueOnce(mockUser);
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: "other-id",
+        display_name: "Other",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+      },
+    });
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId("fav-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("НЕ показывает кнопку избранного на своём профиле", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockUser, id: USER_ID });
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: USER_ID,
+        display_name: "Иван Иванов",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+      },
+    });
+    renderScreen(USER_ID);
+    await waitFor(() => {
+      expect(screen.getByText("Иван Иванов")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("fav-btn")).not.toBeInTheDocument();
   });
 
   it("показывает кнопки редактирования для своего профиля", async () => {

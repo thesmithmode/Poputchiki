@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { RideCard } from "../components/RideCard";
+import { useFavorites } from "../hooks/useFavorites";
 import { applyFilters, useFilters } from "../hooks/useFilters";
 import { useRealtime } from "../hooks/useRealtime";
 import { useRides } from "../hooks/useRides";
@@ -12,11 +13,15 @@ export function FeedScreen() {
   const { data, isLoading, isError } = useRides();
   useRealtime();
   const { filters, setFilters, resetFilters } = useFilters();
+  const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
   const [view, setView] = useState<"list" | "map">("list");
   const [showFilters, setShowFilters] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
-  const filteredRides = useMemo(() => applyFilters(data?.rides ?? [], filters), [data, filters]);
+  const filteredRides = useMemo(
+    () => applyFilters(data?.rides ?? [], filters, favoriteIds),
+    [data, filters, favoriteIds],
+  );
 
   useEffect(() => {
     if (view !== "map" || !mapRef.current || !filteredRides.length) return;
@@ -112,7 +117,13 @@ export function FeedScreen() {
             </div>
           ) : (
             filteredRides.map((ride) => (
-              <RideCard key={ride.id} ride={ride} onClick={handleCardClick} />
+              <RideCard
+                key={ride.id}
+                ride={ride}
+                onClick={handleCardClick}
+                isFavorited={isFavorite(ride.driver_id)}
+                onToggleFavorite={() => toggleFavorite(ride.driver_id)}
+              />
             ))
           )}
         </div>

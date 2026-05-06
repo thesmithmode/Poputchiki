@@ -5,6 +5,7 @@ import { BannedScreen } from "./components/BannedScreen";
 import { useMe } from "./hooks/useMe";
 import { applyTelegramTheme, getTelegramWebApp } from "./lib/telegram";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
+import { FavoritesScreen } from "./screens/FavoritesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { MapScreen } from "./screens/MapScreen";
 import { NotificationPreferencesScreen } from "./screens/NotificationPreferencesScreen";
@@ -70,6 +71,7 @@ function AppRoutes() {
         <Route path="/" element={<FeedScreen />} />
         <Route path="/rides" element={<FeedScreen />} />
         <Route path="/rides/new" element={<CreateRideScreen />} />
+        <Route path="/favorites" element={<FavoritesScreen />} />
         <Route path="/map" element={<MapScreen />} />
         <Route path="/rides/:id" element={<RideDetailRoute />} />
         <Route path="/users/:id" element={<ProfileRoute />} />

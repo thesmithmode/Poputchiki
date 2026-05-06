@@ -89,6 +89,27 @@ export async function seed(sql: postgres.Sql): Promise<{
   return { users: userIds.length, rides: rideIds.length, likes, reviews };
 }
 
+export async function seedAdmin(
+  sql: postgres.Sql,
+  adminTgId: string | undefined,
+): Promise<{ admin_granted: boolean }> {
+  if (!adminTgId) return { admin_granted: false };
+
+  const rows = await sql<{ id: string }[]>`
+    UPDATE users SET role = 'admin', updated_at = now()
+    WHERE tg_id = ${Number(adminTgId)} AND role != 'admin'
+    RETURNING id
+  `;
+  if (rows.length === 0) return { admin_granted: false };
+
+  await sql`
+    INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+    VALUES (${rows[0].id}, 'admin_role_granted', 'users', ${rows[0].id}::uuid, '{}'::jsonb)
+    ON CONFLICT DO NOTHING
+  `;
+  return { admin_granted: true };
+}
+
 /* c8 ignore start -- entrypoint глотается во время unit test */
 async function main(): Promise<void> {
   assertNotProduction(process.env.NODE_ENV);
@@ -98,7 +119,8 @@ async function main(): Promise<void> {
   const sql = postgres(dsn);
   try {
     const result = await seed(sql);
-    console.log(JSON.stringify({ msg: "db_seed_done", ...result }));
+    const adminResult = await seedAdmin(sql, process.env.ADMIN_TG_ID);
+    console.log(JSON.stringify({ msg: "db_seed_done", ...result, ...adminResult }));
   } finally {
     await sql.end();
   }

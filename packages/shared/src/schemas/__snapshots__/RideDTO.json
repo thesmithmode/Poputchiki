@@ -1,0 +1,7 @@
+{
+  "$ref": "#/definitions/RideDTO",
+  "definitions": {
+    "RideDTO": {}
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

@@ -21,7 +21,7 @@ jobs:
       matrix:
         service: [api, notifier, cron, webhook, web]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -51,7 +51,7 @@ jobs:
   zap-baseline:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: ZAP baseline scan — API
         uses: zaproxy/action-baseline@v0.12.0
@@ -72,7 +72,7 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Lighthouse CI — Web
         uses: treosh/lighthouse-ci-action@v12

@@ -111,10 +111,7 @@ function AppShell() {
       <a href="#main-content" className="skip-link">
         Перейти к основному контенту
       </a>
-      <main
-        id="main-content"
-        style={showTabs ? { paddingBottom: 64 } : undefined}
-      >
+      <main id="main-content" style={showTabs ? { paddingBottom: 64 } : undefined}>
         <Routes>
           <Route path="/" element={<FeedScreen />} />
           <Route path="/rides" element={<FeedScreen />} />

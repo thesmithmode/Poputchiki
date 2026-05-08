@@ -40,9 +40,8 @@ export function BottomTabBar() {
   const bg = "rgba(255,255,255,0.92)";
 
   return (
-    <div
+    <nav
       aria-label="Основная навигация"
-      role="navigation"
       style={{
         position: "fixed",
         bottom: 0,
@@ -84,7 +83,7 @@ export function BottomTabBar() {
                   justifyContent: "center",
                   border: "none",
                   cursor: "pointer",
-                  boxShadow: `0 6px 18px -4px rgba(45,90,61,0.4), 0 0 0 4px #fff`,
+                  boxShadow: "0 6px 18px -4px rgba(45,90,61,0.4), 0 0 0 4px #fff",
                   marginTop: -10,
                 }}
               >
@@ -120,6 +119,6 @@ export function BottomTabBar() {
           </button>
         );
       })}
-    </div>
+    </nav>
   );
 }

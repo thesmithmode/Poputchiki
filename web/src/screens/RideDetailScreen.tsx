@@ -255,9 +255,7 @@ export function RideDetailScreen({ id }: Props) {
             >
               Комментарий
             </div>
-            <div
-              style={{ fontSize: 14, color: "var(--brand-text)", lineHeight: 1.45 }}
-            >
+            <div style={{ fontSize: 14, color: "var(--brand-text)", lineHeight: 1.45 }}>
               {ride.comment}
             </div>
           </div>
@@ -370,8 +368,7 @@ export function RideDetailScreen({ id }: Props) {
             style={{
               width: "100%",
               padding: "12px 16px",
-              background:
-                likeStatus === "liked" ? "#22c55e" : "#F1F4F8",
+              background: likeStatus === "liked" ? "#22c55e" : "#F1F4F8",
               border: "none",
               borderRadius: 12,
               fontSize: 14,
@@ -432,9 +429,7 @@ export function RideDetailScreen({ id }: Props) {
                     gap: 12,
                     padding: "12px 16px",
                     borderBottom:
-                      i === ride.passengers.length - 1
-                        ? "none"
-                        : "1px solid var(--brand-border)",
+                      i === ride.passengers.length - 1 ? "none" : "1px solid var(--brand-border)",
                     cursor: "pointer",
                     width: "100%",
                     textAlign: "left",
@@ -527,8 +522,7 @@ export function RideDetailScreen({ id }: Props) {
             gap: 8,
           }}
         >
-          <Icon name="tg" size={16} />
-          В Telegram
+          <Icon name="tg" size={16} />В Telegram
         </a>
         {!isOwnRide && (
           <button
@@ -602,9 +596,7 @@ function StatBlock({
       >
         {value}
       </div>
-      {sub && (
-        <div style={{ fontSize: 11.5, color: "var(--brand-sub)", marginTop: 2 }}>{sub}</div>
-      )}
+      {sub && <div style={{ fontSize: 11.5, color: "var(--brand-sub)", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }

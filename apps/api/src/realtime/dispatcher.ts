@@ -43,10 +43,10 @@ export async function createDispatcher(
   return {
     subscribe(cb: NotifyCallback): () => void {
       callbacks.add(cb);
-      poolMetrics.incListenConnections();
+      poolMetrics.incSseSubscribers();
       return () => {
         callbacks.delete(cb);
-        poolMetrics.decListenConnections();
+        poolMetrics.decSseSubscribers();
       };
     },
     subscriberCount(): number {

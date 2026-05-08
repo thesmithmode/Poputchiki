@@ -50,11 +50,7 @@ export function RouteBlock({
             marginBottom: 2,
           }}
         />
-        <Icon
-          name="pin"
-          size={compact ? 10 : 11}
-          style={{ color: toColor }}
-        />
+        <Icon name="pin" size={compact ? 10 : 11} style={{ color: toColor }} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div

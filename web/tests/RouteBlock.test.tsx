@@ -15,27 +15,18 @@ describe("RouteBlock", () => {
   });
 
   it("рендерится в compact-режиме без ошибок", () => {
-    const { container } = render(
-      <RouteBlock fromLabel="Откуда" toLabel="Куда" compact />,
-    );
+    const { container } = render(<RouteBlock fromLabel="Откуда" toLabel="Куда" compact />);
     expect(container.firstChild).toBeTruthy();
   });
 
   it("рендерится в dark-режиме без ошибок", () => {
-    const { container } = render(
-      <RouteBlock fromLabel="Откуда" toLabel="Куда" dark />,
-    );
+    const { container } = render(<RouteBlock fromLabel="Откуда" toLabel="Куда" dark />);
     expect(container.firstChild).toBeTruthy();
   });
 
   it("принимает кастомные цвета", () => {
     const { container } = render(
-      <RouteBlock
-        fromLabel="A"
-        toLabel="B"
-        fromColor="#FF0000"
-        toColor="#00FF00"
-      />,
+      <RouteBlock fromLabel="A" toLabel="B" fromColor="#FF0000" toColor="#00FF00" />,
     );
     const dot = container.querySelector("span[style*='border-radius']");
     expect(dot).toBeInTheDocument();

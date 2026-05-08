@@ -7,14 +7,25 @@
 	root * /srv
 	file_server
 	try_files {path} /index.html
-	encode gzip
+	encode zstd br gzip
 
 	header {
-		X-Content-Type-Options nosniff
-		X-Frame-Options DENY
-		Referrer-Policy strict-origin-when-cross-origin
-		Cache-Control "no-store" /index.html
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org https://t.me https://api.telegram.org; script-src 'self' https://telegram.org https://*.telegram.org 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.{$DOMAIN} https://*.tile.openstreetmap.org; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'self'; form-action 'self'"
+		Permissions-Policy "geolocation=(), camera=(), microphone=(), payment=()"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Content-Type-Options "nosniff"
+		-X-Frame-Options
 	}
+
+	handle /health {
+		respond "ok" 200
+	}
+
+	@noCache {
+		path /index.html
+	}
+	header @noCache Cache-Control "no-store"
 
 	@assets {
 		path /assets/*

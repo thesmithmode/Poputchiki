@@ -95,10 +95,19 @@ describe("withIdentity", () => {
 });
 
 describe("withSystem", () => {
-  it("calls sql.begin without set_config", async () => {
-    const beginMock = vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      return fn({});
+  it("вызывает SET LOCAL ROLE poputchiki_service перед fn", async () => {
+    const calls: string[] = [];
+
+    const tagMock = vi.fn().mockImplementation((..._args: unknown[]) => {
+      const sql = String(_args[0]);
+      calls.push(sql.trim().replace(/\s+/g, " "));
+      return Promise.resolve([]);
     });
+
+    const beginMock = vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn(tagMock);
+    });
+
     // biome-ignore lint/suspicious/noExplicitAny: mock sql object
     const mockSql = { begin: beginMock } as any;
 
@@ -110,11 +119,35 @@ describe("withSystem", () => {
 
     expect(beginMock).toHaveBeenCalledOnce();
     expect(fnCalled).toBe(true);
+    // SENTINEL: withSystem должен эскалировать до poputchiki_service
+    expect(calls.some((c) => c.includes("poputchiki_service"))).toBe(true);
   });
 
-  it("returns fn return value", async () => {
+  it("не вызывает set_config для GUC (системная роль без user-identity)", async () => {
+    const calls: string[] = [];
+
+    const tagMock = vi.fn().mockImplementation((..._args: unknown[]) => {
+      const sql = String(_args[0]);
+      calls.push(sql.trim().replace(/\s+/g, " "));
+      return Promise.resolve([]);
+    });
+
     const beginMock = vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
-      return fn({});
+      return fn(tagMock);
+    });
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock sql object
+    const mockSql = { begin: beginMock } as any;
+
+    await withSystem(mockSql, async () => "ok");
+
+    expect(calls.some((c) => c.includes("set_config"))).toBe(false);
+  });
+
+  it("возвращает результат fn", async () => {
+    const tagMock = vi.fn().mockResolvedValue([]);
+    const beginMock = vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn(tagMock);
     });
     // biome-ignore lint/suspicious/noExplicitAny: mock sql object
     const mockSql = { begin: beginMock } as any;

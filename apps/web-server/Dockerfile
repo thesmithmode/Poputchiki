@@ -16,6 +16,8 @@ ENV VITE_API_BASE=${VITE_API_BASE}
 RUN cd web && bun run build
 
 FROM caddy:2-alpine
+ARG DOMAIN
+ENV DOMAIN=${DOMAIN}
 COPY apps/web-server/Caddyfile /etc/caddy/Caddyfile
 COPY --from=builder /app/web/dist /srv
 EXPOSE 80

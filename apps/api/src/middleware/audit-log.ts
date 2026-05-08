@@ -29,6 +29,8 @@ export function auditLog(sql: postgres.Sql): MiddlewareHandler {
       return;
     }
 
+    // Глобальный bodyLimit (64KB в app.ts) гарантирует что тело не превысит лимит
+    // до попадания в этот middleware. Хешируем тело напрямую.
     let bodyText = "";
     try {
       bodyText = await c.req.raw.clone().text();

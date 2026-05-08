@@ -1,11 +1,18 @@
 import { parseApiEnv } from "@poputchiki/shared/env";
 import { createApp } from "./app";
-import { createPool } from "./db/pool";
+import { createListenSql, createPool } from "./db/pool";
+import { createDispatcher } from "./realtime/dispatcher";
 
 const env = parseApiEnv(process.env as Record<string, string | undefined>);
 
 const sql = createPool(env.DATABASE_URL);
-const app = createApp(sql, env.JWT_SECRET);
+const listenSql = createListenSql(env.DATABASE_URL);
+
+// Dispatcher is async — start it before the server accepts connections.
+// If it fails on startup (DB unreachable), the process will crash and be restarted by Docker.
+const dispatcher = await createDispatcher(listenSql, "rides_changed");
+
+const app = createApp(sql, env.JWT_SECRET, dispatcher);
 
 export default app;
 
@@ -25,6 +32,7 @@ if (import.meta.main) {
     server.stop(true); // stop accepting new connections
     // Give in-flight requests up to 30s to complete
     await new Promise<void>((resolve) => setTimeout(resolve, 30_000));
+    await listenSql.end({ timeout: 5 });
     await sql.end({ timeout: 5 });
     // biome-ignore lint/suspicious/noConsoleLog: structured shutdown log
     console.log(JSON.stringify({ msg: "shutdown_complete" }));

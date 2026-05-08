@@ -12,6 +12,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      SERVICE_DB_PASSWORD: ${SERVICE_DB_PASSWORD:-}
     command: ["-c", "config_file=/etc/postgresql/postgresql.conf"]
     volumes:
       - /opt/poputchiki/postgres-data:/var/lib/postgresql/data
@@ -36,16 +38,41 @@ services:
         limits:
           memory: 1g
 
+  migrations:
+    image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
+    restart: "no"
+    command: ["bun", "run", "db:migrate", "up"]
+    environment:
+      # Миграции запускаются от суперпользователя чтобы выполнять REVOKE/ALTER FORCE RLS/CREATE POLICY.
+      # poputchiki_app не может выполнить REVOKE (не owner). Используем POSTGRES_USER.
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # package.json db:migrate использует DATABASE_MIGRATOR_URL если задан (см. scripts).
+      # Явно дублируем суперпользовательский DSN чтобы гарантировать использование именно его.
+      DATABASE_MIGRATOR_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - poputchiki-internal
+    profiles:
+      - migrations
+    # Запускать вручную ДО старта api/notifier/cron/webhook:
+    #   IMAGE_TAG=<sha> docker compose --profile migrations up migrations
+    # Только после успешного exit 0 запускать основные сервисы.
+
   api:
     image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       BOT_TOKEN: ${BOT_TOKEN}
       PGCRYPTO_KEY: ${PGCRYPTO_KEY}
       ADMIN_TG_ID: ${ADMIN_TG_ID}
       ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      DOMAIN: ${DOMAIN}
+      NODE_ENV: production
       PORT: 3000
     depends_on:
       postgres:
@@ -56,7 +83,7 @@ services:
       - traefik-public
       - poputchiki-internal
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -83,7 +110,7 @@ services:
     networks:
       - traefik-public
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -108,7 +135,7 @@ services:
     image: ghcr.io/thesmithmode/poputchiki-notifier:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BOT_TOKEN: ${BOT_TOKEN}
       ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
     depends_on:
@@ -117,7 +144,7 @@ services:
     networks:
       - poputchiki-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "kill -0 1 2>/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -136,7 +163,7 @@ services:
     image: ghcr.io/thesmithmode/poputchiki-cron:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BOT_TOKEN: ${BOT_TOKEN}
       ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
       BACKUP_KEY: ${BACKUP_KEY}
@@ -150,7 +177,7 @@ services:
     networks:
       - poputchiki-internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "kill -0 1 2>/dev/null || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -169,7 +196,7 @@ services:
     image: ghcr.io/thesmithmode/poputchiki-webhook:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BOT_TOKEN: ${BOT_TOKEN}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       PORT: 3001
@@ -180,7 +207,7 @@ services:
       - traefik-public
       - poputchiki-internal
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:3001/health || exit 1"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3001/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

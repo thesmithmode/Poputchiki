@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { HashRouter, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
+import { BottomTabBar } from "./components/BottomTabBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { TAB_PATHS } from "./lib/routes";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
@@ -100,6 +102,38 @@ function OfflineBanner() {
   );
 }
 
+function AppShell() {
+  const location = useLocation();
+  const showTabs = TAB_PATHS.has(location.pathname);
+  return (
+    <>
+      <a href="#main-content" className="skip-link">
+        Перейти к основному контенту
+      </a>
+      <main id="main-content" style={showTabs ? { paddingBottom: 64 } : undefined}>
+        <Routes>
+          <Route path="/" element={<FeedScreen />} />
+          <Route path="/rides" element={<FeedScreen />} />
+          <Route path="/rides/new" element={<CreateRideScreen />} />
+          <Route path="/favorites" element={<FavoritesScreen />} />
+          <Route path="/map" element={<MapScreen />} />
+          <Route path="/rides/:id" element={<RideDetailRoute />} />
+          <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
+          <Route path="/users/:id" element={<ProfileRoute />} />
+          <Route path="/settings" element={<SettingsScreen />} />
+          <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
+          <Route path="/support" element={<SupportScreen />} />
+          <Route path="/admin" element={<AdminScreen />} />
+          <Route path="/privacy" element={<PrivacyScreen />} />
+          <Route path="/terms" element={<TermsScreen />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </main>
+      <BottomTabBar />
+    </>
+  );
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -144,29 +178,7 @@ function AppRoutes() {
   // "ok" or "error" (401 / network) — show routes normally
   return (
     <HashRouter>
-      <a href="#main-content" className="skip-link">
-        Перейти к основному контенту
-      </a>
-      <OfflineBanner />
-      <main id="main-content">
-        <Routes>
-          <Route path="/" element={<FeedScreen />} />
-          <Route path="/rides" element={<FeedScreen />} />
-          <Route path="/rides/new" element={<CreateRideScreen />} />
-          <Route path="/favorites" element={<FavoritesScreen />} />
-          <Route path="/map" element={<MapScreen />} />
-          <Route path="/rides/:id" element={<RideDetailRoute />} />
-          <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
-          <Route path="/users/:id" element={<ProfileRoute />} />
-          <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
-          <Route path="/support" element={<SupportScreen />} />
-          <Route path="/admin" element={<AdminScreen />} />
-          <Route path="/privacy" element={<PrivacyScreen />} />
-          <Route path="/terms" element={<TermsScreen />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-      </main>
+      <AppShell />
     </HashRouter>
   );
 }
@@ -196,6 +208,7 @@ export function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <div data-testid="app-root">
+          <OfflineBanner />
           <AppRoutes />
         </div>
       </QueryClientProvider>

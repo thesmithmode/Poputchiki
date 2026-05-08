@@ -4,8 +4,8 @@ import type { AppUser } from "./identity-guard";
 
 export function bannedUser(sql: postgres.Sql): MiddlewareHandler {
   return async (c, next) => {
-    // Allow /api/users/me through — user needs to see their ban reason
-    if (c.req.path === "/api/users/me") {
+    // Allow GET /api/users/me through — user needs to see their ban reason
+    if (c.req.path === "/api/users/me" && c.req.method === "GET") {
       await next();
       return;
     }

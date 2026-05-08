@@ -127,4 +127,27 @@ describe("auditLog middleware", () => {
     expect(typeof meta.payload_hash).toBe("string");
     expect(meta.payload_hash.length).toBe(64);
   });
+
+  it("body с любым Content-Length → payload_hash = sha256 (globalBodyLimit=64KB отсекает до middleware)", async () => {
+    // Глобальный bodyLimit 64KB в app.ts режет запросы ДО audit-log.
+    // Ветка "oversized" удалена — мёртвый код. Тело всегда хешируется.
+    const { app, sql } = makeApp(makeSql(), USER);
+    await app.request("/api/rides", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Length": "65000",
+      },
+      body: JSON.stringify({ data: "test" }),
+    });
+    await new Promise((r) => setTimeout(r, 10));
+    expect(sql).toHaveBeenCalled();
+    const interpolations = sql.mock.calls[0]?.slice(1);
+    const metaArg = interpolations?.find(
+      (v: unknown) => typeof v === "string" && v.includes("payload_hash"),
+    );
+    const meta = JSON.parse(String(metaArg).replace("::jsonb", ""));
+    expect(typeof meta.payload_hash).toBe("string");
+    expect(meta.payload_hash.length).toBe(64);
+  });
 });

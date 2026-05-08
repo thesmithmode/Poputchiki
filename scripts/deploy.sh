@@ -6,7 +6,7 @@ set -euo pipefail
 
 [[ $# -lt 1 ]] && { echo "Usage: $0 <SHA>" >&2; exit 1; }
 SHA="$1"
-COMPOSE="docker compose -f infra/docker-compose.prod.yml"
+COMPOSE="docker compose -f infra/docker-compose.prod.yml --env-file /opt/poputchiki/.env"
 STATE_DIR="/opt/poputchiki"
 TAGS_DIR="$STATE_DIR"
 
@@ -31,9 +31,11 @@ fi
 echo "--- [2/7] docker pull ---"
 IMAGE_TAG="$SHA" $COMPOSE pull
 
-# Шаг 3: migrate (одноразовый контейнер)
+# Шаг 3: migrate (одноразовый контейнер с superuser-подключением)
+# Запускаем сервис migrations (profile=migrations) — DATABASE_URL суперпользователя,
+# чтобы выполнять REVOKE/ALTER FORCE RLS/CREATE POLICY без ошибки "must be owner of table".
 echo "--- [3/7] migrate ---"
-IMAGE_TAG="$SHA" $COMPOSE run --rm api bun run db:migrate up
+IMAGE_TAG="$SHA" $COMPOSE --profile migrations run --rm migrations
 
 # Шаг 4: rolling restart сервисов (postgres не трогаем)
 echo "--- [4/7] up services ---"

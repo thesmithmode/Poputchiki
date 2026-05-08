@@ -1,14 +1,12 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import type postgres from "postgres";
-import { poolMetrics } from "../db/pool";
-import { listenWithBackoff } from "./listen";
+import type { Dispatcher } from "./dispatcher";
 
 interface RealtimeOptions {
   heartbeatMs?: number;
 }
 
-export function createRealtimeRouter(sql: postgres.Sql, options: RealtimeOptions = {}): Hono {
+export function createRealtimeRouter(dispatcher: Dispatcher, options: RealtimeOptions = {}): Hono {
   const { heartbeatMs = 15000 } = options;
   const app = new Hono();
 
@@ -17,23 +15,18 @@ export function createRealtimeRouter(sql: postgres.Sql, options: RealtimeOptions
     c.header("X-Accel-Buffering", "no");
 
     return streamSSE(c, async (stream) => {
-      let unlisten: (() => Promise<void>) | undefined;
       let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
 
       const aborted = new Promise<void>((resolve) => {
         stream.onAbort(resolve);
       });
 
-      poolMetrics.incListenConnections();
-      try {
-        await listenWithBackoff(async () => {
-          const result = await sql.listen("rides_changed", (payload) => {
-            /* c8 ignore next -- SSE callback fires at runtime, not in unit tests */
-            stream.writeSSE({ event: "ride_changed", data: payload }).catch(() => {});
-          });
-          unlisten = result.unlisten;
-        });
+      const unsubscribe = dispatcher.subscribe((payload) => {
+        /* c8 ignore next -- callback fires at runtime via pg_notify, not in unit tests */
+        stream.writeSSE({ event: "ride_changed", data: payload }).catch(() => {});
+      });
 
+      try {
         heartbeatTimer = setInterval(() => {
           /* c8 ignore next -- setInterval callback not triggered in unit tests */
           stream.writeSSE({ event: "heartbeat", data: "" }).catch(() => {});
@@ -41,9 +34,8 @@ export function createRealtimeRouter(sql: postgres.Sql, options: RealtimeOptions
 
         await aborted;
       } finally {
-        poolMetrics.decListenConnections();
         if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer);
-        if (unlisten) await unlisten().catch(() => {});
+        unsubscribe();
       }
     });
   });

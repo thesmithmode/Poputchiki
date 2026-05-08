@@ -28,7 +28,6 @@ export function createApp(
       await handleMessage(botToken, domain, update.message);
     }
     if (update.callback_query) {
-      console.log("[webhook] callback_query", update.update_id, update.callback_query.data);
     }
     return c.json({ ok: true });
   }

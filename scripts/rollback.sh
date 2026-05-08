@@ -4,12 +4,12 @@
 set -euo pipefail
 
 STATE_DIR="/opt/poputchiki"
-COMPOSE="docker compose -f infra/docker-compose.prod.yml"
+COMPOSE="docker compose -f infra/docker-compose.prod.yml --env-file /opt/poputchiki/.env"
 
 if [[ $# -ge 1 ]]; then
   TARGET_TAG="$1"
 else
-  TARGET_TAG=$(cat "$STATE_DIR/last-good-tag" 2>/dev/null || "")
+  TARGET_TAG=$(cat "$STATE_DIR/last-good-tag" 2>/dev/null || echo "")
 fi
 
 if [[ -z "${TARGET_TAG:-}" ]]; then
@@ -25,7 +25,7 @@ IMAGE_TAG="$TARGET_TAG" $COMPOSE up -d --no-deps api notifier cron webhook web
 # Smoke: /health
 DEADLINE=$((SECONDS + 60))
 while true; do
-  if curl -sf "http://localhost:3000/health" >/dev/null 2>&1; then
+  if $COMPOSE exec -T api curl -sf http://localhost:3000/health >/dev/null 2>&1; then
     echo "smoke OK"
     break
   fi

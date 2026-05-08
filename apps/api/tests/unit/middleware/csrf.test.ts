@@ -107,4 +107,59 @@ describe("csrf middleware", () => {
     });
     expect(res.status).toBe(200);
   });
+
+  // FIX A3: startsWith bypass — https://app.example.com.attacker.com НЕ должен проходить
+  it("Origin с bypass через startsWith (https://app.example.com.attacker.com) → 403", async () => {
+    const app = makeApp(ORIGIN);
+    const res = await app.request("/api/data", {
+      method: "POST",
+      headers: { ...makeHeaders(), Origin: "https://app.example.com.attacker.com" },
+    });
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toContain("origin");
+  });
+
+  it("Origin с bypass через startsWith (https://app.example.com/other/path) → 200 (законный)", async () => {
+    // Только scheme+host сравниваются, path игнорируется
+    const app = makeApp(ORIGIN);
+    const res = await app.request("/api/data", {
+      method: "POST",
+      headers: { ...makeHeaders(), Origin: ORIGIN },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("невалидный Origin (не URL) → 403 без 500", async () => {
+    const app = makeApp(ORIGIN);
+    const res = await app.request("/api/data", {
+      method: "POST",
+      headers: { ...makeHeaders(), Origin: "not-a-valid-url" },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("Referer с полным URL соответствующим allowedOrigin → 200", async () => {
+    const app = makeApp(ORIGIN);
+    const res = await app.request("/api/data", {
+      method: "POST",
+      headers: {
+        ...makeHeaders(),
+        Referer: `${ORIGIN}/some/page`,
+      },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it("Referer с bypass via startsWith (https://app.example.com.evil.com/path) → 403", async () => {
+    const app = makeApp(ORIGIN);
+    const res = await app.request("/api/data", {
+      method: "POST",
+      headers: {
+        ...makeHeaders(),
+        Referer: "https://app.example.com.evil.com/path",
+      },
+    });
+    expect(res.status).toBe(403);
+  });
 });

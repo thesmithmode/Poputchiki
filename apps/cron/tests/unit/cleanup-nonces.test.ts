@@ -3,16 +3,24 @@ import { cleanupNonces } from "../../src/cleanup-nonces";
 
 type Row = Record<string, unknown>;
 
+// cleanupNonces использует useServiceRole=true → порядок: [SET ROLE, lock, data]
 function makeSql(acquired: boolean, txResponses: (Row[] | Error)[]): import("postgres").Sql {
   return {
     begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       let i = 0;
       const tx = vi.fn().mockImplementation(() => {
+        // SET LOCAL ROLE — первый вызов
         if (i === 0) {
+          i++;
+          return Promise.resolve([]);
+        }
+        // advisory lock — второй вызов
+        if (i === 1) {
           i++;
           return Promise.resolve([{ acquired }]);
         }
-        const resp = txResponses[i - 1] ?? [];
+        // данные — остальные
+        const resp = txResponses[i - 2] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
       });
@@ -42,5 +50,21 @@ describe("cleanupNonces", () => {
   it("propagates error (transaction rollbacks, lock auto-released)", async () => {
     const sql = makeSql(true, [new Error("DB error")]);
     await expect(cleanupNonces(sql)).rejects.toThrow("DB error");
+  });
+
+  it("sentinel: SET LOCAL ROLE poputchiki_service вызывается первым", async () => {
+    const calls: string[] = [];
+    const tx = vi.fn().mockImplementation((strings: TemplateStringsArray, ..._v: unknown[]) => {
+      const q = strings.join("?");
+      calls.push(q);
+      if (q.includes("SET LOCAL ROLE")) return Promise.resolve([]);
+      if (q.includes("pg_try_advisory_xact_lock")) return Promise.resolve([{ acquired: true }]);
+      return Promise.resolve([{ count: "0" }]);
+    });
+    const sql = {
+      begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
+    } as unknown as import("postgres").Sql;
+    await cleanupNonces(sql);
+    expect(calls[0]).toContain("SET LOCAL ROLE poputchiki_service");
   });
 });

@@ -9,9 +9,10 @@ import type { AddressInfo } from "node:net";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { createPool } from "../../../src/db/pool";
+import { createListenSql, createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
+import { createDispatcher } from "../../../src/realtime/dispatcher";
 import { createRealtimeRouter } from "../../../src/realtime/realtimeRouter";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
 import { buildDsn } from "../setup";
@@ -52,14 +53,15 @@ async function makeAuthHeaders(user: { id: string; tgId: number; role: string })
   };
 }
 
-function buildHonoApp(heartbeatMs = 15000) {
+async function buildHonoApp(heartbeatMs = 15000) {
+  const dispatcher = await createDispatcher(createListenSql(buildDsn()), "rides_changed");
   const app = new Hono();
   app.use("/api/*", async (c, next) => {
     c.set("socketIp" as never, TEST_IP);
     await next();
   });
   app.use("/api/*", identityGuard(JWT_SECRET));
-  app.route("/api/realtime", createRealtimeRouter(sql, { heartbeatMs }));
+  app.route("/api/realtime", createRealtimeRouter(dispatcher, { heartbeatMs }));
   app.route("/api/rides", createRidesRouter(sql));
   return app;
 }
@@ -219,7 +221,7 @@ beforeAll(async () => {
     `;
   });
 
-  const { server, baseUrl } = await startServer(buildHonoApp());
+  const { server, baseUrl } = await startServer(await buildHonoApp());
   mainServer = server;
   mainBaseUrl = baseUrl;
 });
@@ -268,7 +270,7 @@ describe("GET /api/realtime/rides — SSE", () => {
   });
 
   it("heartbeat события приходят с заданным интервалом", async () => {
-    const { server: srv, baseUrl: url } = await startServer(buildHonoApp(150));
+    const { server: srv, baseUrl: url } = await startServer(await buildHonoApp(150));
     try {
       const headers = await makeAuthHeaders({
         id: DRIVER.id,
@@ -294,7 +296,7 @@ describe("GET /api/realtime/rides — SSE", () => {
   }, 10_000);
 
   it("ride_changed приходит после создания поездки", async () => {
-    const { server: srv, baseUrl: url } = await startServer(buildHonoApp(5000));
+    const { server: srv, baseUrl: url } = await startServer(await buildHonoApp(5000));
     try {
       const authHeaders = await makeAuthHeaders({
         id: DRIVER.id,
@@ -337,7 +339,7 @@ describe("GET /api/realtime/rides — SSE", () => {
   }, 10_000);
 
   it("ride_changed приходит после отмены поездки", async () => {
-    const { server: srv, baseUrl: url } = await startServer(buildHonoApp(5000));
+    const { server: srv, baseUrl: url } = await startServer(await buildHonoApp(5000));
     try {
       const authHeaders = await makeAuthHeaders({
         id: DRIVER.id,

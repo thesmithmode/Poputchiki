@@ -64,6 +64,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             VITE_API_BASE=https://api.${{ vars.DOMAIN }}
+            DOMAIN=${{ vars.DOMAIN }}
 
   trivy-scan:
     needs: build-and-push
@@ -82,7 +83,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trivy scan ${{ matrix.service }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.31.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.REPO }}-${{ matrix.service }}:${{ github.sha }}
           format: table
@@ -109,8 +110,16 @@ jobs:
 
       - name: Copy scripts to server
         run: |
-          scp -r scripts/ ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/poputchiki/scripts/
-          scp infra/docker-compose.prod.yml ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/poputchiki/
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "mkdir -p /opt/poputchiki/infra/postgres/init \
+                      /opt/poputchiki/infra/promtail \
+                      /opt/poputchiki/infra/loki \
+                      /opt/poputchiki/infra/grafana/provisioning/datasources \
+                      /opt/poputchiki/infra/prometheus \
+                      /opt/poputchiki/scripts \
+                      /opt/poputchiki/logs \
+                      /opt/poputchiki/backups"
+          scp -r infra scripts ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/poputchiki/
 
       - name: Deploy
         run: |

@@ -40,16 +40,16 @@ describe("webhook handlers", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns 403 without secret header", async () => {
+  it("returns 401 without secret header", async () => {
     const app = createApp(makeSql(), BOT_TOKEN, SECRET);
     const res = await post(app, baseUpdate(), undefined);
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
-  it("returns 403 with wrong secret", async () => {
+  it("returns 401 with wrong secret", async () => {
     const app = createApp(makeSql(), BOT_TOKEN, SECRET);
     const res = await post(app, baseUpdate(), "wrong");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
   it("returns 200 for deduplicated update", async () => {
@@ -102,10 +102,10 @@ describe("webhook handlers", () => {
     expect(res.status).toBe(200);
   });
 
-  it("canonical /webhook/tg path returns 403 without secret", async () => {
+  it("canonical /webhook/tg path returns 401 without secret", async () => {
     const app = createApp(makeSql(), BOT_TOKEN, SECRET);
     const res = await post(app, baseUpdate(401), undefined, "/webhook/tg");
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(401);
   });
 
   it("handles callback_query and returns 200", async () => {

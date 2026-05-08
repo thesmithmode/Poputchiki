@@ -33,13 +33,16 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
       return;
     }
 
+    const user = c.get("user" as never) as AppUser | undefined;
+    const userId: string | null = user?.id ?? null;
+
     // Try to claim the key atomically. RETURNING tells us who won the race.
     let won = false;
     try {
       const inserted = await sql<{ key: string }[]>`
-        INSERT INTO idempotency_keys (key, response)
-        VALUES (${key}, ${JSON.stringify(PENDING_SENTINEL)}::jsonb)
-        ON CONFLICT (key) DO NOTHING
+        INSERT INTO idempotency_keys (key, user_id, response)
+        VALUES (${key}, ${userId}::uuid, ${JSON.stringify(PENDING_SENTINEL)}::jsonb)
+        ON CONFLICT (key, COALESCE(user_id, '00000000-0000-0000-0000-000000000000'::uuid)) DO NOTHING
         RETURNING key
       `;
       won = inserted.length > 0;
@@ -54,6 +57,7 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
       const rows = await sql<{ response: CachedResponse }[]>`
         SELECT response FROM idempotency_keys
         WHERE key = ${key}
+          AND user_id IS NOT DISTINCT FROM ${userId}::uuid
           AND created_at > NOW() - INTERVAL '24 hours'
       `;
       const cached = rows[0]?.response;
@@ -72,18 +76,20 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
       await next();
     } catch (err) {
       // Handler threw — release the sentinel so client can retry.
-      await sql`DELETE FROM idempotency_keys WHERE key = ${key}`.catch(() => {});
+      await sql`DELETE FROM idempotency_keys WHERE key = ${key} AND user_id IS NOT DISTINCT FROM ${userId}::uuid`.catch(
+        () => {},
+      );
       throw err;
     }
 
     const status = c.res.status;
     if (status < 200 || status >= 300) {
       // Non-2xx — release the sentinel so client can retry with the same key.
-      await sql`DELETE FROM idempotency_keys WHERE key = ${key}`.catch(() => {});
+      await sql`DELETE FROM idempotency_keys WHERE key = ${key} AND user_id IS NOT DISTINCT FROM ${userId}::uuid`.catch(
+        () => {},
+      );
       return;
     }
-
-    const user = c.get("user" as never) as AppUser | undefined;
 
     let body: unknown = null;
     try {
@@ -92,17 +98,14 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
       // non-JSON response body — store null
     }
 
-    const payload: CachedResponse & { user_id?: string } = {
-      status_code: status,
-      body,
-      ...(user?.id ? { user_id: user.id } : {}),
-    };
+    const payload: CachedResponse = { status_code: status, body };
 
     try {
       await sql`
         UPDATE idempotency_keys
         SET response = ${JSON.stringify(payload)}::jsonb
         WHERE key = ${key}
+          AND user_id IS NOT DISTINCT FROM ${userId}::uuid
       `;
     } catch {
       // Best-effort persistence — sentinel will linger; subsequent requests get 409 until 24h.

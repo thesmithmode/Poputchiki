@@ -57,6 +57,7 @@ export function CreateRideScreen() {
     if (!form.from_label.trim()) return "Укажите откуда";
     if (!form.to_label.trim()) return "Укажите куда";
     if (!form.date || !form.time) return "Укажите дату и время";
+    // Assumption: users are in Kazan (UTC+3); local time is correct for the target audience
     const departure = new Date(`${form.date}T${form.time}`);
     if (Number.isNaN(departure.getTime())) return "Неверная дата";
     if (departure <= new Date()) return "Дата должна быть в будущем";
@@ -77,7 +78,42 @@ export function CreateRideScreen() {
     }
     setError(null);
     setSubmitting(true);
+
+    const wa = getTelegramWebApp() as unknown as {
+      MainButton?: { showProgress: (l: boolean) => void; hideProgress: () => void };
+    } | null;
+    wa?.MainButton?.showProgress(false);
+
     try {
+      // Geocode both labels via Nominatim
+      type GeoResult = { lat: string; lon: string };
+      const geocode = async (label: string): Promise<{ lat: number; lng: number } | null> => {
+        try {
+          const results = await apiFetch<GeoResult[]>(
+            `/geocode/search?q=${encodeURIComponent(label)}`,
+          );
+          if (!Array.isArray(results) || results.length === 0) return null;
+          const first = results[0];
+          if (!first) return null;
+          const lat = Number.parseFloat(first.lat);
+          const lng = Number.parseFloat(first.lon);
+          if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+          return { lat, lng };
+        } catch {
+          return null;
+        }
+      };
+
+      const [fromCoords, toCoords] = await Promise.all([
+        geocode(form.from_label.trim()),
+        geocode(form.to_label.trim()),
+      ]);
+
+      if (!fromCoords || !toCoords) {
+        setError("Не удалось определить координаты, выберите точку на карте");
+        return;
+      }
+
       const departure_at = new Date(`${form.date}T${form.time}`).toISOString();
       const price_rub = form.price_free
         ? null
@@ -89,11 +125,11 @@ export function CreateRideScreen() {
         method: "POST",
         body: JSON.stringify({
           from_label: form.from_label.trim(),
-          from_lat: 55.75,
-          from_lng: 37.61,
+          from_lat: fromCoords.lat,
+          from_lng: fromCoords.lng,
           to_label: form.to_label.trim(),
-          to_lat: 55.8,
-          to_lng: 37.65,
+          to_lat: toCoords.lat,
+          to_lng: toCoords.lng,
           departure_at,
           price_rub,
           seats_total: form.seats_total,
@@ -107,6 +143,7 @@ export function CreateRideScreen() {
       setError("Не удалось создать поездку. Попробуйте ещё раз.");
     } finally {
       setSubmitting(false);
+      wa?.MainButton?.hideProgress();
     }
   };
 

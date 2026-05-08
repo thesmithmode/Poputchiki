@@ -44,6 +44,18 @@
       "semicolons": "always"
     }
   },
+  "overrides": [
+    {
+      "include": ["web/src/components/Icon.tsx"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noSvgWithoutTitle": "off"
+          }
+        }
+      }
+    }
+  ],
   "files": {
     "ignore": [
       "node_modules",

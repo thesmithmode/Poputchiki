@@ -20,7 +20,7 @@ export function createClientErrorsRouter(sql: postgres.Sql): Hono {
   const app = new Hono();
 
   app.post("/", async (c) => {
-    const sampleRate = process.env.NODE_ENV === "production" ? 0.1 : 1;
+    const sampleRate = process.env.NODE_ENV === "production" ? 0.05 : 1;
     /* c8 ignore next -- sampling is probabilistic */
     if (Math.random() > sampleRate) return c.json({ ok: true });
 

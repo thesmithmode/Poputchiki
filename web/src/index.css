@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand-bg: #f4f5f4;
+  --brand-surface: #ffffff;
+  --brand-primary: #2d5a3d;
+  --brand-accent: #b6553a;
+  --brand-text: #15191f;
+  --brand-sub: #7c8694;
+  --brand-border: #e2e6ec;
+  --brand-line: #d8dee6;
+}
+
+.dark {
+  --brand-bg: #000000;
+  --brand-surface: #111313;
+  --brand-primary: #7ac495;
+  --brand-accent: #e0815c;
+  --brand-text: #ffffff;
+  --brand-sub: rgba(235, 235, 245, 0.55);
+  --brand-border: rgba(255, 255, 255, 0.06);
+  --brand-line: rgba(255, 255, 255, 0.15);
+}
+
 html,
 body,
 #root {

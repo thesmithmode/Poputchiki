@@ -1,13 +1,17 @@
 FROM oven/bun:1-alpine AS base
 WORKDIR /app
 
-COPY package.json bun.lockb* ./
-COPY packages/shared/package.json packages/shared/
-COPY apps/api/package.json apps/api/
+RUN apk add --no-cache curl tini
+
+COPY --chown=bun:bun package.json bun.lockb* ./
+COPY --chown=bun:bun packages/shared/package.json packages/shared/
+COPY --chown=bun:bun apps/api/package.json apps/api/
 RUN bun install --frozen-lockfile
 
-COPY packages/shared packages/shared
-COPY apps/api apps/api
+COPY --chown=bun:bun packages/shared packages/shared
+COPY --chown=bun:bun apps/api apps/api
 
 EXPOSE 3000
+USER bun
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["bun", "run", "apps/api/src/index.ts"]

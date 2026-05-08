@@ -6,25 +6,34 @@ export const POOL_CONFIG = {
   connect_timeout: 5,
 } as const;
 
-const _metrics = { in_use: 0, waiting: 0, listen_connections: 0 };
+const _metrics = { in_use: 0, waiting: 0, sse_subscribers: 0 };
 
 export const poolMetrics = {
-  snapshot: (): { max: number; in_use: number; waiting: number; listen_connections: number } => ({
+  snapshot: (): { max: number; in_use: number; waiting: number; sse_subscribers: number } => ({
     max: POOL_CONFIG.max,
     in_use: _metrics.in_use,
     waiting: _metrics.waiting,
-    listen_connections: _metrics.listen_connections,
+    sse_subscribers: _metrics.sse_subscribers,
   }),
-  incListenConnections: () => {
-    _metrics.listen_connections++;
+  incSseSubscribers: () => {
+    _metrics.sse_subscribers++;
   },
-  decListenConnections: () => {
-    _metrics.listen_connections = Math.max(0, _metrics.listen_connections - 1);
+  decSseSubscribers: () => {
+    _metrics.sse_subscribers = Math.max(0, _metrics.sse_subscribers - 1);
   },
 } as const;
 
 export function createPool(url: string): postgres.Sql {
   return postgres(url, POOL_CONFIG);
+}
+
+/** Dedicated single-connection pool for LISTEN/NOTIFY. Never shared with query traffic. */
+export function createListenSql(url: string): postgres.Sql {
+  return postgres(url, {
+    max: 1,
+    idle_timeout: 0, // keep-alive: never drop the LISTEN connection
+    connect_timeout: 10,
+  });
 }
 
 export async function withTx<T>(

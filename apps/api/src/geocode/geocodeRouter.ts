@@ -41,6 +41,12 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       return c.json({ error: "rate limit exceeded" }, 429);
     }
     lastRequestAt.set(user.id, now);
+    if (lastRequestAt.size > 10_000) {
+      const cutoff = now - 10_000;
+      for (const [uid, t] of lastRequestAt) {
+        if (t < cutoff) lastRequestAt.delete(uid);
+      }
+    }
 
     const cacheKey = q.toLowerCase().trim();
     const cached = cache.get(cacheKey);

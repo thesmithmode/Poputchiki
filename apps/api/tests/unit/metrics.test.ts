@@ -9,20 +9,52 @@ describe("GET /metrics", () => {
     expect(res.status).toBe(200);
   });
 
-  it("body has max, in_use, waiting, listen_connections", async () => {
+  it("body has max, in_use, waiting, sse_subscribers", async () => {
     const app = createApp();
     const res = await app.request("/metrics");
     const body = await readJson(res);
     expect(body).toHaveProperty("max", 20);
     expect(body).toHaveProperty("in_use");
     expect(body).toHaveProperty("waiting");
-    expect(body).toHaveProperty("listen_connections", 0);
+    expect(body).toHaveProperty("sse_subscribers", 0);
   });
 
   it("content-type is application/json", async () => {
     const app = createApp();
     const res = await app.request("/metrics");
     expect(res.headers.get("content-type")).toContain("application/json");
+  });
+});
+
+describe("GET /metrics — METRICS_TOKEN auth", () => {
+  it("no token + production → 401 (fail-closed)", async () => {
+    const original = process.env.NODE_ENV ?? "test";
+    process.env.NODE_ENV = "production";
+    process.env.METRICS_TOKEN = undefined;
+    const app = createApp();
+    const res = await app.request("/metrics");
+    process.env.NODE_ENV = original;
+    expect(res.status).toBe(401);
+  });
+
+  it("token set + wrong bearer → 401", async () => {
+    process.env.METRICS_TOKEN = "secret";
+    const app = createApp();
+    const res = await app.request("/metrics", {
+      headers: { authorization: "Bearer wrong" },
+    });
+    process.env.METRICS_TOKEN = undefined;
+    expect(res.status).toBe(401);
+  });
+
+  it("token set + correct bearer → 200", async () => {
+    process.env.METRICS_TOKEN = "secret";
+    const app = createApp();
+    const res = await app.request("/metrics", {
+      headers: { authorization: "Bearer secret" },
+    });
+    process.env.METRICS_TOKEN = undefined;
+    expect(res.status).toBe(200);
   });
 });
 

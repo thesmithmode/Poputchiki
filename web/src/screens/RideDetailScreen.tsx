@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Icon } from "../components/Icon";
+import { RouteBlock } from "../components/RouteBlock";
 import { useMe } from "../hooks/useMe";
 import { useRide } from "../hooks/useRide";
 import { useTelegramBack } from "../hooks/useTelegramBack";
@@ -51,9 +53,10 @@ export function RideDetailScreen({ id }: Props) {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          background: "var(--brand-bg)",
         }}
       >
-        <p style={{ color: "#666", fontSize: 14 }}>Загрузка...</p>
+        <p style={{ color: "var(--brand-sub)", fontSize: 14 }}>Загрузка...</p>
       </div>
     );
   }
@@ -68,9 +71,10 @@ export function RideDetailScreen({ id }: Props) {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          background: "var(--brand-bg)",
         }}
       >
-        <p style={{ color: "#e74c3c", fontSize: 14 }}>
+        <p style={{ color: "#e54e5c", fontSize: 14 }}>
           {is404 ? "Поездка не найдена" : "Ошибка загрузки"}
         </p>
       </div>
@@ -110,7 +114,7 @@ export function RideDetailScreen({ id }: Props) {
   }
 
   const departure = formatDeparture(ride.departure_at);
-  const seatsLeft = ride.seats_total - ride.seats_taken;
+  const seatsLeft = Math.max(0, ride.seats_total - ride.seats_taken);
   const driverName = ride.driver.last_name
     ? `${ride.driver.first_name} ${ride.driver.last_name}`
     : ride.driver.first_name;
@@ -121,126 +125,110 @@ export function RideDetailScreen({ id }: Props) {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
       }}
     >
-      {/* Header */}
+      {/* Sticky header */}
       <div
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
-          padding: "12px 16px",
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
           position: "sticky",
           top: 0,
           zIndex: 20,
+          backdropFilter: "blur(18px) saturate(160%)",
+          WebkitBackdropFilter: "blur(18px) saturate(160%)",
+          background: "rgba(255,255,255,0.78)",
+          borderBottom: "1px solid rgba(15,23,42,0.05)",
+          padding: "10px 16px 12px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
         }}
       >
         <button
           type="button"
           onClick={() => navigate(-1)}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: 20,
-            cursor: "pointer",
-            padding: 4,
-            color: "#333",
-          }}
           aria-label="Назад"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            border: "none",
+            background: "#F1F4F8",
+            color: "var(--brand-text)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+          }}
         >
-          ←
+          <Icon name="chevron-l" size={18} />
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0 }}>Поездка</h1>
+        <h1
+          style={{
+            fontSize: 17,
+            fontWeight: 600,
+            color: "var(--brand-text)",
+            margin: 0,
+            letterSpacing: -0.2,
+          }}
+        >
+          Поездка
+        </h1>
       </div>
 
-      {/* Content */}
+      {/* Scrollable content */}
       <div style={{ flex: 1, padding: "12px 16px 120px", overflowY: "auto" }}>
         {/* Map placeholder */}
         <div
           data-testid="map-placeholder"
           style={{
             height: 180,
-            background: "#e8f4ea",
-            borderRadius: 16,
+            background: "#e8f0ea",
+            borderRadius: 18,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             marginBottom: 12,
           }}
         >
-          <span style={{ color: "#666", fontSize: 13 }}>Карта маршрута</span>
+          <span style={{ color: "var(--brand-sub)", fontSize: 13 }}>Карта маршрута</span>
         </div>
 
-        {/* Route + stats card */}
+        {/* Route card */}
         <div
           style={{
-            background: "#fff",
-            borderRadius: 16,
+            background: "var(--brand-surface)",
+            borderRadius: 18,
             padding: 16,
             marginBottom: 12,
-            border: "1px solid #e5e7eb",
+            boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#7c8694",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.4,
-                  marginBottom: 3,
-                }}
-              >
-                От
-              </div>
-              <div style={{ fontSize: 14, color: "#15191f", fontWeight: 500 }}>
-                {ride.from_label}
-              </div>
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#7c8694",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.4,
-                  marginBottom: 3,
-                }}
-              >
-                До
-              </div>
-              <div style={{ fontSize: 14, color: "#15191f", fontWeight: 500 }}>{ride.to_label}</div>
-            </div>
-          </div>
+          <RouteBlock fromLabel={ride.from_label} toLabel={ride.to_label} />
 
           <div
             style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: 12,
+              marginTop: 16,
               paddingTop: 16,
-              borderTop: "1px solid #e5e7eb",
+              borderTop: "1px solid var(--brand-border)",
             }}
           >
-            <Stat label="Отправление" value={departure.time} sub={departure.rel} />
+            <StatBlock label="Отправление" value={departure.time} sub={departure.rel} />
             {ride.price_rub !== null ? (
-              <Stat label="Цена" value={`${ride.price_rub} ₽`} sub="за место" />
+              <StatBlock label="Цена" value={`${ride.price_rub} ₽`} sub="за место" />
             ) : (
-              <Stat label="Цена" value="Бесплатно" />
+              <StatBlock label="Цена" value="Бесплатно" />
             )}
-            <Stat
+            <StatBlock
               label="Свободно"
               value={`${seatsLeft} из ${ride.seats_total}`}
               sub="мест"
               highlight={seatsLeft === 0}
             />
-            <Stat label="Тип" value="Разовая" />
+            <StatBlock label="Тип" value="Разовая" />
           </div>
         </div>
 
@@ -248,17 +236,17 @@ export function RideDetailScreen({ id }: Props) {
         {ride.comment && (
           <div
             style={{
-              background: "#fff",
-              borderRadius: 16,
+              background: "var(--brand-surface)",
+              borderRadius: 18,
               padding: 16,
               marginBottom: 12,
-              border: "1px solid #e5e7eb",
+              boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
             }}
           >
             <div
               style={{
-                fontSize: 12,
-                color: "#7c8694",
+                fontSize: 11,
+                color: "var(--brand-sub)",
                 fontWeight: 600,
                 textTransform: "uppercase",
                 letterSpacing: 0.4,
@@ -267,15 +255,17 @@ export function RideDetailScreen({ id }: Props) {
             >
               Комментарий
             </div>
-            <div style={{ fontSize: 14, color: "#15191f", lineHeight: 1.45 }}>{ride.comment}</div>
+            <div style={{ fontSize: 14, color: "var(--brand-text)", lineHeight: 1.45 }}>
+              {ride.comment}
+            </div>
           </div>
         )}
 
-        {/* Driver */}
+        {/* Driver section label */}
         <div
           style={{
-            fontSize: 13,
-            color: "#7c8694",
+            fontSize: 11,
+            color: "var(--brand-sub)",
             fontWeight: 600,
             textTransform: "uppercase",
             letterSpacing: 0.4,
@@ -284,6 +274,8 @@ export function RideDetailScreen({ id }: Props) {
         >
           Водитель
         </div>
+
+        {/* Driver card */}
         <button
           type="button"
           data-testid="driver-card"
@@ -291,12 +283,14 @@ export function RideDetailScreen({ id }: Props) {
           style={{
             width: "100%",
             textAlign: "left",
-            background: "#fff",
-            borderRadius: 16,
+            background: "var(--brand-surface)",
+            borderRadius: 18,
             padding: 16,
             marginBottom: 12,
-            border: "1px solid #e5e7eb",
+            border: "none",
             cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
+            fontFamily: "inherit",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -305,19 +299,31 @@ export function RideDetailScreen({ id }: Props) {
                 width: 52,
                 height: 52,
                 borderRadius: "50%",
-                background: "#e5e7eb",
+                background: "#D8E6DC",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 20,
                 flexShrink: 0,
               }}
             >
-              👤
+              <Icon name="user" size={24} style={{ color: "var(--brand-primary)" }} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 600, color: "#15191f" }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  marginBottom: 4,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "var(--brand-text)",
+                  }}
+                >
                   {driverName}
                 </span>
                 {isNew(ride.driver.created_at) && (
@@ -325,51 +331,67 @@ export function RideDetailScreen({ id }: Props) {
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
-                      background: "#e8f4ea",
-                      color: "#047857",
+                      background: "rgba(45,90,61,0.1)",
+                      color: "var(--brand-primary)",
                       padding: "2px 6px",
-                      borderRadius: 4,
+                      borderRadius: 6,
                     }}
                   >
-                    NEW
+                    новый сосед
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 12.5, color: "#7c8694" }}>
-                👍 {ride.driver.likes_received_count}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 12.5,
+                  color: "var(--brand-sub)",
+                }}
+              >
+                <Icon name="thumb-fill" size={11} style={{ color: "var(--brand-primary)" }} />
+                {ride.driver.likes_received_count}
               </div>
             </div>
-            <span style={{ color: "#7c8694" }}>→</span>
+            <Icon name="chevron-r" size={18} style={{ color: "var(--brand-sub)" }} />
           </div>
         </button>
 
-        {/* Like driver button — shown to non-drivers */}
+        {/* Like driver */}
         {!isOwnRide && (
           <button
             type="button"
             data-testid="like-driver-btn"
-            disabled={likeStatus !== "idle"}
+            disabled={likeStatus === "loading" || likeStatus === "liked"}
             onClick={handleLike}
             style={{
               width: "100%",
               padding: "12px 16px",
-              background: likeStatus === "liked" ? "#22c55e" : "#f0f1f3",
+              background: likeStatus === "liked" ? "#22c55e" : "#F1F4F8",
               border: "none",
-              borderRadius: 10,
+              borderRadius: 12,
               fontSize: 14,
               fontWeight: 600,
-              color: likeStatus === "liked" ? "#fff" : "#374151",
-              cursor: likeStatus !== "idle" ? "not-allowed" : "pointer",
+              color: likeStatus === "liked" ? "#fff" : "var(--brand-text)",
+              cursor:
+                likeStatus === "loading" || likeStatus === "liked" ? "not-allowed" : "pointer",
               marginBottom: 12,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              fontFamily: "inherit",
             }}
           >
+            <Icon name="thumb" size={16} />
             {likeStatus === "liked"
-              ? "👍 Лайк поставлен!"
+              ? "Лайк поставлен!"
               : likeStatus === "loading"
                 ? "..."
                 : likeStatus === "error"
                   ? "Ошибка"
-                  : "👍 Поставить лайк водителю"}
+                  : "Поставить лайк водителю"}
           </button>
         )}
 
@@ -378,8 +400,8 @@ export function RideDetailScreen({ id }: Props) {
           <>
             <div
               style={{
-                fontSize: 13,
-                color: "#7c8694",
+                fontSize: 11,
+                color: "var(--brand-sub)",
                 fontWeight: 600,
                 textTransform: "uppercase",
                 letterSpacing: 0.4,
@@ -390,11 +412,11 @@ export function RideDetailScreen({ id }: Props) {
             </div>
             <div
               style={{
-                background: "#fff",
-                borderRadius: 16,
+                background: "var(--brand-surface)",
+                borderRadius: 18,
                 overflow: "hidden",
-                border: "1px solid #e5e7eb",
                 marginBottom: 16,
+                boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
               }}
             >
               {ride.passengers.map((p, i) => (
@@ -406,13 +428,15 @@ export function RideDetailScreen({ id }: Props) {
                     display: "flex",
                     alignItems: "center",
                     gap: 12,
-                    padding: "12px 14px",
-                    borderBottom: i === ride.passengers.length - 1 ? "none" : "1px solid #e5e7eb",
+                    padding: "12px 16px",
+                    borderBottom:
+                      i === ride.passengers.length - 1 ? "none" : "1px solid var(--brand-border)",
                     cursor: "pointer",
                     width: "100%",
                     textAlign: "left",
                     background: "none",
                     border: "none",
+                    fontFamily: "inherit",
                   }}
                 >
                   <div
@@ -420,28 +444,41 @@ export function RideDetailScreen({ id }: Props) {
                       width: 36,
                       height: 36,
                       borderRadius: "50%",
-                      background: "#e5e7eb",
+                      background: "#D8E6DC",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 14,
                       flexShrink: 0,
                     }}
                   >
-                    👤
+                    <Icon name="user" size={18} style={{ color: "var(--brand-primary)" }} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#15191f" }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--brand-text)" }}>
                       {p.first_name}
                       {p.last_name ? ` ${p.last_name[0]}.` : ""}
                     </div>
                     {p.likes_received_count > 0 && (
-                      <div style={{ fontSize: 12, color: "#7c8694", marginTop: 2 }}>
-                        👍 {p.likes_received_count}
+                      <div
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 3,
+                          fontSize: 12,
+                          color: "var(--brand-sub)",
+                          marginTop: 2,
+                        }}
+                      >
+                        <Icon
+                          name="thumb-fill"
+                          size={10}
+                          style={{ color: "var(--brand-primary)" }}
+                        />
+                        {p.likes_received_count}
                       </div>
                     )}
                   </div>
-                  <span style={{ color: "#7c8694" }}>→</span>
+                  <Icon name="chevron-r" size={16} style={{ color: "var(--brand-sub)" }} />
                 </button>
               ))}
             </div>
@@ -449,7 +486,7 @@ export function RideDetailScreen({ id }: Props) {
         )}
       </div>
 
-      {/* Bottom action bar */}
+      {/* Fixed bottom action bar */}
       <div
         style={{
           position: "fixed",
@@ -457,51 +494,70 @@ export function RideDetailScreen({ id }: Props) {
           left: 0,
           right: 0,
           padding: "12px 16px",
+          paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
           background: "rgba(255,255,255,0.95)",
           backdropFilter: "blur(20px)",
-          borderTop: "1px solid #e5e7eb",
+          WebkitBackdropFilter: "blur(20px)",
+          borderTop: "1px solid var(--brand-border)",
           display: "flex",
           gap: 8,
           zIndex: 30,
         }}
       >
         <a
-          href={`tg://user?id=${ride.driver.tg_id}`}
+          href={`tg://user?id=${Number(ride.driver.tg_id)}`}
           data-testid="telegram-link"
           style={{
             flex: 1,
             padding: "12px 16px",
-            background: "#f0f1f3",
-            borderRadius: 8,
+            background: "#F1F4F8",
+            borderRadius: 12,
             fontSize: 14,
             fontWeight: 600,
-            color: "#333",
+            color: "var(--brand-text)",
             textAlign: "center",
             textDecoration: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            gap: 8,
           }}
         >
-          ✉️ В Telegram
+          <Icon name="tg" size={16} />В Telegram
         </a>
         {!isOwnRide && (
           <button
             type="button"
             data-testid="respond-btn"
-            disabled={reqStatus !== "idle"}
+            disabled={
+              reqStatus === "loading" ||
+              reqStatus === "sent" ||
+              reqStatus === "full" ||
+              reqStatus === "duplicate"
+            }
             onClick={handleRespond}
             style={{
               flex: 1.6,
               padding: "12px 16px",
               background:
-                reqStatus === "sent" ? "#22c55e" : reqStatus !== "idle" ? "#93c5fd" : "#0ea5e9",
+                reqStatus === "sent"
+                  ? "#22c55e"
+                  : reqStatus === "loading" || reqStatus === "full" || reqStatus === "duplicate"
+                    ? "#93c5fd"
+                    : "var(--brand-primary)",
               border: "none",
-              borderRadius: 8,
+              borderRadius: 12,
               fontSize: 14,
               fontWeight: 600,
               color: "#fff",
-              cursor: reqStatus !== "idle" ? "not-allowed" : "pointer",
+              cursor:
+                reqStatus === "loading" ||
+                reqStatus === "sent" ||
+                reqStatus === "full" ||
+                reqStatus === "duplicate"
+                  ? "not-allowed"
+                  : "pointer",
+              fontFamily: "inherit",
             }}
           >
             {reqStatus === "sent"
@@ -522,7 +578,7 @@ export function RideDetailScreen({ id }: Props) {
   );
 }
 
-function Stat({
+function StatBlock({
   label,
   value,
   sub,
@@ -533,7 +589,7 @@ function Stat({
       <div
         style={{
           fontSize: 11,
-          color: "#7c8694",
+          color: "var(--brand-sub)",
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: 0.4,
@@ -546,13 +602,13 @@ function Stat({
         style={{
           fontSize: 16,
           fontWeight: 600,
-          color: highlight ? "#e54e5c" : "#15191f",
+          color: highlight ? "#e54e5c" : "var(--brand-text)",
           lineHeight: 1.2,
         }}
       >
         {value}
       </div>
-      {sub && <div style={{ fontSize: 11.5, color: "#7c8694", marginTop: 2 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11.5, color: "var(--brand-sub)", marginTop: 2 }}>{sub}</div>}
     </div>
   );
 }

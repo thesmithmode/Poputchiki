@@ -25,18 +25,27 @@ function makeApp(sql: postgres.Sql, user?: AppUser) {
   }
   app.use("*", bannedUser(sql));
   app.get("*", (c) => c.json({ ok: true }));
+  app.patch("*", (c) => c.json({ ok: true }));
   return app;
 }
 
 const testUser: AppUser = { id: "uuid-1", tgId: 123, role: "user" };
 
 describe("bannedUser middleware", () => {
-  it("/api/users/me bypasses ban check — no DB query, calls next", async () => {
+  it("GET /api/users/me bypasses ban check — no DB query, calls next", async () => {
     const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
     const app = makeApp(sql, testUser);
-    const res = await app.request("/api/users/me");
+    const res = await app.request("/api/users/me", { method: "GET" });
     expect(res.status).toBe(200);
     expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("PATCH /api/users/me does NOT bypass ban check — banned user gets 403", async () => {
+    const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/users/me", { method: "PATCH" });
+    expect(res.status).toBe(403);
+    expect(sql).toHaveBeenCalled();
   });
 
   it("non-banned user — calls next with 200", async () => {

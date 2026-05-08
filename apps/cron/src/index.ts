@@ -1,6 +1,12 @@
 import postgres from "postgres";
 import { detectAnomalies } from "./anomaly-detect";
 import { runBackup, runBaseBackup, runRestoreTest } from "./backup";
+import {
+  cleanupErrorLog,
+  cleanupIdempotencyKeys,
+  cleanupNotificationLog,
+  cleanupRateLimitBuckets,
+} from "./cleanup";
 import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
 import { confirmParticipationPush } from "./confirm-participation-push";
@@ -13,11 +19,40 @@ if (!DATABASE_URL) throw new Error("DATABASE_URL required");
 
 const sql = postgres(DATABASE_URL);
 const FIVE_MIN = 5 * 60 * 1000;
+const TEN_MIN = 10 * 60 * 1000;
 const ONE_HOUR = 60 * 60 * 1000;
 
 async function runCleanup() {
   await cleanupNonces(sql).catch((err: unknown) =>
     console.error(JSON.stringify({ msg: "nonce_cleanup_error", error: String(err) })),
+  );
+}
+
+async function runRateLimitBucketsCleanup() {
+  await cleanupRateLimitBuckets(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "rate_limit_buckets_cleanup_error", error: String(err) })),
+  );
+}
+
+async function runIdempotencyKeysCleanup() {
+  await cleanupIdempotencyKeys(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "idempotency_keys_cleanup_error", error: String(err) })),
+  );
+}
+
+async function runNotificationLogCleanup() {
+  // 04:00 UTC daily
+  if (new Date().getUTCHours() !== 4) return;
+  await cleanupNotificationLog(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "notification_log_cleanup_error", error: String(err) })),
+  );
+}
+
+async function runErrorLogCleanup() {
+  // 04:00 UTC daily
+  if (new Date().getUTCHours() !== 4) return;
+  await cleanupErrorLog(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "error_log_cleanup_error", error: String(err) })),
   );
 }
 
@@ -91,13 +126,21 @@ runConfirmParticipationPush();
 runDailyBackup();
 runWeeklyBaseBackup();
 runWeeklyRestoreTest();
+runRateLimitBucketsCleanup();
+runIdempotencyKeysCleanup();
+runNotificationLogCleanup();
+runErrorLogCleanup();
 detectAnomalies(sql).catch((err: unknown) =>
   console.error(JSON.stringify({ msg: "anomaly_detect_error", error: String(err) })),
 );
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
+setInterval(runRateLimitBucketsCleanup, TEN_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
 setInterval(runAuditLogCleanup, ONE_HOUR);
+setInterval(runIdempotencyKeysCleanup, ONE_HOUR);
+setInterval(runNotificationLogCleanup, ONE_HOUR);
+setInterval(runErrorLogCleanup, ONE_HOUR);
 setInterval(runFinalizeRides, ONE_HOUR);
 setInterval(runConfirmParticipationPush, 30 * 60 * 1000);
 setInterval(runDailyBackup, ONE_HOUR);

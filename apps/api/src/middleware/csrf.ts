@@ -10,10 +10,19 @@ export function csrf(allowedOrigin?: string): MiddlewareHandler {
       return;
     }
 
-    // Origin check (when allowedOrigin is configured)
+    // A3: Origin check — используем URL.origin для точного сравнения (no startsWith bypass)
     if (allowedOrigin) {
-      const origin = c.req.header("Origin") ?? c.req.header("Referer");
-      if (!origin || !origin.startsWith(allowedOrigin)) {
+      const rawOrigin = c.req.header("Origin") ?? c.req.header("Referer");
+      if (!rawOrigin) {
+        return c.json({ error: "forbidden: invalid origin" }, 403);
+      }
+      let parsedOrigin: string;
+      try {
+        parsedOrigin = new URL(rawOrigin).origin;
+      } catch {
+        return c.json({ error: "forbidden: invalid origin" }, 403);
+      }
+      if (parsedOrigin !== allowedOrigin) {
         return c.json({ error: "forbidden: invalid origin" }, 403);
       }
     }

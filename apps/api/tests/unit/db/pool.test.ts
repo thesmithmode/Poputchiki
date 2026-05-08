@@ -30,6 +30,36 @@ describe("poolMetrics.snapshot", () => {
   });
 });
 
+// R1-7: deprecated shim incListenConnections/decListenConnections должны быть удалены.
+// Только семантически верные имена sse_subscribers.
+describe("poolMetrics sse_subscribers (R1-7)", () => {
+  it("incSseSubscribers увеличивает sse_subscribers", () => {
+    const before = poolMetrics.snapshot().sse_subscribers;
+    poolMetrics.incSseSubscribers();
+    expect(poolMetrics.snapshot().sse_subscribers).toBe(before + 1);
+    // cleanup
+    poolMetrics.decSseSubscribers();
+  });
+
+  it("decSseSubscribers уменьшает sse_subscribers, не уходит ниже 0", () => {
+    // Обнулим до известного состояния
+    const snap = poolMetrics.snapshot().sse_subscribers;
+    for (let i = 0; i < snap; i++) poolMetrics.decSseSubscribers();
+    poolMetrics.decSseSubscribers(); // below zero — должно остаться 0
+    expect(poolMetrics.snapshot().sse_subscribers).toBe(0);
+  });
+
+  it("deprecated shim incListenConnections не экспортируется из poolMetrics", () => {
+    // biome-ignore lint/suspicious/noExplicitAny: проверяем отсутствие устаревшего поля
+    expect((poolMetrics as any).incListenConnections).toBeUndefined();
+  });
+
+  it("deprecated shim decListenConnections не экспортируется из poolMetrics", () => {
+    // biome-ignore lint/suspicious/noExplicitAny: проверяем отсутствие устаревшего поля
+    expect((poolMetrics as any).decListenConnections).toBeUndefined();
+  });
+});
+
 describe("withTx", () => {
   it("calls sql.begin with REPEATABLE READ isolation", async () => {
     const beginMock = vi.fn().mockResolvedValue("ok");

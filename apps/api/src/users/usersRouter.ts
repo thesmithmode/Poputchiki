@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { encryptPii } from "../db/crypto";
-import { withIdentity, withSystem } from "../db/with-identity";
+import { withIdentity } from "../db/with-identity";
 import type { AppUser } from "../middleware/identity-guard";
 
 const PatchMeInput = z.object({
@@ -235,15 +235,13 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
     // Audit first — if subsequent steps fail, the erasure intent is recorded
-    await withSystem(sql, async (tx) => {
-      await tx`
-        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-        SELECT ${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb
-        WHERE NOT EXISTS (
-          SELECT 1 FROM audit_log WHERE user_id = ${user.id} AND action = 'user_self_delete'
-        )
-      `;
-    });
+    await sql`
+      INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+      SELECT ${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb
+      WHERE NOT EXISTS (
+        SELECT 1 FROM audit_log WHERE user_id = ${user.id} AND action = 'user_self_delete'
+      )
+    `;
 
     // Collect affected passengers before cancelling rides (for notifications)
     const affectedPassengers = await withIdentity(sql, user, async (tx) => {

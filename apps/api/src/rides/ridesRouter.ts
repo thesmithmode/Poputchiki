@@ -2,7 +2,7 @@ import { CreateRideInput, MarkParticipantsInput } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
-import { withIdentity, withSystem } from "../db/with-identity";
+import { withIdentity } from "../db/with-identity";
 import { isUniqueViolation } from "../lib/db-errors";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
@@ -568,13 +568,11 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       throw err;
     }
 
-    await withSystem(sql, async (tx) => {
-      await tx`
-        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-        VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
-                ${tx.json({ fields: result.patchedFields, key_fields_changed: result.changedKeyFields })})
-      `;
-    });
+    await sql`
+      INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+      VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
+              ${sql.json({ fields: result.patchedFields, key_fields_changed: result.changedKeyFields })})
+    `;
 
     if (result.changedKeyFields) {
       for (const passengerId of result.affectedPassengers) {
@@ -677,13 +675,11 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       throw err;
     }
 
-    await withSystem(sql, async (tx) => {
-      await tx`
-        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-        VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
-                ${tx.json({ daily_cancels: result.dailyCancels, passengers: result.cancelledCount })})
-      `;
-    });
+    await sql`
+      INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+      VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
+              ${sql.json({ daily_cancels: result.dailyCancels, passengers: result.cancelledCount })})
+    `;
 
     // Notify each affected passenger (fire-and-forget)
     for (const passengerId of result.affectedPassengers) {

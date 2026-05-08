@@ -4,16 +4,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zstd \
     gnupg \
     curl \
+    tini \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-COPY package.json bun.lockb* ./
-COPY packages/shared/package.json packages/shared/
-COPY apps/cron/package.json apps/cron/
+COPY --chown=bun:bun package.json bun.lockb* ./
+COPY --chown=bun:bun packages/shared/package.json packages/shared/
+COPY --chown=bun:bun apps/cron/package.json apps/cron/
 RUN bun install --frozen-lockfile
 
-COPY packages/shared packages/shared
-COPY apps/cron apps/cron
-COPY scripts scripts
+COPY --chown=bun:bun packages/shared packages/shared
+COPY --chown=bun:bun apps/cron apps/cron
+COPY --chown=bun:bun scripts scripts
 
+USER bun
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["bun", "run", "apps/cron/src/index.ts"]

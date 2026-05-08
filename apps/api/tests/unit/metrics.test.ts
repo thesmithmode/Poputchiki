@@ -9,13 +9,14 @@ describe("GET /metrics", () => {
     expect(res.status).toBe(200);
   });
 
-  it("body has max, in_use, waiting", async () => {
+  it("body has max, in_use, waiting, listen_connections", async () => {
     const app = createApp();
     const res = await app.request("/metrics");
     const body = await readJson(res);
     expect(body).toHaveProperty("max", 20);
     expect(body).toHaveProperty("in_use");
     expect(body).toHaveProperty("waiting");
+    expect(body).toHaveProperty("listen_connections", 0);
   });
 
   it("content-type is application/json", async () => {

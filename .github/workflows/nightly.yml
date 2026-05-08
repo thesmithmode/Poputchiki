@@ -1,0 +1,84 @@
+name: Nightly Security & Quality
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  security-events: write
+
+env:
+  REGISTRY: ghcr.io
+  REPO: thesmithmode/poputchiki
+
+jobs:
+  trivy-nightly:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api, notifier, cron, webhook, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Trivy scan ${{ matrix.service }}
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.REPO }}-${{ matrix.service }}:latest
+          format: sarif
+          output: trivy-${{ matrix.service }}.sarif
+          ignore-unfixed: false
+          vuln-type: os,library
+          severity: CRITICAL,HIGH,MEDIUM
+          trivyignores: .trivyignore
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+
+  zap-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP baseline scan — API
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: "https://api.${{ vars.DOMAIN }}/health"
+          rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-a"
+          fail_action: false
+
+      - name: ZAP baseline scan — Web
+        uses: zaproxy/action-baseline@v0.12.0
+        with:
+          target: "https://app.${{ vars.DOMAIN }}/"
+          rules_file_name: ".zap/rules.tsv"
+          cmd_options: "-a"
+          fail_action: false
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lighthouse CI — Web
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            https://app.${{ vars.DOMAIN }}/
+          budgetPath: .lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: false

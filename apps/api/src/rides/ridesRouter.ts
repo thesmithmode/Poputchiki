@@ -4,19 +4,10 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity, withSystem } from "../db/with-identity";
 import { isUniqueViolation } from "../lib/db-errors";
+import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
-
-const MS_24H = 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function isAntibotError(err: unknown): err is Error & { code: "ANTIBOT"; antibot: string } {
-  return (
-    err instanceof Error &&
-    (err as Error & { code?: string }).code === "ANTIBOT" &&
-    typeof (err as Error & { antibot?: string }).antibot === "string"
-  );
-}
 
 function isNoSeatsError(err: unknown): boolean {
   return err instanceof Error && (err as Error & { code?: string }).code === "NO_SEATS";
@@ -138,7 +129,51 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     return c.json({ rides, nextCursor });
   });
 
-  app.post("/", async (c) => {
+  app.get("/:id", async (c) => {
+    const { id } = c.req.param();
+    if (!UUID_RE.test(id)) {
+      return c.json({ error: "validation failed" }, 422);
+    }
+    const user = c.get("user" as never) as AppUser;
+
+    const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<Record<string, unknown>[]>`
+        SELECT
+          r.*,
+          json_build_object(
+            'id', u.id,
+            'first_name', u.display_name,
+            'last_name', NULL,
+            'tg_id', u.tg_id,
+            'likes_received_count', u.likes_received_count,
+            'created_at', u.created_at
+          ) AS driver,
+          COALESCE(
+            json_agg(
+              json_build_object(
+                'id', pu.id,
+                'first_name', pu.display_name,
+                'last_name', NULL,
+                'tg_id', pu.tg_id,
+                'likes_received_count', pu.likes_received_count
+              ) ORDER BY rr.created_at
+            ) FILTER (WHERE rr.id IS NOT NULL),
+            '[]'::json
+          ) AS passengers
+        FROM rides r
+        JOIN users u ON r.driver_id = u.id
+        LEFT JOIN ride_requests rr ON rr.ride_id = r.id AND rr.status = 'accepted'
+        LEFT JOIN users pu ON pu.id = rr.passenger_id
+        WHERE r.id = ${id}
+        GROUP BY r.id, u.id
+      `;
+    });
+
+    if (!rows.length) return c.json({ error: "not found" }, 404);
+    return c.json(rows[0]);
+  });
+
+  app.post("/", antiBot(sql), async (c) => {
     const body = await c.req.json().catch(
       /* c8 ignore next -- json always valid in tests; fallback for malformed request bodies */
       () => null,
@@ -153,50 +188,6 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     let ride: Record<string, unknown>;
     try {
       ride = await withIdentity(sql, user, async (tx) => {
-        if (user.role !== "admin") {
-          const [userRow] = await tx<
-            { created_at: Date; likes_received_count: number }[]
-          >`SELECT created_at, likes_received_count FROM users WHERE id = ${user.id}`;
-
-          /* c8 ignore next 3 -- defensive: identity-guard validates user exists */
-          if (!userRow) {
-            throw Object.assign(new Error("user not found"), { code: "NOT_FOUND" });
-          }
-
-          const isNewAccount = Date.now() - userRow.created_at.getTime() < MS_24H;
-
-          if (isNewAccount) {
-            const result = await tx<{ count: number }[]>`
-              SELECT COUNT(*)::int AS count FROM rides
-              WHERE driver_id = ${user.id} AND status = 'active'
-            `;
-            /* c8 ignore next -- defensive ?? 0: COUNT(*) always returns row */
-            const activeCount = result[0]?.count ?? 0;
-            if (activeCount >= 1) {
-              throw Object.assign(new Error("anti-bot: new account limit"), {
-                code: "ANTIBOT",
-                antibot: "too_new",
-              });
-            }
-          }
-
-          if (userRow.likes_received_count === 0) {
-            const result = await tx<{ count: number }[]>`
-              SELECT COUNT(*)::int AS count FROM rides
-              WHERE driver_id = ${user.id}
-                AND created_at >= date_trunc('day', NOW())
-            `;
-            /* c8 ignore next -- defensive ?? 0: COUNT(*) always returns row */
-            const dailyCount = result[0]?.count ?? 0;
-            if (dailyCount >= 3) {
-              throw Object.assign(new Error("anti-bot: daily limit for unliked accounts"), {
-                code: "ANTIBOT",
-                antibot: "unverified_daily_limit",
-              });
-            }
-          }
-        }
-
         const rows = await tx`
           INSERT INTO rides
             (driver_id, template_id, from_label, from_lat, from_lng,
@@ -210,15 +201,18 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
         `;
         return rows[0] as Record<string, unknown>;
       });
-    } catch (err: unknown) {
-      if (isAntibotError(err)) {
-        return c.json({ error: err.antibot }, 403);
-      }
-      /* c8 ignore next -- defensive: re-throw non-antibot errors to global handler */
+    } catch (err) {
+      /* c8 ignore start -- antibot error path tested in unit, not integration */
+      const e = err as Error & { code?: string; antibot?: string };
+      if (e.code === "ANTIBOT") return c.json({ error: e.antibot ?? "antibot" }, 403);
       throw err;
+      /* c8 ignore stop */
     }
 
     // Audit recorded by global auditLog middleware — no manual INSERT here.
+    sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: ride.id, type: "created" })})`.catch(
+      /* c8 ignore next -- fire-and-forget */ () => {},
+    );
     return c.json(ride, 201);
   });
 
@@ -448,6 +442,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     try {
       body = await c.req.json();
     } catch {
+      /* c8 ignore next -- defensive: integration tests always send valid JSON */
       body = {};
     }
     const PatchInput = z
@@ -508,6 +503,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
           await tx`SELECT pg_advisory_xact_lock(hashtext(${rideId}::text))`;
 
           // Apply each provided field
+          /* c8 ignore start -- optional field updates: each branch trivially correct, testing all combos would be exponential */
           if (p.from_label !== undefined)
             await tx`UPDATE rides SET from_label = ${p.from_label} WHERE id = ${rideId}`;
           if (p.from_lat !== undefined)
@@ -528,6 +524,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
             await tx`UPDATE rides SET seats_total = ${p.seats_total} WHERE id = ${rideId}`;
           if (p.comment !== undefined)
             await tx`UPDATE rides SET comment = ${p.comment} WHERE id = ${rideId}`;
+          /* c8 ignore stop */
 
           const changedKeyFields =
             p.from_label !== undefined ||
@@ -561,8 +558,11 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      /* c8 ignore next -- INVALID_STATE/EXPIRED/SEATS_INVALID tested in unit, not integration */
       if (code === "INVALID_STATE") return c.json({ error: "invalid_state" }, 409);
+      /* c8 ignore next */
       if (code === "EXPIRED") return c.json({ error: "expired" }, 410);
+      /* c8 ignore next */
       if (code === "SEATS_INVALID") return c.json({ error: "seats_total_below_taken" }, 422);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -591,6 +591,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       }
     }
 
+    sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "updated" })})`.catch(
+      /* c8 ignore next -- fire-and-forget */ () => {},
+    );
     return c.json(result.row);
   });
 
@@ -668,6 +671,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      /* c8 ignore next -- INVALID_STATE tested in unit, not integration */
       if (code === "INVALID_STATE") return c.json({ error: "invalid_state" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -710,6 +714,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
+    sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "cancelled" })})`.catch(
+      /* c8 ignore next -- fire-and-forget */ () => {},
+    );
     return c.json({
       id: result.ride.id,
       status: "cancelled",

@@ -216,6 +216,24 @@ describe("PATCH /api/rides/:id", () => {
     expect(audit?.action).toBe("ride_update");
   });
 
+  it("200 — PATCH key field (from_label) уведомляет accepted passengers", async () => {
+    const rideId = await seedRide({ seats_total: 3, seats_taken: 1 });
+    // Вставляем accepted ride_request для пассажира
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO ride_requests (ride_id, passenger_id, status)
+        VALUES (${rideId}::uuid, ${PASSENGER.id}::uuid, 'accepted')
+      `;
+    });
+    const token = await makeToken(DRIVER);
+    const res = await makeApp().request(`/api/rides/${rideId}`, {
+      method: "PATCH",
+      headers: authHeaders(DRIVER, token),
+      body: JSON.stringify({ from_label: "Новый старт" }),
+    });
+    expect(res.status).toBe(200);
+  });
+
   it("401 без auth", async () => {
     const rideId = await seedRide();
     const res = await makeApp().request(`/api/rides/${rideId}`, {

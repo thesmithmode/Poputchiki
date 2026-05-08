@@ -1,0 +1,223 @@
+networks:
+  traefik-public:
+    external: true
+  poputchiki-internal:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: ["-c", "config_file=/etc/postgresql/postgresql.conf"]
+    volumes:
+      - /opt/poputchiki/postgres-data:/var/lib/postgresql/data
+      - /opt/poputchiki/backups:/backups
+      - ./infra/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  api:
+    image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      BOT_TOKEN: ${BOT_TOKEN}
+      PGCRYPTO_KEY: ${PGCRYPTO_KEY}
+      ADMIN_TG_ID: ${ADMIN_TG_ID}
+      ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
+      PORT: 3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - /opt/poputchiki/logs:/app/logs
+    networks:
+      - traefik-public
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-api.rule=Host(`api.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-api.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-api.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-api.loadbalancer.server.port=3000"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  web:
+    image: ghcr.io/thesmithmode/poputchiki-web:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    networks:
+      - traefik-public
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-web.rule=Host(`app.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-web.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-web.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-web.loadbalancer.server.port=80"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  notifier:
+    image: ghcr.io/thesmithmode/poputchiki-notifier:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  cron:
+    image: ghcr.io/thesmithmode/poputchiki-cron:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+      ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
+      BACKUP_KEY: ${BACKUP_KEY}
+      BACKUP_DIR: /backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - /opt/poputchiki/backups:/backups
+      - /opt/poputchiki/logs:/app/logs
+    networks:
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h postgres -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  webhook:
+    image: ghcr.io/thesmithmode/poputchiki-webhook:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      BOT_TOKEN: ${BOT_TOKEN}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      PORT: 3001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - traefik-public
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.poputchiki-webhook.rule=Host(`webhook.${DOMAIN}`)"
+      - "traefik.http.routers.poputchiki-webhook.entrypoints=websecure"
+      - "traefik.http.routers.poputchiki-webhook.tls.certresolver=letsencrypt"
+      - "traefik.http.services.poputchiki-webhook.loadbalancer.server.port=3001"
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  nominatim:
+    image: mediagis/nominatim:4.4
+    restart: unless-stopped
+    environment:
+      PBF_URL: https://download.geofabrik.de/russia/volga-fed-district-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district-updates/
+      NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /opt/poputchiki/nominatim-data:/var/lib/postgresql/14/main
+    networks:
+      - poputchiki-internal
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 256m

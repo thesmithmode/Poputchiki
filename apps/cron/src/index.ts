@@ -1,4 +1,6 @@
 import postgres from "postgres";
+import { detectAnomalies } from "./anomaly-detect";
+import { runBackup, runBaseBackup, runRestoreTest } from "./backup";
 import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
 import { confirmParticipationPush } from "./confirm-participation-push";
@@ -42,6 +44,32 @@ async function runExpandTemplates() {
   );
 }
 
+async function runDailyBackup() {
+  // 03:00 UTC daily
+  if (new Date().getUTCHours() !== 3) return;
+  await runBackup(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "backup_error", error: String(err) })),
+  );
+}
+
+async function runWeeklyBaseBackup() {
+  // 04:00 UTC Sunday (getUTCDay() === 0)
+  const now = new Date();
+  if (now.getUTCHours() !== 4 || now.getUTCDay() !== 0) return;
+  await runBaseBackup(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "base_backup_error", error: String(err) })),
+  );
+}
+
+async function runWeeklyRestoreTest() {
+  // 05:00 UTC Sunday
+  const now = new Date();
+  if (now.getUTCHours() !== 5 || now.getUTCDay() !== 0) return;
+  await runRestoreTest(sql).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "restore_test_error", error: String(err) })),
+  );
+}
+
 async function runFinalizeRides() {
   await finalizeRides(sql).catch((err: unknown) =>
     console.error(JSON.stringify({ msg: "finalize_rides_error", error: String(err) })),
@@ -60,9 +88,25 @@ runExpandTemplates();
 runAuditLogCleanup();
 runFinalizeRides();
 runConfirmParticipationPush();
+runDailyBackup();
+runWeeklyBaseBackup();
+runWeeklyRestoreTest();
+detectAnomalies(sql).catch((err: unknown) =>
+  console.error(JSON.stringify({ msg: "anomaly_detect_error", error: String(err) })),
+);
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
 setInterval(runAuditLogCleanup, ONE_HOUR);
 setInterval(runFinalizeRides, ONE_HOUR);
 setInterval(runConfirmParticipationPush, 30 * 60 * 1000);
+setInterval(runDailyBackup, ONE_HOUR);
+setInterval(runWeeklyBaseBackup, ONE_HOUR);
+setInterval(runWeeklyRestoreTest, ONE_HOUR);
+setInterval(
+  () =>
+    detectAnomalies(sql).catch((err: unknown) =>
+      console.error(JSON.stringify({ msg: "anomaly_detect_error", error: String(err) })),
+    ),
+  ONE_HOUR,
+);

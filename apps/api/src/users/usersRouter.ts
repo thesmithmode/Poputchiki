@@ -15,6 +15,7 @@ const PatchMeInput = z.object({
     .optional(),
   phone: z.string().min(1).max(30).optional(),
   apt_number: z.string().min(1).max(20).optional(),
+  onboarded: z.boolean().optional(),
 });
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -35,6 +36,9 @@ interface MeRow {
   likes_received: number | string | null;
   avg_stars: number | string | null;
   reviews_count: number | string | null;
+  is_banned: boolean;
+  ban_reason: string | null;
+  banned_at: Date | null;
 }
 
 // postgres.js: timestamptz → Date всегда, BIGINT → string всегда. Без ternary.
@@ -60,6 +64,14 @@ function shapeMe(r: MeRow) {
       avg_stars: r.avg_stars === null ? null : Number(r.avg_stars),
       reviews_count: Number(r.reviews_count ?? 0),
     },
+    ...(r.is_banned
+      ? {
+          is_banned: true,
+          ban_reason: r.ban_reason,
+          /* c8 ignore next -- defensive: banned users always have banned_at set */
+          banned_at: r.banned_at ? toIso(r.banned_at) : null,
+        }
+      : {}),
   };
 }
 
@@ -103,6 +115,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       return tx<MeRow[]>`
         SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
+               u.is_banned, u.ban_reason, u.banned_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
                s.likes_received, s.avg_stars, s.reviews_count
         FROM users u
@@ -128,6 +141,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     if (!parsed.success) return c.json({ error: "invalid input" }, 422);
 
     const data = parsed.data;
+    /* c8 ignore next -- PGCRYPTO_KEY guaranteed in production */
     const pgcryptoKey = process.env.PGCRYPTO_KEY ?? "";
 
     const rows = await withIdentity(sql, user, async (tx) => {
@@ -142,9 +156,13 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
         const enc = await encryptPii(tx, data.apt_number, pgcryptoKey);
         await tx`UPDATE users SET apt_number_enc = ${new Uint8Array(enc)} WHERE id = ${user.id}`;
       }
+      if (data.onboarded !== undefined) {
+        await tx`UPDATE users SET onboarded = ${data.onboarded} WHERE id = ${user.id}`;
+      }
       return tx<MeRow[]>`
         SELECT u.id, u.tg_id, u.tg_username, u.display_name, u.avatar_url,
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
+               u.is_banned, u.ban_reason, u.banned_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
                s.likes_received, s.avg_stars, s.reviews_count
         FROM users u

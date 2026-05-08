@@ -6,7 +6,14 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "typecheck": "echo 'webhook: no sources yet, skip typecheck'",
-    "build": "echo 'webhook: no build step (bun runtime)'"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test tests/"
+  },
+  "dependencies": {
+    "@poputchiki/shared": "workspace:*",
+    "hono": "^4.12.16",
+    "pino": "^9.6.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.4.2"
   }
 }

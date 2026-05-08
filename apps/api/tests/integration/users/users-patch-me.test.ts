@@ -158,4 +158,21 @@ describe("PATCH /api/users/me", () => {
     const res = await app.request("/api/users/me", { method: "PATCH" });
     expect(res.status).toBe(401);
   });
+
+  it("sets onboarded=true → 200 and onboarded field in response", async () => {
+    const app = makeApp();
+    const token = await makeToken(ME);
+    const res = await app.request("/api/users/me", {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `tg_uid=${ME.tgId}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ onboarded: true }),
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.onboarded).toBe(true);
+  });
 });

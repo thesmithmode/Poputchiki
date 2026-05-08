@@ -7,6 +7,10 @@ vi.mock("../../../src/db/with-identity", () => ({
   withIdentity: vi.fn(),
 }));
 
+vi.mock("../../../src/middleware/anti-bot", () => ({
+  antiBot: () => async (_c: unknown, next: () => Promise<void>) => next(),
+}));
+
 import { withIdentity } from "../../../src/db/with-identity";
 import { readJson } from "../../helpers/json";
 
@@ -195,5 +199,92 @@ describe("POST /rides — anti-bot", () => {
     expect(res.status).toBe(201);
     const body = await readJson(res);
     expect(body.id).toBe("ride-uuid");
+  });
+});
+
+const VALID_UUID = "550e8400-e29b-41d4-a716-446655440000";
+const DRIVER_UUID = "550e8400-e29b-41d4-a716-446655440001";
+
+const MOCK_RIDE_DETAIL = {
+  id: VALID_UUID,
+  driver_id: DRIVER_UUID,
+  from_label: "ЖК Царёво, д. 5",
+  from_lat: 55.7558,
+  from_lng: 37.6173,
+  to_label: "ул. Баумана",
+  to_lat: 55.7963,
+  to_lng: 49.1093,
+  departure_at: new Date(Date.now() + 3600000).toISOString(),
+  price_rub: 150,
+  seats_total: 3,
+  seats_taken: 1,
+  status: "active",
+  comment: null,
+  created_at: new Date().toISOString(),
+  driver: {
+    id: DRIVER_UUID,
+    first_name: "Иван",
+    last_name: "Иванов",
+    tg_id: 9999,
+    likes_received_count: 5,
+    created_at: new Date().toISOString(),
+  },
+  passengers: [],
+};
+
+describe("GET /rides/:id", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("valid UUID, ride found → 200 with driver and passengers", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValueOnce([MOCK_RIDE_DETAIL] as any);
+
+    const app = makeApp(USER);
+    const res = await app.request(`/rides/${VALID_UUID}`);
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.id).toBe(VALID_UUID);
+    expect(body.driver).toBeDefined();
+    expect(body.driver.tg_id).toBe(9999);
+    expect(Array.isArray(body.passengers)).toBe(true);
+  });
+
+  it("valid UUID, ride not found → 404", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValueOnce([] as any);
+
+    const app = makeApp(USER);
+    const res = await app.request(`/rides/${VALID_UUID}`);
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not found");
+  });
+
+  it("invalid UUID → 422", async () => {
+    const app = makeApp(USER);
+    const res = await app.request("/rides/not-a-uuid");
+    expect(res.status).toBe(422);
+  });
+
+  it("passengers included in response", async () => {
+    const passenger = {
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      first_name: "Мария",
+      last_name: null,
+      tg_id: 8888,
+      likes_received_count: 2,
+    };
+    vi.mocked(withIdentity).mockResolvedValueOnce([
+      { ...MOCK_RIDE_DETAIL, passengers: [passenger] },
+    ] as unknown as Awaited<ReturnType<typeof withIdentity>>);
+
+    const app = makeApp(USER);
+    const res = await app.request(`/rides/${VALID_UUID}`);
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.passengers).toHaveLength(1);
+    expect(body.passengers[0].tg_id).toBe(8888);
   });
 });

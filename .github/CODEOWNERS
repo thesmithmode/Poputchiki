@@ -1,0 +1,10 @@
+# Global owner — все изменения требуют review
+* @thesmithmode
+
+# Security-sensitive paths — обязательный review
+apps/api/src/middleware/ @thesmithmode
+apps/api/src/auth/ @thesmithmode
+apps/api/src/db/ @thesmithmode
+infra/ @thesmithmode
+.github/workflows/ @thesmithmode
+scripts/ @thesmithmode

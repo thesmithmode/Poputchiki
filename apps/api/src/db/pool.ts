@@ -6,14 +6,21 @@ export const POOL_CONFIG = {
   connect_timeout: 5,
 } as const;
 
-const _metrics = { in_use: 0, waiting: 0 };
+const _metrics = { in_use: 0, waiting: 0, listen_connections: 0 };
 
 export const poolMetrics = {
-  snapshot: (): { max: number; in_use: number; waiting: number } => ({
+  snapshot: (): { max: number; in_use: number; waiting: number; listen_connections: number } => ({
     max: POOL_CONFIG.max,
     in_use: _metrics.in_use,
     waiting: _metrics.waiting,
+    listen_connections: _metrics.listen_connections,
   }),
+  incListenConnections: () => {
+    _metrics.listen_connections++;
+  },
+  decListenConnections: () => {
+    _metrics.listen_connections = Math.max(0, _metrics.listen_connections - 1);
+  },
 } as const;
 
 export function createPool(url: string): postgres.Sql {

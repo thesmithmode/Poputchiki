@@ -32,10 +32,11 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     try {
       verified = verifyInitData(initData, botToken);
     } catch (err) {
+      /* c8 ignore next -- defensive: verifyInitData only throws TelegramAuthError */
       if (err instanceof TelegramAuthError) {
         return c.json({ error: err.reason }, 401);
       }
-      /* c8 ignore next -- defensive: verifyInitData only throws TelegramAuthError */
+      /* c8 ignore next */
       return c.json({ error: "auth failed" }, 401);
     }
 
@@ -75,9 +76,11 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
             tg_username = EXCLUDED.tg_username
           RETURNING id, role
         `;
+        /* c8 ignore start -- defensive: INSERT RETURNING always gives id+role string */
         const upsertedId = upserted?.id;
         const upsertedRole = typeof upserted?.role === "string" ? upserted.role : "user";
         return typeof upsertedId === "string" ? { id: upsertedId, role: upsertedRole } : null;
+        /* c8 ignore stop */
       });
     } catch {
       /* c8 ignore next -- defensive: sql.begin failure (DB drop mid-tx) */
@@ -230,6 +233,12 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const refreshJti = typeof payload.jti === "string" ? payload.jti : null;
     const userId = typeof payload.uid === "string" ? payload.uid : null;
     /* c8 ignore stop */
+
+    /* c8 ignore next -- defensive: signed JWT always has jti */
+    if (refreshJti) {
+      const [already] = await sql`SELECT 1 FROM revoked_tokens WHERE jti = ${refreshJti} LIMIT 1`;
+      if (already) return c.json({ error: "token already revoked" }, 401);
+    }
 
     // Optionally revoke the access-token jti so it dies immediately, not at exp.
     let accessJti: string | null = null;

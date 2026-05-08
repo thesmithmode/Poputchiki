@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
+import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -72,7 +73,7 @@ const COLS = `id, driver_id, from_label, from_lat, from_lng, to_label, to_lat, t
 export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
   const app = new Hono();
 
-  app.post("/", async (c) => {
+  app.post("/", antiBot(sql), async (c) => {
     const user = c.get("user" as never) as AppUser;
     let body: unknown;
     try {

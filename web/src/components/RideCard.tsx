@@ -16,7 +16,7 @@ export function RideCard({ ride, onClick, isFavorited, onToggleFavorite }: RideC
     hour: "2-digit",
     minute: "2-digit",
   });
-  const seats = Math.max(0, ride.seats_total - ride.seats_taken);
+  const seats = ride.seats_total - ride.seats_taken;
   const priceLabel = ride.price_rub !== null ? `${ride.price_rub} ₽` : "Бесплатно";
   const noSeats = seats === 0;
 
@@ -32,7 +32,8 @@ export function RideCard({ ride, onClick, isFavorited, onToggleFavorite }: RideC
         padding: 12,
         cursor: "pointer",
         border: "none",
-        boxShadow: "0 1px 2px rgba(20,30,50,0.04), 0 1px 0 rgba(20,30,50,0.03)",
+        boxShadow:
+          "0 1px 2px rgba(20,30,50,0.04), 0 1px 0 rgba(20,30,50,0.03)",
         fontFamily: "inherit",
         transition: "transform 0.08s",
       }}
@@ -48,7 +49,11 @@ export function RideCard({ ride, onClick, isFavorited, onToggleFavorite }: RideC
     >
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <RouteBlock fromLabel={ride.from_label} toLabel={ride.to_label} compact />
+          <RouteBlock
+            fromLabel={ride.from_label}
+            toLabel={ride.to_label}
+            compact
+          />
 
           <div
             style={{

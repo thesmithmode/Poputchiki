@@ -114,7 +114,7 @@ export function RideDetailScreen({ id }: Props) {
   }
 
   const departure = formatDeparture(ride.departure_at);
-  const seatsLeft = Math.max(0, ride.seats_total - ride.seats_taken);
+  const seatsLeft = ride.seats_total - ride.seats_taken;
   const driverName = ride.driver.last_name
     ? `${ride.driver.first_name} ${ride.driver.last_name}`
     : ride.driver.first_name;
@@ -255,7 +255,9 @@ export function RideDetailScreen({ id }: Props) {
             >
               Комментарий
             </div>
-            <div style={{ fontSize: 14, color: "var(--brand-text)", lineHeight: 1.45 }}>
+            <div
+              style={{ fontSize: 14, color: "var(--brand-text)", lineHeight: 1.45 }}
+            >
               {ride.comment}
             </div>
           </div>
@@ -363,19 +365,19 @@ export function RideDetailScreen({ id }: Props) {
           <button
             type="button"
             data-testid="like-driver-btn"
-            disabled={likeStatus === "loading" || likeStatus === "liked"}
+            disabled={likeStatus !== "idle"}
             onClick={handleLike}
             style={{
               width: "100%",
               padding: "12px 16px",
-              background: likeStatus === "liked" ? "#22c55e" : "#F1F4F8",
+              background:
+                likeStatus === "liked" ? "#22c55e" : "#F1F4F8",
               border: "none",
               borderRadius: 12,
               fontSize: 14,
               fontWeight: 600,
               color: likeStatus === "liked" ? "#fff" : "var(--brand-text)",
-              cursor:
-                likeStatus === "loading" || likeStatus === "liked" ? "not-allowed" : "pointer",
+              cursor: likeStatus !== "idle" ? "not-allowed" : "pointer",
               marginBottom: 12,
               display: "flex",
               alignItems: "center",
@@ -430,7 +432,9 @@ export function RideDetailScreen({ id }: Props) {
                     gap: 12,
                     padding: "12px 16px",
                     borderBottom:
-                      i === ride.passengers.length - 1 ? "none" : "1px solid var(--brand-border)",
+                      i === ride.passengers.length - 1
+                        ? "none"
+                        : "1px solid var(--brand-border)",
                     cursor: "pointer",
                     width: "100%",
                     textAlign: "left",
@@ -505,7 +509,7 @@ export function RideDetailScreen({ id }: Props) {
         }}
       >
         <a
-          href={`tg://user?id=${Number(ride.driver.tg_id)}`}
+          href={`tg://user?id=${ride.driver.tg_id}`}
           data-testid="telegram-link"
           style={{
             flex: 1,
@@ -523,18 +527,14 @@ export function RideDetailScreen({ id }: Props) {
             gap: 8,
           }}
         >
-          <Icon name="tg" size={16} />В Telegram
+          <Icon name="tg" size={16} />
+          В Telegram
         </a>
         {!isOwnRide && (
           <button
             type="button"
             data-testid="respond-btn"
-            disabled={
-              reqStatus === "loading" ||
-              reqStatus === "sent" ||
-              reqStatus === "full" ||
-              reqStatus === "duplicate"
-            }
+            disabled={reqStatus !== "idle"}
             onClick={handleRespond}
             style={{
               flex: 1.6,
@@ -542,7 +542,7 @@ export function RideDetailScreen({ id }: Props) {
               background:
                 reqStatus === "sent"
                   ? "#22c55e"
-                  : reqStatus === "loading" || reqStatus === "full" || reqStatus === "duplicate"
+                  : reqStatus !== "idle"
                     ? "#93c5fd"
                     : "var(--brand-primary)",
               border: "none",
@@ -550,13 +550,7 @@ export function RideDetailScreen({ id }: Props) {
               fontSize: 14,
               fontWeight: 600,
               color: "#fff",
-              cursor:
-                reqStatus === "loading" ||
-                reqStatus === "sent" ||
-                reqStatus === "full" ||
-                reqStatus === "duplicate"
-                  ? "not-allowed"
-                  : "pointer",
+              cursor: reqStatus !== "idle" ? "not-allowed" : "pointer",
               fontFamily: "inherit",
             }}
           >
@@ -608,7 +602,9 @@ function StatBlock({
       >
         {value}
       </div>
-      {sub && <div style={{ fontSize: 11.5, color: "var(--brand-sub)", marginTop: 2 }}>{sub}</div>}
+      {sub && (
+        <div style={{ fontSize: 11.5, color: "var(--brand-sub)", marginTop: 2 }}>{sub}</div>
+      )}
     </div>
   );
 }

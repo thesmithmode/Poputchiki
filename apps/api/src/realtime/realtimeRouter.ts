@@ -34,7 +34,6 @@ export function createRealtimeRouter(dispatcher: Dispatcher, options: RealtimeOp
 
         await aborted;
       } finally {
-        /* c8 ignore next -- setInterval always assigns before await */
         if (heartbeatTimer !== undefined) clearInterval(heartbeatTimer);
         unsubscribe();
       }

@@ -1,11 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { TAB_PATHS } from "../lib/routes";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 
 interface TabItem {
   id: string;
   label: string;
-  icon: IconName;
+  icon: string;
   path: string;
   big?: boolean;
 }
@@ -17,6 +16,8 @@ const TABS: TabItem[] = [
   { id: "notif", label: "События", icon: "bell", path: "/settings/notifications" },
   { id: "me", label: "Профиль", icon: "user", path: "/settings" },
 ];
+
+const SHOW_ON_PATHS = new Set(["/", "/map", "/favorites", "/settings", "/settings/notifications"]);
 
 function getActiveId(pathname: string): string {
   if (pathname === "/") return "feed";
@@ -31,7 +32,7 @@ export function BottomTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (!TAB_PATHS.has(location.pathname)) return null;
+  if (!SHOW_ON_PATHS.has(location.pathname)) return null;
 
   const activeId = getActiveId(location.pathname);
   const accent = "var(--brand-primary)";
@@ -39,8 +40,9 @@ export function BottomTabBar() {
   const bg = "rgba(255,255,255,0.92)";
 
   return (
-    <nav
+    <div
       aria-label="Основная навигация"
+      role="navigation"
       style={{
         position: "fixed",
         bottom: 0,
@@ -82,7 +84,7 @@ export function BottomTabBar() {
                   justifyContent: "center",
                   border: "none",
                   cursor: "pointer",
-                  boxShadow: "0 6px 18px -4px rgba(45,90,61,0.4), 0 0 0 4px #fff",
+                  boxShadow: `0 6px 18px -4px rgba(45,90,61,0.4), 0 0 0 4px #fff`,
                   marginTop: -10,
                 }}
               >
@@ -97,7 +99,6 @@ export function BottomTabBar() {
             key={tab.id}
             type="button"
             aria-label={tab.label}
-            aria-current={active ? "page" : undefined}
             onClick={() => navigate(tab.path)}
             style={{
               background: "transparent",
@@ -119,6 +120,6 @@ export function BottomTabBar() {
           </button>
         );
       })}
-    </nav>
+    </div>
   );
 }

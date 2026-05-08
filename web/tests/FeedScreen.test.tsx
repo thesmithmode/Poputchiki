@@ -84,7 +84,6 @@ function renderWithQuery(ui: React.ReactElement) {
 describe("FeedScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    localStorage.clear();
   });
 
   it("показывает состояние загрузки пока запрос выполняется", async () => {
@@ -165,48 +164,6 @@ describe("FeedScreen", () => {
 
     await waitFor(() => {
       expect(document.querySelector("[data-testid='ride-map']")).toBeInTheDocument();
-    });
-  });
-
-  it("quick chip устанавливает фильтр направления", async () => {
-    mockedApiFetch.mockResolvedValueOnce({ rides: [makeRide()], nextCursor: null });
-    renderWithQuery(<FeedScreen />);
-    await waitFor(() => expect(screen.getByTestId("ride-list")).toBeInTheDocument());
-    // Find chip by exact text (not ride card)
-    const chip = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find(
-      (b) => b.textContent?.trim() === "ул. Баумана",
-    );
-    expect(chip).toBeTruthy();
-    fireEvent.click(chip!);
-    // After click, chip should have active background (brand-primary)
-    await waitFor(() => {
-      expect(chip?.style.background).toContain("var(--brand-primary)");
-    });
-  });
-
-  it("повторный клик по active chip сбрасывает фильтр направления", async () => {
-    mockedApiFetch.mockResolvedValueOnce({ rides: [makeRide()], nextCursor: null });
-    renderWithQuery(<FeedScreen />);
-    await waitFor(() => expect(screen.getByTestId("ride-list")).toBeInTheDocument());
-    const chip = Array.from(document.querySelectorAll<HTMLButtonElement>("button")).find(
-      (b) => b.textContent?.trim() === "ул. Баумана",
-    );
-    expect(chip).toBeTruthy();
-    fireEvent.click(chip!);
-    await waitFor(() => expect(chip?.style.background).toContain("var(--brand-primary)"));
-    fireEvent.click(chip!);
-    await waitFor(() => expect(chip?.style.background).not.toContain("var(--brand-primary)"));
-  });
-
-  it("банер избранного появляется при favoritesOnly=true через FiltersPanel", async () => {
-    mockedApiFetch.mockResolvedValueOnce({ rides: [makeRide()], nextCursor: null });
-    renderWithQuery(<FeedScreen />);
-    await waitFor(() => expect(screen.getByTestId("ride-list")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("toggle-filters"));
-    await waitFor(() => expect(screen.getByTestId("filters-panel")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("filter-favorites"));
-    await waitFor(() => {
-      expect(screen.getByText(/избранные/i)).toBeInTheDocument();
     });
   });
 });

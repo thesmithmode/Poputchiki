@@ -64,56 +64,46 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
           <span>{filters.seatsMin === 0 ? "любое" : filters.seatsMin}</span>
         </label>
 
-        <label
-          className="flex items-center gap-2 text-sm opacity-40"
-          title="Скоро: требует данных водителя"
-        >
+        <label className="flex items-center gap-2 text-sm">
           <span>Возраст акк:</span>
           <input
             data-testid="filter-trust-age"
             type="range"
             min={0}
             max={30}
-            disabled
             value={filters.trustMinAccountAgeDays}
             onChange={(e) => onChange({ trustMinAccountAgeDays: Number(e.target.value) })}
             className="w-20"
           />
-          <span className="text-xs text-gray-400">скоро</span>
+          <span>
+            {filters.trustMinAccountAgeDays === 0 ? "любой" : `${filters.trustMinAccountAgeDays}д`}
+          </span>
         </label>
 
-        <label
-          className="flex items-center gap-2 text-sm opacity-40"
-          title="Скоро: требует данных водителя"
-        >
+        <label className="flex items-center gap-2 text-sm">
           <span>Лайков мин:</span>
           <input
             data-testid="filter-trust-likes"
             type="range"
             min={0}
             max={10}
-            disabled
             value={filters.trustMinLikes}
             onChange={(e) => onChange({ trustMinLikes: Number(e.target.value) })}
             className="w-20"
           />
-          <span className="text-xs text-gray-400">скоро</span>
+          <span>{filters.trustMinLikes}</span>
         </label>
       </div>
 
       <div className="flex flex-wrap items-center gap-4">
-        <label
-          className="flex items-center gap-2 text-sm opacity-40"
-          title="Скоро: требует данных водителя"
-        >
+        <label className="flex items-center gap-2 text-sm">
           <input
             data-testid="filter-verified"
             type="checkbox"
-            disabled
             checked={filters.verifiedOnly}
             onChange={(e) => onChange({ verifiedOnly: e.target.checked })}
           />
-          Только верифицированные (скоро)
+          Только верифицированные
         </label>
 
         <label className="flex items-center gap-2 text-sm">

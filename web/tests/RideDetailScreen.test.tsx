@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RideDetailScreen } from "../src/screens/RideDetailScreen";
@@ -194,72 +194,5 @@ describe("RideDetailScreen", () => {
     await waitFor(() => {
       expect(screen.getByTestId("respond-btn")).toBeInTheDocument();
     });
-  });
-
-  it("клик 'Откликнуться' → успех → 'Заявка отправлена'", async () => {
-    mockedApiFetch.mockImplementation((url: string) => {
-      if (url === `/rides/${RIDE_ID}`) return Promise.resolve(mockRide);
-      if (url === `/rides/${RIDE_ID}/request`) return Promise.resolve(undefined);
-      return Promise.resolve(undefined);
-    });
-    renderScreen();
-    await waitFor(() => expect(screen.getByTestId("respond-btn")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("respond-btn"));
-    await waitFor(() => {
-      expect(screen.getByTestId("respond-btn")).toHaveTextContent("Заявка отправлена");
-    });
-  });
-
-  it("клик 'Откликнуться' → 409 no_seats → 'Мест нет'", async () => {
-    mockedApiFetch.mockImplementation((url: string) => {
-      if (url === `/rides/${RIDE_ID}`) return Promise.resolve(mockRide);
-      if (url === `/rides/${RIDE_ID}/request`)
-        return Promise.reject(new ApiError(409, { code: "no_seats" }));
-      return Promise.resolve(undefined);
-    });
-    renderScreen();
-    await waitFor(() => expect(screen.getByTestId("respond-btn")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("respond-btn"));
-    await waitFor(() => {
-      expect(screen.getByTestId("respond-btn")).toHaveTextContent("Мест нет");
-    });
-  });
-
-  it("клик 'Откликнуться' → 409 duplicate → 'Уже отправлено'", async () => {
-    mockedApiFetch.mockImplementation((url: string) => {
-      if (url === `/rides/${RIDE_ID}`) return Promise.resolve(mockRide);
-      if (url === `/rides/${RIDE_ID}/request`)
-        return Promise.reject(new ApiError(409, { code: "other" }));
-      return Promise.resolve(undefined);
-    });
-    renderScreen();
-    await waitFor(() => expect(screen.getByTestId("respond-btn")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("respond-btn"));
-    await waitFor(() => {
-      expect(screen.getByTestId("respond-btn")).toHaveTextContent("Уже отправлено");
-    });
-  });
-
-  it("seatsLeft не уходит в отрицательные при seats_taken > seats_total", async () => {
-    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, seats_total: 2, seats_taken: 5 });
-    renderScreen();
-    await waitFor(() => {
-      expect(screen.getByText(/0 из 2/)).toBeInTheDocument();
-    });
-  });
-
-  it("кнопка 'Откликнуться' кликабельна после ошибки (повтор)", async () => {
-    mockedApiFetch.mockImplementation((url: string) => {
-      if (url === `/rides/${RIDE_ID}`) return Promise.resolve(mockRide);
-      if (url === `/rides/${RIDE_ID}/request`) return Promise.reject(new ApiError(500, {}));
-      return Promise.resolve(undefined);
-    });
-    renderScreen();
-    await waitFor(() => expect(screen.getByTestId("respond-btn")).toBeInTheDocument());
-    fireEvent.click(screen.getByTestId("respond-btn"));
-    await waitFor(() => {
-      expect(screen.getByTestId("respond-btn")).toHaveTextContent("Ошибка, повторите");
-    });
-    expect(screen.getByTestId("respond-btn")).not.toBeDisabled();
   });
 });

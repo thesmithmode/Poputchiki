@@ -57,7 +57,6 @@ export function CreateRideScreen() {
     if (!form.from_label.trim()) return "Укажите откуда";
     if (!form.to_label.trim()) return "Укажите куда";
     if (!form.date || !form.time) return "Укажите дату и время";
-    // Assumption: users are in Kazan (UTC+3); local time is correct for the target audience
     const departure = new Date(`${form.date}T${form.time}`);
     if (Number.isNaN(departure.getTime())) return "Неверная дата";
     if (departure <= new Date()) return "Дата должна быть в будущем";

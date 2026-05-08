@@ -29,15 +29,21 @@ export function auditLog(sql: postgres.Sql): MiddlewareHandler {
       return;
     }
 
-    // Глобальный bodyLimit (64KB в app.ts) гарантирует что тело не превысит лимит
-    // до попадания в этот middleware. Хешируем тело напрямую.
-    let bodyText = "";
-    try {
-      bodyText = await c.req.raw.clone().text();
-    } catch {
-      // body unreadable — hash empty string
+    // A2: пропускаем клонирование тела при Content-Length > 1MB (defence-in-depth)
+    const contentLength = Number.parseInt(c.req.header("Content-Length") ?? "0", 10);
+    const OVERSIZED_THRESHOLD = 1_000_000;
+    let payloadHash: string;
+    if (!Number.isNaN(contentLength) && contentLength > OVERSIZED_THRESHOLD) {
+      payloadHash = "oversized";
+    } else {
+      let bodyText = "";
+      try {
+        bodyText = await c.req.raw.clone().text();
+      } catch {
+        // body unreadable — hash empty string
+      }
+      payloadHash = sha256hex(bodyText);
     }
-    const payloadHash = sha256hex(bodyText);
 
     await next();
 

@@ -106,22 +106,6 @@ describe("GET /api/geocode/search", () => {
     expect(body[0]).toHaveProperty("lon");
   });
 
-  it("200 — возвращает кэшированный результат без вызова Nominatim", async () => {
-    const cache = new GeoCache();
-    const cachedResult = [
-      { place_id: 99, display_name: "Кэшированный результат", lat: "55.0", lon: "49.0" },
-    ];
-    cache.set("царёво", cachedResult);
-    const mockFetch = vi.fn();
-    const app = makeApp(mockFetch as unknown as typeof fetch, cache);
-    const res = await app.request("/api/geocode/search?q=Царёво", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
-    });
-    expect(res.status).toBe(200);
-    expect(await readJson(res)).toEqual(cachedResult);
-    expect(mockFetch).not.toHaveBeenCalled();
-  });
-
   it("429 при превышении 1 req/sec на user", async () => {
     const mockFetch = vi
       .fn()

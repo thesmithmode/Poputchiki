@@ -50,7 +50,11 @@ export function RouteBlock({
             marginBottom: 2,
           }}
         />
-        <Icon name="pin" size={compact ? 10 : 11} style={{ color: toColor }} />
+        <Icon
+          name="pin"
+          size={compact ? 10 : 11}
+          style={{ color: toColor }}
+        />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
@@ -65,7 +69,7 @@ export function RouteBlock({
             marginBottom: compact ? 4 : 6,
           }}
         >
-          {fromLabel || "—"}
+          {fromLabel}
         </div>
         <div
           style={{
@@ -78,7 +82,7 @@ export function RouteBlock({
             lineHeight: 1.3,
           }}
         >
-          {toLabel || "—"}
+          {toLabel}
         </div>
       </div>
     </div>

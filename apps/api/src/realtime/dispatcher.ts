@@ -22,11 +22,6 @@ export interface Dispatcher {
  * The LISTEN call is established once; all subscribe/unsubscribe operations
  * only update an in-memory Set of callbacks.
  *
- * Reconnect behaviour: postgres-js sql.listen() создаёт внутренний sub-pool
- * с onclose callback, который автоматически переподписывается на все каналы
- * при потере соединения. listenWithBackoff обеспечивает retry при первоначальном
- * подключении. После успешного listen — реконнект берёт на себя postgres-js.
- *
  * @param listenSql - A postgres.Sql instance dedicated to LISTEN (max:1).
  * @param channel   - The Postgres notification channel to listen on.
  */
@@ -48,10 +43,10 @@ export async function createDispatcher(
   return {
     subscribe(cb: NotifyCallback): () => void {
       callbacks.add(cb);
-      poolMetrics.incSseSubscribers();
+      poolMetrics.incListenConnections();
       return () => {
         callbacks.delete(cb);
-        poolMetrics.decSseSubscribers();
+        poolMetrics.decListenConnections();
       };
     },
     subscriberCount(): number {

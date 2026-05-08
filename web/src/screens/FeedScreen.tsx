@@ -34,8 +34,11 @@ export function FeedScreen() {
     [data, filters, favoriteIds],
   );
 
-  // Only favoritesOnly is applied client-side; trust fields require server-side driver data
-  const trustOn = filters.favoritesOnly;
+  const trustOn =
+    filters.trustMinAccountAgeDays > 0 ||
+    filters.trustMinLikes > 0 ||
+    filters.favoritesOnly ||
+    filters.verifiedOnly;
 
   useEffect(() => {
     if (view !== "map" || !mapRef.current || !filteredRides.length) return;
@@ -191,7 +194,6 @@ export function FeedScreen() {
           </button>
           <button
             type="button"
-            aria-pressed={view === "map"}
             onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
             style={{
               padding: "6px 12px",
@@ -231,7 +233,7 @@ export function FeedScreen() {
                 style={{
                   padding: "7px 13px",
                   borderRadius: 999,
-                  border: "none",
+                  border: active ? "none" : "none",
                   flexShrink: 0,
                   background: active ? "var(--brand-primary)" : "var(--brand-surface)",
                   color: active ? "#fff" : "var(--brand-text)",

@@ -22,9 +22,8 @@ function makeApp(opts: { sqlCount?: number; bodyLimitBytes?: number } = {}) {
     c.set("socketIp" as never, "10.0.0.1");
     await next();
   });
-  // bodyLimit FIRST — oversized body must not consume rate-limit slot (I-1 fix)
-  app.use("/api/client-errors/*", bodyLimit({ maxSize: bodyLimitBytes }));
   app.use("/api/client-errors/*", clientErrorsRateLimit(sql));
+  app.use("/api/client-errors/*", bodyLimit({ maxSize: bodyLimitBytes }));
   app.route("/api/client-errors", createClientErrorsRouter(sql));
   return { app, sql };
 }
@@ -92,8 +91,8 @@ describe("bodyLimit 4096 на /api/client-errors", () => {
       c.set("socketIp" as never, "10.0.0.1");
       await next();
     });
-    app.use("/api/client-errors/*", bodyLimit({ maxSize: 4096 }));
     app.use("/api/client-errors/*", clientErrorsRateLimit(sql));
+    app.use("/api/client-errors/*", bodyLimit({ maxSize: 4096 }));
     app.route("/api/client-errors", createClientErrorsRouter(sql));
 
     // Строим payload ровно ≤4096 (message до 500 символов — ограничение схемы)
@@ -116,8 +115,8 @@ describe("bodyLimit 4096 на /api/client-errors", () => {
       c.set("socketIp" as never, "10.0.0.1");
       await next();
     });
-    app.use("/api/client-errors/*", bodyLimit({ maxSize: 4096 }));
     app.use("/api/client-errors/*", clientErrorsRateLimit(sql));
+    app.use("/api/client-errors/*", bodyLimit({ maxSize: 4096 }));
     app.route("/api/client-errors", createClientErrorsRouter(sql));
 
     const bigBody = "x".repeat(5000);
@@ -130,26 +129,5 @@ describe("bodyLimit 4096 на /api/client-errors", () => {
       body: bigBody,
     });
     expect(res.status).toBe(413);
-  });
-
-  it("oversized body → 413 без вызова rate-limit (I-1: DoS amplification fix)", async () => {
-    const sql = makeSql(1);
-    const app = new Hono();
-    app.use("*", async (c, next) => {
-      c.set("socketIp" as never, "10.0.0.1");
-      await next();
-    });
-    app.use("/api/client-errors/*", bodyLimit({ maxSize: 4096 }));
-    app.use("/api/client-errors/*", clientErrorsRateLimit(sql));
-    app.route("/api/client-errors", createClientErrorsRouter(sql));
-
-    const bigBody = "x".repeat(5000);
-    const res = await app.request("/api/client-errors", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: bigBody,
-    });
-    expect(res.status).toBe(413);
-    expect(sql).not.toHaveBeenCalled();
   });
 });

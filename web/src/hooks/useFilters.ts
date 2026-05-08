@@ -74,7 +74,7 @@ export function applyFilters(rides: Ride[], filters: Filters, favoriteIds?: Set<
     }
 
     if (filters.seatsMin > 0) {
-      const freeSeats = Math.max(0, ride.seats_total - ride.seats_taken);
+      const freeSeats = ride.seats_total - ride.seats_taken;
       if (freeSeats < filters.seatsMin) return false;
     }
 

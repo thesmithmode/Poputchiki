@@ -6,7 +6,6 @@ import { BottomTabBar } from "./components/BottomTabBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
-import { TAB_PATHS } from "./lib/routes";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
@@ -102,6 +101,8 @@ function OfflineBanner() {
   );
 }
 
+const TAB_PATHS = new Set(["/", "/map", "/favorites", "/settings", "/settings/notifications"]);
+
 function AppShell() {
   const location = useLocation();
   const showTabs = TAB_PATHS.has(location.pathname);
@@ -110,7 +111,10 @@ function AppShell() {
       <a href="#main-content" className="skip-link">
         Перейти к основному контенту
       </a>
-      <main id="main-content" style={showTabs ? { paddingBottom: 64 } : undefined}>
+      <main
+        id="main-content"
+        style={showTabs ? { paddingBottom: 64 } : undefined}
+      >
         <Routes>
           <Route path="/" element={<FeedScreen />} />
           <Route path="/rides" element={<FeedScreen />} />

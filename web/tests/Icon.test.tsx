@@ -1,54 +1,17 @@
 import "@testing-library/jest-dom/vitest";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Icon, type IconName } from "../src/components/Icon";
+import { Icon } from "../src/components/Icon";
 
 describe("Icon", () => {
-  const KNOWN_NAMES: IconName[] = [
-    "home",
-    "map",
-    "plus",
-    "bell",
-    "user",
-    "search",
-    "filter",
-    "star",
-    "star-fill",
-    "heart",
-    "heart-fill",
-    "thumb",
-    "thumb-fill",
-    "chevron-r",
-    "chevron-l",
-    "chevron-d",
-    "chevron-u",
-    "x",
-    "check",
-    "pin",
-    "circle",
-    "circle-fill",
-    "clock",
-    "repeat",
-    "tg",
-    "shield",
-    "flag",
-    "message",
-    "wallet",
-    "arrow-r",
-    "send",
-    "sliders",
-    "minus",
-    "edit",
-    "support",
-    "logo",
-    "swap",
-    "radius",
-    "metro",
-    "shop",
-    "plane",
-    "edu",
-    "briefcase",
-    "layers",
+  const KNOWN_NAMES = [
+    "home", "map", "plus", "bell", "user", "search", "filter",
+    "star", "star-fill", "heart", "heart-fill", "thumb", "thumb-fill",
+    "chevron-r", "chevron-l", "chevron-d", "chevron-u",
+    "x", "check", "pin", "circle", "circle-fill", "clock", "repeat",
+    "tg", "shield", "flag", "message", "wallet", "arrow-r", "send",
+    "sliders", "minus", "edit", "support", "logo", "swap", "radius",
+    "metro", "shop", "plane", "edu", "briefcase", "layers",
   ];
 
   it.each(KNOWN_NAMES)("рендерит SVG для иконки '%s'", (name) => {
@@ -57,8 +20,7 @@ describe("Icon", () => {
   });
 
   it("возвращает null для неизвестного имени", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { container } = render(<Icon name={"nonexistent-icon-xyz" as any} />);
+    const { container } = render(<Icon name="nonexistent-icon-xyz" />);
     expect(container.querySelector("svg")).not.toBeInTheDocument();
   });
 

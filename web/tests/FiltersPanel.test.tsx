@@ -45,9 +45,11 @@ describe("FiltersPanel", () => {
     expect(onChange).toHaveBeenCalledWith({ seatsMin: 3 });
   });
 
-  it("filter-verified задизейблен — checkbox отображается как disabled", () => {
-    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={vi.fn()} onReset={vi.fn()} />);
-    expect(screen.getByTestId("filter-verified")).toBeDisabled();
+  it("onChange вызывается при переключении verifiedOnly", () => {
+    const onChange = vi.fn();
+    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
+    fireEvent.click(screen.getByTestId("filter-verified"));
+    expect(onChange).toHaveBeenCalledWith({ verifiedOnly: true });
   });
 
   it("onChange вызывается при переключении favoritesOnly", () => {

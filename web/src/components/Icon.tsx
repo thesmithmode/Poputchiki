@@ -1,53 +1,7 @@
 import type { CSSProperties, SVGProps } from "react";
 
-export type IconName =
-  | "home"
-  | "map"
-  | "plus"
-  | "bell"
-  | "user"
-  | "search"
-  | "filter"
-  | "star"
-  | "star-fill"
-  | "heart"
-  | "heart-fill"
-  | "thumb"
-  | "thumb-fill"
-  | "chevron-r"
-  | "chevron-l"
-  | "chevron-d"
-  | "chevron-u"
-  | "x"
-  | "check"
-  | "pin"
-  | "circle"
-  | "circle-fill"
-  | "clock"
-  | "repeat"
-  | "tg"
-  | "shield"
-  | "flag"
-  | "message"
-  | "wallet"
-  | "arrow-r"
-  | "send"
-  | "sliders"
-  | "minus"
-  | "edit"
-  | "support"
-  | "logo"
-  | "swap"
-  | "radius"
-  | "metro"
-  | "shop"
-  | "plane"
-  | "edu"
-  | "briefcase"
-  | "layers";
-
 interface IconProps {
-  name: IconName;
+  name: string;
   size?: number;
   stroke?: number;
   style?: CSSProperties;
@@ -67,8 +21,6 @@ export function Icon({ name, size = 22, stroke = 1.8, style = {} }: IconProps) {
     strokeWidth: w,
     strokeLinecap: "round",
     strokeLinejoin: "round",
-    "aria-hidden": true,
-    focusable: false,
     style,
   };
 

@@ -79,34 +79,27 @@ export async function cleanupIdempotencyKeys(
 export async function cleanupNotificationLog(
   sql: postgres.Sql,
 ): Promise<{ deleted: number } | null> {
-  // useServiceRole: notification_log включён в RLS (миграция 020), policy USING(true)
-  // работает для всех, но DELETE требует явной транзакции с poputchiki_service для безопасности.
-  return withLock(
-    sql,
-    LOCK_NOTIFICATION_LOG,
-    async (tx) => {
-      const countRows = await tx<{ count: number | string }[]>`
-        WITH deleted AS (
-          DELETE FROM notification_log
-          WHERE sent_at < NOW() - INTERVAL '90 days'
-          RETURNING 1
-        )
-        SELECT COUNT(*) AS count FROM deleted
-      `;
-      /* c8 ignore next -- COUNT(*) always returns a row */
-      const deleted = Number(countRows[0]?.count ?? 0);
-      // biome-ignore lint/suspicious/noConsoleLog: structured cron log
-      console.log(
-        JSON.stringify({
-          msg: "notification_log_cleanup",
-          last_run_at: new Date().toISOString(),
-          deleted_count: deleted,
-        }),
-      );
-      return { deleted };
-    },
-    { useServiceRole: true },
-  );
+  return withLock(sql, LOCK_NOTIFICATION_LOG, async (tx) => {
+    const countRows = await tx<{ count: number | string }[]>`
+      WITH deleted AS (
+        DELETE FROM notification_log
+        WHERE sent_at < NOW() - INTERVAL '90 days'
+        RETURNING 1
+      )
+      SELECT COUNT(*) AS count FROM deleted
+    `;
+    /* c8 ignore next -- COUNT(*) always returns a row */
+    const deleted = Number(countRows[0]?.count ?? 0);
+    // biome-ignore lint/suspicious/noConsoleLog: structured cron log
+    console.log(
+      JSON.stringify({
+        msg: "notification_log_cleanup",
+        last_run_at: new Date().toISOString(),
+        deleted_count: deleted,
+      }),
+    );
+    return { deleted };
+  });
 }
 
 /**
@@ -114,31 +107,25 @@ export async function cleanupNotificationLog(
  * Runs daily at UTC hour 4.
  */
 export async function cleanupErrorLog(sql: postgres.Sql): Promise<{ deleted: number } | null> {
-  // useServiceRole: error_log DELETE-политика ограничена poputchiki_service (миграция 020).
-  return withLock(
-    sql,
-    LOCK_ERROR_LOG,
-    async (tx) => {
-      const countRows = await tx<{ count: number | string }[]>`
-        WITH deleted AS (
-          DELETE FROM error_log
-          WHERE created_at < NOW() - INTERVAL '30 days'
-          RETURNING 1
-        )
-        SELECT COUNT(*) AS count FROM deleted
-      `;
-      /* c8 ignore next -- COUNT(*) always returns a row */
-      const deleted = Number(countRows[0]?.count ?? 0);
-      // biome-ignore lint/suspicious/noConsoleLog: structured cron log
-      console.log(
-        JSON.stringify({
-          msg: "error_log_cleanup",
-          last_run_at: new Date().toISOString(),
-          deleted_count: deleted,
-        }),
-      );
-      return { deleted };
-    },
-    { useServiceRole: true },
-  );
+  return withLock(sql, LOCK_ERROR_LOG, async (tx) => {
+    const countRows = await tx<{ count: number | string }[]>`
+      WITH deleted AS (
+        DELETE FROM error_log
+        WHERE created_at < NOW() - INTERVAL '30 days'
+        RETURNING 1
+      )
+      SELECT COUNT(*) AS count FROM deleted
+    `;
+    /* c8 ignore next -- COUNT(*) always returns a row */
+    const deleted = Number(countRows[0]?.count ?? 0);
+    // biome-ignore lint/suspicious/noConsoleLog: structured cron log
+    console.log(
+      JSON.stringify({
+        msg: "error_log_cleanup",
+        last_run_at: new Date().toISOString(),
+        deleted_count: deleted,
+      }),
+    );
+    return { deleted };
+  });
 }

@@ -42,3 +42,20 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO poputchiki_app;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT USAGE, SELECT ON SEQUENCES TO poputchiki_app;
+
+-- Service role: privileged escalation via SET LOCAL ROLE (withSystem).
+-- Created in Docker init and CI setup; ensure it exists here for migrations-sentinel test.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
+    CREATE ROLE poputchiki_service NOLOGIN;
+  END IF;
+END $$;
+GRANT USAGE ON SCHEMA public TO poputchiki_service;
+GRANT USAGE ON SCHEMA app TO poputchiki_service;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO poputchiki_service;
+-- BYPASSRLS: withSystem bypasses RLS entirely (no app.is_admin() evaluation needed)
+ALTER ROLE poputchiki_service BYPASSRLS;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO poputchiki_service;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO poputchiki_service;

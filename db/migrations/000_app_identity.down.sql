@@ -5,6 +5,14 @@
 -- depend on it` and break the migrations sentinel test that runs in an ephemeral
 -- DB alongside the shared one.
 DO $$ BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
+    -- BYPASSRLS — кластерный атрибут, не трогаем в per-DB rollback
+    EXECUTE 'REVOKE USAGE ON SCHEMA public FROM poputchiki_service';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM poputchiki_service';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE USAGE, SELECT ON SEQUENCES FROM poputchiki_service';
+  END IF;
+END $$;
+DO $$ BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_app') THEN
     EXECUTE 'REASSIGN OWNED BY poputchiki_app TO ' || quote_ident(current_user);
     EXECUTE 'DROP OWNED BY poputchiki_app';

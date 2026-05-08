@@ -21,10 +21,10 @@ jobs:
       matrix:
         service: [api, notifier, cron, webhook, web]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -51,10 +51,10 @@ jobs:
   zap-baseline:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: ZAP baseline scan — API
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: "https://api.${{ vars.DOMAIN }}/health"
           rules_file_name: ".zap/rules.tsv"
@@ -62,7 +62,7 @@ jobs:
           fail_action: false
 
       - name: ZAP baseline scan — Web
-        uses: zaproxy/action-baseline@v0.12.0
+        uses: zaproxy/action-baseline@v0.15.0
         with:
           target: "https://app.${{ vars.DOMAIN }}/"
           rules_file_name: ".zap/rules.tsv"
@@ -72,7 +72,7 @@ jobs:
   lighthouse:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Lighthouse CI — Web
         uses: treosh/lighthouse-ci-action@v12

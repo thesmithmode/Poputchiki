@@ -7,5 +7,6 @@ DROP POLICY IF EXISTS notification_log_select ON notification_log;
 DROP POLICY IF EXISTS notification_log_delete ON notification_log;
 
 -- Восстановить политику из 020
+DROP POLICY IF EXISTS notification_log_app ON notification_log;
 CREATE POLICY notification_log_app ON notification_log
   FOR ALL USING (true) WITH CHECK (true);

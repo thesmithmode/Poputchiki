@@ -49,33 +49,41 @@ afterAll(async () => {
 // ─── error_log ────────────────────────────────────────────────────────────────
 
 describe("RLS 019: error_log — SELECT", () => {
-  it("анонимный SELECT (только SET ROLE, без GUC) → 0 строк", async () => {
-    const rows = await sql.begin(async (tx) => {
-      await tx`SET LOCAL ROLE poputchiki_app`;
-      return tx`SELECT * FROM error_log`;
-    });
-    expect(rows.length).toBe(0);
+  // Migration 019 revokes SELECT from poputchiki_app entirely (defense-in-depth).
+  // Any SELECT via SET LOCAL ROLE poputchiki_app → permission denied before RLS.
+  // Admin reads error_log via withSystem (superuser bypass), not poputchiki_app.
+
+  it("SELECT от poputchiki_app (без GUC) → permission denied (REVOKE)", async () => {
+    let denied = false;
+    try {
+      await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT * FROM error_log`;
+      });
+    } catch (e) {
+      denied = String(e).includes("permission denied");
+    }
+    expect(denied).toBe(true);
   });
 
-  it("SELECT с role=user → 0 строк", async () => {
-    const rows = await sql.begin(async (tx) => {
-      await tx`SET LOCAL ROLE poputchiki_app`;
-      await tx`SELECT set_config('app.current_user_id', ${testUserId}, true)`;
-      await tx`SELECT set_config('app.current_user_tg_id', '9880019', true)`;
-      await tx`SELECT set_config('app.current_user_role', 'user', true)`;
-      return tx`SELECT * FROM error_log`;
-    });
-    expect(rows.length).toBe(0);
+  it("SELECT от poputchiki_app с role=user → permission denied (REVOKE)", async () => {
+    let denied = false;
+    try {
+      await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT set_config('app.current_user_id', ${testUserId}, true)`;
+        await tx`SELECT set_config('app.current_user_tg_id', '9880019', true)`;
+        await tx`SELECT set_config('app.current_user_role', 'user', true)`;
+        await tx`SELECT * FROM error_log`;
+      });
+    } catch (e) {
+      denied = String(e).includes("permission denied");
+    }
+    expect(denied).toBe(true);
   });
 
-  it("SELECT с role=admin → строки видны (>0)", async () => {
-    const rows = await sql.begin(async (tx) => {
-      await tx`SET LOCAL ROLE poputchiki_app`;
-      await tx`SELECT set_config('app.current_user_id', ${testUserId}, true)`;
-      await tx`SELECT set_config('app.current_user_tg_id', '9880019', true)`;
-      await tx`SELECT set_config('app.current_user_role', 'admin', true)`;
-      return tx`SELECT * FROM error_log`;
-    });
+  it("SELECT суперпользователем → строки видны (admin читает через withSystem)", async () => {
+    const rows = await sql`SELECT * FROM error_log WHERE path = '/test'`;
     expect(rows.length).toBeGreaterThan(0);
   });
 });
@@ -147,12 +155,17 @@ describe("RLS 019: nonces — INSERT/SELECT", () => {
     expect(inserted).toBe(true);
   });
 
-  it("SELECT от poputchiki_app (без GUC) → 0 строк (DENY)", async () => {
-    const rows = await sql.begin(async (tx) => {
-      await tx`SET LOCAL ROLE poputchiki_app`;
-      return tx`SELECT * FROM nonces`;
-    });
-    expect(rows.length).toBe(0);
+  it("SELECT от poputchiki_app → permission denied (SELECT REVOKE в migration 019)", async () => {
+    let denied = false;
+    try {
+      await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT * FROM nonces`;
+      });
+    } catch (e) {
+      denied = String(e).includes("permission denied");
+    }
+    expect(denied).toBe(true);
   });
 });
 

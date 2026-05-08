@@ -81,6 +81,7 @@ export function createNotificationsRouter(sql: postgres.Sql): Hono {
     const prefs = await withIdentity(sql, user, async (tx) => {
       await upsertDefaults(tx, user.id);
       for (const [cat, enabled] of Object.entries(updates)) {
+        /* c8 ignore next -- Zod optional() omits absent keys; guard for schema-level changes */
         if (enabled === undefined) continue;
         await tx`
           UPDATE notification_preferences

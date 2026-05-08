@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app";
+import type { Dispatcher } from "../../src/realtime/dispatcher";
 import { readJson } from "../helpers/json";
 
 describe("GET /metrics", () => {
@@ -27,33 +28,33 @@ describe("GET /metrics", () => {
 });
 
 describe("GET /metrics — METRICS_TOKEN auth", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("no token + production → 401 (fail-closed)", async () => {
-    const original = process.env.NODE_ENV ?? "test";
-    process.env.NODE_ENV = "production";
-    process.env.METRICS_TOKEN = undefined;
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("METRICS_TOKEN", "");
     const app = createApp();
     const res = await app.request("/metrics");
-    process.env.NODE_ENV = original;
     expect(res.status).toBe(401);
   });
 
   it("token set + wrong bearer → 401", async () => {
-    process.env.METRICS_TOKEN = "secret";
+    vi.stubEnv("METRICS_TOKEN", "secret");
     const app = createApp();
     const res = await app.request("/metrics", {
       headers: { authorization: "Bearer wrong" },
     });
-    process.env.METRICS_TOKEN = undefined;
     expect(res.status).toBe(401);
   });
 
   it("token set + correct bearer → 200", async () => {
-    process.env.METRICS_TOKEN = "secret";
+    vi.stubEnv("METRICS_TOKEN", "secret");
     const app = createApp();
     const res = await app.request("/metrics", {
       headers: { authorization: "Bearer secret" },
     });
-    process.env.METRICS_TOKEN = undefined;
     expect(res.status).toBe(200);
   });
 });
@@ -75,5 +76,18 @@ describe("createApp: sql branch coverage", () => {
     // /health is outside /api/* and still works
     const res = await app.request("/health");
     expect(res.status).toBe(200);
+  });
+
+  it("createApp(sql, jwtSecret, dispatcher) registers /api/realtime route", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
+    const mockSql = vi.fn() as any;
+    const mockDispatcher: Dispatcher = {
+      subscribe: vi.fn().mockReturnValue(() => {}),
+      subscriberCount: () => 0,
+    };
+    const app = createApp(mockSql, "test-secret-key", mockDispatcher);
+    // Route registered → responds (not 404)
+    const res = await app.request("/api/realtime/rides");
+    expect(res.status).not.toBe(404);
   });
 });

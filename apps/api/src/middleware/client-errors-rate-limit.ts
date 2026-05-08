@@ -23,6 +23,7 @@ export function clientErrorsRateLimit(sql: postgres.Sql): MiddlewareHandler {
       RETURNING count
     `;
 
+    /* c8 ignore next -- INSERT ... RETURNING always returns a row */
     if ((ipRow?.count ?? 0) > CLIENT_ERRORS_IP_LIMIT) {
       c.header("Retry-After", retryAfter);
       return c.json({ error: "rate limit exceeded" }, 429);

@@ -17,7 +17,7 @@
   "dependencies": {
     "@poputchiki/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
-    "@telegram-apps/sdk-react": "^2.0.24",
+    "@telegram-apps/sdk-react": "^3.3.9",
     "i18next": "^26.0.8",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",

@@ -57,3 +57,37 @@ Files to compile (1):
 
 Compilation complete. Total cost: $0.54
 Knowledge base: 22 articles
+Files to compile (6):
+  - 2026-05-01.md
+  - 2026-05-03.md
+  - 2026-05-04.md
+  - 2026-05-05.md
+  - 2026-05-06.md
+  - 2026-05-08.md
+
+[1/6] Compiling 2026-05-01.md...
+  Cost: $0.3015
+  Done.
+
+[2/6] Compiling 2026-05-03.md...
+  Cost: $0.4177
+  Done.
+
+[3/6] Compiling 2026-05-04.md...
+  Cost: $0.5715
+  Done.
+
+[4/6] Compiling 2026-05-05.md...
+  Cost: $0.2257
+  Done.
+
+[5/6] Compiling 2026-05-06.md...
+  Cost: $0.4587
+  Done.
+
+[6/6] Compiling 2026-05-08.md...
+  Cost: $0.6390
+  Done.
+
+Compilation complete. Total cost: $2.61
+Knowledge base: 35 articles

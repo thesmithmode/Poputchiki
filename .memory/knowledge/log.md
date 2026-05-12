@@ -1,5 +1,37 @@
 # Build Log
 
+## [2026-05-08T20:00:00+03:00] compile | 2026-05-08.md
+- Source: daily/2026-05-08.md
+- Articles created: [[concepts/docker-healthcheck-curl]], [[concepts/superuser-database-url-rls-bypass]], [[concepts/sse-pool-connection-ceiling]], [[concepts/ci-env-vs-docker-init]], [[concepts/revoke-select-before-rls]], [[concepts/csrf-startswith-prefix-attack]]
+- Articles updated: [[concepts/auth-security-vulnerabilities]] (added 2026-05-08 findings: client-errors DoS, rate_limit_buckets no cleanup, bannedUser overly broad scope)
+
+## [2026-05-08T18:30:00+03:00] compile | 2026-05-06.md
+- Source: daily/2026-05-06.md
+- Articles created: [[concepts/hono-use-vs-handler-chain]], [[concepts/hono-onerror-required]], [[concepts/task-completion-integrity]], [[concepts/vi-fn-undefined-sql-mock]]
+- Articles updated: (none)
+
+## [2026-05-08T18:17:35+03:00] compile | 2026-05-05.md
+- Source: daily/2026-05-05.md
+- Articles created: (none — all 5 memory flushes returned FLUSH_OK with no extractable content)
+- Articles updated: (none)
+
+## [2026-05-08T18:14:23+03:00] compile | 2026-05-04.md
+- Source: daily/2026-05-04.md
+- Articles created: [[concepts/advisory-lock-pool-safety]], [[concepts/on-conflict-constraint-pitfall]]
+- Articles updated: [[concepts/postgres-js-isolation-level]] (added native array parameter fact), [[concepts/scope-creep-sentinel]] (added incomplete refactoring pattern — withLock helper created but 4 cron callers left inline), [[concepts/hono-route-prefix-test-mismatch]] (added 2026-05-04 confirmation as recurring systemic pattern)
+
+## [2026-05-08T18:11:31+03:00] compile | 2026-05-03.md (fifth pass)
+- Source: daily/2026-05-03.md
+- Articles created: [[concepts/auth-security-vulnerabilities]]
+- Articles updated: (none)
+- Note: Session 11:54 security findings (XFF spoofing, idempotency race, refresh/logout JTI gaps) were not captured in any prior pass — extracted now
+
+## [2026-05-08T18:10:51+03:00] compile | 2026-05-01.md
+- Source: daily/2026-05-01.md
+- Note: Third compile attempt; all 7 articles already up to date from 2026-05-02T22:43:12+00:00 initial compilation
+- Articles created: (none — already existed)
+- Articles updated: (none)
+
 ## [2026-05-03T23:59:30+03:00] compile | 2026-05-03.md (fourth pass)
 - Source: daily/2026-05-03.md
 - Articles created: [[concepts/batch-ci-fix-discipline]], [[concepts/truncate-cascade-test-isolation]]

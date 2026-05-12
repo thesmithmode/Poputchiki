@@ -4,8 +4,9 @@ aliases: [hono-test-prefix, route-prefix-mismatch, hono-url-gotcha]
 tags: [testing, hono, gotcha, coverage]
 sources:
   - "daily/2026-05-03.md"
+  - "daily/2026-05-04.md"
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-04
 ---
 
 # Hono Test Route Prefix Mismatch (Silent Wrong Handler)
@@ -39,3 +40,4 @@ This pattern can occur whenever a shared test helper mounts a router without a p
 ## Sources
 
 - [[daily/2026-05-03.md]] - `cancelRide.test.ts` used `/rides/${id}/cancel`; ridesRouter mounted at `/`; cancel handler at line 153 was 0% covered despite green tests; fixed by removing `/rides` prefix from all test URLs
+- [[daily/2026-05-04.md]] - Session 01:17: same pattern repeated — support router mounted at `/api/support` but test URL used wrong prefix; described as "повторяющийся паттерн ошибок" confirming this is a systemic issue not a one-off

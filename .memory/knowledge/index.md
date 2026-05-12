@@ -24,3 +24,16 @@
 | [[concepts/zod-uuid-strict-validation]] | Zod v4 `z.uuid()` enforces RFC 4122 version/variant bits; sequential test fixtures like `11111111-...` fail with 422 | daily/2026-05-03.md | 2026-05-03 |
 | [[concepts/batch-ci-fix-discipline]] | Reactive push→fail→fix loop wastes CI queue time; collect full failure surface first, fix all in one commit | daily/2026-05-03.md | 2026-05-03 |
 | [[concepts/truncate-cascade-test-isolation]] | `TRUNCATE ... CASCADE` helper removes FK ordering problems in test teardown; `fileParallelism: false` prevents deadlock | daily/2026-05-03.md | 2026-05-03 |
+| [[concepts/auth-security-vulnerabilities]] | XFF spoofing bypasses rate-limit; idempotency race; soft-deleted users can refresh; logout doesn't revoke JTI | daily/2026-05-03.md | 2026-05-03 |
+| [[concepts/advisory-lock-pool-safety]] | `pg_try_advisory_lock` session-level breaks in connection pools; use `pg_try_advisory_xact_lock` inside `sql.begin()` | daily/2026-05-04.md | 2026-05-04 |
+| [[concepts/on-conflict-constraint-pitfall]] | `ON CONFLICT DO NOTHING` without unique constraint silently inserts duplicates; use `WHERE NOT EXISTS` instead | daily/2026-05-04.md | 2026-05-04 |
+| [[concepts/hono-use-vs-handler-chain]] | `app.use("/", mw)` fires on ALL methods; use `app.post("/", mw, handler)` chain for POST-only middleware | daily/2026-05-06.md | 2026-05-06 |
+| [[concepts/hono-onerror-required]] | Hono 4: `app.onError` required to catch handler errors; catch-middleware does NOT intercept thrown errors | daily/2026-05-06.md | 2026-05-06 |
+| [[concepts/task-completion-integrity]] | Tasks marked done by writing green tests for existing code — not real TDD; red→green cycle required | daily/2026-05-06.md | 2026-05-06 |
+| [[concepts/vi-fn-undefined-sql-mock]] | `vi.fn()` returns undefined; SQL destructuring `const [row] = await sql()` throws TypeError — use `mockResolvedValue([])` | daily/2026-05-06.md | 2026-05-06 |
+| [[concepts/docker-healthcheck-curl]] | `oven/bun:1-alpine` and `caddy:2-alpine` lack `curl` → healthchecks fail → auto-rollback loop on every deploy | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/superuser-database-url-rls-bypass]] | POSTGRES_USER in DATABASE_URL → superuser bypasses RLS entirely; app role from init scripts never used | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/sse-pool-connection-ceiling]] | Each SSE connection = 1 pool connection (max=20) → ~150 concurrent ceiling, not 50k; requires PgBouncer+Redis fix | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/ci-env-vs-docker-init]] | Roles/extensions in Docker init don't exist in CI PostgreSQL; need explicit setup step before migrations | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/revoke-select-before-rls]] | `REVOKE SELECT` fires before RLS evaluation; test expecting empty result gets `permission denied` instead | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/csrf-startswith-prefix-attack]] | CSRF origin `startsWith` → `app.domain.attacker.com` bypass; use exact equality or allowlist `.includes()` | daily/2026-05-08.md | 2026-05-08 |

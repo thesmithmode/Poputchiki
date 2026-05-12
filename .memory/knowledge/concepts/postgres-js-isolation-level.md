@@ -4,8 +4,9 @@ aliases: [postgres-js-isolation, sql-begin-gotcha, isolation-level-bug]
 tags: [database, postgresql, gotcha, postgres-js]
 sources:
   - "daily/2026-05-03.md"
+  - "daily/2026-05-04.md"
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-04
 ---
 
 # postgres.js sql.begin() Isolation Level Syntax
@@ -19,6 +20,7 @@ updated: 2026-05-03
 - Fix location: normalize in the library wrapper (`with-identity.ts`), not in every caller
 - postgres.js also guarantees: `timestamptz` columns always return JavaScript `Date`; `BIGINT` columns always return `string`
 - Defensive ternary guards for these guaranteed types = dead code, remove rather than test
+- postgres.js native array parameters: pass JS arrays directly as query parameters — postgres.js converts to `ARRAY[...]` automatically; never string-join array values manually
 
 ## Details
 

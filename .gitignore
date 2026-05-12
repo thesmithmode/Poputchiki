@@ -26,3 +26,6 @@ coverage-integration/
 __pycache__/
 *.pyc
 
+# Claude Code tool artifacts
+skills-lock.json
+

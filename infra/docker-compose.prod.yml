@@ -1,10 +1,48 @@
 networks:
   traefik-public:
-    external: true
+    driver: bridge
   poputchiki-internal:
     driver: bridge
 
 services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik-public"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--log.level=INFO"
+      - "--api.dashboard=false"
+    environment:
+      CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/poputchiki/letsencrypt:/letsencrypt
+    networks:
+      - traefik-public
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
@@ -43,11 +81,7 @@ services:
     restart: "no"
     command: ["bun", "run", "db:migrate", "up"]
     environment:
-      # Миграции запускаются от суперпользователя чтобы выполнять REVOKE/ALTER FORCE RLS/CREATE POLICY.
-      # poputchiki_app не может выполнить REVOKE (не owner). Используем POSTGRES_USER.
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      # package.json db:migrate использует DATABASE_MIGRATOR_URL если задан (см. scripts).
-      # Явно дублируем суперпользовательский DSN чтобы гарантировать использование именно его.
       DATABASE_MIGRATOR_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
@@ -56,9 +90,6 @@ services:
       - poputchiki-internal
     profiles:
       - migrations
-    # Запускать вручную ДО старта api/notifier/cron/webhook:
-    #   IMAGE_TAG=<sha> docker compose --profile migrations up migrations
-    # Только после успешного exit 0 запускать основные сервисы.
 
   api:
     image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
@@ -90,6 +121,7 @@ services:
       start_period: 10s
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.poputchiki-api.rule=Host(`api.${DOMAIN}`)"
       - "traefik.http.routers.poputchiki-api.entrypoints=websecure"
       - "traefik.http.routers.poputchiki-api.tls.certresolver=letsencrypt"
@@ -117,6 +149,7 @@ services:
       start_period: 10s
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.poputchiki-web.rule=Host(`app.${DOMAIN}`)"
       - "traefik.http.routers.poputchiki-web.entrypoints=websecure"
       - "traefik.http.routers.poputchiki-web.tls.certresolver=letsencrypt"
@@ -214,6 +247,7 @@ services:
       start_period: 10s
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
       - "traefik.http.routers.poputchiki-webhook.rule=Host(`webhook.${DOMAIN}`)"
       - "traefik.http.routers.poputchiki-webhook.entrypoints=websecure"
       - "traefik.http.routers.poputchiki-webhook.tls.certresolver=letsencrypt"
@@ -231,6 +265,8 @@ services:
   nominatim:
     image: mediagis/nominatim:4.4
     restart: unless-stopped
+    profiles:
+      - nominatim
     environment:
       PBF_URL: https://download.geofabrik.de/russia/volga-fed-district-latest.osm.pbf
       REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district-updates/
@@ -247,4 +283,4 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256m
+          memory: 2g

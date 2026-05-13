@@ -12,7 +12,23 @@ TAGS_DIR="$STATE_DIR"
 
 mkdir -p "$STATE_DIR"
 
+# Загружаем .env чтобы backup-db.sh и остальные скрипты имели доступ к DATABASE_URL и BACKUP_KEY
+set -o allexport
+# shellcheck source=/dev/null
+source /opt/poputchiki/.env
+set +o allexport
+IMAGE_TAG="$SHA"
+
+# Установить pg_dump если отсутствует (нужен для backup-db.sh)
+if ! command -v pg_dump &>/dev/null; then
+  apt-get update -qq && apt-get install -y -qq postgresql-client-16
+fi
+
 echo "=== deploy $SHA ==="
+
+# Убедиться что Traefik запущен (идемпотентно)
+echo "--- [0/7] ensure traefik ---"
+IMAGE_TAG="$SHA" $COMPOSE up -d traefik
 
 # Шаг 1: pre-deploy backup
 echo "--- [1/7] pre-deploy backup ---"

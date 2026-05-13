@@ -1,3 +1,5 @@
 # Trivy vulnerability allowlist
-# Add CVE IDs here to suppress known false positives
-# Example: CVE-2023-12345
+
+# go-jose DoS в caddy:2-alpine — не эксплуатируется: Caddy раздаёт только статику,
+# TLS/JOSE не используется (Traefik handles TLS). Удалить когда выйдет caddy с go-jose>=3.0.5
+CVE-2026-34986

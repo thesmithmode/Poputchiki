@@ -11,6 +11,7 @@ RUN bun install --frozen-lockfile
 
 COPY --chown=bun:bun packages/shared packages/shared
 COPY --chown=bun:bun apps/api apps/api
+COPY --chown=bun:bun db db
 
 EXPOSE 3000
 USER bun

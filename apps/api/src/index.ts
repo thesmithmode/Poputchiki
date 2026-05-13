@@ -14,8 +14,6 @@ const dispatcher = await createDispatcher(listenSql, "rides_changed");
 
 const app = createApp(sql, env.JWT_SECRET, dispatcher);
 
-export default app;
-
 if (import.meta.main) {
   const server = Bun.serve({
     port: env.PORT,

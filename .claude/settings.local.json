@@ -121,7 +121,8 @@
       "Bash(bunx tsc *)",
       "Bash(node_modules/.bin/node-pg-migrate --help)",
       "Bash(ssh *)",
-      "mcp__sequentialthinking__sequentialthinking"
+      "mcp__sequentialthinking__sequentialthinking",
+      "Bash(grep *)"
     ]
   },
   "hooks": {

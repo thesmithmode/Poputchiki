@@ -35,7 +35,11 @@ echo "--- [1/7] backup skipped (cron handles daily at 04:00) ---"
 
 # Шаг 2: pull images
 echo "--- [2/7] docker pull ---"
-IMAGE_TAG="$SHA" $COMPOSE pull
+for i in 1 2 3; do
+  IMAGE_TAG="$SHA" $COMPOSE pull && break
+  echo "Pull attempt $i failed, retrying in 30s..."
+  sleep 30
+done
 
 # Шаг 3: migrate (одноразовый контейнер с superuser-подключением)
 echo "--- [3/7] migrate ---"

@@ -14,7 +14,7 @@ fi
 
 if [[ -z "${TARGET_TAG:-}" ]]; then
   echo "ERROR: no rollback tag available (first deploy?)" >&2
-  bash scripts/notify-admin.sh "CRITICAL: deploy failed, no rollback tag — first deploy. Bring up manually." || true
+  bash "$STATE_DIR/scripts/notify-admin.sh" "CRITICAL: deploy failed, no rollback tag — first deploy. Bring up manually." || true
   exit 1
 fi
 
@@ -32,7 +32,7 @@ while true; do
   fi
   if [[ $SECONDS -ge $DEADLINE ]]; then
     echo "ERROR: rollback smoke failed" >&2
-    bash scripts/notify-admin.sh "CRITICAL: rollback $TARGET_TAG smoke FAILED" || true
+    bash "$STATE_DIR/scripts/notify-admin.sh" "CRITICAL: rollback $TARGET_TAG smoke FAILED" || true
     exit 1
   fi
   sleep 3
@@ -40,4 +40,4 @@ done
 
 echo "$TARGET_TAG" > "$STATE_DIR/current-tag"
 echo "=== rollback $TARGET_TAG SUCCESS ==="
-bash scripts/notify-admin.sh "rollback to ${TARGET_TAG} success" || true
+bash "$STATE_DIR/scripts/notify-admin.sh" "rollback to ${TARGET_TAG} success" || true

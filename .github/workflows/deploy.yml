@@ -124,26 +124,26 @@ jobs:
 
       - name: Generate .env on server
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cat > /opt/poputchiki/.env << 'EOF'
-          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-          APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}
-          SERVICE_DB_PASSWORD=
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          PGCRYPTO_KEY=${{ secrets.PGCRYPTO_KEY }}
-          ADMIN_TG_ID=${{ secrets.ADMIN_TG_ID }}
-          ADMIN_TG_CHAT_ID=${{ secrets.ADMIN_TG_CHAT_ID }}
-          METRICS_TOKEN=
-          DOMAIN=${{ vars.DOMAIN }}
-          BACKUP_KEY=${{ secrets.BACKUP_KEY }}
-          WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}
-          ACME_EMAIL=${{ secrets.ACME_EMAIL }}
-          CF_DNS_API_TOKEN=${{ secrets.CF_DNS_API_TOKEN }}
-          DATABASE_URL=postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}
-          EOF
-          chmod 600 /opt/poputchiki/.env"
+          {
+            echo "POSTGRES_USER=${{ secrets.POSTGRES_USER }}"
+            echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}"
+            echo "POSTGRES_DB=${{ secrets.POSTGRES_DB }}"
+            echo "APP_DB_PASSWORD=${{ secrets.APP_DB_PASSWORD }}"
+            echo "SERVICE_DB_PASSWORD="
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}"
+            echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}"
+            echo "PGCRYPTO_KEY=${{ secrets.PGCRYPTO_KEY }}"
+            echo "ADMIN_TG_ID=${{ secrets.ADMIN_TG_ID }}"
+            echo "ADMIN_TG_CHAT_ID=${{ secrets.ADMIN_TG_CHAT_ID }}"
+            echo "METRICS_TOKEN="
+            echo "DOMAIN=${{ vars.DOMAIN }}"
+            echo "BACKUP_KEY=${{ secrets.BACKUP_KEY }}"
+            echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}"
+            echo "ACME_EMAIL=${{ secrets.ACME_EMAIL }}"
+            echo "CF_DNS_API_TOKEN=${{ secrets.CF_DNS_API_TOKEN }}"
+            echo "DATABASE_URL=postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}"
+          } | ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+            "cat > /opt/poputchiki/.env && chmod 600 /opt/poputchiki/.env"
 
       - name: GHCR login on server
         run: |

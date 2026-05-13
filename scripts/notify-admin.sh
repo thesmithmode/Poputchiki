@@ -6,10 +6,11 @@ set -euo pipefail
 [[ $# -eq 0 ]] && exit 0
 TEXT="$1"
 
-if [[ -f .env ]]; then
+ENV_FILE="${ENV_FILE:-/opt/poputchiki/.env}"
+if [[ -f "$ENV_FILE" ]]; then
     set -a
     # shellcheck disable=SC1091
-    source .env
+    source "$ENV_FILE"
     set +a
 fi
 

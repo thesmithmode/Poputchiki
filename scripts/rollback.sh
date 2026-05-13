@@ -13,7 +13,8 @@ else
 fi
 
 if [[ -z "${TARGET_TAG:-}" ]]; then
-  echo "ERROR: no rollback tag available" >&2
+  echo "ERROR: no rollback tag available (first deploy?)" >&2
+  bash scripts/notify-admin.sh "CRITICAL: deploy failed, no rollback tag — first deploy. Bring up manually." || true
   exit 1
 fi
 
@@ -25,7 +26,7 @@ IMAGE_TAG="$TARGET_TAG" $COMPOSE up -d --no-deps api notifier cron webhook web
 # Smoke: /health
 DEADLINE=$((SECONDS + 60))
 while true; do
-  if $COMPOSE exec -T api curl -sf http://localhost:3000/health >/dev/null 2>&1; then
+  if $COMPOSE exec -T api wget --spider -q http://localhost:3000/health >/dev/null 2>&1; then
     echo "smoke OK"
     break
   fi

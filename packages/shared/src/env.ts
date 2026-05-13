@@ -5,7 +5,7 @@ const WebhookEnvSchema = z.object({
   BOT_TOKEN: z.string().min(1),
   WEBHOOK_SECRET: z.string().min(16),
   DOMAIN: z.string().optional(),
-  WEBHOOK_PORT: z.coerce.number().int().positive().optional().default(3002),
+  WEBHOOK_PORT: z.coerce.number().int().positive().optional().default(3001),
   NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
 });
 

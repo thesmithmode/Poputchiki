@@ -48,3 +48,9 @@
 | [[concepts/reactive-deploy-fix-loop]] | 15 failed deploys from reactive fix→push→fail loop; pre-deploy static audit prevents cascade | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/traefik-docker-api-compat]] | Traefik pinned version bundles old Docker client API → incompatible with newer Docker daemon → no service discovery, no TLS | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/caddy-alpine-missing-modules]] | `caddy:2-alpine` lacks Brotli encoder (config crash) and wget (healthcheck failure); fix: remove `br`, `apk add wget` | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/healthcheck-process-vs-application]] | `kill -0 1` only checks PID — silent crash (process alive, app dead) not detected; use HTTP probe or sentinel file | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/webhook-port-bind-mismatch]] | App binds port 3002, Dockerfile EXPOSE + healthcheck reference 3001 → container permanently unhealthy | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/node-pg-migrate-dotenv-docker]] | `--envPath .env` flag triggers `require('dotenv')` even in Docker where env is already injected | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/traefik-acme-http01-port80]] | ACME HTTP-01 needs port 80 open; `ufw inactive` ≠ no firewall — iptables may block; `acme.json` empty = first diagnostic | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/vite-api-base-env-var]] | Hardcoded `/api` in apiFetch breaks subdomain routing; must use `import.meta.env.VITE_API_BASE` from build arg | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/telegram-desktop-miniapp-url-cache]] | Telegram Desktop caches Mini App URL; full restart required after BotFather Menu Button URL change | daily/2026-05-13.md | 2026-05-13 |

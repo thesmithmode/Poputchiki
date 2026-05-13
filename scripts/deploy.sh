@@ -53,9 +53,9 @@ PREVIOUS_TAG=$(cat "$TAGS_DIR/current-tag" 2>/dev/null || echo "")
 IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps api notifier cron webhook web
 
 # Шаг 5: ждать healthcheck
-echo "--- [5/7] healthcheck (60s) ---"
+echo "--- [5/7] healthcheck (120s) ---"
 SERVICES=(api notifier cron webhook web)
-DEADLINE=$((SECONDS + 60))
+DEADLINE=$((SECONDS + 120))
 for SVC in "${SERVICES[@]}"; do
   while true; do
     STATUS=$(IMAGE_TAG="$SHA" $COMPOSE ps --format json "$SVC" 2>/dev/null \
@@ -65,7 +65,7 @@ for SVC in "${SERVICES[@]}"; do
       break
     fi
     if [[ $SECONDS -ge $DEADLINE ]]; then
-      echo "ERROR: $SVC not healthy after 60s" >&2
+      echo "ERROR: $SVC not healthy after 120s" >&2
       if [[ -n "$PREVIOUS_TAG" ]]; then
         bash "$STATE_DIR/scripts/rollback.sh" "$PREVIOUS_TAG" || true
       else

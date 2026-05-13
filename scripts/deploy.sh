@@ -39,6 +39,8 @@ IMAGE_TAG="$SHA" $COMPOSE pull
 
 # Шаг 3: migrate (одноразовый контейнер с superuser-подключением)
 echo "--- [3/7] migrate ---"
+# Сначала убедиться что postgres healthy (docker compose run не ждёт depends_on healthy)
+$COMPOSE up -d --wait postgres
 IMAGE_TAG="$SHA" $COMPOSE --profile migrations run --rm migrations
 
 # Шаг 4: rolling restart сервисов (postgres не трогаем)

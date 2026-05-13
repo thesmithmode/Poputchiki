@@ -57,6 +57,7 @@ services:
       - /opt/poputchiki/postgres-data:/var/lib/postgresql/data
       - /opt/poputchiki/backups:/backups
       - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
       - ./postgres/init:/docker-entrypoint-initdb.d:ro
     networks:
       - poputchiki-internal

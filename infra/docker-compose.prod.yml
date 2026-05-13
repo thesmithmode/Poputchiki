@@ -1,8 +1,10 @@
 networks:
   traefik-public:
     driver: bridge
+    name: traefik-public
   poputchiki-internal:
     driver: bridge
+    name: poputchiki-internal
 
 services:
   traefik:

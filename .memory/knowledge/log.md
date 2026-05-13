@@ -1,5 +1,30 @@
 # Build Log
 
+## [2026-05-13T23:55:00+03:00] compile | 2026-05-13.md (second pass)
+- Source: daily/2026-05-13.md
+- Articles created: [[concepts/traefik-docker-api-compat]], [[concepts/caddy-alpine-missing-modules]]
+- Articles updated: (none — first pass was complete; second pass extracted two additional standalone gotchas)
+
+## [2026-05-13T22:30:00+03:00] compile | 2026-05-13.md
+- Source: daily/2026-05-13.md
+- Articles created: [[concepts/postgres-custom-config-nullifies-defaults]], [[concepts/pg-isready-tcp-vs-unix-socket]], [[concepts/postgres-volume-init-idempotency]], [[concepts/docker-compose-run-skips-healthcheck]], [[concepts/reactive-deploy-fix-loop]]
+- Articles updated: [[concepts/docker-healthcheck-curl]] (caddy:2-alpine also lacks wget; pg_isready TCP vs Unix socket cross-reference), [[concepts/deployment-pipeline]] (Traefik v3.3 API incompatibility → traefik:latest; node-pg-migrate dotenv in Docker; GHCR/docker pull retry; rollback.sh path fix; docker compose run doesn't wait for healthy)
+
+## [2026-05-13T19:22:16+03:00] compile | 2026-05-12.md
+- Source: daily/2026-05-12.md
+- Articles created: (none — log contained only four FLUSH_OK entries with no extractable content)
+- Articles updated: (none)
+
+## [2026-05-13T19:21:44+03:00] compile | 2026-05-11.md
+- Source: daily/2026-05-11.md
+- Articles created: (none — log contained only two FLUSH_OK entries with no extractable content)
+- Articles updated: (none)
+
+## [2026-05-13T19:16:00+03:00] compile | 2026-05-08.md (second pass)
+- Source: daily/2026-05-08.md
+- Articles created: [[concepts/bun-lockfile-frozen-ci]], [[concepts/ci-workflow-branch-triggers]], [[concepts/x-frame-options-telegram-embedding]], [[concepts/middleware-bodylimit-before-ratelimit]]
+- Articles updated: [[concepts/deployment-pipeline]] (DATABASE_MIGRATOR_URL not in deploy pipeline → migration failures; cron cleanup runs as app role → RLS blocks cross-user DELETEs), [[concepts/scope-creep-sentinel]] (added dispatcher method rename gap — REFACTOR renamed methods, caller kept old names, shim removed without updating dispatcher)
+
 ## [2026-05-08T20:00:00+03:00] compile | 2026-05-08.md
 - Source: daily/2026-05-08.md
 - Articles created: [[concepts/docker-healthcheck-curl]], [[concepts/superuser-database-url-rls-bypass]], [[concepts/sse-pool-connection-ceiling]], [[concepts/ci-env-vs-docker-init]], [[concepts/revoke-select-before-rls]], [[concepts/csrf-startswith-prefix-attack]]

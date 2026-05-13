@@ -5,8 +5,9 @@ tags: [process, tdd, discipline, gotcha]
 sources:
   - "daily/2026-05-03.md"
   - "daily/2026-05-04.md"
+  - "daily/2026-05-08.md"
 created: 2026-05-03
-updated: 2026-05-04
+updated: 2026-05-13
 ---
 
 # Scope Creep via TDD Sentinel Pattern
@@ -21,6 +22,7 @@ A TDD sentinel test written to expose a production bug can trigger a chain of ar
 - `book_seat` returning 0 rows for 3 different failure cases (no identity / no seats / caller==driver) = weak error semantics; all mapped to 409 Conflict
 - Recovery trigger: "вспомни глобально задачу, на верном ли пути" — full architectural review forced by user
 - Second pattern: refactoring helper created (e.g., `withLock`) but not all callers migrated — 4 cron files left using inline locks; coverage does not catch this if inline code still executes
+- Third pattern: REFACTOR renames methods in one file but leaves callers using the old names — `dispatcher.ts` referenced `incListenConnections`/`decListenConnections` after a REFACTOR renamed them to `incSseSubscribers`/`decSseSubscribers`; runtime crash, not compile error
 
 ## Details
 
@@ -40,3 +42,4 @@ The recovery pattern is explicit scope review ("am I on the right path?") combin
 
 - [[daily/2026-05-03.md]] - TASK-133 scope crept into migrations 011+012; TASK-135 created then deleted; book_seat error semantics identified as weak; user forced architectural review to reset scope
 - [[daily/2026-05-04.md]] - Session 09:48: TASK-089 created `withLock` helper but left 4 cron files using inline advisory lock pattern — incomplete refactoring; coverage passed because inline code still ran, hiding that the helper was not universally adopted
+- [[daily/2026-05-08.md]] - Memory flush 18:10: REFACTOR renamed SSE dispatcher methods (`incListenConnections` → `incSseSubscribers`) but `dispatcher.ts` kept old method names — shim removed without updating the caller; runtime crash, TypeScript did not catch it because dispatch methods were dynamically typed

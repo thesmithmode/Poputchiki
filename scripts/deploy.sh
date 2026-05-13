@@ -85,9 +85,11 @@ echo "$SHA" > "$TAGS_DIR/current-tag"
 
 # Шаг 7: cleanup
 echo "--- [7/7] cleanup images ---"
+KEEP_TAG=$(cat "$TAGS_DIR/last-good-tag" 2>/dev/null || echo "")
 for IMAGE in poputchiki-api poputchiki-notifier poputchiki-cron poputchiki-webhook poputchiki-web; do
   docker images "ghcr.io/thesmithmode/${IMAGE}" --format "{{.ID}} {{.Tag}}" \
     | sort -k2 \
+    | awk -v keep="$KEEP_TAG" '$2 != keep' \
     | head -n -5 \
     | awk '{print $1}' \
     | xargs --no-run-if-empty docker rmi -f 2>/dev/null || true

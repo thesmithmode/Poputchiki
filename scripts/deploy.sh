@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Атомарний деплой: backup → pull → migrate → up → healthcheck → tag
 # Usage: deploy.sh <SHA>
-# Env:   DATABASE_URL, BACKUP_KEY, BACKUP_DIR, DOMAIN, POSTGRES_USER/PASSWORD/DB, + all app envs
 set -euo pipefail
 
 [[ $# -lt 1 ]] && { echo "Usage: $0 <SHA>" >&2; exit 1; }
 SHA="$1"
-COMPOSE="docker compose -f infra/docker-compose.prod.yml --env-file /opt/poputchiki/.env"
 STATE_DIR="/opt/poputchiki"
+COMPOSE="docker compose -f $STATE_DIR/infra/docker-compose.prod.yml --env-file $STATE_DIR/.env"
 TAGS_DIR="$STATE_DIR"
 
 mkdir -p "$STATE_DIR"
@@ -15,8 +14,9 @@ mkdir -p "$STATE_DIR"
 # Загружаем .env чтобы backup-db.sh и остальные скрипты имели доступ к DATABASE_URL и BACKUP_KEY
 set -o allexport
 # shellcheck source=/dev/null
-source /opt/poputchiki/.env
+source "$STATE_DIR/.env"
 set +o allexport
+# IMAGE_TAG всегда из аргумента — перекрывает любое значение из .env
 IMAGE_TAG="$SHA"
 
 # Установить pg_dump если отсутствует (нужен для backup-db.sh)
@@ -26,21 +26,27 @@ fi
 
 echo "=== deploy $SHA ==="
 
-# Убедиться что Traefik запущен (идемпотентно)
+# Убедиться что Traefik запущен (идемпотентно, не зависит от IMAGE_TAG)
 echo "--- [0/7] ensure traefik ---"
-IMAGE_TAG="$SHA" $COMPOSE up -d traefik
+$COMPOSE up -d traefik
 
-# Шаг 1: pre-deploy backup
+# Шаг 1: pre-deploy backup — пропустить если последний бэкап сделан менее часа назад
+# (защита от лишних бэкапов при частых деплоях)
 echo "--- [1/7] pre-deploy backup ---"
-export IMAGE_TAG="$SHA"
 BACKUP_DIR="${BACKUP_DIR:-$STATE_DIR/backups}"
+export BACKUP_DIR
 BACKUP_KEY="${BACKUP_KEY:?BACKUP_KEY required}"
-bash scripts/backup-db.sh
-# Tag the backup with SHA for easy identification
-LATEST=$(ls -t "$BACKUP_DIR"/poputchiki-*.dump.zst.gpg 2>/dev/null | head -1 || true)
-if [[ -n "$LATEST" ]]; then
-  TAGGED="${LATEST%.dump.zst.gpg}-pre-${SHA}.dump.zst.gpg"
-  cp "$LATEST" "$TAGGED" 2>/dev/null || true
+export BACKUP_KEY
+mkdir -p "$BACKUP_DIR"
+LAST_BACKUP=$(find "$BACKUP_DIR" -name "poputchiki-*.dump.zst.gpg" -mmin -60 2>/dev/null | head -1 || true)
+if [[ -z "$LAST_BACKUP" ]]; then
+  bash "$STATE_DIR/scripts/backup-db.sh"
+  LATEST=$(ls -t "$BACKUP_DIR"/poputchiki-*.dump.zst.gpg 2>/dev/null | head -1 || true)
+  if [[ -n "$LATEST" ]]; then
+    cp "$LATEST" "${LATEST%.dump.zst.gpg}-pre-${SHA:0:8}.dump.zst.gpg" 2>/dev/null || true
+  fi
+else
+  echo "skip: backup exists from last 60min ($LAST_BACKUP)"
 fi
 
 # Шаг 2: pull images
@@ -48,14 +54,12 @@ echo "--- [2/7] docker pull ---"
 IMAGE_TAG="$SHA" $COMPOSE pull
 
 # Шаг 3: migrate (одноразовый контейнер с superuser-подключением)
-# Запускаем сервис migrations (profile=migrations) — DATABASE_URL суперпользователя,
-# чтобы выполнять REVOKE/ALTER FORCE RLS/CREATE POLICY без ошибки "must be owner of table".
 echo "--- [3/7] migrate ---"
 IMAGE_TAG="$SHA" $COMPOSE --profile migrations run --rm migrations
 
 # Шаг 4: rolling restart сервисов (postgres не трогаем)
 echo "--- [4/7] up services ---"
-PREVIOUS_TAG=$(cat "$TAGS_DIR/current-tag" 2>/dev/null || echo "latest")
+PREVIOUS_TAG=$(cat "$TAGS_DIR/current-tag" 2>/dev/null || echo "")
 IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps api notifier cron webhook web
 
 # Шаг 5: ждать healthcheck
@@ -72,8 +76,12 @@ for SVC in "${SERVICES[@]}"; do
     fi
     if [[ $SECONDS -ge $DEADLINE ]]; then
       echo "ERROR: $SVC not healthy after 60s" >&2
-      # Rollback: restore previous tag
-      bash scripts/rollback.sh "$PREVIOUS_TAG" || true
+      if [[ -n "$PREVIOUS_TAG" ]]; then
+        bash "$STATE_DIR/scripts/rollback.sh" "$PREVIOUS_TAG" || true
+      else
+        echo "WARNING: first deploy, no rollback tag" >&2
+        bash "$STATE_DIR/scripts/notify-admin.sh" "CRITICAL: first deploy failed, manual intervention required" || true
+      fi
       exit 1
     fi
     sleep 3
@@ -82,10 +90,10 @@ done
 
 # Шаг 6: обновить теги
 echo "--- [6/7] update tags ---"
-echo "$PREVIOUS_TAG" > "$TAGS_DIR/last-good-tag"
+[[ -n "$PREVIOUS_TAG" ]] && echo "$PREVIOUS_TAG" > "$TAGS_DIR/last-good-tag"
 echo "$SHA" > "$TAGS_DIR/current-tag"
 
-# Шаг 7: cleanup старых образов (keep 5)
+# Шаг 7: cleanup
 echo "--- [7/7] cleanup images ---"
 for IMAGE in poputchiki-api poputchiki-notifier poputchiki-cron poputchiki-webhook poputchiki-web; do
   docker images "ghcr.io/thesmithmode/${IMAGE}" --format "{{.ID}} {{.Tag}}" \
@@ -94,6 +102,9 @@ for IMAGE in poputchiki-api poputchiki-notifier poputchiki-cron poputchiki-webho
     | awk '{print $1}' \
     | xargs --no-run-if-empty docker rmi -f 2>/dev/null || true
 done
+# Удалить dangling слои и остановленные контейнеры
+docker image prune -f 2>/dev/null || true
+docker container prune -f 2>/dev/null || true
 
 echo "=== deploy $SHA SUCCESS ==="
-bash scripts/notify-admin.sh "deploy ${SHA} success" || true
+bash "$STATE_DIR/scripts/notify-admin.sh" "deploy ${SHA:0:8} success" || true

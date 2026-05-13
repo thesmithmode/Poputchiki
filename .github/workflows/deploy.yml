@@ -120,7 +120,9 @@ jobs:
                       /opt/poputchiki/logs \
                       /opt/poputchiki/backups \
                       /opt/poputchiki/letsencrypt && \
-             chmod 700 /opt/poputchiki/letsencrypt"
+             chmod 700 /opt/poputchiki/letsencrypt && \
+             touch /opt/poputchiki/letsencrypt/acme.json && \
+             chmod 600 /opt/poputchiki/letsencrypt/acme.json"
 
       - name: Generate .env on server
         run: |

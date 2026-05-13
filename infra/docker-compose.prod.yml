@@ -6,7 +6,7 @@ networks:
 
 services:
   traefik:
-    image: traefik:v3.3
+    image: traefik:latest
     restart: unless-stopped
     command:
       - "--providers.docker=true"
@@ -25,7 +25,6 @@ services:
       - "--api.dashboard=false"
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
-      DOCKER_API_VERSION: "1.54"
     ports:
       - "80:80"
       - "443:443"

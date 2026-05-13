@@ -25,6 +25,7 @@ services:
       - "--api.dashboard=false"
     environment:
       CF_DNS_API_TOKEN: ${CF_DNS_API_TOKEN}
+      DOCKER_API_VERSION: "1.54"
     ports:
       - "80:80"
       - "443:443"

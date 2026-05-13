@@ -11,6 +11,7 @@ WORKDIR /app
 COPY --chown=bun:bun package.json bun.lockb* ./
 COPY --chown=bun:bun packages/shared/package.json packages/shared/
 COPY --chown=bun:bun apps/cron/package.json apps/cron/
+COPY --chown=bun:bun web/package.json web/
 RUN bun install --frozen-lockfile
 
 COPY --chown=bun:bun packages/shared packages/shared

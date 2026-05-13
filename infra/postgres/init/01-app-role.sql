@@ -33,7 +33,7 @@ GRANT poputchiki_service TO poputchiki_app;
 -- -----------------------------------------------------------------------
 -- Доступ к БД и схемам
 -- -----------------------------------------------------------------------
-GRANT CONNECT ON DATABASE poputchiki TO poputchiki_app;
+DO $$ BEGIN EXECUTE format('GRANT CONNECT ON DATABASE %I TO poputchiki_app', current_database()); END $$;
 GRANT USAGE ON SCHEMA public TO poputchiki_app;
 GRANT USAGE ON SCHEMA public TO poputchiki_service;
 

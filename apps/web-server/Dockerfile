@@ -2,7 +2,7 @@ FROM oven/bun:1 AS builder
 WORKDIR /app
 
 # Copy workspace manifests first for layer caching
-COPY package.json bun.lockb* ./
+COPY package.json bun.lockb* tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
 COPY web/package.json web/
 RUN bun install --frozen-lockfile

@@ -160,7 +160,7 @@ jobs:
       - name: Setup daily backup cron (04:00 UTC)
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            CRON_JOB='0 4 * * * cd /opt/poputchiki && bash scripts/backup-db.sh >> /opt/poputchiki/logs/backup.log 2>&1'
+            CRON_JOB='0 1 * * * cd /opt/poputchiki && bash scripts/backup-db.sh >> /opt/poputchiki/logs/backup.log 2>&1'
             ( crontab -l 2>/dev/null | grep -v 'backup-db.sh'; echo \"\$CRON_JOB\" ) | crontab -
           "
 

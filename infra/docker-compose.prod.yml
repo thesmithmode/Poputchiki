@@ -80,7 +80,7 @@ services:
   migrations:
     image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
     restart: "no"
-    command: ["bun", "run", "db:migrate", "up"]
+    command: ["bun", "run", "db:migrate"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       DATABASE_MIGRATOR_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}

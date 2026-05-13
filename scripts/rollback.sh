@@ -4,7 +4,7 @@
 set -euo pipefail
 
 STATE_DIR="/opt/poputchiki"
-COMPOSE="docker compose -f infra/docker-compose.prod.yml --env-file /opt/poputchiki/.env"
+COMPOSE="docker compose -f $STATE_DIR/infra/docker-compose.prod.yml --env-file $STATE_DIR/.env"
 
 if [[ $# -ge 1 ]]; then
   TARGET_TAG="$1"

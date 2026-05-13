@@ -9,6 +9,7 @@ RUN bun install --frozen-lockfile
 
 # Copy sources
 COPY packages/shared packages/shared
+COPY docs docs
 COPY web web
 
 ARG VITE_API_BASE

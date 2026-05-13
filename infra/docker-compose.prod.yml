@@ -233,7 +233,7 @@ services:
       DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BOT_TOKEN: ${BOT_TOKEN}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
-      PORT: 3001
+      WEBHOOK_PORT: 3001
     depends_on:
       postgres:
         condition: service_healthy

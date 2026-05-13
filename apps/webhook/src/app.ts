@@ -32,6 +32,8 @@ export function createApp(
     return c.json({ ok: true });
   }
 
+  app.get("/health", (c) => c.json({ ok: true }));
+
   // Canonical path expected by Telegram (POST /webhook/tg)
   app.post("/webhook/tg", webhookSecret(webhookSecretToken), handleUpdate);
 

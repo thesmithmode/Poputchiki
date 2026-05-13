@@ -157,6 +157,13 @@ jobs:
         run: |
           scp -r infra scripts ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/poputchiki/
 
+      - name: Setup daily backup cron (04:00 UTC)
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            CRON_JOB='0 4 * * * cd /opt/poputchiki && bash scripts/backup-db.sh >> /opt/poputchiki/logs/backup.log 2>&1'
+            ( crontab -l 2>/dev/null | grep -v 'backup-db.sh'; echo \"\$CRON_JOB\" ) | crontab -
+          "
+
       - name: Deploy
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \

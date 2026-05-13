@@ -30,24 +30,8 @@ echo "=== deploy $SHA ==="
 echo "--- [0/7] ensure traefik ---"
 $COMPOSE up -d traefik
 
-# Шаг 1: pre-deploy backup — пропустить если последний бэкап сделан менее часа назад
-# (защита от лишних бэкапов при частых деплоях)
-echo "--- [1/7] pre-deploy backup ---"
-BACKUP_DIR="${BACKUP_DIR:-$STATE_DIR/backups}"
-export BACKUP_DIR
-BACKUP_KEY="${BACKUP_KEY:?BACKUP_KEY required}"
-export BACKUP_KEY
-mkdir -p "$BACKUP_DIR"
-LAST_BACKUP=$(find "$BACKUP_DIR" -name "poputchiki-*.dump.zst.gpg" -mmin -60 2>/dev/null | head -1 || true)
-if [[ -z "$LAST_BACKUP" ]]; then
-  bash "$STATE_DIR/scripts/backup-db.sh"
-  LATEST=$(ls -t "$BACKUP_DIR"/poputchiki-*.dump.zst.gpg 2>/dev/null | head -1 || true)
-  if [[ -n "$LATEST" ]]; then
-    cp "$LATEST" "${LATEST%.dump.zst.gpg}-pre-${SHA:0:8}.dump.zst.gpg" 2>/dev/null || true
-  fi
-else
-  echo "skip: backup exists from last 60min ($LAST_BACKUP)"
-fi
+# Шаг 1: бэкап делает cron в 4:00 ежедневно — здесь пропускаем
+echo "--- [1/7] backup skipped (cron handles daily at 04:00) ---"
 
 # Шаг 2: pull images
 echo "--- [2/7] docker pull ---"
@@ -102,9 +86,8 @@ for IMAGE in poputchiki-api poputchiki-notifier poputchiki-cron poputchiki-webho
     | awk '{print $1}' \
     | xargs --no-run-if-empty docker rmi -f 2>/dev/null || true
 done
-# Удалить dangling слои и остановленные контейнеры
-docker image prune -f 2>/dev/null || true
-docker container prune -f 2>/dev/null || true
+# Удалить только dangling образы без тега (безопасно — не трогает чужие контейнеры)
+docker image prune -f --filter "dangling=true" 2>/dev/null || true
 
 echo "=== deploy $SHA SUCCESS ==="
 bash "$STATE_DIR/scripts/notify-admin.sh" "deploy ${SHA:0:8} success" || true

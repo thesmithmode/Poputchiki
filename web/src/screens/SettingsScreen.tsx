@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { apiFetch } from "../lib/api";
+import { clearTokens, getTokens } from "../lib/tokenStore";
 
 const APP_VERSION = "0.1.0";
 
@@ -16,22 +17,36 @@ export function SettingsScreen() {
 
   async function handleLogout() {
     setLoggingOut(true);
+    const tokens = getTokens();
     try {
-      await apiFetch("/auth/logout", { method: "POST" });
+      await apiFetch("/auth/logout", {
+        method: "POST",
+        body: tokens
+          ? JSON.stringify({ access_token: tokens.access, refresh_token: tokens.refresh })
+          : "{}",
+      });
     } catch {
-      // logout always succeeds client-side — clear cookie regardless
+      // logout always succeeds client-side
     }
+    clearTokens();
     window.location.reload();
   }
 
   async function handleDeleteAccount() {
     setDeleteState("deleting");
+    const tokens = getTokens();
     try {
       await apiFetch("/users/me", { method: "DELETE" });
-      await apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
+      await apiFetch("/auth/logout", {
+        method: "POST",
+        body: tokens
+          ? JSON.stringify({ access_token: tokens.access, refresh_token: tokens.refresh })
+          : "{}",
+      }).catch(() => {});
     } catch {
       // proceed regardless
     }
+    clearTokens();
     window.location.reload();
   }
 

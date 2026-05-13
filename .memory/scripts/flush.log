@@ -1043,3 +1043,26 @@ Error output: Check stderr output for details
 2026-05-13 16:29:06 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
 Error output: Check stderr output for details
 2026-05-13 16:29:06 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-13 16:48:17 INFO [pre-compact] PreCompact fired: session=fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-13 16:48:17 INFO [pre-compact] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 14984 chars)
+2026-05-13 16:48:18 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-fdeabb40-b459-41bc-a957-5b3361886e53-20260513-164817.md
+2026-05-13 16:48:18 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 14983 chars
+2026-05-13 16:48:19 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-13 16:48:42 INFO Result: saved to daily log (1352 chars)
+2026-05-13 16:48:42 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-13 19:14:58 INFO [pre-compact] PreCompact fired: session=fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-13 19:14:58 INFO [pre-compact] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 3752 chars)
+2026-05-13 19:14:59 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-fdeabb40-b459-41bc-a957-5b3361886e53-20260513-191458.md
+2026-05-13 19:14:59 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 3751 chars
+2026-05-13 19:15:01 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-13 19:16:02 INFO Result: saved to daily log (7212 chars)
+2026-05-13 19:16:02 INFO End-of-day compilation triggered (after 18:00)
+2026-05-13 19:16:02 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-13 19:38:39 INFO [pre-compact] PreCompact fired: session=fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-13 19:38:39 INFO [pre-compact] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 4812 chars)
+2026-05-13 19:38:40 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-fdeabb40-b459-41bc-a957-5b3361886e53-20260513-193839.md
+2026-05-13 19:38:40 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 4811 chars
+2026-05-13 19:38:41 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-13 19:38:53 INFO Result: FLUSH_OK
+2026-05-13 19:38:53 INFO End-of-day compilation triggered (after 18:00)
+2026-05-13 19:38:53 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53

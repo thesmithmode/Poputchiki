@@ -6,7 +6,7 @@
 | [[concepts/self-hosted-postgres]] | PostgreSQL 16 in Docker; no Supabase/Neon/managed services; pgcrypto PII encryption | daily/2026-05-01.md | 2026-05-01 |
 | [[concepts/rls-guc-identity]] | RLS identity via `app.current_user_id` GUC set by API per-transaction, replacing Supabase `auth.uid()` | daily/2026-05-01.md | 2026-05-01 |
 | [[concepts/tasks-json-management]] | Autonomous task queue (tasks.json, 125 tasks, mvp + prod-deploy phases) driving AI-agent development | daily/2026-05-01.md | 2026-05-01 |
-| [[concepts/deployment-pipeline]] | GHA → GHCR → SSH → docker compose deploy with pre-deploy backup, migration, smoke test, and rollback | daily/2026-05-01.md | 2026-05-01 |
+| [[concepts/deployment-pipeline]] | GHA → GHCR → SSH → docker compose deploy with pre-deploy backup, migration, smoke test, and rollback | daily/2026-05-01.md, daily/2026-05-08.md, daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/cyrillic-git-commits]] | Bash corrupts Cyrillic in git commit messages; use PowerShell heredoc instead | daily/2026-05-01.md | 2026-05-01 |
 | [[connections/rls-and-self-hosted-postgres]] | Causal link: self-hosted Postgres migration forced the GUC-based RLS identity pattern | daily/2026-05-01.md | 2026-05-01 |
 | [[concepts/memory-flush-system]] | Background flush.py extracts session knowledge into daily logs; FLUSH_ERROR = exit code 1 failure mode | daily/2026-05-02.md | 2026-05-03 |
@@ -31,9 +31,20 @@
 | [[concepts/hono-onerror-required]] | Hono 4: `app.onError` required to catch handler errors; catch-middleware does NOT intercept thrown errors | daily/2026-05-06.md | 2026-05-06 |
 | [[concepts/task-completion-integrity]] | Tasks marked done by writing green tests for existing code — not real TDD; red→green cycle required | daily/2026-05-06.md | 2026-05-06 |
 | [[concepts/vi-fn-undefined-sql-mock]] | `vi.fn()` returns undefined; SQL destructuring `const [row] = await sql()` throws TypeError — use `mockResolvedValue([])` | daily/2026-05-06.md | 2026-05-06 |
-| [[concepts/docker-healthcheck-curl]] | `oven/bun:1-alpine` and `caddy:2-alpine` lack `curl` → healthchecks fail → auto-rollback loop on every deploy | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/docker-healthcheck-curl]] | `oven/bun:1-alpine` and `caddy:2-alpine` lack `curl`/`wget` → healthchecks fail → auto-rollback loop on every deploy | daily/2026-05-08.md, daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/superuser-database-url-rls-bypass]] | POSTGRES_USER in DATABASE_URL → superuser bypasses RLS entirely; app role from init scripts never used | daily/2026-05-08.md | 2026-05-08 |
 | [[concepts/sse-pool-connection-ceiling]] | Each SSE connection = 1 pool connection (max=20) → ~150 concurrent ceiling, not 50k; requires PgBouncer+Redis fix | daily/2026-05-08.md | 2026-05-08 |
 | [[concepts/ci-env-vs-docker-init]] | Roles/extensions in Docker init don't exist in CI PostgreSQL; need explicit setup step before migrations | daily/2026-05-08.md | 2026-05-08 |
 | [[concepts/revoke-select-before-rls]] | `REVOKE SELECT` fires before RLS evaluation; test expecting empty result gets `permission denied` instead | daily/2026-05-08.md | 2026-05-08 |
 | [[concepts/csrf-startswith-prefix-attack]] | CSRF origin `startsWith` → `app.domain.attacker.com` bypass; use exact equality or allowlist `.includes()` | daily/2026-05-08.md | 2026-05-08 |
+| [[concepts/bun-lockfile-frozen-ci]] | `bun.lock` must be committed when package.json changes; `--frozen-lockfile` in CI fails on stale lockfile | daily/2026-05-08.md | 2026-05-13 |
+| [[concepts/ci-workflow-branch-triggers]] | CI triggers only on `dev`/`main`; feature branches get no CI until squash-merged to dev | daily/2026-05-08.md | 2026-05-13 |
+| [[concepts/x-frame-options-telegram-embedding]] | `X-Frame-Options DENY` blocks Telegram WebApp iframe embedding — breaks Mini App entirely | daily/2026-05-08.md | 2026-05-13 |
+| [[concepts/middleware-bodylimit-before-ratelimit]] | `bodyLimit` must precede `rateLimit` — wrong order allows DoS via large bodies before rate check fires | daily/2026-05-08.md | 2026-05-13 |
+| [[concepts/postgres-custom-config-nullifies-defaults]] | Custom `config_file=` overrides ALL postgres image defaults; must explicitly set `listen_addresses` and `hba_file` | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/pg-isready-tcp-vs-unix-socket]] | `pg_isready` without `-h` checks Unix socket; Docker containers connect via TCP → false-healthy healthcheck | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/postgres-volume-init-idempotency]] | `POSTGRES_DB` + init scripts run ONLY on empty volume; hardcoded DB names in SQL = antipattern | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/docker-compose-run-skips-healthcheck]] | `docker compose run` ignores `depends_on: service_healthy`; use `up -d --wait` before migrations | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/reactive-deploy-fix-loop]] | 15 failed deploys from reactive fix→push→fail loop; pre-deploy static audit prevents cascade | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/traefik-docker-api-compat]] | Traefik pinned version bundles old Docker client API → incompatible with newer Docker daemon → no service discovery, no TLS | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/caddy-alpine-missing-modules]] | `caddy:2-alpine` lacks Brotli encoder (config crash) and wget (healthcheck failure); fix: remove `br`, `apk add wget` | daily/2026-05-13.md | 2026-05-13 |

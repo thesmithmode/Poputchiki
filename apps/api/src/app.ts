@@ -14,7 +14,6 @@ import { bannedUser } from "./middleware/banned-user";
 import { captureSocketIp } from "./middleware/capture-socket-ip";
 import { clientErrorsRateLimit } from "./middleware/client-errors-rate-limit";
 import { corsMiddleware } from "./middleware/cors";
-import { csrf } from "./middleware/csrf";
 import { setupErrorCapture } from "./middleware/error-capture";
 import { idempotency } from "./middleware/idempotency";
 import { identityGuard } from "./middleware/identity-guard";
@@ -73,15 +72,12 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
       // A2: глобальный bodyLimit 64KB для всех /api/* и /auth/*
       app.use("/api/*", bodyLimit({ maxSize: 65536 }));
       app.use("/auth/*", bodyLimit({ maxSize: 65536 }));
-      // A3: поддомен app. — https://app.DOMAIN; fail-closed в production
-      const allowedOrigin = process.env.DOMAIN ? `https://app.${process.env.DOMAIN}` : undefined;
-      if (!allowedOrigin && process.env.NODE_ENV === "production") {
-        throw new Error("DOMAIN env var required in production for CSRF origin check");
-      }
+      // CSRF не нужен на /api/*: identityGuard требует Authorization: Bearer,
+      // который нельзя отправить через CSRF-атаку (формы/iframe не могут ставить кастомные заголовки).
+      // Дополнительно: csrf_token cookie ставится на api. домен, JS на app. не может его читать.
       app.use("/api/*", identityGuard(jwtSecret, sql));
       app.use("/api/*", bannedUser(sql));
       app.use("/api/*", rateLimit(sql));
-      app.use("/api/*", csrf(allowedOrigin));
       app.use("/api/*", idempotency(sql));
       app.use("/api/*", auditLog(sql));
       app.route("/api/rides", createRidesRouter(sql));

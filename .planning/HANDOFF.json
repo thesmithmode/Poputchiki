@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-14T15:37:17.670Z",
+  "timestamp": "2026-05-14T15:53:49.665Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,14 +18,6 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-14.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/knowledge/concepts/memory-flush-system.md"
-    },
-    {
-      "status": "M",
       "path": ".memory/knowledge/index.md"
     },
     {
@@ -38,14 +30,6 @@
     },
     {
       "status": "M",
-      "path": ".memory/scripts/flush.log"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/last-flush.json"
-    },
-    {
-      "status": "M",
       "path": ".memory/scripts/state.json"
     },
     {
@@ -53,50 +37,42 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/healthcheck-process-vs-application.md"
+      "status": "M",
+      "path": "apps/api/src/users/usersRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/hooks/useUser.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/ProfileScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/tests/ProfileScreen.test.tsx"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/leaflet-css-zero-height.md"
+      "path": ".memory/knowledge/concepts/css-filter-dark-map-theme.md"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/node-pg-migrate-dotenv-docker.md"
+      "path": ".memory/knowledge/connections/telegram-webapp-invisible-constraints.md"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/redesign-test-maintenance-cascade.md"
+      "path": "db/migrations/023_split_avg_stars.down.sql"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/telegram-desktop-miniapp-url-cache.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/telegram-hashrouter-tgwebappdata.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/test-assertion-contract-drift.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/traefik-acme-http01-port80.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/vite-api-base-env-var.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/webhook-port-bind-mismatch.md"
-    },
-    {
-      "status": "??",
-      "path": "\".planning/HANDOFF (1).json\""
+      "path": "db/migrations/023_split_avg_stars.sql"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n0c81984 FIX: карта, роли водитель/пассажир, экран событий, темы, дубликат кнопки\n805a26e FIX: убрать неиспользуемый импорт fireEvent в FeedScreen.test\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты\nd63ca1a CHORE: biome format MapScreen.test.tsx — убрать лишние пустые строки"
+  "context_notes": "Recent commits:\n215ec59 CHORE: обновить memory-логи — 2026-05-14 сессия (UI fixes)\n0c81984 FIX: карта, роли водитель/пассажир, экран событий, темы, дубликат кнопки\n805a26e FIX: убрать неиспользуемый импорт fireEvent в FeedScreen.test\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты"
 }

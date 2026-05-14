@@ -1,5 +1,11 @@
 # Build Log
 
+## [2026-05-14T22:30:00+03:00] compile | 2026-05-14.md (second pass — sessions 17:45, 18:44)
+- Source: daily/2026-05-14.md
+- Articles created: [[concepts/csp-tile-provider-telegram]], [[concepts/telegram-mainbutton-dom-conflict]], [[concepts/css-filter-dark-map-theme]], [[connections/telegram-webapp-invisible-constraints]]
+- Articles updated: (none)
+- Note: First pass compiled sessions 12:58 and 17:11. This pass extracts Telegram WebApp gotchas from sessions 17:45 and 18:44: cartocdn CSP block, MainButton DOM duplication, dark map CSS filter. Connection article synthesizes 5 undocumented Telegram constraints across sessions 2026-05-08 to 2026-05-14.
+
 ## [2026-05-14T18:45:00+03:00] compile | 2026-05-14.md
 - Source: daily/2026-05-14.md
 - Articles created: [[concepts/leaflet-css-zero-height]], [[concepts/test-assertion-contract-drift]], [[concepts/redesign-test-maintenance-cascade]]

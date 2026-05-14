@@ -61,3 +61,7 @@
 | [[concepts/leaflet-css-zero-height]] | Leaflet requires explicit CSS import; without it map collapses to 0px — no errors, just invisible | daily/2026-05-14.md | 2026-05-14 |
 | [[concepts/test-assertion-contract-drift]] | Tests with exact-arg assertions break when implementation adds fields; use `objectContaining` or sync tests | daily/2026-05-14.md | 2026-05-14 |
 | [[concepts/redesign-test-maintenance-cascade]] | UI redesign triggers cascade: aria-label mismatches, deleted feature tests, Biome empty-line lint failures | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/csp-tile-provider-telegram]] | CSP in Telegram WebApp blocks cartocdn.com tiles; switch to tile.openstreetmap.org | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/telegram-mainbutton-dom-conflict]] | DOM FAB duplicates Telegram MainButton; use `hasMainButton` state guard to show only one | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/css-filter-dark-map-theme]] | CSS `filter: invert(1) hue-rotate(180deg)` on Leaflet tiles for dark theme — no extra tile provider needed | daily/2026-05-14.md | 2026-05-14 |
+| [[connections/telegram-webapp-invisible-constraints]] | 5 undocumented Telegram WebApp constraints: CSP, URL cache, hash injection, MainButton, X-Frame-Options | daily/2026-05-08.md, daily/2026-05-13.md, daily/2026-05-14.md | 2026-05-14 |

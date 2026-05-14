@@ -157,6 +157,4 @@ describe("MapScreen", () => {
       expect(mockedApiFetch).toHaveBeenCalledWith(expect.stringContaining("/rides?fromLat="));
     });
   });
-
-
 });

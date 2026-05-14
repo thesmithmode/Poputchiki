@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FeedScreen } from "../src/screens/FeedScreen";
@@ -125,5 +125,4 @@ describe("FeedScreen", () => {
       expect(screen.getByText(/ошибка/i) || screen.getByText(/что-то пошло не так/i)).toBeTruthy();
     });
   });
-
 });

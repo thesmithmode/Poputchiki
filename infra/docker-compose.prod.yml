@@ -144,6 +144,8 @@ services:
     restart: unless-stopped
     networks:
       - traefik-public
+    environment:
+      DOMAIN: ${DOMAIN}
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost/health || exit 1"]
       interval: 15s

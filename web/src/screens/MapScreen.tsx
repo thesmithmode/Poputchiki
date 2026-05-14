@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { getTelegramWebApp } from "../lib/telegram";
 import type { Ride } from "../types/ride";
 
-const DEFAULT_CENTER: [number, number] = [55.79, 49.18];
-const DEFAULT_ZOOM = 12;
+const DEFAULT_CENTER: [number, number] = [55.76, 49.1];
+const DEFAULT_ZOOM = 11;
 const CLUSTER_THRESHOLD = 50;
 
 function useDarkMode() {
@@ -28,9 +29,11 @@ export function MapScreen() {
   const markersRef = useRef<unknown[]>([]);
   const polylinesRef = useRef<unknown[]>([]);
   const clusterGroupRef = useRef<unknown>(null);
+  const locateMarkerRef = useRef<unknown>(null);
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
   const [loading, setLoading] = useState(true);
+  const [locating, setLocating] = useState(false);
 
   // Swap tile layer when theme changes
   useEffect(() => {
@@ -82,6 +85,8 @@ export function MapScreen() {
         zoomControl: false,
         preferCanvas: true,
       });
+
+      getTelegramWebApp()?.disableVerticalSwipes?.();
 
       const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
@@ -137,6 +142,38 @@ export function MapScreen() {
       }
     };
   }, []);
+
+  function handleLocate() {
+    if (!mapRef.current || locating) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        const lMap = mapRef.current as {
+          flyTo: (c: [number, number], z: number) => void;
+          addLayer: (l: unknown) => void;
+          removeLayer: (l: unknown) => void;
+        };
+        import("leaflet").then((L) => {
+          if (locateMarkerRef.current) {
+            lMap.removeLayer(locateMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
+          }
+          const circle = L.circleMarker([lat, lng], {
+            radius: 8,
+            fillColor: "#4DAB6E",
+            fillOpacity: 1,
+            color: "#fff",
+            weight: 2.5,
+          }).addTo(lMap as ReturnType<typeof L.map>);
+          locateMarkerRef.current = circle;
+          lMap.flyTo([lat, lng], 15);
+          setLocating(false);
+        });
+      },
+      () => setLocating(false),
+      { timeout: 10000, enableHighAccuracy: true },
+    );
+  }
 
   function renderMarkers(map: unknown, L: typeof import("leaflet"), rideList: Ride[]) {
     const lMap = map as ReturnType<typeof L.map>;
@@ -249,7 +286,7 @@ export function MapScreen() {
         </div>
       )}
 
-      {/* Zoom controls */}
+      {/* Map controls: locate + zoom */}
       <div
         style={{
           position: "absolute",
@@ -261,6 +298,15 @@ export function MapScreen() {
           gap: 6,
         }}
       >
+        <button
+          type="button"
+          data-testid="locate-me"
+          aria-label="Моё местоположение"
+          onClick={handleLocate}
+          style={{ ...zoomBtnBase, ...glassStyle, fontSize: 16 }}
+        >
+          {locating ? "…" : "◎"}
+        </button>
         <button
           type="button"
           data-testid="zoom-in"

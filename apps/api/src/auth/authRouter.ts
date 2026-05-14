@@ -46,12 +46,12 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     try {
       authUser = await sql.begin(async (tx) => {
         // Replay protection: insert once; conflict → replay attack
-        const [nonce] = await tx`
+        // Note: poputchiki_app has no SELECT on nonces (RLS), so no RETURNING
+        const nonceResult = await tx`
           INSERT INTO nonces (hash) VALUES (${hash})
           ON CONFLICT DO NOTHING
-          RETURNING hash
         `;
-        if (!nonce) return null;
+        if (nonceResult.count === 0) return null;
 
         // Bootstrap: find existing user UUID before setting RLS role
         const [existing] = await tx`

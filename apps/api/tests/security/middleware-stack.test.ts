@@ -65,8 +65,11 @@ describe("identity-guard: все /api/* mutating routes требуют JWT", () 
   }
 });
 
-describe("CSRF: все /api/* mutating routes блокируют запросы без CSRF-token", () => {
-  it("POST /api/rides без CSRF token (с валидным JWT) → 403", async () => {
+describe("security: /api/* mutating routes блокируют запросы без tg_uid cookie", () => {
+  // CSRF middleware убран: Bearer-токен в Authorization уже гарантирует CSRF-защиту
+  // (формы/iframe не могут ставить кастомные заголовки). identityGuard требует оба:
+  // Authorization: Bearer + tg_uid cookie.
+  it("POST /api/rides с валидным JWT но без tg_uid cookie → 401", async () => {
     const now = Math.floor(Date.now() / 1000);
     const token = await sign(
       {
@@ -85,8 +88,7 @@ describe("CSRF: все /api/* mutating routes блокируют запросы 
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        // НЕТ X-CSRF-Token
-        // Origin указан для проверки CSRF
+        // НЕТ tg_uid cookie → identityGuard вернёт 401
         Origin: ALLOWED_ORIGIN,
       },
       body: JSON.stringify({
@@ -100,9 +102,7 @@ describe("CSRF: все /api/* mutating routes блокируют запросы 
         seats_total: 2,
       }),
     });
-    // CSRF middleware должен отклонить (403) или identity-guard (401)
-    // Главное — не 200/201/422 без проверки безопасности
-    expect([401, 403, 422]).toContain(res.status);
+    expect(res.status).toBe(401);
   });
 });
 

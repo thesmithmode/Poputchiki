@@ -95,7 +95,8 @@ describe("ProfileScreen", () => {
       expect(stats).toBeInTheDocument();
       expect(stats).toHaveTextContent("8");
       expect(stats).toHaveTextContent("4.7");
-      expect(stats).toHaveTextContent("15");
+      // По умолчанию режим "пассажир" → показывает rides_as_passenger=5
+      expect(stats).toHaveTextContent("5");
     });
   });
 

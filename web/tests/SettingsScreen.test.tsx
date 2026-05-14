@@ -45,6 +45,9 @@ vi.mock("../src/hooks/useUser", () => ({
 vi.mock("../src/hooks/useThemePreference", () => ({
   useThemePreference: () => ({ pref: "system", setPref: vi.fn() }),
 }));
+vi.mock("../src/hooks/useRolePreference", () => ({
+  useRolePreference: () => ({ role: "passenger", setRole: vi.fn() }),
+}));
 
 import { SettingsScreen } from "../src/screens/SettingsScreen";
 
@@ -77,8 +80,7 @@ describe("SettingsScreen", () => {
     renderSettings();
     expect(screen.getByText("Настройки")).toBeInTheDocument();
     expect(screen.getByText(/Уведомления/)).toBeInTheDocument();
-    expect(screen.getByText(/Политика конфиденциальности/)).toBeInTheDocument();
-    expect(screen.getByText(/Условия использования/)).toBeInTheDocument();
+    expect(screen.getByText(/ℹ️ О приложении/)).toBeInTheDocument();
     expect(screen.getByTestId("logout-btn")).toBeInTheDocument();
     expect(screen.getByTestId("delete-account-btn")).toBeInTheDocument();
     expect(screen.getByTestId("app-version")).toBeInTheDocument();
@@ -155,15 +157,9 @@ describe("SettingsScreen", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/settings/notifications");
   });
 
-  it("навигация к privacy", () => {
+  it("навигация к О приложении", () => {
     renderSettings();
-    fireEvent.click(screen.getByText(/Политика конфиденциальности/));
-    expect(mockNavigate).toHaveBeenCalledWith("/privacy");
-  });
-
-  it("навигация к terms", () => {
-    renderSettings();
-    fireEvent.click(screen.getByText(/Условия использования/));
-    expect(mockNavigate).toHaveBeenCalledWith("/terms");
+    fireEvent.click(screen.getByText(/ℹ️ О приложении/));
+    expect(mockNavigate).toHaveBeenCalledWith("/about");
   });
 });

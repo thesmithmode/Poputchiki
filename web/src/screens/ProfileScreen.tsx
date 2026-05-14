@@ -9,6 +9,8 @@ interface Props {
   id: string;
 }
 
+type RoleView = "driver" | "passenger";
+
 function monthsInService(createdAt: string): number {
   const ms = Date.now() - new Date(createdAt).getTime();
   return Math.floor(ms / (30 * 24 * 60 * 60 * 1000));
@@ -18,6 +20,7 @@ export function ProfileScreen({ id }: Props) {
   const navigate = useNavigate();
   const me = useMe();
   const { data: user, isLoading, isError, error } = useUser(id);
+  const [roleView, setRoleView] = useState<RoleView>("passenger");
   const [tab, setTab] = useState<"schedule" | "reviews" | "rides">("schedule");
 
   const { isFavorite, toggle: toggleFavorite } = useFavorites();
@@ -33,9 +36,10 @@ export function ProfileScreen({ id }: Props) {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          background: "var(--brand-bg)",
         }}
       >
-        <p style={{ color: "#666", fontSize: 14 }}>Загрузка...</p>
+        <p style={{ color: "var(--brand-sub)", fontSize: 14 }}>Загрузка...</p>
       </div>
     );
   }
@@ -50,9 +54,10 @@ export function ProfileScreen({ id }: Props) {
           alignItems: "center",
           justifyContent: "center",
           minHeight: "100vh",
+          background: "var(--brand-bg)",
         }}
       >
-        <p style={{ color: "#e74c3c", fontSize: 14 }}>
+        <p style={{ color: "var(--brand-danger)", fontSize: 14 }}>
           {is404 ? "Пользователь не найден" : "Ошибка загрузки"}
         </p>
       </div>
@@ -71,20 +76,24 @@ export function ProfileScreen({ id }: Props) {
         )
       : 0;
 
+  const ridesInRole =
+    roleView === "driver" ? user.stats.rides_as_driver_completed : user.stats.rides_as_passenger;
+
   return (
     <div
       style={{
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
+        color: "var(--brand-text)",
       }}
     >
       {/* Header */}
       <div
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
@@ -103,13 +112,21 @@ export function ProfileScreen({ id }: Props) {
             fontSize: 20,
             cursor: "pointer",
             padding: 4,
-            color: "#333",
+            color: "var(--brand-text)",
           }}
           aria-label="Назад"
         >
           ←
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0, flex: 1 }}>
+        <h1
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            color: "var(--brand-text)",
+            margin: 0,
+            flex: 1,
+          }}
+        >
           Профиль
         </h1>
         {showFavBtn && (
@@ -119,7 +136,7 @@ export function ProfileScreen({ id }: Props) {
             onClick={() => toggleFavorite(id)}
             style={{
               background: "none",
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--brand-line)",
               borderRadius: 8,
               padding: "6px 12px",
               fontSize: 18,
@@ -137,12 +154,12 @@ export function ProfileScreen({ id }: Props) {
             onClick={() => navigate("/settings/profile")}
             style={{
               background: "none",
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--brand-line)",
               borderRadius: 8,
               padding: "6px 12px",
               fontSize: 13,
               fontWeight: 600,
-              color: "#0ea5e9",
+              color: "var(--brand-primary)",
               cursor: "pointer",
             }}
           >
@@ -152,22 +169,21 @@ export function ProfileScreen({ id }: Props) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
-        {/* Hero card */}
+        {/* Hero */}
         <div
           style={{
-            background: "#fff",
+            background: "var(--brand-surface)",
             padding: "24px 16px 20px",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--brand-line)",
             textAlign: "center",
           }}
         >
-          {/* Avatar */}
           <div
             style={{
               width: 80,
               height: 80,
               borderRadius: "50%",
-              background: user.avatar_url ? "transparent" : "#e5e7eb",
+              background: user.avatar_url ? "transparent" : "var(--brand-surface2)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -187,16 +203,57 @@ export function ProfileScreen({ id }: Props) {
             )}
           </div>
 
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#15191f", marginBottom: 4 }}>
+          <div
+            style={{ fontSize: 22, fontWeight: 700, color: "var(--brand-text)", marginBottom: 4 }}
+          >
             {user.display_name}
           </div>
           {user.tg_username && (
-            <div style={{ fontSize: 13, color: "#7c8694", marginBottom: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--brand-sub)", marginBottom: 12 }}>
               @{user.tg_username}
             </div>
           )}
 
-          {/* 3 big stats */}
+          {/* Role view toggle */}
+          <div
+            data-testid="role-view-toggle"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 4,
+              padding: 4,
+              background: "var(--brand-surface2)",
+              borderRadius: 12,
+              marginTop: 12,
+            }}
+          >
+            {(["passenger", "driver"] as const).map((r) => {
+              const active = roleView === r;
+              return (
+                <button
+                  key={r}
+                  type="button"
+                  data-testid={`role-view-${r}`}
+                  onClick={() => setRoleView(r)}
+                  style={{
+                    padding: "8px 4px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: active ? "var(--brand-primary)" : "transparent",
+                    color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  {r === "passenger" ? "Как пассажир" : "Как водитель"}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Stats for selected role */}
           <div
             data-testid="big-stats"
             style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, marginTop: 16 }}
@@ -206,10 +263,10 @@ export function ProfileScreen({ id }: Props) {
               value={user.stats.avg_stars !== null ? user.stats.avg_stars.toFixed(1) : "—"}
               label="рейтинг"
             />
-            <BigStat
-              value={user.stats.rides_as_driver_completed + user.stats.rides_as_passenger}
-              label="поездки"
-            />
+            <BigStat value={ridesInRole} label="поездки" />
+          </div>
+          <div style={{ fontSize: 11, color: "var(--brand-sub)", marginTop: 8 }}>
+            {roleView === "driver" ? "Статистика как водителя" : "Статистика как пассажира"}
           </div>
         </div>
 
@@ -219,7 +276,7 @@ export function ProfileScreen({ id }: Props) {
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: 1,
-            background: "#e5e7eb",
+            background: "var(--brand-line)",
             margin: "12px 16px",
             borderRadius: 16,
             overflow: "hidden",
@@ -231,7 +288,6 @@ export function ProfileScreen({ id }: Props) {
           <MiniStat label="как пассажир" value={String(user.stats.rides_as_passenger)} />
         </div>
 
-        {/* Own profile settings */}
         {isOwnProfile && (
           <div style={{ margin: "0 16px 12px" }}>
             <button
@@ -241,12 +297,12 @@ export function ProfileScreen({ id }: Props) {
               style={{
                 width: "100%",
                 padding: "14px 16px",
-                background: "#fff",
-                border: "1px solid #e5e7eb",
+                background: "var(--brand-surface)",
+                border: "1px solid var(--brand-line)",
                 borderRadius: 12,
                 fontSize: 14,
                 fontWeight: 500,
-                color: "#15191f",
+                color: "var(--brand-text)",
                 cursor: "pointer",
                 textAlign: "left",
                 display: "flex",
@@ -255,7 +311,7 @@ export function ProfileScreen({ id }: Props) {
               }}
             >
               <span>🔔 Настройки уведомлений</span>
-              <span style={{ color: "#7c8694" }}>→</span>
+              <span style={{ color: "var(--brand-sub)" }}>→</span>
             </button>
           </div>
         )}
@@ -265,7 +321,7 @@ export function ProfileScreen({ id }: Props) {
           style={{
             display: "flex",
             margin: "0 16px 12px",
-            background: "#f0f1f3",
+            background: "var(--brand-surface2)",
             borderRadius: 10,
             padding: 3,
           }}
@@ -283,8 +339,8 @@ export function ProfileScreen({ id }: Props) {
                 cursor: "pointer",
                 fontSize: 13,
                 fontWeight: 600,
-                background: tab === t ? "#fff" : "transparent",
-                color: tab === t ? "#15191f" : "#7c8694",
+                background: tab === t ? "var(--brand-surface)" : "transparent",
+                color: tab === t ? "var(--brand-text)" : "var(--brand-sub)",
                 transition: "all 0.15s",
               }}
             >
@@ -293,69 +349,56 @@ export function ProfileScreen({ id }: Props) {
           ))}
         </div>
 
-        {/* Tab content */}
         <div style={{ margin: "0 16px" }}>
           {tab === "schedule" && (
-            <div
-              data-testid="tab-schedule"
-              style={{
-                background: "#fff",
-                borderRadius: 16,
-                padding: 24,
-                textAlign: "center",
-                border: "1px solid #e5e7eb",
-              }}
-            >
-              <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
-              <div style={{ fontSize: 14, color: "#7c8694" }}>Нет регулярных поездок</div>
-            </div>
+            <CardEmpty testId="tab-schedule" icon="📅" text="Нет регулярных поездок" />
           )}
           {tab === "reviews" && (
             <div
               data-testid="tab-reviews"
               style={{
-                background: "#fff",
+                background: "var(--brand-surface)",
                 borderRadius: 16,
                 padding: 24,
                 textAlign: "center",
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--brand-line)",
               }}
             >
               {user.stats.reviews_count === 0 ? (
                 <>
                   <div style={{ fontSize: 32, marginBottom: 8 }}>⭐</div>
-                  <div style={{ fontSize: 14, color: "#7c8694" }}>Пока нет отзывов</div>
+                  <div style={{ fontSize: 14, color: "var(--brand-sub)" }}>Пока нет отзывов</div>
                 </>
               ) : (
                 <div>
-                  <div style={{ fontSize: 32, fontWeight: 700, color: "#15191f", marginBottom: 4 }}>
+                  <div
+                    style={{
+                      fontSize: 32,
+                      fontWeight: 700,
+                      color: "var(--brand-text)",
+                      marginBottom: 4,
+                    }}
+                  >
                     {user.stats.avg_stars?.toFixed(1) ?? "—"}
                   </div>
-                  <div style={{ fontSize: 13, color: "#7c8694" }}>
-                    {user.stats.reviews_count} отзывов
+                  <div style={{ fontSize: 13, color: "var(--brand-sub)" }}>
+                    {user.stats.reviews_count} отзывов ·{" "}
+                    {roleView === "driver" ? "как водитель" : "как пассажир"}
                   </div>
                 </div>
               )}
             </div>
           )}
           {tab === "rides" && (
-            <div
-              data-testid="tab-rides"
-              style={{
-                background: "#fff",
-                borderRadius: 16,
-                padding: 24,
-                textAlign: "center",
-                border: "1px solid #e5e7eb",
-              }}
-            >
-              <div style={{ fontSize: 32, marginBottom: 8 }}>🚗</div>
-              <div style={{ fontSize: 14, color: "#7c8694" }}>
-                {user.stats.rides_as_driver_completed + user.stats.rides_as_passenger === 0
+            <CardEmpty
+              testId="tab-rides"
+              icon="🚗"
+              text={
+                user.stats.rides_as_driver_completed + user.stats.rides_as_passenger === 0
                   ? "Нет поездок"
-                  : `${user.stats.rides_as_driver_completed + user.stats.rides_as_passenger} поездок`}
-              </div>
-            </div>
+                  : `${user.stats.rides_as_driver_completed + user.stats.rides_as_passenger} поездок`
+              }
+            />
           )}
         </div>
       </div>
@@ -365,20 +408,20 @@ export function ProfileScreen({ id }: Props) {
 
 function BigStat({ value, label }: { value: number | string; label: string }) {
   return (
-    <div style={{ padding: "12px 0", borderRight: "1px solid #e5e7eb" }}>
-      <div style={{ fontSize: 24, fontWeight: 700, color: "#15191f" }}>{value}</div>
-      <div style={{ fontSize: 11, color: "#7c8694", marginTop: 2 }}>{label}</div>
+    <div style={{ padding: "12px 0", borderRight: "1px solid var(--brand-line)" }}>
+      <div style={{ fontSize: 24, fontWeight: 700, color: "var(--brand-text)" }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--brand-sub)", marginTop: 2 }}>{label}</div>
     </div>
   );
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div style={{ background: "#fff", padding: "14px 16px" }}>
+    <div style={{ background: "var(--brand-surface)", padding: "14px 16px" }}>
       <div
         style={{
           fontSize: 11,
-          color: "#7c8694",
+          color: "var(--brand-sub)",
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: 0.4,
@@ -387,7 +430,25 @@ function MiniStat({ label, value }: { label: string; value: string }) {
       >
         {label}
       </div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: "#15191f" }}>{value}</div>
+      <div style={{ fontSize: 18, fontWeight: 700, color: "var(--brand-text)" }}>{value}</div>
+    </div>
+  );
+}
+
+function CardEmpty({ icon, text, testId }: { icon: string; text: string; testId: string }) {
+  return (
+    <div
+      data-testid={testId}
+      style={{
+        background: "var(--brand-surface)",
+        borderRadius: 16,
+        padding: 24,
+        textAlign: "center",
+        border: "1px solid var(--brand-line)",
+      }}
+    >
+      <div style={{ fontSize: 32, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 14, color: "var(--brand-sub)" }}>{text}</div>
     </div>
   );
 }

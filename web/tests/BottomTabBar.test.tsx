@@ -1,8 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BottomTabBar } from "../src/components/BottomTabBar";
+
+beforeEach(() => {
+  // Default to driver role so legacy FAB tests keep working
+  localStorage.setItem("pp_role", "driver");
+});
 
 const mockNavigate = vi.fn();
 vi.mock("react-router-dom", async (importOriginal) => {
@@ -111,10 +116,16 @@ describe("BottomTabBar", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/settings");
   });
 
-  it("нажатие на 'События' вызывает navigate /settings/notifications", () => {
+  it("нажатие на 'События' вызывает navigate /events", () => {
     renderTabBar("/");
     fireEvent.click(screen.getByLabelText("События"));
-    expect(mockNavigate).toHaveBeenCalledWith("/settings/notifications");
+    expect(mockNavigate).toHaveBeenCalledWith("/events");
+  });
+
+  it("в режиме пассажира FAB-кнопка скрыта", () => {
+    localStorage.setItem("pp_role", "passenger");
+    renderTabBar("/");
+    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
   });
 
   it("рендерится на /favorites", () => {

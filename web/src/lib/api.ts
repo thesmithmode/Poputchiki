@@ -16,12 +16,19 @@ function resolvePath(path: string): string {
   return `/api${path}`;
 }
 
+function getCsrfToken(): string | null {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const tokens = getTokens();
   const authHeader = tokens ? { Authorization: `Bearer ${tokens.access}` } : {};
+  const csrfToken = getCsrfToken();
+  const csrfHeader = csrfToken ? { "X-CSRF-Token": csrfToken } : {};
   const res = await fetch(`${API_BASE}${resolvePath(path)}`, {
     credentials: "include",
-    headers: { "Content-Type": "application/json", ...authHeader, ...init?.headers },
+    headers: { "Content-Type": "application/json", ...authHeader, ...csrfHeader, ...init?.headers },
     ...init,
   });
   const body = await res.json().catch(() => null);

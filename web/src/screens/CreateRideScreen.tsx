@@ -51,6 +51,7 @@ export function CreateRideScreen() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasMainButton, setHasMainButton] = useState(false);
   const submitRef = useRef<() => void>(() => {});
 
   function validate(): string | null {
@@ -165,11 +166,13 @@ export function CreateRideScreen() {
     if (!twa.MainButton) return;
     twa.MainButton.text = "Создать поездку";
     twa.MainButton.show();
+    setHasMainButton(true);
     const cb = () => submitRef.current();
     twa.MainButton.onClick(cb);
     return () => {
       twa.MainButton?.offClick(cb);
       twa.MainButton?.hide();
+      setHasMainButton(false);
     };
   }, []);
 
@@ -186,14 +189,15 @@ export function CreateRideScreen() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
+        color: "var(--brand-text)",
       }}
     >
       {/* Header */}
       <div
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
@@ -212,13 +216,15 @@ export function CreateRideScreen() {
             fontSize: 20,
             cursor: "pointer",
             padding: 4,
-            color: "#333",
+            color: "var(--brand-text)",
           }}
           aria-label="Назад"
         >
           ←
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0, flex: 1 }}>
+        <h1
+          style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0, flex: 1 }}
+        >
           Новая поездка
         </h1>
       </div>
@@ -436,40 +442,42 @@ export function CreateRideScreen() {
         </Section>
       </div>
 
-      {/* Bottom fallback button (non-TG environment) */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: "12px 16px",
-          background: "rgba(255,255,255,0.95)",
-          backdropFilter: "blur(20px)",
-          borderTop: "1px solid #e5e7eb",
-          zIndex: 30,
-        }}
-      >
-        <button
-          type="button"
-          data-testid="submit-btn"
-          onClick={handleSubmit}
-          disabled={submitting}
+      {/* Bottom fallback button (non-TG environment) — скрыта когда TG MainButton активна */}
+      {!hasMainButton && (
+        <div
           style={{
-            width: "100%",
-            padding: "14px",
-            background: submitting ? "#93c5fd" : "#0ea5e9",
-            border: "none",
-            borderRadius: 10,
-            fontSize: 15,
-            fontWeight: 700,
-            color: "#fff",
-            cursor: submitting ? "not-allowed" : "pointer",
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "12px 16px",
+            background: "var(--brand-surface)",
+            backdropFilter: "blur(20px)",
+            borderTop: "1px solid var(--brand-line)",
+            zIndex: 30,
           }}
         >
-          {submitting ? "Создаём..." : "Создать поездку"}
-        </button>
-      </div>
+          <button
+            type="button"
+            data-testid="submit-btn"
+            onClick={handleSubmit}
+            disabled={submitting}
+            style={{
+              width: "100%",
+              padding: "14px",
+              background: submitting ? "var(--brand-primary-soft)" : "var(--brand-primary)",
+              border: "none",
+              borderRadius: 10,
+              fontSize: 15,
+              fontWeight: 700,
+              color: "var(--brand-primary-ink)",
+              cursor: submitting ? "not-allowed" : "pointer",
+            }}
+          >
+            {submitting ? "Создаём..." : "Создать поездку"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -477,11 +485,11 @@ export function CreateRideScreen() {
 const inputStyle: React.CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  border: "1px solid #e5e7eb",
+  border: "1px solid var(--brand-line)",
   borderRadius: 8,
   fontSize: 14,
-  color: "#15191f",
-  background: "#fff",
+  color: "var(--brand-text)",
+  background: "var(--brand-surface)",
   boxSizing: "border-box",
 };
 
@@ -489,11 +497,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--brand-surface)",
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
-        border: "1px solid #e5e7eb",
+        border: "1px solid var(--brand-line)",
       }}
     >
       {title ? (
@@ -501,7 +509,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           style={{
             fontSize: 12,
             fontWeight: 700,
-            color: "#7c8694",
+            color: "var(--brand-sub)",
             textTransform: "uppercase",
             letterSpacing: 0.5,
             marginBottom: 12,
@@ -518,7 +526,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 600, color: "#7c8694", marginBottom: 6 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-sub)", marginBottom: 6 }}>
         {label}
       </div>
       {children}

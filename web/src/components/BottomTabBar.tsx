@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { useRolePreference } from "../hooks/useRolePreference";
 import { Icon } from "./Icon";
 
 interface TabItem {
@@ -9,20 +10,19 @@ interface TabItem {
   isFab?: boolean;
 }
 
-const TABS: TabItem[] = [
-  { id: "feed", label: "Лента", icon: "home", path: "/" },
-  { id: "map", label: "Карта", icon: "map", path: "/map" },
-  { id: "create", label: "", icon: "plus", path: "/rides/new", isFab: true },
-  { id: "notif", label: "События", icon: "bell", path: "/settings/notifications" },
-  { id: "me", label: "Я", icon: "user", path: "/settings" },
-];
-
-const SHOW_ON_PATHS = new Set(["/", "/map", "/favorites", "/settings", "/settings/notifications"]);
+const SHOW_ON_PATHS = new Set([
+  "/",
+  "/map",
+  "/favorites",
+  "/events",
+  "/settings",
+  "/settings/notifications",
+]);
 
 function getActiveId(pathname: string): string {
   if (pathname === "/") return "feed";
   if (pathname === "/map") return "map";
-  if (pathname === "/settings/notifications") return "notif";
+  if (pathname === "/events") return "notif";
   if (pathname.startsWith("/settings")) return "me";
   if (pathname === "/favorites") return "feed";
   return "";
@@ -31,10 +31,21 @@ function getActiveId(pathname: string): string {
 export function BottomTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { role } = useRolePreference();
 
   if (!SHOW_ON_PATHS.has(location.pathname)) return null;
 
   const activeId = getActiveId(location.pathname);
+
+  const TABS: TabItem[] = [
+    { id: "feed", label: "Лента", icon: "home", path: "/" },
+    { id: "map", label: "Карта", icon: "map", path: "/map" },
+    ...(role === "driver"
+      ? [{ id: "create", label: "", icon: "plus", path: "/rides/new", isFab: true } as TabItem]
+      : []),
+    { id: "notif", label: "События", icon: "bell", path: "/events" },
+    { id: "me", label: "Я", icon: "user", path: "/settings" },
+  ];
 
   return (
     <nav
@@ -50,7 +61,7 @@ export function BottomTabBar() {
         background: "var(--tab-bar-bg, rgba(255,255,255,0.92))",
         borderTop: "1px solid var(--tab-bar-border, rgba(15,23,42,0.06))",
         display: "grid",
-        gridTemplateColumns: "repeat(5, 1fr)",
+        gridTemplateColumns: `repeat(${TABS.length}, 1fr)`,
         alignItems: "center",
         zIndex: 40,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",

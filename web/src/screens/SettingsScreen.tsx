@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMe } from "../hooks/useMe";
+import { type RolePref, useRolePreference } from "../hooks/useRolePreference";
 import { type ThemePref, useThemePreference } from "../hooks/useThemePreference";
 import { useUser } from "../hooks/useUser";
 import { apiFetch } from "../lib/api";
@@ -21,6 +22,7 @@ export function SettingsScreen() {
   const myId = me.status === "ok" ? me.user.id : "";
   const { data: user } = useUser(myId);
   const { pref, setPref } = useThemePreference();
+  const { role, setRole } = useRolePreference();
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [confirmText, setConfirmText] = useState("");
@@ -183,6 +185,12 @@ export function SettingsScreen() {
           )}
         </div>
 
+        {/* Режим */}
+        <SectionTitle>Режим</SectionTitle>
+        <Section>
+          <RoleToggle role={role} onChange={setRole} />
+        </Section>
+
         {/* Theme */}
         <SectionTitle>Тема</SectionTitle>
         <Section>
@@ -193,8 +201,11 @@ export function SettingsScreen() {
         <SectionTitle>Настройки</SectionTitle>
         <Section>
           <RowLink label="🔔 Уведомления" onClick={() => navigate("/settings/notifications")} />
-          <RowLink label="📄 Политика конфиденциальности" onClick={() => navigate("/privacy")} />
-          <RowLink label="📋 Условия использования" onClick={() => navigate("/terms")} />
+        </Section>
+
+        <SectionTitle>О приложении</SectionTitle>
+        <Section>
+          <RowLink label="ℹ️ О приложении" onClick={() => navigate("/about")} />
         </Section>
 
         <Section>
@@ -368,6 +379,55 @@ function Section({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function RoleToggle({
+  role,
+  onChange,
+}: {
+  role: RolePref;
+  onChange: (r: RolePref) => void;
+}) {
+  const opts: { id: RolePref; label: string }[] = [
+    { id: "passenger", label: "Пассажир" },
+    { id: "driver", label: "Водитель" },
+  ];
+  return (
+    <div
+      data-testid="role-toggle"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr",
+        gap: 4,
+        padding: 4,
+      }}
+    >
+      {opts.map((o) => {
+        const active = role === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            data-testid={`role-${o.id}`}
+            onClick={() => onChange(o.id)}
+            style={{
+              padding: "10px 8px",
+              borderRadius: 10,
+              border: "none",
+              background: active ? "var(--brand-primary)" : "transparent",
+              color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

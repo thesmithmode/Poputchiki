@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-14T14:46:31.847Z",
+  "timestamp": "2026-05-14T15:53:49.665Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,21 +18,61 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-14.md"
+      "path": ".memory/knowledge/index.md"
     },
     {
       "status": "M",
-      "path": ".memory/scripts/flush.log"
+      "path": ".memory/knowledge/log.md"
     },
     {
       "status": "M",
-      "path": ".memory/scripts/last-flush.json"
+      "path": ".memory/scripts/compile.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/state.json"
+    },
+    {
+      "status": "M",
+      "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/users/usersRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/hooks/useUser.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/ProfileScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/tests/ProfileScreen.test.tsx"
     },
     {
       "status": "??",
-      "path": ".planning/"
+      "path": ".memory/knowledge/concepts/css-filter-dark-map-theme.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/connections/telegram-webapp-invisible-constraints.md"
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/023_split_avg_stars.down.sql"
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/023_split_avg_stars.sql"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты\nd63ca1a CHORE: biome format MapScreen.test.tsx — убрать лишние пустые строки\n6dd2209 FIX: показывать FAB только на главном экране /; тесты для остальных табов\nfe496fc TEST: убрать тесты back-кнопки из MapScreen — карта теперь таб, кнопки назад нет"
+  "context_notes": "Recent commits:\n215ec59 CHORE: обновить memory-логи — 2026-05-14 сессия (UI fixes)\n0c81984 FIX: карта, роли водитель/пассажир, экран событий, темы, дубликат кнопки\n805a26e FIX: убрать неиспользуемый импорт fireEvent в FeedScreen.test\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты"
 }

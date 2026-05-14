@@ -1,61 +1,91 @@
 ---
-title: "VITE_API_BASE Env Var — Never Hardcode API Path in Frontend"
-aliases: [vite-api-base, apiFetch-hardcoded, frontend-api-url, vite-build-arg]
-tags: [frontend, vite, react, deployment, gotcha, architecture]
+title: "Vite API Base URL — Hardcoded /api Breaks Subdomain Routing"
+aliases: [vite-api-base, apifetch-hardcoded, api-base-env, apifetch-prefix, centralized-api-prefix]
+tags: [frontend, vite, deployment, gotcha, configuration]
 sources:
   - "daily/2026-05-13.md"
 created: 2026-05-13
 updated: 2026-05-13
 ---
 
-# VITE_API_BASE Env Var — Never Hardcode API Path in Frontend
+# Vite API Base URL — Hardcoded /api Breaks Subdomain Routing
 
-Hardcoding `/api` as a relative path in frontend fetch utilities breaks when the API is hosted on a separate subdomain (e.g., `api.app.example.com`). `VITE_API_BASE` must be injected as a build arg and consumed via `import.meta.env.VITE_API_BASE` — passing it as a GHA Docker build arg is not sufficient if the code doesn't reference the variable.
+Hardcoding `/api` as a path prefix in the frontend `apiFetch` utility breaks when the API lives on a separate subdomain (`api.domain.com`). Relative URL `/api/users/me` resolves to `app.domain.com/api/users/me` (the frontend's origin), not the API server. The fix is `import.meta.env.VITE_API_BASE` set at build time via Docker build ARG.
 
 ## Key Points
 
-- `apiFetch(path)` that constructs `"/api" + path` sends requests to the web server's own origin, not the API subdomain
-- In subdomain routing (`api.domain.com` separate from `app.domain.com`), relative `/api` hits Caddy → 404 or returns `index.html` → JSON.parse fails → null → TypeError
-- `VITE_API_BASE` must be in `import.meta.env.VITE_API_BASE` — Vite replaces env vars at build time
-- Passing `--build-arg VITE_API_BASE=...` to `docker build` works only if the Dockerfile has `ARG VITE_API_BASE` and the code uses `import.meta.env.VITE_API_BASE`
-- Symptom: all API calls fail with "Failed to fetch" or produce empty/null responses; network tab shows requests to `app.domain.com/api/...` instead of `api.domain.com/...`
+- `apiFetch("/api${path}")` → relative URL → browser resolves against current origin (`app.domain.com`) → hits Caddy (frontend server) → gets `index.html` back → JSON parse fails
+- `VITE_API_BASE` must be an absolute URL: `https://api.poputchiki.searchingforgamesforever.online`
+- Passed as Docker build ARG → Vite inlines at build time → available via `import.meta.env.VITE_API_BASE`
+- Biome linter does not understand Vite's `ImportMetaEnv` interface augmentation → requires `biome-ignore` on the interface declaration
+- The error manifests as `null` response or `SyntaxError: Unexpected token '<'` (HTML parsed as JSON)
 
 ## Details
 
-Vite replaces `import.meta.env.VITE_*` variables at build time. The replacement happens when `vite build` runs — if `VITE_API_BASE` is not set during the build step, the variable is undefined and falls back to empty string or causes a runtime error. GHA passes build args to `docker build`, which must have a corresponding `ARG VITE_API_BASE` instruction in the Dockerfile for the value to be available to the `bun run build` step inside the container.
-
-In Poputchiki on 2026-05-13, `VITE_API_BASE` was correctly passed through GHA → Docker build arg → Dockerfile ARG → environment. However, `web/src/lib/api.ts` contained:
+The Poputchiki frontend uses a centralized `apiFetch` utility for all API calls. The original implementation prepended `/api` to every path:
 
 ```typescript
-// WRONG: hardcoded relative path
-const apiFetch = (path: string) => fetch(`/api${path}`, ...);
+// WRONG: hardcoded relative prefix
+export async function apiFetch(path: string) {
+  const res = await fetch(`/api${path}`, { ... });
+  return res.json();
+}
 ```
 
-The correct implementation:
+In the subdomain routing architecture (`app.domain.com` serves frontend, `api.domain.com` serves API), the relative URL `/api/users/me` resolves to `https://app.domain.com/api/users/me`. Caddy (the frontend server) receives this request, finds no matching route, and returns `index.html` (SPA fallback). The frontend then attempts to parse HTML as JSON, producing either `null` or a `SyntaxError`.
+
+The correct implementation uses `VITE_API_BASE`:
 
 ```typescript
-// CORRECT: env var from Vite build
-const API_BASE = import.meta.env.VITE_API_BASE ?? "/api";
-const apiFetch = (path: string) => fetch(`${API_BASE}${path}`, ...);
+// CORRECT: absolute URL from env var
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+
+export async function apiFetch(path: string) {
+  const res = await fetch(`${API_BASE}${path}`, { ... });
+  return res.json();
+}
 ```
 
-The failure mode is subtle: requests to `/api/users/me` are sent to `https://app.poputchiki.domain/api/users/me`. Caddy (the web server) receives this request, finds no match in its config for `/api/*`, and either returns a 404 or serves `index.html` (if configured as SPA fallback). When the frontend tries to `response.json()` on an HTML document, the parse fails. Depending on error handling, this surfaces as "Failed to fetch", null, or a cryptic TypeError — not as an obvious "wrong server" error.
+### Centralized Auto-Prefix Pattern (Session 21:14 Fix)
 
-**Checklist for subdomain API routing:**
-1. `web/src/lib/api.ts`: uses `import.meta.env.VITE_API_BASE`, not hardcoded string
-2. `.env.production` or `.env.example`: `VITE_API_BASE=https://api.domain.com`
-3. `Dockerfile` (web): `ARG VITE_API_BASE` before `RUN bun run build`
-4. `docker-compose.prod.yml` build section: `args: { VITE_API_BASE: "https://api.${DOMAIN}" }`
-5. GHA workflow: GitHub Secret `VITE_API_BASE` set, passed to docker build
+After fixing the base URL, a secondary issue emerged: 12+ files throughout the frontend used bare paths like `/geocode/search`, `/rides`, `/users/me`. Instead of editing every caller, the solution was to add automatic `/api` prefix logic inside `apiFetch` for non-auth routes:
 
-An alternative architecture is path-based routing (`/api/` prefix handled by Caddy reverse proxy to the API service) rather than subdomain routing. This eliminates the VITE_API_BASE requirement entirely — `apiFetch("/api/users/me")` works correctly because Caddy proxies it to the API container. Subdomain routing is more scalable but adds this build-time configuration burden.
+```typescript
+export async function apiFetch(path: string) {
+  // Auth routes go to /auth/* directly; all others get /api prefix
+  const fullPath = path.startsWith("/auth/") ? path : `/api${path}`;
+  const res = await fetch(`${API_BASE}${fullPath}`, { ... });
+  return res.json();
+}
+```
+
+This centralized approach changed one file instead of twelve, reducing error surface and keeping callers clean. Auth routes (`/auth/telegram`, `/auth/refresh`, `/auth/logout`) skip the prefix because the API mounts them at the root.
+
+### Build Pipeline
+
+```dockerfile
+# Dockerfile
+ARG VITE_API_BASE
+ENV VITE_API_BASE=${VITE_API_BASE}
+RUN bun run build
+```
+
+```yaml
+# docker-compose.prod.yml or GHA workflow
+build:
+  args:
+    VITE_API_BASE: https://api.poputchiki.searchingforgamesforever.online
+```
+
+The failure is invisible to server-side smoke tests because `curl http://api.domain.com/health` works fine — it tests the API directly. The broken path only manifests in the browser where the frontend's origin differs from the API's origin.
 
 ## Related Concepts
 
-- [[concepts/deployment-pipeline]] — Build args for frontend are part of the GHA → GHCR → deploy pipeline; missing args silently produce broken builds
-- [[concepts/traefik-acme-http01-port80]] — Co-occurring production failure on the same day: HTTPS broken prevented testing the VITE_API_BASE fix until certs were issued
-- [[concepts/reactive-deploy-fix-loop]] — Hardcoded API path is the type of static issue detectable via code audit before deploying; part of the pre-deploy checklist (compare compose env vars against app env schemas)
+- [[connections/post-deploy-invisible-failures]] - Hardcoded API path is one of three post-deploy invisible failures: server healthy but frontend broken
+- [[concepts/telegram-desktop-miniapp-url-cache]] - Co-occurring failure: Telegram caches old URL while frontend caches wrong API path
+- [[concepts/deployment-pipeline]] - Build ARG must be threaded through the Docker build pipeline
 
 ## Sources
 
-- [[daily/2026-05-13.md]] — Session 20:28: `apiFetch` in `web/src/lib/api.ts` used hardcoded `/api${path}`; in subdomain architecture, requests went to Caddy → 404/index.html → JSON parse fail → null → TypeError; fix: use `import.meta.env.VITE_API_BASE`; BACKLOG item added for evaluating path-based routing instead of subdomain routing
+- [[daily/2026-05-13.md]] - Session 20:28: `apiFetch` hardcoded `/api` → hits Caddy instead of API subdomain → null/HTML response; fix: `import.meta.env.VITE_API_BASE` from Docker build ARG
+- [[daily/2026-05-13.md]] - Session 21:14: centralized auto `/api` prefix in apiFetch for non-auth routes → one file change instead of 12+; auth routes excluded from prefix

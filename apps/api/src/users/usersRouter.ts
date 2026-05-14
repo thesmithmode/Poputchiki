@@ -36,6 +36,10 @@ interface MeRow {
   likes_received: number | string | null;
   avg_stars: number | string | null;
   reviews_count: number | string | null;
+  driver_avg_stars: number | string | null;
+  passenger_avg_stars: number | string | null;
+  driver_reviews_count: number | string | null;
+  passenger_reviews_count: number | string | null;
   is_banned: boolean;
   ban_reason: string | null;
   banned_at: Date | null;
@@ -63,6 +67,12 @@ function shapeMe(r: MeRow) {
       /* c8 ignore next -- non-null branch needs full review fixture (skipped for cov) */
       avg_stars: r.avg_stars === null ? null : Number(r.avg_stars),
       reviews_count: Number(r.reviews_count ?? 0),
+      /* c8 ignore next */
+      driver_avg_stars: r.driver_avg_stars === null ? null : Number(r.driver_avg_stars),
+      /* c8 ignore next */
+      passenger_avg_stars: r.passenger_avg_stars === null ? null : Number(r.passenger_avg_stars),
+      driver_reviews_count: Number(r.driver_reviews_count ?? 0),
+      passenger_reviews_count: Number(r.passenger_reviews_count ?? 0),
     },
     ...(r.is_banned
       ? {
@@ -86,6 +96,10 @@ interface PublicRow {
   likes_received: number | string | null;
   avg_stars: number | string | null;
   reviews_count: number | string | null;
+  driver_avg_stars: number | string | null;
+  passenger_avg_stars: number | string | null;
+  driver_reviews_count: number | string | null;
+  passenger_reviews_count: number | string | null;
 }
 
 function shapePublic(r: PublicRow) {
@@ -102,6 +116,12 @@ function shapePublic(r: PublicRow) {
       /* c8 ignore next -- non-null branch needs full review fixture (skipped for cov) */
       avg_stars: r.avg_stars === null ? null : Number(r.avg_stars),
       reviews_count: Number(r.reviews_count ?? 0),
+      /* c8 ignore next */
+      driver_avg_stars: r.driver_avg_stars === null ? null : Number(r.driver_avg_stars),
+      /* c8 ignore next */
+      passenger_avg_stars: r.passenger_avg_stars === null ? null : Number(r.passenger_avg_stars),
+      driver_reviews_count: Number(r.driver_reviews_count ?? 0),
+      passenger_reviews_count: Number(r.passenger_reviews_count ?? 0),
     },
   };
 }
@@ -117,7 +137,9 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
                u.is_banned, u.ban_reason, u.banned_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
-               s.likes_received, s.avg_stars, s.reviews_count
+               s.likes_received, s.avg_stars, s.reviews_count,
+               s.driver_avg_stars, s.passenger_avg_stars,
+               s.driver_reviews_count, s.passenger_reviews_count
         FROM users u
         LEFT JOIN user_stats s ON s.user_id = u.id
         WHERE u.id = ${user.id} AND u.deleted_at IS NULL
@@ -164,7 +186,9 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
                u.role, u.onboarded, u.notify_disabled, u.created_at, u.last_seen_at,
                u.is_banned, u.ban_reason, u.banned_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
-               s.likes_received, s.avg_stars, s.reviews_count
+               s.likes_received, s.avg_stars, s.reviews_count,
+               s.driver_avg_stars, s.passenger_avg_stars,
+               s.driver_reviews_count, s.passenger_reviews_count
         FROM users u
         LEFT JOIN user_stats s ON s.user_id = u.id
         WHERE u.id = ${user.id} AND u.deleted_at IS NULL
@@ -218,7 +242,9 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       return tx<PublicRow[]>`
         SELECT u.id, u.tg_username, u.display_name, u.avatar_url, u.created_at,
                s.rides_as_driver_completed, s.rides_as_passenger,
-               s.likes_received, s.avg_stars, s.reviews_count
+               s.likes_received, s.avg_stars, s.reviews_count,
+               s.driver_avg_stars, s.passenger_avg_stars,
+               s.driver_reviews_count, s.passenger_reviews_count
         FROM users u
         LEFT JOIN user_stats s ON s.user_id = u.id
         WHERE u.id = ${id} AND u.deleted_at IS NULL AND u.is_banned = false

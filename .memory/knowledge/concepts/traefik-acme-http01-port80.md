@@ -1,53 +1,66 @@
 ---
-title: "Traefik ACME HTTP-01 Challenge Requires Port 80 — iptables vs ufw"
-aliases: [acme-port-80, letsencrypt-port80, http01-challenge, iptables-ufw-firewall, acme-json-empty]
-tags: [traefik, deployment, tls, gotcha, infra, security]
+title: "Traefik ACME HTTP-01 Requires Port 80 Open"
+aliases: [acme-http01, letsencrypt-port80, acme-json-empty, iptables-port80, ufw-inactive-iptables]
+tags: [traefik, tls, deployment, gotcha, infra, security]
 sources:
   - "daily/2026-05-13.md"
 created: 2026-05-13
 updated: 2026-05-13
 ---
 
-# Traefik ACME HTTP-01 Challenge Requires Port 80 — iptables vs ufw
+# Traefik ACME HTTP-01 Requires Port 80 Open
 
-Traefik's HTTP-01 ACME challenge (Let's Encrypt) requires that port 80 be publicly reachable. If `ufw` is inactive but `iptables` rules block port 80, the ACME challenge fails silently — Traefik starts, reports healthy, but never issues TLS certificates. The first diagnostic is checking `acme.json`: an empty file means no certificates have ever been issued.
+Let's Encrypt HTTP-01 challenge requires port 80 to be accessible from the internet. If the firewall blocks port 80, Traefik cannot complete the ACME challenge, `acme.json` remains empty (no certificates), and all HTTPS connections fail. The diagnostic is straightforward: empty `acme.json` = certificates never issued.
 
 ## Key Points
 
-- HTTP-01 ACME challenge: Let's Encrypt sends an HTTP request to `http://<domain>/.well-known/acme-challenge/<token>`; Traefik must receive it on port 80
-- `ufw inactive` does NOT mean no firewall — `iptables` can have independent rules blocking port 80
-- Diagnostic: check `acme.json` (typically `/opt/traefik/acme.json`); if empty `{}` → no certs issued → HTTPS broken
-- Fix: `iptables -I INPUT -p tcp --dport 80 -j ACCEPT` + restart Traefik to trigger ACME retry
-- Symptom: HTTPS connection hangs or gets SSL error; Traefik dashboard shows routes configured but certificates absent
+- ACME HTTP-01: Let's Encrypt sends HTTP request to `http://domain/.well-known/acme-challenge/TOKEN` on port 80
+- Port 80 blocked → challenge fails → no certificate issued → `acme.json` stays empty → HTTPS broken for all domains
+- `ufw inactive` does NOT mean no firewall — direct iptables rules may still block port 80
+- Diagnostic: `stat -c %s acme.json` — if file size is 2 bytes (`{}`), no certificates exist
+- Fix: `iptables -I INPUT -p tcp --dport 80 -j ACCEPT` + restart Traefik → certificates issue within 1-2 minutes
 
 ## Details
 
-Traefik's ACME resolver uses HTTP-01 validation by default. During certificate issuance, Let's Encrypt's servers make an outbound HTTP request (port 80) to the server's public IP for each domain being certified. If this request is blocked by a firewall rule, the ACME challenge times out and fails. Traefik does not loudly report this failure — it continues running and serving routes, but without valid TLS certificates.
+Traefik's ACME resolver (Let's Encrypt integration) supports two challenge types: HTTP-01 and DNS-01. HTTP-01 is simpler (no DNS provider API needed) but requires that port 80 on the server is accessible from the public internet. Let's Encrypt's validation servers connect to `http://<domain>:80/.well-known/acme-challenge/<token>` to verify domain ownership.
 
-The Linux firewall can be managed by multiple tools simultaneously. `ufw` is a frontend for `iptables`. When `ufw` is inactive (`ufw status` shows `Status: inactive`), it does not manage `iptables` — but other processes or manual `iptables` commands may have installed rules independently. Checking `ufw` without also checking `iptables -L -n -v` gives an incomplete picture.
+On the Poputchiki production server (192.3.12.148), the firewall configuration had a deceptive state:
+```bash
+$ ufw status
+Status: inactive
 
-On the Poputchiki production server on 2026-05-13, `ufw` was inactive but `iptables` had blocking rules on INPUT chain. Port 80 was not reachable from the public internet. `acme.json` was empty — Traefik had never successfully issued any certificate. As a result, all four subdomains (`poputchiki.*`, `api.*`, `app.*`, `webhook.*`) had no TLS certificates, causing HTTPS connection failures. The initial symptom was `/api/users/me` returning "Failed to fetch" — the API was functionally deployed but HTTPS was broken.
+$ iptables -L -n | grep 80
+# (no output — no rule for port 80)
+# Default policy: DROP for INPUT chain
+```
 
-**Diagnostic sequence for HTTPS failures:**
-1. Check `acme.json` — empty = no certs issued
-2. Check if port 80 responds: `curl -v http://<domain>/.well-known/acme-challenge/test`
-3. Check `iptables -L INPUT -n -v` (not just `ufw status`)
-4. Fix firewall rules + restart Traefik
-5. Re-check `acme.json` after 1-2 minutes — should contain certificate objects
+`ufw inactive` means the UFW frontend is not managing rules — but raw iptables rules persist independently. The default INPUT chain policy was DROP, which blocks all incoming traffic not explicitly allowed. Port 443 was allowed (for HTTPS), but port 80 was not — blocking the ACME challenge while allowing direct HTTPS connections.
 
-**Making iptables rules persistent:**
-`iptables -I INPUT -p tcp --dport 80 -j ACCEPT` is not persistent across reboots. To persist:
-- Debian/Ubuntu: `iptables-save > /etc/iptables/rules.v4` (requires `iptables-persistent` package)
-- Or install `netfilter-persistent` and run `netfilter-persistent save`
+The symptom chain:
+1. Traefik starts with ACME HTTP-01 resolver configured
+2. Traefik requests certificate for `poputchiki.searchingforgamesforever.online` + 3 subdomains
+3. Let's Encrypt attempts HTTP-01 challenge on port 80 → connection refused (iptables DROP)
+4. Challenge fails → Traefik logs warning (only visible at DEBUG level) → no certificate stored
+5. `acme.json` remains empty (`{}`)
+6. HTTPS requests arrive on port 443 → Traefik has no certificate → TLS handshake fails
+7. Cloudflare proxy receives SSL error from origin → returns 502 to user
 
-Failing to persist means the firewall rule is lost after server reboot, breaking ACME renewal. Certificate renewal requires periodic HTTP-01 challenges, so port 80 must remain accessible permanently.
+After opening port 80:
+```bash
+iptables -I INPUT -p tcp --dport 80 -j ACCEPT
+docker compose restart traefik
+```
+
+Traefik restarted, re-attempted ACME, all 4 challenges passed, certificates appeared in `acme.json` within 2 minutes. HTTPS immediately began working for all domains.
+
+**Persistence warning:** `iptables -I` adds a runtime rule that does not survive server reboot. To persist: install `iptables-persistent` / `netfilter-persistent` and run `netfilter-persistent save`, or add the rule to a startup script.
 
 ## Related Concepts
 
-- [[concepts/traefik-docker-api-compat]] — Another Traefik production failure from the same deployment day; API version incompatibility preceded the ACME issue in the failure cascade
-- [[concepts/reactive-deploy-fix-loop]] — ACME/port 80 issue was discovered in session 20:28, after 15+ prior deployment failures; a pre-deploy network audit would have caught it earlier
-- [[concepts/deployment-pipeline]] — TLS certificates are required for all production subdomains; Traefik is the TLS termination point
+- [[concepts/traefik-docker-api-compat]] - Traefik must also have working Docker service discovery for ACME routes to be registered
+- [[connections/post-deploy-invisible-failures]] - ACME failure is one of three invisible post-deploy failures: server reports healthy but HTTPS broken
+- [[concepts/deployment-pipeline]] - Deploy smoke test must verify HTTPS, not just HTTP health endpoint
 
 ## Sources
 
-- [[daily/2026-05-13.md]] — Session 20:28: `acme.json` empty after successful deploy; root cause: iptables blocking port 80 (ufw inactive but iptables rules present); fix: `iptables -I INPUT -p tcp --dport 80 -j ACCEPT` + Traefik restart; 4 certs issued for all subdomains within 2 minutes; note: iptables rule not persisted = breaks after reboot
+- [[daily/2026-05-13.md]] - Session 20:28: `acme.json` empty after deploy; `ufw inactive` but iptables DROP on port 80 blocked ACME HTTP-01; fix: `iptables -I INPUT -p tcp --dport 80 -j ACCEPT` + Traefik restart → 4 certs issued in 2 minutes; persistence via `netfilter-persistent save` noted as follow-up

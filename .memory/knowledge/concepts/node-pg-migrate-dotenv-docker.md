@@ -1,63 +1,58 @@
 ---
-title: "node-pg-migrate --envPath Flag Requires dotenv in Docker"
-aliases: [node-pg-migrate-dotenv, envPath-docker, pg-migrate-dotenv-flag]
-tags: [database, migrations, docker, gotcha, deployment]
+title: "node-pg-migrate --envPath .env Triggers dotenv in Docker"
+aliases: [node-pg-migrate-dotenv, envpath-docker, dotenv-docker-unnecessary, migration-dotenv]
+tags: [database, docker, gotcha, migration, deployment]
 sources:
   - "daily/2026-05-13.md"
 created: 2026-05-13
 updated: 2026-05-13
 ---
 
-# node-pg-migrate --envPath Flag Requires dotenv in Docker
+# node-pg-migrate --envPath .env Triggers dotenv in Docker
 
-`node-pg-migrate` v8 with the `--envPath .env` flag attempts to import the `dotenv` package at startup — even in Docker containers where environment variables are already injected by Docker Compose. If `dotenv` is not listed as a dependency, the migration process crashes before running any migrations.
+`node-pg-migrate` v8 with the `--envPath .env` flag attempts to `require('dotenv')` at startup. In a Docker container where environment variables are injected via `docker-compose.yml` `environment:` section, this flag is unnecessary — and if `dotenv` is not installed as a dependency, the migration command fails immediately with a module-not-found error.
 
 ## Key Points
 
-- `--envPath .env` in `node-pg-migrate` command triggers a `require("dotenv")` import regardless of environment
-- In Docker, env vars are already present (injected by compose `env_file` or `environment:` block) — `dotenv` is redundant but still required by the flag's code path
-- Crash: `Cannot find module 'dotenv'` at migration startup — no migrations run, deploy script treats as failure
-- Fix option 1: remove `--envPath` flag entirely (rely on Docker-injected env)
-- Fix option 2: add `dotenv` as a prod dependency (`bun add dotenv`)
-- `dotenv-expand` is a separate package required if `.env` files use variable expansion (`${VAR}` syntax) — adding `dotenv` alone may not be sufficient
+- `--envPath .env` instructs node-pg-migrate to load env vars from a `.env` file via the `dotenv` package
+- In Docker, env vars are already set by compose `environment:` or `env_file:` — no `.env` file loading needed
+- If `dotenv` is not in `package.json` dependencies: `Error: Cannot find module 'dotenv'` → migration fails → deploy rolls back
+- Adding `dotenv` as a dependency fixes the error but is the wrong fix — it adds an unnecessary runtime dependency
+- Correct fix: remove `--envPath .env` from the migration command in Docker contexts; keep it only for local development
 
 ## Details
 
-The `--envPath` flag is designed for local development where `.env` files need to be loaded before running migrations. The intended workflow: developer runs `npx node-pg-migrate --envPath .env up` locally without Docker, and the flag ensures the `.env` file is read. In production Docker containers, this flag is unnecessary because the orchestrator (Docker Compose, Kubernetes) injects environment variables directly into the process environment.
-
-When `--envPath` is present, `node-pg-migrate` v8 unconditionally imports `dotenv` to load the specified file. The import fails at runtime if `dotenv` is not installed:
-
-```
-Error: Cannot find module 'dotenv'
-Require stack:
-- /app/node_modules/.bin/node-pg-migrate
-```
-
-The cascade in Poputchiki's 2026-05-13 deployment:
-1. Migration command: `node-pg-migrate --envPath .env up` (Docker Compose already sets env)
-2. `node-pg-migrate` tries to `require('dotenv')` → crash
-3. `dotenv` added as dependency → migration runs → `${DATABASE_URL}` expansion requires `dotenv-expand`
-4. `dotenv-expand` added → migrations finally succeed
-
-This is a 2-deploy cascade that could have been avoided by either removing `--envPath` or checking locally with `npx node-pg-migrate --help` to understand which env-loading packages are required.
-
-The correct production migration command in Docker:
+The Poputchiki deploy script ran migrations via:
 
 ```bash
-# WRONG: --envPath triggers dotenv import even when env is already injected
-node-pg-migrate --envPath .env --database-url $DATABASE_URL up
-
-# CORRECT: no --envPath needed; Docker already has env vars
-node-pg-migrate --database-url $DATABASE_URL up
+docker compose run --rm api bun run node-pg-migrate up --envPath .env
 ```
 
-A related check: if `DATABASE_URL` uses variable substitution (e.g., `DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@...`), expansion must happen at the shell level before passing to `node-pg-migrate`, not inside a `.env` file processed by `dotenv-expand`.
+In the Docker container, `DATABASE_URL` and other required environment variables were already injected via `docker-compose.prod.yml`. The `--envPath .env` flag was a leftover from local development where a `.env` file provides these variables. In Docker, this flag caused node-pg-migrate to attempt loading the `dotenv` package — which was not listed in `package.json` because the project uses Bun's built-in `.env` loading for local dev.
+
+The failure sequence during the 2026-05-13 deployment:
+1. First attempt: `--envPath .env` → `Cannot find module 'dotenv'` → migration fails → deploy rolls back
+2. Second attempt: added `dotenv` as dependency → `Cannot find module 'dotenv-expand'` (node-pg-migrate v8 also requires it) → migration fails again
+3. Third attempt: added `dotenv-expand` → migrations finally run
+
+All three attempts were avoidable: removing `--envPath .env` from the Docker migration command would have worked on the first try. The environment variables were already available via Docker's injection mechanism.
+
+The correct configuration uses two separate commands:
+```bash
+# Local development (uses .env file)
+bun run node-pg-migrate up --envPath .env
+
+# Docker / CI (env already injected)
+bun run node-pg-migrate up
+```
+
+This is a pattern common to many Node.js CLI tools that support dotenv integration: the flag that loads `.env` files should only be used in environments where the file exists and is the source of truth for configuration.
 
 ## Related Concepts
 
-- [[concepts/deployment-pipeline]] - Deploy pipeline where migration command is defined; --envPath flag in deploy.sh caused the dotenv crash
-- [[concepts/reactive-deploy-fix-loop]] - The dotenv → dotenv-expand cascade was step 1-2 of the 15-failure production deploy sequence; a pre-deploy CLI audit would have caught it
+- [[concepts/reactive-deploy-fix-loop]] - The dotenv cascade (3 failed deploys for one fix) was steps 1-3 in the 15-failure production deployment loop
+- [[concepts/deployment-pipeline]] - Migration step in deploy.sh where the flag was specified
 
 ## Sources
 
-- [[daily/2026-05-13.md]] - Session 14:43: `--envPath .env` flag in node-pg-migrate caused `Cannot find module 'dotenv'` in Docker (env already injected by compose); dotenv added → dotenv-expand also needed; 2-deploy cascade avoidable with local CLI audit; fix: remove `--envPath` flag in production Docker migration commands
+- [[daily/2026-05-13.md]] - Session 14:43: `--envPath .env` in Docker migration command → `dotenv` not installed → fail; then `dotenv-expand` also missing → second fail; correct fix: remove flag entirely in Docker context

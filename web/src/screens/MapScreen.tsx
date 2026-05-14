@@ -44,13 +44,12 @@ export function MapScreen() {
       if (tileLayerRef.current) {
         map.removeLayer(tileLayerRef.current);
       }
-      const tileUrl = isDark
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"
-        : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png";
+      const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
       const tile = L.tileLayer(tileUrl, {
         maxZoom: 19,
-        subdomains: "abcd",
-        attribution: "© OpenStreetMap contributors, © CARTO",
+        subdomains: "abc",
+        attribution: "© OpenStreetMap contributors",
+        className: isDark ? "leaflet-tile-dark" : "",
       });
       tile.addTo(map as ReturnType<typeof L.map>);
       tileLayerRef.current = tile;
@@ -84,14 +83,13 @@ export function MapScreen() {
         preferCanvas: true,
       });
 
-      const tileUrl = document.documentElement.classList.contains("dark")
-        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"
-        : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png";
+      const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
       const tile = L.tileLayer(tileUrl, {
         maxZoom: 19,
-        subdomains: "abcd",
-        attribution: "© OpenStreetMap contributors, © CARTO",
+        subdomains: "abc",
+        attribution: "© OpenStreetMap contributors",
+        className: document.documentElement.classList.contains("dark") ? "leaflet-tile-dark" : "",
       });
       tile.addTo(map);
       tileLayerRef.current = tile;

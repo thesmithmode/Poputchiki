@@ -7,6 +7,10 @@ export interface UserStats {
   likes_received: number;
   avg_stars: number | null;
   reviews_count: number;
+  driver_avg_stars: number | null;
+  passenger_avg_stars: number | null;
+  driver_reviews_count: number;
+  passenger_reviews_count: number;
 }
 
 export interface PublicUser {

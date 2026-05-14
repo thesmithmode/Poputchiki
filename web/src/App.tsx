@@ -8,9 +8,11 @@ import { useMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
+import { AboutScreen } from "./screens/AboutScreen";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
+import { EventsScreen } from "./screens/EventsScreen";
 import { FavoritesScreen } from "./screens/FavoritesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { MapScreen } from "./screens/MapScreen";
@@ -102,7 +104,14 @@ function OfflineBanner() {
   );
 }
 
-const TAB_PATHS = new Set(["/", "/map", "/favorites", "/settings", "/settings/notifications"]);
+const TAB_PATHS = new Set([
+  "/",
+  "/map",
+  "/favorites",
+  "/events",
+  "/settings",
+  "/settings/notifications",
+]);
 // Map is full-screen — tab bar overlays it, no bottom padding needed
 const FULL_SCREEN_PATHS = new Set(["/map"]);
 
@@ -122,6 +131,8 @@ function AppShell() {
           <Route path="/rides/new" element={<CreateRideScreen />} />
           <Route path="/favorites" element={<FavoritesScreen />} />
           <Route path="/map" element={<MapScreen />} />
+          <Route path="/events" element={<EventsScreen />} />
+          <Route path="/about" element={<AboutScreen />} />
           <Route path="/rides/:id" element={<RideDetailRoute />} />
           <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
           <Route path="/users/:id" element={<ProfileRoute />} />

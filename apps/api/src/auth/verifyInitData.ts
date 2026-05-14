@@ -25,7 +25,7 @@ export interface Clock {
   now(): number;
 }
 
-const MAX_AGE_SECONDS = 5 * 60;
+const MAX_AGE_SECONDS = 60 * 60; // 1 hour — Telegram WebView can reuse initData within session
 const EXPECTED_HASH_LENGTH = 64; // SHA-256 → 32 bytes → 64 hex chars
 
 export function verifyInitData(

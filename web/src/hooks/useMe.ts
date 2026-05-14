@@ -34,6 +34,24 @@ async function telegramAuth(): Promise<boolean> {
   }
 }
 
+async function refreshAuth(): Promise<boolean> {
+  const tokens = getTokens();
+  if (!tokens) return false;
+  try {
+    const result = await apiFetch<{ access_token: string; refresh_token: string }>(
+      "/auth/refresh",
+      {
+        method: "POST",
+        body: JSON.stringify({ refresh_token: tokens.refresh }),
+      },
+    );
+    setTokens(result.access_token, result.refresh_token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function applyUserState(user: MeUser, setState: (s: MeState) => void): void {
   if (user.is_banned) {
     setState({ status: "banned", reason: user.ban_reason, banned_at: user.banned_at });
@@ -64,7 +82,19 @@ export function useMe(): MeState {
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) {
-          // token expired — re-auth once
+          // Try refresh token first — avoids nonce-replay issue with telegramAuth()
+          const refreshed = await refreshAuth();
+          if (cancelled) return;
+          if (refreshed) {
+            try {
+              const user = await apiFetch<MeUser>("/users/me");
+              if (!cancelled) applyUserState(user, setState);
+            } catch (err2) {
+              if (!cancelled) setState({ status: "error", message: String(err2) });
+            }
+            return;
+          }
+          // Refresh failed — clear tokens and re-auth via Telegram initData
           clearTokens();
           const ok = await telegramAuth();
           if (cancelled) return;

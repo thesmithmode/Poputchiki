@@ -92,7 +92,7 @@ export function SettingsScreen() {
         }}
       >
         <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--brand-text)", margin: 0 }}>
-          Профиль
+          Настройки
         </h1>
       </div>
 
@@ -164,24 +164,10 @@ export function SettingsScreen() {
             </div>
           )}
 
-          {myId && (
-            <button
-              type="button"
-              onClick={() => navigate(`/users/${myId}`)}
-              style={{
-                marginTop: 16,
-                padding: "10px 16px",
-                background: "var(--brand-surface2)",
-                color: "var(--brand-text)",
-                border: "none",
-                borderRadius: 10,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Открыть профиль · {months} мес. в сервисе
-            </button>
+          {months > 0 && (
+            <div style={{ marginTop: 12, fontSize: 12, color: "var(--brand-sub)" }}>
+              В сервисе {months} мес.
+            </div>
           )}
         </div>
 
@@ -198,7 +184,7 @@ export function SettingsScreen() {
         </Section>
 
         {/* Settings */}
-        <SectionTitle>Настройки</SectionTitle>
+        <SectionTitle>Аккаунт</SectionTitle>
         <Section>
           <RowLink label="🔔 Уведомления" onClick={() => navigate("/settings/notifications")} />
         </Section>

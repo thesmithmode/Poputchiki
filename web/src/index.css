@@ -131,5 +131,5 @@ textarea:disabled {
 
 /* Dark-mode tile filter — CSP allows only osm.org tiles, so we recolor client-side */
 .leaflet-tile-dark {
-  filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9) saturate(0.7);
+  filter: brightness(0.62) contrast(1.05) saturate(0.75);
 }

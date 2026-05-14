@@ -136,29 +136,32 @@ export function RideCard({
 
   // Cozy mode
   return (
-    <button
-      type="button"
+    <article
+      data-testid="ride-card"
       onClick={() => onClick?.(ride)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick?.(ride);
+      }}
+      tabIndex={onClick ? 0 : undefined}
       style={{
         width: "100%",
         textAlign: "left",
         background: "var(--brand-surface)",
         borderRadius: 14,
         padding: 12,
-        cursor: "pointer",
-        border: "none",
+        cursor: onClick ? "pointer" : "default",
         boxShadow: "0 1px 2px rgba(20,30,50,0.04), 0 1px 0 rgba(20,30,50,0.03)",
         fontFamily: "inherit",
         transition: "transform 0.08s",
       }}
       onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.98)";
+        (e.currentTarget as HTMLElement).style.transform = "scale(0.98)";
       }}
       onMouseUp={(e) => {
-        e.currentTarget.style.transform = "";
+        (e.currentTarget as HTMLElement).style.transform = "";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "";
+        (e.currentTarget as HTMLElement).style.transform = "";
       }}
     >
       <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
@@ -249,6 +252,6 @@ export function RideCard({
           </button>
         )}
       </div>
-    </button>
+    </article>
   );
 }

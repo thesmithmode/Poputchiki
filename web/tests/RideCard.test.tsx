@@ -56,7 +56,7 @@ describe("RideCard", () => {
   it("вызывает onClick при клике на карточку", () => {
     const onClick = vi.fn();
     render(<RideCard ride={mockRide} onClick={onClick} />);
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByTestId("ride-card"));
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(onClick).toHaveBeenCalledWith(mockRide);
   });

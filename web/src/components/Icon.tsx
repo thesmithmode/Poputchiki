@@ -313,6 +313,34 @@ export function Icon({ name, size = 22, stroke = 1.8, style = {} }: IconProps) {
           <path d="M3 13l9 5 9-5M3 18l9 5 9-5" />
         </svg>
       );
+    case "list":
+      return (
+        <svg {...common}>
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none" />
+          <circle cx="3" cy="12" r="1" fill="currentColor" stroke="none" />
+          <circle cx="3" cy="18" r="1" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case "grid":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+      );
+    case "seat":
+      return (
+        <svg {...common}>
+          <path d="M5 5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v8H5V5z" />
+          <path d="M3 13h18v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2z" />
+          <path d="M7 19v2M17 19v2" />
+        </svg>
+      );
     default:
       return null;
   }

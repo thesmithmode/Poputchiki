@@ -5,23 +5,71 @@
 :root {
   --brand-bg: #f4f5f4;
   --brand-surface: #ffffff;
+  --brand-surface2: #eeefee;
+  --brand-inset: #e4e6e4;
+
+  --brand-text: #0e1410;
+  --brand-ink2: #2a312d;
+  --brand-sub: #6b716e;
+  --brand-faint: #a8acaa;
+  --brand-line: rgba(14, 20, 16, 0.08);
+  --brand-line-soft: rgba(14, 20, 16, 0.04);
+  --brand-hairline: rgba(14, 20, 16, 0.1);
+  --brand-border: rgba(14, 20, 16, 0.08);
+
   --brand-primary: #2d5a3d;
+  --brand-primary-ink: #ffffff;
+  --brand-primary-soft: #d8e5dc;
+  --brand-primary-tint: #ebf1ed;
+  --brand-primary-line: rgba(45, 90, 61, 0.18);
+
   --brand-accent: #b6553a;
-  --brand-text: #15191f;
-  --brand-sub: #7c8694;
-  --brand-border: #e2e6ec;
-  --brand-line: #d8dee6;
+  --brand-accent-soft: #f4ddd2;
+  --brand-accent-ink: #ffffff;
+
+  --brand-warn: #9b7320;
+  --brand-warn-soft: #f4e8c8;
+  --brand-danger: #b53d3d;
+  --brand-danger-soft: #f1d6d0;
+
+  --shadow-sm: 0 1px 2px rgba(14, 20, 16, 0.05), 0 0 0 1px rgba(14, 20, 16, 0.04);
+  --shadow-md: 0 4px 14px -4px rgba(14, 20, 16, 0.1), 0 0 0 1px rgba(14, 20, 16, 0.05);
+  --shadow-lg: 0 18px 40px -16px rgba(14, 20, 16, 0.2), 0 0 0 1px rgba(14, 20, 16, 0.05);
 }
 
 .dark {
   --brand-bg: #000000;
   --brand-surface: #111313;
-  --brand-primary: #7ac495;
-  --brand-accent: #e0815c;
+  --brand-surface2: #1a1d1c;
+  --brand-inset: #222625;
+
   --brand-text: #ffffff;
-  --brand-sub: rgba(235, 235, 245, 0.55);
-  --brand-border: rgba(255, 255, 255, 0.06);
-  --brand-line: rgba(255, 255, 255, 0.15);
+  --brand-ink2: rgba(255, 255, 255, 0.85);
+  --brand-sub: rgba(255, 255, 255, 0.55);
+  --brand-faint: rgba(255, 255, 255, 0.32);
+  --brand-line: rgba(255, 255, 255, 0.08);
+  --brand-line-soft: rgba(255, 255, 255, 0.04);
+  --brand-hairline: rgba(255, 255, 255, 0.12);
+  --brand-border: rgba(255, 255, 255, 0.08);
+
+  --brand-primary: #7ac495;
+  --brand-primary-ink: #0a100c;
+  --brand-primary-soft: rgba(122, 196, 149, 0.16);
+  --brand-primary-tint: rgba(122, 196, 149, 0.08);
+  --brand-primary-line: rgba(122, 196, 149, 0.3);
+
+  --brand-accent: #e0815c;
+  --brand-accent-soft: rgba(224, 129, 92, 0.16);
+  --brand-accent-ink: #0a100c;
+
+  --brand-warn: #e8c16a;
+  --brand-warn-soft: rgba(232, 193, 106, 0.14);
+  --brand-danger: #e37070;
+  --brand-danger-soft: rgba(227, 112, 112, 0.16);
+
+  --shadow-sm: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 html,

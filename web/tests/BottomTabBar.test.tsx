@@ -77,6 +77,26 @@ describe("BottomTabBar", () => {
     expect(screen.getByLabelText("Создать поездку")).toBeInTheDocument();
   });
 
+  it("не показывает FAB на /map", () => {
+    renderTabBar("/map");
+    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
+  });
+
+  it("не показывает FAB на /settings", () => {
+    renderTabBar("/settings");
+    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
+  });
+
+  it("не показывает FAB на /settings/notifications", () => {
+    renderTabBar("/settings/notifications");
+    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
+  });
+
+  it("не показывает FAB на /favorites", () => {
+    renderTabBar("/favorites");
+    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
+  });
+
   it("показывает кнопку 'События'", () => {
     renderTabBar("/");
     expect(screen.getByLabelText("События")).toBeInTheDocument();

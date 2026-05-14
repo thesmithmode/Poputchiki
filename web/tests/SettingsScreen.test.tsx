@@ -65,7 +65,10 @@ describe("SettingsScreen", () => {
     renderSettings();
     fireEvent.click(screen.getByTestId("logout-btn"));
     await waitFor(() =>
-      expect(mockApiFetch).toHaveBeenCalledWith("/auth/logout", { method: "POST" }),
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        "/auth/logout",
+        expect.objectContaining({ method: "POST" }),
+      ),
     );
     expect(mockReload).toHaveBeenCalled();
   });

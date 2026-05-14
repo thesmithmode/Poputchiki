@@ -17,6 +17,21 @@ vi.mock("../src/lib/api", () => ({
   },
 }));
 
+vi.mock("../src/hooks/useMe", () => ({
+  useMe: () => ({
+    status: "ok",
+    user: {
+      id: "test-user-id",
+      display_name: "Test User",
+      onboarded: true,
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      role: "user" as const,
+    },
+  }),
+}));
+
 import { App } from "../src/App";
 
 describe("NotFoundPage", () => {

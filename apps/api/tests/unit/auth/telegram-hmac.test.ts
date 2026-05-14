@@ -48,24 +48,24 @@ describe("verifyInitData — happy path", () => {
     expect(result.authDate).toBe(TEST_AUTH_DATE);
   });
 
-  it("accepts initData 4m59s after auth_date (within ±5min window)", () => {
+  it("accepts initData 59m59s after auth_date (within ±1h window)", () => {
     const initData = buildInitData();
     expect(() =>
-      verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 4 * 60 + 59)),
+      verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 59 * 60 + 59)),
     ).not.toThrow();
   });
 
-  it("accepts initData 4m59s before auth_date (negative age, within window)", () => {
+  it("accepts initData 59m59s before auth_date (negative age, within window)", () => {
     const initData = buildInitData();
     expect(() =>
-      verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE - 4 * 60 - 59)),
+      verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE - 59 * 60 - 59)),
     ).not.toThrow();
   });
 
-  it("accepts initData at exactly 5m00s old (boundary inclusive)", () => {
+  it("accepts initData at exactly 1h old (boundary inclusive)", () => {
     const initData = buildInitData();
     expect(() =>
-      verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 300)),
+      verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 3600)),
     ).not.toThrow();
   });
 
@@ -150,23 +150,23 @@ describe("verifyInitData — invalid hash", () => {
 // ---------------------------------------------------------------------------
 
 describe("verifyInitData — expired auth_date", () => {
-  it("throws TelegramAuthError when auth_date is older than 5 minutes", () => {
+  it("throws TelegramAuthError when auth_date is older than 1 hour", () => {
     const initData = buildInitData();
-    const clock = fixedClock(TEST_AUTH_DATE + 5 * 60 + 1);
+    const clock = fixedClock(TEST_AUTH_DATE + 60 * 60 + 1);
     expect(() => verifyInitData(initData, BOT_TOKEN, clock)).toThrow(TelegramAuthError);
     expect(() => verifyInitData(initData, BOT_TOKEN, clock)).toThrow("expired");
   });
 
-  it("throws TelegramAuthError when auth_date is in the future by >5 minutes", () => {
+  it("throws TelegramAuthError when auth_date is in the future by >1 hour", () => {
     const initData = buildInitData();
-    const clock = fixedClock(TEST_AUTH_DATE - 5 * 60 - 1);
+    const clock = fixedClock(TEST_AUTH_DATE - 60 * 60 - 1);
     expect(() => verifyInitData(initData, BOT_TOKEN, clock)).toThrow(TelegramAuthError);
     expect(() => verifyInitData(initData, BOT_TOKEN, clock)).toThrow("expired");
   });
 
-  it("throws at exactly 5m01s old (just past boundary)", () => {
+  it("throws at exactly 1h01s old (just past boundary)", () => {
     const initData = buildInitData();
-    expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 301))).toThrow(
+    expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE + 3601))).toThrow(
       "expired",
     );
   });

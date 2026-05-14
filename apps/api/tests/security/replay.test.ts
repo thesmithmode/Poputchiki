@@ -76,9 +76,9 @@ describe("Replay attack protection — /auth/telegram", () => {
     expect(res.status).toBe(401);
   });
 
-  it("auth_date in past >5min → 401", async () => {
+  it("auth_date in past >1h → 401", async () => {
     const app = makeApp();
-    const staleDate = Math.floor(Date.now() / 1000) - 6 * 60;
+    const staleDate = Math.floor(Date.now() / 1000) - 2 * 60 * 60;
     const initData = buildInitData({ auth_date: staleDate });
     const res = await app.request("/auth/telegram", {
       method: "POST",
@@ -88,9 +88,9 @@ describe("Replay attack protection — /auth/telegram", () => {
     expect(res.status).toBe(401);
   });
 
-  it("auth_date in future >5min → 401", async () => {
+  it("auth_date in future >1h → 401", async () => {
     const app = makeApp();
-    const futureDate = Math.floor(Date.now() / 1000) + 6 * 60;
+    const futureDate = Math.floor(Date.now() / 1000) + 2 * 60 * 60;
     const initData = buildInitData({ auth_date: futureDate });
     const res = await app.request("/auth/telegram", {
       method: "POST",

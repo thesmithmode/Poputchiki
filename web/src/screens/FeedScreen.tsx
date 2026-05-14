@@ -157,10 +157,8 @@ export function FeedScreen() {
           position: "sticky",
           top: 0,
           zIndex: 10,
-          backdropFilter: "blur(18px) saturate(160%)",
-          WebkitBackdropFilter: "blur(18px) saturate(160%)",
-          background: "rgba(255,255,255,0.78)",
-          borderBottom: "1px solid rgba(15,23,42,0.05)",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "8px 16px 10px",
         }}
       >
@@ -168,9 +166,11 @@ export function FeedScreen() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
-                fontSize: 12,
+                fontSize: 11,
                 color: "var(--brand-sub)",
-                fontWeight: 500,
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
                 marginBottom: 2,
               }}
             >
@@ -178,10 +178,11 @@ export function FeedScreen() {
             </div>
             <div
               style={{
-                fontSize: 19,
+                fontSize: 20,
                 fontWeight: 700,
                 color: "var(--brand-text)",
-                letterSpacing: -0.3,
+                letterSpacing: -0.4,
+                lineHeight: 1.2,
               }}
             >
               Попутчики
@@ -196,15 +197,16 @@ export function FeedScreen() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: 12,
               border: "none",
-              background: trustOn ? "var(--brand-primary)" : "#F1F4F8",
-              color: trustOn ? "#fff" : "var(--brand-text)",
+              background: trustOn ? "var(--brand-primary)" : "var(--brand-surface2)",
+              color: trustOn ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
               position: "relative",
+              boxShadow: trustOn ? "none" : "var(--shadow-sm)",
             }}
           >
             <Icon name="filter" size={18} />
@@ -217,14 +219,15 @@ export function FeedScreen() {
             style={{
               width: 36,
               height: 36,
-              borderRadius: 18,
+              borderRadius: 12,
               border: "none",
-              background: density === "compact" ? "var(--brand-primary)" : "#F1F4F8",
-              color: density === "compact" ? "#fff" : "var(--brand-text)",
+              background: density === "compact" ? "var(--brand-primary)" : "var(--brand-surface2)",
+              color: density === "compact" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
+              boxShadow: density === "compact" ? "none" : "var(--shadow-sm)",
             }}
           >
             <Icon name={density === "compact" ? "list" : "grid"} size={16} />
@@ -234,14 +237,15 @@ export function FeedScreen() {
             onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
             style={{
               padding: "6px 12px",
-              borderRadius: 18,
+              borderRadius: 12,
               border: "none",
-              background: view === "map" ? "var(--brand-primary)" : "#F1F4F8",
-              color: view === "map" ? "#fff" : "var(--brand-text)",
+              background: view === "map" ? "var(--brand-primary)" : "var(--brand-surface2)",
+              color: view === "map" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
               fontSize: 13,
               fontWeight: 600,
               cursor: "pointer",
               fontFamily: "inherit",
+              boxShadow: view === "map" ? "none" : "var(--shadow-sm)",
             }}
           >
             {view === "list" ? "Карта" : "Список"}
@@ -268,17 +272,18 @@ export function FeedScreen() {
                 type="button"
                 onClick={() => handleChipClick(chip.query)}
                 style={{
-                  padding: "7px 13px",
+                  padding: "8px 14px",
                   borderRadius: 999,
-                  border: active ? "none" : "none",
+                  border: "none",
                   flexShrink: 0,
                   background: active ? "var(--brand-primary)" : "var(--brand-surface)",
-                  color: active ? "#fff" : "var(--brand-text)",
+                  color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
                   fontSize: 12.5,
-                  fontWeight: 500,
+                  fontWeight: 600,
                   cursor: "pointer",
                   fontFamily: "inherit",
-                  boxShadow: "0 1px 1px rgba(20,30,50,0.04)",
+                  boxShadow: "var(--shadow-sm)",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {chip.label}
@@ -292,13 +297,13 @@ export function FeedScreen() {
       {trustOn && (
         <div
           style={{
-            margin: "8px 16px 0",
+            margin: "10px 16px 0",
             padding: "10px 12px",
             borderRadius: 12,
-            background: "rgba(45,90,61,0.08)",
+            background: "var(--brand-primary-tint)",
             color: "var(--brand-primary)",
             fontSize: 12.5,
-            fontWeight: 500,
+            fontWeight: 600,
             display: "flex",
             alignItems: "center",
             gap: 8,

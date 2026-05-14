@@ -141,7 +141,7 @@ describe("POST /auth/telegram — rejection cases", () => {
   });
 
   it("expired auth_date → 401", async () => {
-    const stale = Math.floor(Date.now() / 1000) - 400;
+    const stale = Math.floor(Date.now() / 1000) - 7200;
     const initData = makeInitData(TG_ID, stale, BOT_TOKEN);
     const res = await app.request("/auth/telegram", {
       method: "POST",

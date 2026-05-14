@@ -1,7 +1,6 @@
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import type { Ride } from "../types/ride";
 import { Icon } from "./Icon";
-import { RouteBlock } from "./RouteBlock";
 
 interface RideCardProps {
   ride: Ride;
@@ -9,6 +8,16 @@ interface RideCardProps {
   onClick?: (ride: Ride) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
+}
+
+function relativeTime(departureAt: string): string {
+  const diff = Math.round((new Date(departureAt).getTime() - Date.now()) / 60000);
+  if (diff < 0) return "уже уехал";
+  if (diff === 0) return "сейчас";
+  if (diff < 60) return `через ${diff} мин`;
+  const h = Math.floor(diff / 60);
+  const m = diff % 60;
+  return m > 0 ? `через ${h} ч ${m} мин` : `через ${h} ч`;
 }
 
 export function RideCard({
@@ -26,6 +35,7 @@ export function RideCard({
   const seats = ride.seats_total - ride.seats_taken;
   const priceLabel = ride.price_rub !== null ? `${ride.price_rub} ₽` : "0 ₽";
   const noSeats = seats === 0;
+  const rel = relativeTime(ride.departure_at);
 
   if (density === "compact") {
     return (
@@ -40,7 +50,7 @@ export function RideCard({
           padding: "7px 12px",
           cursor: "pointer",
           border: "none",
-          boxShadow: "0 1px 2px rgba(20,30,50,0.04), 0 1px 0 rgba(20,30,50,0.03)",
+          boxShadow: "var(--shadow-sm)",
           fontFamily: "inherit",
           transition: "transform 0.08s",
           display: "grid",
@@ -104,7 +114,7 @@ export function RideCard({
           style={{
             fontWeight: 700,
             fontSize: 12.5,
-            color: noSeats ? "#E54E5C" : "var(--brand-text)",
+            color: noSeats ? "var(--brand-danger)" : "var(--brand-text)",
             lineHeight: 1,
             textAlign: "right",
             whiteSpace: "nowrap",
@@ -117,7 +127,7 @@ export function RideCard({
         <div
           style={{
             fontSize: 11,
-            color: noSeats ? "#E54E5C" : "var(--brand-sub)",
+            color: noSeats ? "var(--brand-danger)" : "var(--brand-sub)",
             lineHeight: 1,
             textAlign: "right",
             display: "inline-flex",
@@ -134,96 +144,55 @@ export function RideCard({
     );
   }
 
-  // Cozy mode
+  // Cozy mode — v2 layout
   return (
-    <button
-      type="button"
+    <article
+      data-testid="ride-card"
       onClick={() => onClick?.(ride)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") onClick?.(ride);
+      }}
+      tabIndex={onClick ? 0 : undefined}
       style={{
         width: "100%",
         textAlign: "left",
         background: "var(--brand-surface)",
-        borderRadius: 14,
-        padding: 12,
-        cursor: "pointer",
-        border: "none",
-        boxShadow: "0 1px 2px rgba(20,30,50,0.04), 0 1px 0 rgba(20,30,50,0.03)",
+        borderRadius: 18,
+        padding: 14,
+        cursor: onClick ? "pointer" : "default",
+        boxShadow: "var(--shadow-sm)",
         fontFamily: "inherit",
         transition: "transform 0.08s",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
       }}
       onMouseDown={(e) => {
-        e.currentTarget.style.transform = "scale(0.98)";
+        (e.currentTarget as HTMLElement).style.transform = "scale(0.98)";
       }}
       onMouseUp={(e) => {
-        e.currentTarget.style.transform = "";
+        (e.currentTarget as HTMLElement).style.transform = "";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "";
+        (e.currentTarget as HTMLElement).style.transform = "";
       }}
     >
-      <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <RouteBlock fromLabel={ride.from_label} toLabel={ride.to_label} compact />
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              marginTop: 8,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 12,
-                color: "var(--brand-sub)",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-              }}
-            >
-              <Icon name="clock" size={10} />
-              {time}
-            </span>
-            <div style={{ flex: 1 }} />
-            <span
-              style={{
-                fontSize: 11.5,
-                color: noSeats ? "#E54E5C" : "var(--brand-sub)",
-                fontWeight: 500,
-              }}
-            >
-              {noSeats ? "нет мест" : `${seats} мест`}
-            </span>
-            <span
-              style={{
-                fontSize: 14,
-                fontWeight: 700,
-                color: "var(--brand-text)",
-                letterSpacing: -0.3,
-              }}
-            >
-              {priceLabel}
-            </span>
-          </div>
-
-          {ride.comment !== null && (
-            <div
-              style={{
-                marginTop: 6,
-                fontSize: 12,
-                color: "var(--brand-sub)",
-                fontStyle: "italic",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {ride.comment}
-            </div>
-          )}
+      {/* Top row: time + relative + price */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          style={{
+            fontSize: 18,
+            fontWeight: 500,
+            color: "var(--brand-text)",
+            letterSpacing: "-0.01em",
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {time}
         </div>
-
+        <div style={{ fontSize: 12, color: "var(--brand-sub)", lineHeight: 1 }}>{rel}</div>
+        <div style={{ flex: 1 }} />
         {onToggleFavorite && (
           <button
             type="button"
@@ -235,20 +204,112 @@ export function RideCard({
             }}
             aria-label={isFavorited ? "Убрать из избранного" : "Добавить в избранное"}
             style={{
-              flexShrink: 0,
               padding: 4,
               background: "none",
               border: "none",
               cursor: "pointer",
-              fontSize: 18,
+              fontSize: 16,
               lineHeight: 1,
-              color: isFavorited ? "#E54E5C" : "var(--brand-sub)",
+              color: isFavorited ? "var(--brand-accent)" : "var(--brand-faint)",
+              flexShrink: 0,
             }}
           >
             {isFavorited ? "❤️" : "🤍"}
           </button>
         )}
+        <div
+          style={{
+            fontSize: 15,
+            fontWeight: 700,
+            color: "var(--brand-text)",
+            letterSpacing: -0.3,
+            lineHeight: 1,
+          }}
+        >
+          {priceLabel}
+        </div>
       </div>
-    </button>
+
+      {/* Route row: from dot → line → pin + to */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <div
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            background: "#3D6B8A",
+            flexShrink: 0,
+          }}
+        />
+        <div
+          style={{
+            fontSize: 13.5,
+            fontWeight: 500,
+            color: "var(--brand-text)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {ride.from_label}
+        </div>
+        <div
+          style={{
+            flex: "0 1 24px",
+            height: 1.5,
+            background: "var(--brand-line)",
+            minWidth: 14,
+            flexShrink: 0,
+          }}
+        />
+        <Icon name="pin" size={13} style={{ color: "var(--brand-sub)", flexShrink: 0 }} />
+        <div
+          style={{
+            fontSize: 13.5,
+            fontWeight: 600,
+            color: "var(--brand-text)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          {ride.to_label}
+        </div>
+      </div>
+
+      {/* Bottom row: seats + comment */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 12,
+            color: noSeats ? "var(--brand-danger)" : "var(--brand-sub)",
+            fontWeight: 500,
+          }}
+        >
+          <Icon name="seat" size={13} />
+          {noSeats ? "нет мест" : `${seats} мест`}
+        </div>
+        {ride.comment !== null && (
+          <div
+            style={{
+              flex: 1,
+              fontSize: 12,
+              color: "var(--brand-sub)",
+              fontStyle: "italic",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {ride.comment}
+          </div>
+        )}
+      </div>
+    </article>
   );
 }

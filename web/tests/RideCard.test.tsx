@@ -56,7 +56,7 @@ describe("RideCard", () => {
   it("вызывает onClick при клике на карточку", () => {
     const onClick = vi.fn();
     render(<RideCard ride={mockRide} onClick={onClick} />);
-    fireEvent.click(screen.getByRole("button"));
+    fireEvent.click(screen.getByTestId("ride-card"));
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(onClick).toHaveBeenCalledWith(mockRide);
   });
@@ -98,5 +98,40 @@ describe("RideCard", () => {
     fireEvent.click(screen.getByTestId("fav-toggle"));
     expect(onToggleFavorite).toHaveBeenCalledTimes(1);
     expect(onClickCard).not.toHaveBeenCalled();
+  });
+
+  it("отображает относительное время отправления (через X ч)", () => {
+    const inTwoHours = new Date(Date.now() + 2 * 3600000).toISOString();
+    render(<RideCard ride={{ ...mockRide, departure_at: inTwoHours }} />);
+    expect(screen.getByText("через 2 ч")).toBeInTheDocument();
+  });
+
+  it("отображает относительное время с минутами (через X ч Y мин)", () => {
+    const in90Min = new Date(Date.now() + 90 * 60000).toISOString();
+    render(<RideCard ride={{ ...mockRide, departure_at: in90Min }} />);
+    expect(screen.getByText(/через 1 ч \d+ мин/)).toBeInTheDocument();
+  });
+
+  it("отображает 'через X мин' для близкого отправления", () => {
+    const in30Min = new Date(Date.now() + 30 * 60000).toISOString();
+    render(<RideCard ride={{ ...mockRide, departure_at: in30Min }} />);
+    expect(screen.getByText(/через \d+ мин/)).toBeInTheDocument();
+  });
+
+  it("отображает 'уже уехал' для прошедшего отправления", () => {
+    const past = new Date(Date.now() - 3600000).toISOString();
+    render(<RideCard ride={{ ...mockRide, departure_at: past }} />);
+    expect(screen.getByText("уже уехал")).toBeInTheDocument();
+  });
+
+  it("compact режим отображает to_label и цену", () => {
+    render(<RideCard ride={mockRide} density="compact" />);
+    expect(screen.getByText("ул. Баумана")).toBeInTheDocument();
+    expect(screen.getByText(/150/)).toBeInTheDocument();
+  });
+
+  it("compact режим показывает количество мест", () => {
+    render(<RideCard ride={mockRide} density="compact" />);
+    expect(screen.getByText("2")).toBeInTheDocument();
   });
 });

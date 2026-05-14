@@ -176,7 +176,46 @@ function AppRoutes() {
     );
   }
 
-  // "ok" or "error" (401 / network) — show routes normally
+  if (me.status === "error") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          padding: 24,
+          gap: 16,
+          background: "var(--brand-bg, #f4f5f4)",
+        }}
+      >
+        <p style={{ fontSize: 15, color: "#e54e5c", margin: 0, textAlign: "center" }}>
+          Ошибка подключения
+        </p>
+        <p style={{ fontSize: 13, color: "#7c8694", margin: 0, textAlign: "center" }}>
+          {me.message}
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          style={{
+            background: "var(--brand-primary, #2D5A3D)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 10,
+            padding: "12px 24px",
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Повторить
+        </button>
+      </div>
+    );
+  }
+
   return (
     <HashRouter>
       <AppShell />

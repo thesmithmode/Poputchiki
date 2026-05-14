@@ -46,12 +46,12 @@
       "cost_usd": 0.519248
     },
     "2026-05-13.md": {
-      "hash": "b7b6456ed238cf05",
-      "compiled_at": "2026-05-13T19:41:44+03:00",
-      "cost_usd": 0.5809890000000001
+      "hash": "138bc96e0125af8d",
+      "compiled_at": "2026-05-13T21:06:57+03:00",
+      "cost_usd": 1.0865589
     }
   },
   "query_count": 0,
   "last_lint": null,
-  "total_cost": 10.1109815
+  "total_cost": 11.83613705
 }

@@ -118,7 +118,9 @@
       "Bash(Test-Path \"C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\apps\\\\api\\\\src\\\\routes\\\\users.ts\")",
       "Bash(Test-Path \"C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\apps\\\\api\\\\src\\\\users\")",
       "Bash(grep -oE '[0-9]{10,}')",
-      "Bash(bunx tsc *)"
+      "Bash(bunx tsc *)",
+      "Skill(superpowers:systematic-debugging)",
+      "WebFetch(domain:api.anthropic.com)"
     ]
   },
   "hooks": {

@@ -73,9 +73,9 @@ describe("parseWebhookEnv", () => {
     expect(env.DOMAIN).toBe("example.com");
   });
 
-  it("WEBHOOK_PORT опциональный — дефолт 3002", () => {
+  it("WEBHOOK_PORT опциональный — дефолт 3001", () => {
     const env = parseWebhookEnv(VALID_WEBHOOK_ENV);
-    expect(env.WEBHOOK_PORT).toBe(3002);
+    expect(env.WEBHOOK_PORT).toBe(3001);
   });
 
   it("WEBHOOK_SECRET отсутствует → бросает ошибку", () => {

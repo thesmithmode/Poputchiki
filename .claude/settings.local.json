@@ -124,7 +124,9 @@
       "Bash(git *)",
       "Bash(cat *)",
       "Bash(gh workflow *)",
-      "Bash(ssh *)"
+      "Bash(ssh *)",
+      "Bash(scp -i ~/.ssh/claude_racknerd_120 C:/Soft/Projects/Poputchiki/test_auth_sim.ts root@192.3.12.148:/tmp/test_auth_sim.ts)",
+      "Bash(scp -i ~/.ssh/claude_racknerd_120 C:/Soft/Projects/Poputchiki/test_auth_sim2.ts root@192.3.12.148:/tmp/test_auth_sim2.ts)"
     ]
   },
   "hooks": {

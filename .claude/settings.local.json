@@ -123,7 +123,8 @@
       "WebFetch(domain:api.anthropic.com)",
       "Bash(git *)",
       "Bash(cat *)",
-      "Bash(gh workflow *)"
+      "Bash(gh workflow *)",
+      "Bash(ssh *)"
     ]
   },
   "hooks": {

@@ -1,5 +1,16 @@
 # Build Log
 
+## [2026-05-14T18:45:00+03:00] compile | 2026-05-14.md
+- Source: daily/2026-05-14.md
+- Articles created: [[concepts/leaflet-css-zero-height]], [[concepts/test-assertion-contract-drift]], [[concepts/redesign-test-maintenance-cascade]]
+- Articles updated: [[concepts/memory-flush-system]] (added 2026-05-14 flush errors: 6 FLUSH_ERRORs + 4 FLUSH_OK; pattern persists 12 days)
+
+## [2026-05-14T18:23:00+03:00] compile | 2026-05-13.md (fourth pass — sessions 20:28, 21:14)
+- Source: daily/2026-05-13.md
+- Articles created: [[concepts/healthcheck-process-vs-application]], [[concepts/webhook-port-bind-mismatch]], [[concepts/node-pg-migrate-dotenv-docker]], [[concepts/traefik-acme-http01-port80]], [[concepts/vite-api-base-env-var]], [[concepts/telegram-desktop-miniapp-url-cache]], [[concepts/telegram-hashrouter-tgwebappdata]]
+- Articles updated: (none)
+- Note: 6 articles were listed in index.md from prior passes but never written to disk — created now with full content. 1 new concept extracted from session 21:14 (HashRouter + Telegram hash conflict). vite-api-base-env-var includes centralized apiFetch auto-prefix pattern from session 21:14.
+
 ## [2026-05-13T20:56:00+03:00] compile | 2026-05-13.md (third pass)
 - Source: daily/2026-05-13.md
 - Articles created: [[concepts/deploy-single-healthcheck-window]], [[concepts/trivy-base-image-cve-management]], [[connections/post-deploy-invisible-failures]]

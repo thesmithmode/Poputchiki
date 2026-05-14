@@ -6,8 +6,9 @@ sources:
   - "daily/2026-05-01.md"
   - "daily/2026-05-02.md"
   - "daily/2026-05-03.md"
+  - "daily/2026-05-14.md"
 created: 2026-05-01
-updated: 2026-05-03
+updated: 2026-05-14
 ---
 
 # Memory Flush System (claude-memory-compiler)
@@ -20,9 +21,9 @@ The `.memory/` directory houses a knowledge compiler system that preserves agent
 - Memory flush runs as a detached background process at session end (and optionally pre-compact)
 - Flush output is appended to `daily/YYYY-MM-DD.md` as timestamped `### Memory Flush (HH:MM)` blocks
 - A `FLUSH_ERROR` entry in the daily log indicates the background process exited with a non-zero code
-- Known failure: `FLUSH_ERROR: Exception: Command failed with exit code 1` — seen twice on 2026-05-02 (22:43 and 23:10), and at least 8 times on 2026-05-03 (08:02, 12:57, 13:36, 13:52, 14:08, 14:32, 14:40, 15:20, 15:54, 18:58)
+- Known failure: `FLUSH_ERROR: Exception: Command failed with exit code 1` — seen twice on 2026-05-02 (22:43 and 23:10), at least 8 times on 2026-05-03, and 6 times on 2026-05-14 (13:18, 14:17, 16:06, 16:09, 16:47, 17:04)
 - Additional failure variant observed 2026-05-03 (14:28): `FLUSH_ERROR: Exception: Control request timeout: initialize` — suggests SDK initialization failure, possibly network or credential timeout
-- Persistent multi-day failures across many sessions indicate a systemic environment issue, not a per-session transient fault
+- Persistent multi-week failures (2026-05-02 through 2026-05-14) across many sessions indicate a systemic environment issue, not a per-session transient fault; successful `FLUSH_OK` results still occur intermittently alongside errors
 
 ## Details
 
@@ -47,3 +48,4 @@ A `FLUSH_ERROR` with exit code 1 typically indicates one of: a missing or malfor
 - [[daily/2026-05-01.md]] - Memory system in use; first successful compilation of knowledge base
 - [[daily/2026-05-02.md]] - FLUSH_ERROR at 22:43 and 23:10 (exit code 1 both times); repeated failure confirms persistent issue; no session content captured for the day
 - [[daily/2026-05-03.md]] - FLUSH_ERROR at least 10 times throughout the day (exit code 1 most; one "Control request timeout: initialize" at 14:28); rich session content exists only because sessions wrote structured logs manually; systemic environment issue confirmed
+- [[daily/2026-05-14.md]] - 6 FLUSH_ERRORs (exit code 1) interspersed with 4 FLUSH_OK results; pattern continues 12 days after first observation; intermittent success confirms partial functionality — not a total credential or environment failure

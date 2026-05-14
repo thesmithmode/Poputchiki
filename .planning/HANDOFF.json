@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-14T14:46:31.847Z",
+  "timestamp": "2026-05-14T15:37:17.670Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -22,6 +22,22 @@
     },
     {
       "status": "M",
+      "path": ".memory/knowledge/concepts/memory-flush-system.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/index.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/log.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/compile.log"
+    },
+    {
+      "status": "M",
       "path": ".memory/scripts/flush.log"
     },
     {
@@ -29,10 +45,58 @@
       "path": ".memory/scripts/last-flush.json"
     },
     {
+      "status": "M",
+      "path": ".memory/scripts/state.json"
+    },
+    {
+      "status": "M",
+      "path": ".planning/HANDOFF.json"
+    },
+    {
       "status": "??",
-      "path": ".planning/"
+      "path": ".memory/knowledge/concepts/healthcheck-process-vs-application.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/leaflet-css-zero-height.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/node-pg-migrate-dotenv-docker.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/redesign-test-maintenance-cascade.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/telegram-desktop-miniapp-url-cache.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/telegram-hashrouter-tgwebappdata.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/test-assertion-contract-drift.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/traefik-acme-http01-port80.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/vite-api-base-env-var.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/webhook-port-bind-mismatch.md"
+    },
+    {
+      "status": "??",
+      "path": "\".planning/HANDOFF (1).json\""
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты\nd63ca1a CHORE: biome format MapScreen.test.tsx — убрать лишние пустые строки\n6dd2209 FIX: показывать FAB только на главном экране /; тесты для остальных табов\nfe496fc TEST: убрать тесты back-кнопки из MapScreen — карта теперь таб, кнопки назад нет"
+  "context_notes": "Recent commits:\n0c81984 FIX: карта, роли водитель/пассажир, экран событий, темы, дубликат кнопки\n805a26e FIX: убрать неиспользуемый импорт fireEvent в FeedScreen.test\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты\nd63ca1a CHORE: biome format MapScreen.test.tsx — убрать лишние пустые строки"
 }

@@ -52,8 +52,12 @@
 | [[concepts/webhook-port-bind-mismatch]] | App binds port 3002, Dockerfile EXPOSE + healthcheck reference 3001 → container permanently unhealthy | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/node-pg-migrate-dotenv-docker]] | `--envPath .env` flag triggers `require('dotenv')` even in Docker where env is already injected | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/traefik-acme-http01-port80]] | ACME HTTP-01 needs port 80 open; `ufw inactive` ≠ no firewall — iptables may block; `acme.json` empty = first diagnostic | daily/2026-05-13.md | 2026-05-13 |
-| [[concepts/vite-api-base-env-var]] | Hardcoded `/api` in apiFetch breaks subdomain routing; must use `import.meta.env.VITE_API_BASE` from build arg | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/vite-api-base-env-var]] | Hardcoded `/api` in apiFetch breaks subdomain routing; use `VITE_API_BASE` + centralized auto-prefix for non-auth routes | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/telegram-desktop-miniapp-url-cache]] | Telegram Desktop caches Mini App URL; full restart required after BotFather Menu Button URL change | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/deploy-single-healthcheck-window]] | Single 60s timeout for all 5 services → false rollback when notifier/cron start slowly; use staged per-service timeouts | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/trivy-base-image-cve-management]] | Base image CVEs (Go stdlib in bun:1-alpine) block Trivy gate; manage with .trivyignore + periodic audit on image bumps | daily/2026-05-13.md | 2026-05-13 |
 | [[connections/post-deploy-invisible-failures]] | Deploy reports success but app broken: Telegram URL cache + hardcoded API path + ACME/TLS failure all invisible to healthchecks | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/telegram-hashrouter-tgwebappdata]] | Telegram `#tgWebAppData=...` hash conflicts with React HashRouter → blank screen; strip hash before mount | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/leaflet-css-zero-height]] | Leaflet requires explicit CSS import; without it map collapses to 0px — no errors, just invisible | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/test-assertion-contract-drift]] | Tests with exact-arg assertions break when implementation adds fields; use `objectContaining` or sync tests | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/redesign-test-maintenance-cascade]] | UI redesign triggers cascade: aria-label mismatches, deleted feature tests, Biome empty-line lint failures | daily/2026-05-14.md | 2026-05-14 |

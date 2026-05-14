@@ -32,7 +32,7 @@ async function telegramAuth(): Promise<string | null> {
   } catch (err) {
     if (err instanceof ApiError) {
       const b = err.body as { error?: string } | null;
-      return `API ${err.status}: ${b?.error ?? "unknown"} (initData: ${initData ? `${initData.length}ch` : "empty"})`;
+      return b?.error ?? "auth failed";
     }
     return String(err);
   }

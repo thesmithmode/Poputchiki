@@ -30,6 +30,11 @@ body,
   height: 100%;
 }
 
+body {
+  font-family: "Onest", -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
 /* WCAG AA focus-visible ring for keyboard navigation */
 :focus-visible {
   outline: 3px solid #0ea5e9;

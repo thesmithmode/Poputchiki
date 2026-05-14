@@ -54,3 +54,6 @@
 | [[concepts/traefik-acme-http01-port80]] | ACME HTTP-01 needs port 80 open; `ufw inactive` ≠ no firewall — iptables may block; `acme.json` empty = first diagnostic | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/vite-api-base-env-var]] | Hardcoded `/api` in apiFetch breaks subdomain routing; must use `import.meta.env.VITE_API_BASE` from build arg | daily/2026-05-13.md | 2026-05-13 |
 | [[concepts/telegram-desktop-miniapp-url-cache]] | Telegram Desktop caches Mini App URL; full restart required after BotFather Menu Button URL change | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/deploy-single-healthcheck-window]] | Single 60s timeout for all 5 services → false rollback when notifier/cron start slowly; use staged per-service timeouts | daily/2026-05-13.md | 2026-05-13 |
+| [[concepts/trivy-base-image-cve-management]] | Base image CVEs (Go stdlib in bun:1-alpine) block Trivy gate; manage with .trivyignore + periodic audit on image bumps | daily/2026-05-13.md | 2026-05-13 |
+| [[connections/post-deploy-invisible-failures]] | Deploy reports success but app broken: Telegram URL cache + hardcoded API path + ACME/TLS failure all invisible to healthchecks | daily/2026-05-13.md | 2026-05-13 |

@@ -119,10 +119,8 @@
       "Bash(Test-Path \"C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\apps\\\\api\\\\src\\\\users\")",
       "Bash(grep -oE '[0-9]{10,}')",
       "Bash(bunx tsc *)",
-      "Bash(node_modules/.bin/node-pg-migrate --help)",
-      "Bash(ssh *)",
-      "mcp__sequentialthinking__sequentialthinking",
-      "Bash(grep *)"
+      "Skill(superpowers:systematic-debugging)",
+      "WebFetch(domain:api.anthropic.com)"
     ]
   },
   "hooks": {

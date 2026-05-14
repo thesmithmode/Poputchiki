@@ -1,16 +1,10 @@
 # Build Log
 
-## [2026-05-13T21:00:00+03:00] compile | 2026-05-13.md (fourth pass)
+## [2026-05-13T20:56:00+03:00] compile | 2026-05-13.md (third pass)
 - Source: daily/2026-05-13.md
-- Articles created: [[concepts/traefik-acme-http01-port80]], [[concepts/vite-api-base-env-var]], [[concepts/telegram-desktop-miniapp-url-cache]]
-- Articles updated: (none)
-- Note: Session 20:28 content — ACME HTTP-01 challenge blocked by iptables (ufw inactive ≠ no firewall), VITE_API_BASE hardcoding, Telegram Desktop URL cache — not captured in prior passes
-
-## [2026-05-13T20:30:00+03:00] compile | 2026-05-13.md (third pass)
-- Source: daily/2026-05-13.md
-- Articles created: [[concepts/healthcheck-process-vs-application]], [[concepts/webhook-port-bind-mismatch]], [[concepts/node-pg-migrate-dotenv-docker]]
-- Articles updated: (none)
-- Note: Log entry was missing; files and index entries existed but log was not appended at time of creation
+- Articles created: [[concepts/deploy-single-healthcheck-window]], [[concepts/trivy-base-image-cve-management]], [[connections/post-deploy-invisible-failures]]
+- Articles updated: [[concepts/deployment-pipeline]] (added finding #6: 60s single timeout window for all services → false rollback risk; added deploy-single-healthcheck-window to Related Concepts)
+- Index updated: added 9 missing entries (6 from prior passes not indexed: healthcheck-process-vs-application, webhook-port-bind-mismatch, node-pg-migrate-dotenv-docker, traefik-acme-http01-port80, vite-api-base-env-var, telegram-desktop-miniapp-url-cache; 3 new articles)
 
 ## [2026-05-13T23:55:00+03:00] compile | 2026-05-13.md (second pass)
 - Source: daily/2026-05-13.md

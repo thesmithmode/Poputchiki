@@ -59,7 +59,7 @@ function NotFoundPage() {
         style={{
           marginTop: 8,
           padding: "12px 24px",
-          background: "#0ea5e9",
+          background: "var(--brand-primary)",
           border: "none",
           borderRadius: 10,
           fontSize: 15,
@@ -111,7 +111,7 @@ function AppShell() {
       <a href="#main-content" className="skip-link">
         Перейти к основному контенту
       </a>
-      <main id="main-content" style={showTabs ? { paddingBottom: 64 } : undefined}>
+      <main id="main-content" style={showTabs ? { paddingBottom: 80 } : undefined}>
         <Routes>
           <Route path="/" element={<FeedScreen />} />
           <Route path="/rides" element={<FeedScreen />} />

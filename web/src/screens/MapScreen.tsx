@@ -111,10 +111,11 @@ export function MapScreen() {
           );
           if (!destroyed) {
             setRides(data.rides);
-            setLoading(false);
             renderMarkers(map, L, data.rides);
           }
         } catch {
+          // network/API error — keep map visible, rides empty
+        } finally {
           if (!destroyed) setLoading(false);
         }
       };
@@ -122,6 +123,7 @@ export function MapScreen() {
       map.on("moveend", loadRides);
       setTimeout(() => {
         map.invalidateSize();
+        if (!destroyed) setLoading(false);
         loadRides();
       }, 80);
     }

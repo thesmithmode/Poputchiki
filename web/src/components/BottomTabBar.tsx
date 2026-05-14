@@ -10,11 +10,11 @@ interface TabItem {
 }
 
 const TABS: TabItem[] = [
-  { id: "feed", label: "Поездки", icon: "home", path: "/" },
+  { id: "feed", label: "Лента", icon: "home", path: "/" },
   { id: "map", label: "Карта", icon: "map", path: "/map" },
   { id: "create", label: "", icon: "plus", path: "/rides/new", isFab: true },
   { id: "notif", label: "События", icon: "bell", path: "/settings/notifications" },
-  { id: "me", label: "Профиль", icon: "user", path: "/settings" },
+  { id: "me", label: "Я", icon: "user", path: "/settings" },
 ];
 
 const SHOW_ON_PATHS = new Set(["/", "/map", "/favorites", "/settings", "/settings/notifications"]);
@@ -60,37 +60,34 @@ export function BottomTabBar() {
         const active = activeId === tab.id;
 
         if (tab.isFab) {
-          const showFab = location.pathname === "/";
           return (
             <div
               key={tab.id}
               style={{ display: "flex", alignItems: "center", justifyContent: "center" }}
             >
-              {showFab && (
-                <button
-                  type="button"
-                  aria-label="Создать поездку"
-                  onClick={() => navigate(tab.path)}
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: "50%",
-                    background: "var(--brand-primary)",
-                    color: "var(--brand-primary-ink, #fff)",
-                    border: "none",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginTop: -10,
-                    boxShadow:
-                      "0 6px 18px -4px rgba(45,90,61,0.5), 0 0 0 4px var(--tab-bar-ring, #fff)",
-                    transition: "transform 0.08s",
-                  }}
-                >
-                  <Icon name="plus" size={22} stroke={2.4} />
-                </button>
-              )}
+              <button
+                type="button"
+                aria-label="Создать поездку"
+                onClick={() => navigate(tab.path)}
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: "50%",
+                  background: "var(--brand-primary)",
+                  color: "var(--brand-primary-ink, #fff)",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: -10,
+                  boxShadow:
+                    "0 6px 18px -4px rgba(45,90,61,0.5), 0 0 0 4px var(--tab-bar-ring, #fff)",
+                  transition: "transform 0.08s",
+                }}
+              >
+                <Icon name="plus" size={22} stroke={2.4} />
+              </button>
             </div>
           );
         }

@@ -6,6 +6,7 @@ import { BottomTabBar } from "./components/BottomTabBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
@@ -228,23 +229,28 @@ function AppRoutes() {
 
 export function App() {
   useEffect(() => {
+    const storedPref = getStoredTheme();
     const wa = getTelegramWebApp();
-    if (!wa) return;
-    applyTelegramTheme(wa.colorScheme);
-    applyThemeParams(wa.themeParams ?? {});
-    try {
-      wa.ready();
-      wa.expand?.();
-    } catch {
-      // noop
-    }
-    wa.onEvent("themeChanged", () => {
-      const next = getTelegramWebApp();
-      if (next) {
-        applyTelegramTheme(next.colorScheme);
-        applyThemeParams(next.themeParams ?? {});
+    if (wa) {
+      applyThemeParams(wa.themeParams ?? {});
+      if (storedPref === "system") applyTelegramTheme(wa.colorScheme);
+      else applyTheme(storedPref);
+      try {
+        wa.ready();
+        wa.expand?.();
+      } catch {
+        // noop
       }
-    });
+      wa.onEvent("themeChanged", () => {
+        const next = getTelegramWebApp();
+        if (!next) return;
+        applyThemeParams(next.themeParams ?? {});
+        const cur = getStoredTheme();
+        if (cur === "system") applyTelegramTheme(next.colorScheme);
+      });
+    } else {
+      applyTheme(storedPref);
+    }
   }, []);
 
   return (

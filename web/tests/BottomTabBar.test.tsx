@@ -62,9 +62,9 @@ describe("BottomTabBar", () => {
     expect(container.querySelector("[role='navigation']")).not.toBeInTheDocument();
   });
 
-  it("показывает кнопку 'Поездки'", () => {
+  it("показывает кнопку 'Лента'", () => {
     renderTabBar("/");
-    expect(screen.getByLabelText("Поездки")).toBeInTheDocument();
+    expect(screen.getByLabelText("Лента")).toBeInTheDocument();
   });
 
   it("показывает кнопку 'Карта'", () => {
@@ -77,34 +77,14 @@ describe("BottomTabBar", () => {
     expect(screen.getByLabelText("Создать поездку")).toBeInTheDocument();
   });
 
-  it("не показывает FAB на /map", () => {
-    renderTabBar("/map");
-    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
-  });
-
-  it("не показывает FAB на /settings", () => {
-    renderTabBar("/settings");
-    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
-  });
-
-  it("не показывает FAB на /settings/notifications", () => {
-    renderTabBar("/settings/notifications");
-    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
-  });
-
-  it("не показывает FAB на /favorites", () => {
-    renderTabBar("/favorites");
-    expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
-  });
-
   it("показывает кнопку 'События'", () => {
     renderTabBar("/");
     expect(screen.getByLabelText("События")).toBeInTheDocument();
   });
 
-  it("показывает кнопку 'Профиль'", () => {
+  it("показывает кнопку 'Я'", () => {
     renderTabBar("/");
-    expect(screen.getByLabelText("Профиль")).toBeInTheDocument();
+    expect(screen.getByLabelText("Я")).toBeInTheDocument();
   });
 
   it("нажатие на 'Карта' вызывает navigate /map", () => {
@@ -113,9 +93,9 @@ describe("BottomTabBar", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/map");
   });
 
-  it("нажатие на 'Поездки' вызывает navigate /", () => {
+  it("нажатие на 'Лента' вызывает navigate /", () => {
     renderTabBar("/map");
-    fireEvent.click(screen.getByLabelText("Поездки"));
+    fireEvent.click(screen.getByLabelText("Лента"));
     expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 
@@ -125,9 +105,9 @@ describe("BottomTabBar", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/rides/new");
   });
 
-  it("нажатие на 'Профиль' вызывает navigate /settings", () => {
+  it("нажатие на 'Я' вызывает navigate /settings", () => {
     renderTabBar("/");
-    fireEvent.click(screen.getByLabelText("Профиль"));
+    fireEvent.click(screen.getByLabelText("Я"));
     expect(mockNavigate).toHaveBeenCalledWith("/settings");
   });
 

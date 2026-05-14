@@ -19,7 +19,7 @@ export type MeState =
   | { status: "ok"; user: MeUser }
   | { status: "error"; message: string };
 
-async function telegramAuth(): Promise<boolean> {
+async function telegramAuth(): Promise<string | null> {
   const wa = getTelegramWebApp();
   const initData = wa?.initData ?? "";
   try {
@@ -28,9 +28,13 @@ async function telegramAuth(): Promise<boolean> {
       body: JSON.stringify({ initData }),
     });
     setTokens(auth.access_token, auth.refresh_token);
-    return true;
-  } catch {
-    return false;
+    return null;
+  } catch (err) {
+    if (err instanceof ApiError) {
+      const b = err.body as { error?: string } | null;
+      return `API ${err.status}: ${b?.error ?? "unknown"} (initData: ${initData ? `${initData.length}ch` : "empty"})`;
+    }
+    return String(err);
   }
 }
 
@@ -68,10 +72,10 @@ export function useMe(): MeState {
 
     async function boot() {
       if (!getTokens()) {
-        const ok = await telegramAuth();
+        const authErr = await telegramAuth();
         if (cancelled) return;
-        if (!ok) {
-          setState({ status: "error", message: "Ошибка авторизации через Telegram" });
+        if (authErr !== null) {
+          setState({ status: "error", message: authErr });
           return;
         }
       }
@@ -96,10 +100,10 @@ export function useMe(): MeState {
           }
           // Refresh failed — clear tokens and re-auth via Telegram initData
           clearTokens();
-          const ok = await telegramAuth();
+          const authErr = await telegramAuth();
           if (cancelled) return;
-          if (!ok) {
-            setState({ status: "error", message: "Ошибка авторизации через Telegram" });
+          if (authErr !== null) {
+            setState({ status: "error", message: authErr });
             return;
           }
           try {

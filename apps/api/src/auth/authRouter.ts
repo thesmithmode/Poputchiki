@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
 import type postgres from "postgres";
+import { withSystem } from "../db/with-identity";
 import { AUTH_COOKIE_DEFAULTS, CSRF_COOKIE_DEFAULTS } from "../lib/cookie";
 import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 
@@ -44,27 +45,22 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     let authUser: { id: string; role: string } | null = null;
     try {
-      authUser = await sql.begin(async (tx) => {
+      // withSystem uses SET LOCAL ROLE poputchiki_service (BYPASSRLS) — required because
+      // the connection pool connects as poputchiki_app which has RLS enabled. Auth bootstrap
+      // must read/write users and nonces before a JWT identity exists.
+      authUser = await withSystem(sql, async (tx) => {
         // Replay protection: insert once; conflict → replay attack
-        // Note: poputchiki_app has no SELECT on nonces (RLS), so no RETURNING
         const nonceResult = await tx`
           INSERT INTO nonces (hash) VALUES (${hash})
           ON CONFLICT DO NOTHING
         `;
         if (nonceResult.count === 0) return null;
 
-        // Bootstrap: find existing user UUID before setting RLS role
         const [existing] = await tx`
           SELECT id FROM users WHERE tg_id = ${tgUser.id} AND deleted_at IS NULL LIMIT 1
         `;
         const existingId = existing?.id;
         const id = typeof existingId === "string" ? existingId : crypto.randomUUID();
-
-        // Set GUC identity so RLS policies pass
-        await tx`SELECT set_config('app.current_user_id', ${id}, true)`;
-        await tx`SELECT set_config('app.current_user_tg_id', ${String(tgUser.id)}, true)`;
-        await tx`SELECT set_config('app.current_user_role', 'user', true)`;
-        await tx`SET LOCAL ROLE poputchiki_app`;
 
         const displayName = [tgUser.first_name, tgUser.last_name].filter(Boolean).join(" ");
 

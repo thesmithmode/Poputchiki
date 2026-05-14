@@ -23,12 +23,8 @@
 
 ## Инфраструктура
 
-- **[INFRA-01] PATH-BASED роутинг (один домен вместо поддоменов)**
-  Сейчас: три поддомена `app.`, `api.`, `webhook.`. Цель: всё на одном домене.
-  Что менять: Traefik labels PathPrefix, API-клиент фронта, webhook URL, CORS origin, BotFather MiniApp URL.
+- **[INFRA-01] Self-hosted Sentry**
+  Текущий план Б (error_log table + TG-alert) — временное решение. Поднять Sentry self-hosted.
 
-- **[INFRA-02] Self-hosted Sentry**
-  Текущий план Б (error_log table + TG-alert) — временное решение.
-
-- **[INFRA-03] Prometheus + Grafana**
+- **[INFRA-02] Prometheus + Grafana**
   Observability stack. Пока только /metrics endpoint.

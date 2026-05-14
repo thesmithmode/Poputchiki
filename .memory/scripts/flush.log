@@ -1196,17 +1196,63 @@ Error output: Check stderr output for details
 2026-05-14 14:17:50 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
 Error output: Check stderr output for details
 2026-05-14 14:17:50 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
-2026-05-14 14:31:50 INFO [pre-compact] PreCompact fired: session=fdeabb40-b459-41bc-a957-5b3361886e53
-2026-05-14 14:31:51 INFO [pre-compact] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 3531 chars)
-2026-05-14 14:31:51 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-fdeabb40-b459-41bc-a957-5b3361886e53-20260514-143151.md
-2026-05-14 14:31:51 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 3530 chars
-2026-05-14 14:31:54 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
-2026-05-14 14:32:09 INFO Result: FLUSH_OK
-2026-05-14 14:32:09 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
-2026-05-14 14:45:23 INFO [pre-compact] PreCompact fired: session=fdeabb40-b459-41bc-a957-5b3361886e53
-2026-05-14 14:45:24 INFO [pre-compact] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 14001 chars)
-2026-05-14 14:45:24 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-fdeabb40-b459-41bc-a957-5b3361886e53-20260514-144524.md
-2026-05-14 14:45:24 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 14000 chars
-2026-05-14 14:45:26 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
-2026-05-14 14:45:50 INFO Result: saved to daily log (1365 chars)
-2026-05-14 14:45:50 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-14 16:05:55 INFO [pre-compact] PreCompact fired: session=fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-14 16:05:56 INFO [pre-compact] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 3581 chars)
+2026-05-14 16:05:57 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-fdeabb40-b459-41bc-a957-5b3361886e53-20260514-160555.md
+2026-05-14 16:05:57 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 3580 chars
+2026-05-14 16:05:59 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-14 16:06:32 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-14 16:06:32 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-14 16:06:32 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-14 16:06:32 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53
+2026-05-14 16:09:02 INFO [hook] SessionEnd fired: session=fdeabb40-b459-41bc-a957-5b3361886e53 source=unknown
+2026-05-14 16:09:03 INFO [hook] Spawned flush.py for session fdeabb40-b459-41bc-a957-5b3361886e53 (30 turns, 14823 chars)
+2026-05-14 16:09:04 INFO flush.py started for session fdeabb40-b459-41bc-a957-5b3361886e53, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-fdeabb40-b459-41bc-a957-5b3361886e53-20260514-160903.md
+2026-05-14 16:09:04 INFO Flushing session fdeabb40-b459-41bc-a957-5b3361886e53: 14822 chars
+2026-05-14 16:09:07 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-14 16:09:43 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-14 16:09:43 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-14 16:09:43 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-14 16:09:43 INFO Flush complete for session fdeabb40-b459-41bc-a957-5b3361886e53

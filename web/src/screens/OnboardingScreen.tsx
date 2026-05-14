@@ -77,13 +77,9 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
       {step === 1 && (
         <div data-testid="onboarding-step-1" className="w-full max-w-sm">
           <p className="mb-3 text-sm text-gray-500">
-            Ваше имя в Telegram:{" "}
-            <span className="font-medium text-gray-700">{displayName}</span>
+            Ваше имя в Telegram: <span className="font-medium text-gray-700">{displayName}</span>
           </p>
-          <label
-            htmlFor="onboarding-name"
-            className="mb-1 block text-sm font-medium text-gray-700"
-          >
+          <label htmlFor="onboarding-name" className="mb-1 block text-sm font-medium text-gray-700">
             Псевдоним <span className="font-normal text-gray-400">(необязательно)</span>
           </label>
           <input

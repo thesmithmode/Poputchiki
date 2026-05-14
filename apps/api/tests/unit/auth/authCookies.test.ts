@@ -18,17 +18,11 @@ function makeSql() {
   const tx = vi
     .fn()
     // biome-ignore lint/suspicious/noExplicitAny: mock tx
-    .mockResolvedValueOnce([{ hash: "sentinel-hash-abc" }] as any) // INSERT nonce
+    .mockResolvedValueOnce([] as any) // SET LOCAL ROLE poputchiki_service (withSystem)
+    // biome-ignore lint/suspicious/noExplicitAny: mock tx
+    .mockResolvedValueOnce([] as any) // INSERT nonce (count undefined ≠ 0 → not replay)
     // biome-ignore lint/suspicious/noExplicitAny: mock tx
     .mockResolvedValueOnce([] as any) // SELECT user (new user)
-    // biome-ignore lint/suspicious/noExplicitAny: mock tx
-    .mockResolvedValueOnce([] as any) // set_config user_id
-    // biome-ignore lint/suspicious/noExplicitAny: mock tx
-    .mockResolvedValueOnce([] as any) // set_config tg_id
-    // biome-ignore lint/suspicious/noExplicitAny: mock tx
-    .mockResolvedValueOnce([] as any) // set_config role
-    // biome-ignore lint/suspicious/noExplicitAny: mock tx
-    .mockResolvedValueOnce([] as any) // SET LOCAL ROLE
     // biome-ignore lint/suspicious/noExplicitAny: mock tx
     .mockResolvedValueOnce([{ id: "00000000-0000-4000-a000-000000000099", role: "user" }] as any); // INSERT users RETURNING
 

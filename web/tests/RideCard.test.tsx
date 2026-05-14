@@ -48,9 +48,9 @@ describe("RideCard", () => {
     expect(screen.getByText(/2\s+мест/)).toBeInTheDocument();
   });
 
-  it("отображает 'Бесплатно' при price_rub = null", () => {
+  it("отображает '0 ₽' при price_rub = null", () => {
     render(<RideCard ride={{ ...mockRide, price_rub: null }} />);
-    expect(screen.getByText(/Бесплатно/i)).toBeInTheDocument();
+    expect(screen.getByText("0 ₽")).toBeInTheDocument();
   });
 
   it("вызывает onClick при клике на карточку", () => {

@@ -27,12 +27,29 @@ export function FeedScreen() {
   const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
   const [view, setView] = useState<"list" | "map">("list");
   const [showFilters, setShowFilters] = useState(false);
+  const [density, setDensity] = useState<"compact" | "cozy">(() => {
+    return (localStorage.getItem("pp_density") as "compact" | "cozy") ?? "cozy";
+  });
+  const toggleDensity = () => {
+    const next = density === "compact" ? "cozy" : "compact";
+    setDensity(next);
+    localStorage.setItem("pp_density", next);
+  };
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<unknown>(null);
   const filteredRides = useMemo(
     () => applyFilters(data?.rides ?? [], filters, favoriteIds),
     [data, filters, favoriteIds],
   );
+
+  function pluralRides(n: number): string {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod100 >= 11 && mod100 <= 14) return "маршрутов";
+    if (mod10 === 1) return "маршрут";
+    if (mod10 >= 2 && mod10 <= 4) return "маршрута";
+    return "маршрутов";
+  }
 
   const trustOn =
     filters.trustMinAccountAgeDays > 0 ||
@@ -194,6 +211,26 @@ export function FeedScreen() {
           </button>
           <button
             type="button"
+            data-testid="toggle-density"
+            onClick={toggleDensity}
+            aria-label={density === "compact" ? "Уютный вид" : "Компактный вид"}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              border: "none",
+              background: density === "compact" ? "var(--brand-primary)" : "#F1F4F8",
+              color: density === "compact" ? "#fff" : "var(--brand-text)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <Icon name={density === "compact" ? "list" : "grid"} size={16} />
+          </button>
+          <button
+            type="button"
             onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
             style={{
               padding: "6px 12px",
@@ -272,6 +309,24 @@ export function FeedScreen() {
         </div>
       )}
 
+      {/* Result count */}
+      {!isLoading && !isError && (
+        <div
+          style={{
+            padding: "6px 16px 0",
+            fontSize: 12,
+            color: "var(--brand-sub)",
+            fontWeight: 500,
+          }}
+        >
+          Найдено{" "}
+          <span style={{ color: "var(--brand-text)", fontWeight: 700 }}>
+            {filteredRides.length}
+          </span>{" "}
+          {pluralRides(filteredRides.length)}
+        </div>
+      )}
+
       {/* Filters panel */}
       {showFilters && (
         <FiltersPanel filters={filters} onChange={setFilters} onReset={resetFilters} />
@@ -285,7 +340,7 @@ export function FeedScreen() {
             flex: 1,
             display: "flex",
             flexDirection: "column",
-            gap: 8,
+            gap: density === "compact" ? 3 : 8,
             padding: "12px 16px 24px",
           }}
         >
@@ -315,6 +370,7 @@ export function FeedScreen() {
               <RideCard
                 key={ride.id}
                 ride={ride}
+                density={density}
                 onClick={handleCardClick}
                 isFavorited={isFavorite(ride.driver_id)}
                 onToggleFavorite={() => toggleFavorite(ride.driver_id)}

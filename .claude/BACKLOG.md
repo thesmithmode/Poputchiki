@@ -1,20 +1,34 @@
 # BACKLOG
 
+Задачи не в текущем спринте. Приоритизировать перед следующим релизом.
+
+## Критические (юридические)
+
+- **[LEGAL-01] Написать текст Условий использования**
+  Заглушка на экране `/terms`. Нужен реальный текст: права/обязанности, ограничение ответственности (не перевозчик — информационный сервис), правила публикации поездок.
+
+- **[LEGAL-02] Написать Политику конфиденциальности**
+  Заглушка на экране `/privacy`. Нужен реальный текст: какие данные собираем (Telegram ID, display_name, геолокация маршрута), как храним (pgcrypto для PII), как удаляем по запросу, GDPR/152-ФЗ.
+
+- **[LEGAL-03] Юридическая проверка текстов**
+  Перед публикацией — проверить у юриста, что позиционирование "информационный сервис, не перевозчик" корректно закреплено в документах.
+
+## Продукт
+
+- **[PROD-01] Верификация соседей**
+  Механизм подтверждения принадлежности к ЖК Царёво (номер квартиры + дом уже не запрашиваем — нужна альтернатива: QR-код от УК, invite-link от соседа, etc.)
+
+- **[PROD-02] Оценки и отзывы после поездки**
+  Auto-prompt через 30 мин после departure_at.
+
 ## Инфраструктура
 
-### PATH-BASED роутинг (один домен вместо поддоменов)
-Сейчас: три поддомена `app.`, `api.`, `webhook.` — три DNS-записи, три сертификата.
-Цель: всё на `poputchiki.searchingforgamesforever.online`:
-- `/` → web (SPA)
-- `/api/` → api (strip prefix)
-- `/webhook/` → webhook (strip prefix)
+- **[INFRA-01] PATH-BASED роутинг (один домен вместо поддоменов)**
+  Сейчас: три поддомена `app.`, `api.`, `webhook.`. Цель: всё на одном домене.
+  Что менять: Traefik labels PathPrefix, API-клиент фронта, webhook URL, CORS origin, BotFather MiniApp URL.
 
-Что менять:
-1. Traefik labels в `infra/docker-compose.prod.yml` — PathPrefix вместо Host
-2. API-клиент фронта — добавить `/api` префикс к запросам
-3. URL регистрации Telegram webhook → `https://poputchiki.../webhook/...`
-4. CORS origin в бекенде
-5. BotFather MiniApp URL → `https://poputchiki.searchingforgamesforever.online`
+- **[INFRA-02] Self-hosted Sentry**
+  Текущий план Б (error_log table + TG-alert) — временное решение.
 
-Плюсы: один домен, один сертификат, проще BotFather.
-Минусы: рефакторинг всего API-клиента + webhook URL.
+- **[INFRA-03] Prometheus + Grafana**
+  Observability stack. Пока только /metrics endpoint.

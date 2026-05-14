@@ -89,6 +89,10 @@ describe("GET /api/users/me", () => {
       likes_received: 0,
       avg_stars: null,
       reviews_count: 0,
+      driver_avg_stars: null,
+      passenger_avg_stars: null,
+      driver_reviews_count: 0,
+      passenger_reviews_count: 0,
     });
   });
 

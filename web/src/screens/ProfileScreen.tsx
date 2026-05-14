@@ -260,7 +260,15 @@ export function ProfileScreen({ id }: Props) {
           >
             <BigStat value={user.stats.likes_received} label="лайки" />
             <BigStat
-              value={user.stats.avg_stars !== null ? user.stats.avg_stars.toFixed(1) : "—"}
+              value={
+                roleView === "driver"
+                  ? user.stats.driver_avg_stars != null
+                    ? user.stats.driver_avg_stars.toFixed(1)
+                    : "—"
+                  : user.stats.passenger_avg_stars != null
+                    ? user.stats.passenger_avg_stars.toFixed(1)
+                    : "—"
+              }
               label="рейтинг"
             />
             <BigStat value={ridesInRole} label="поездки" />
@@ -379,11 +387,15 @@ export function ProfileScreen({ id }: Props) {
                       marginBottom: 4,
                     }}
                   >
-                    {user.stats.avg_stars?.toFixed(1) ?? "—"}
+                    {roleView === "driver"
+                      ? (user.stats.driver_avg_stars?.toFixed(1) ?? "—")
+                      : (user.stats.passenger_avg_stars?.toFixed(1) ?? "—")}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--brand-sub)" }}>
-                    {user.stats.reviews_count} отзывов ·{" "}
-                    {roleView === "driver" ? "как водитель" : "как пассажир"}
+                    {roleView === "driver"
+                      ? user.stats.driver_reviews_count
+                      : user.stats.passenger_reviews_count}{" "}
+                    отзывов · {roleView === "driver" ? "как водитель" : "как пассажир"}
                   </div>
                 </div>
               )}

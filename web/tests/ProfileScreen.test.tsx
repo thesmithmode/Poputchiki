@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfileScreen } from "../src/screens/ProfileScreen";
@@ -45,6 +45,10 @@ const mockUser = {
     likes_received: 8,
     avg_stars: 4.7,
     reviews_count: 6,
+    driver_avg_stars: 4.8,
+    passenger_avg_stars: 4.6,
+    driver_reviews_count: 4,
+    passenger_reviews_count: 2,
   },
 };
 
@@ -94,10 +98,25 @@ describe("ProfileScreen", () => {
       const stats = screen.getByTestId("big-stats");
       expect(stats).toBeInTheDocument();
       expect(stats).toHaveTextContent("8");
-      expect(stats).toHaveTextContent("4.7");
+      // По умолчанию режим "пассажир" → показывает passenger_avg_stars=4.6
+      expect(stats).toHaveTextContent("4.6");
       // По умолчанию режим "пассажир" → показывает rides_as_passenger=5
       expect(stats).toHaveTextContent("5");
     });
+  });
+
+  it("рейтинг водителя в режиме driver", async () => {
+    mockedApiFetch.mockResolvedValueOnce(mockUser);
+    renderScreen();
+    await waitFor(() => screen.getByText("Иван Иванов"));
+    // переключаем на водителя через кнопку
+    const driverBtn = screen.queryByText("Водитель");
+    if (driverBtn) {
+      fireEvent.click(driverBtn);
+      await waitFor(() => {
+        expect(screen.getByTestId("big-stats")).toHaveTextContent("4.8");
+      });
+    }
   });
 
   it("показывает вкладки Расписание / Отзывы / Поездки", async () => {

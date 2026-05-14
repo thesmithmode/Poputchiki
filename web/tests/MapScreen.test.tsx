@@ -178,6 +178,10 @@ describe("MapScreen", () => {
       configurable: true,
     });
     renderScreen();
+    // wait for Leaflet init: loading disappears after 80ms timeout → mapRef.current is set
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
     const btn = screen.getByTestId("locate-me");
     expect(btn).toBeInTheDocument();
     fireEvent.click(btn);

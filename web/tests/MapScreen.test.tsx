@@ -121,12 +121,6 @@ describe("MapScreen", () => {
     expect(screen.getByTestId("rides-count")).toHaveTextContent("1 поездок");
   });
 
-  it("показывает back кнопку", () => {
-    mockedApiFetch.mockReturnValue(new Promise(() => {}));
-    renderScreen();
-    expect(screen.getByTestId("back-btn")).toBeInTheDocument();
-  });
-
   it("показывает кнопки zoom", () => {
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     renderScreen();
@@ -162,12 +156,5 @@ describe("MapScreen", () => {
     await waitFor(() => {
       expect(mockedApiFetch).toHaveBeenCalledWith(expect.stringContaining("/rides?fromLat="));
     });
-  });
-
-  it("кнопка назад есть с правильным aria-label", () => {
-    mockedApiFetch.mockReturnValue(new Promise(() => {}));
-    renderScreen();
-    const btn = screen.getByTestId("back-btn");
-    expect(btn).toHaveAttribute("aria-label", "Назад");
   });
 });

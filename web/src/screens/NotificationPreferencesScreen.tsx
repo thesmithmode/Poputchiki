@@ -49,6 +49,56 @@ async function putPrefs(partial: Partial<Prefs>): Promise<Prefs> {
   });
 }
 
+function Toggle({
+  on,
+  disabled,
+  onClick,
+  label,
+  testId,
+}: {
+  on: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+  label: string;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={label}
+      style={{
+        position: "relative",
+        width: 44,
+        height: 24,
+        borderRadius: 12,
+        border: "none",
+        background: on ? "var(--brand-primary)" : "var(--brand-line)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        transition: "background 0.2s",
+        flexShrink: 0,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <span
+        style={{
+          position: "absolute",
+          top: 2,
+          left: on ? 22 : 2,
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          background: "#fff",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+          transition: "left 0.2s",
+        }}
+      />
+    </button>
+  );
+}
+
 export function NotificationPreferencesScreen() {
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -63,9 +113,7 @@ export function NotificationPreferencesScreen() {
   async function muteAll() {
     if (!prefs) return;
     const patch: Partial<Prefs> = {};
-    for (const key of MUTABLE_CATEGORIES) {
-      patch[key] = false;
-    }
+    for (const key of MUTABLE_CATEGORIES) patch[key] = false;
     const next = await putPrefs(patch);
     qc.setQueryData(["notif-prefs"], next);
   }
@@ -73,9 +121,7 @@ export function NotificationPreferencesScreen() {
   async function unmuteAll() {
     if (!prefs) return;
     const patch: Partial<Prefs> = {};
-    for (const key of MUTABLE_CATEGORIES) {
-      patch[key] = true;
-    }
+    for (const key of MUTABLE_CATEGORIES) patch[key] = true;
     const next = await putPrefs(patch);
     qc.setQueryData(["notif-prefs"], next);
   }
@@ -84,70 +130,127 @@ export function NotificationPreferencesScreen() {
 
   if (isLoading || !prefs) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-gray-500">Загрузка...</p>
+      <div
+        style={{
+          display: "flex",
+          minHeight: "100vh",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "var(--brand-bg)",
+        }}
+      >
+        <p style={{ fontSize: 14, color: "var(--brand-sub)" }}>Загрузка...</p>
       </div>
     );
   }
 
   return (
-    <div data-testid="notif-pref-screen" className="flex min-h-screen flex-col bg-white">
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-3">
-        <button type="button" onClick={() => navigate(-1)} className="text-sm text-blue-600">
-          ← Назад
+    <div
+      data-testid="notif-pref-screen"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        background: "var(--brand-bg)",
+      }}
+    >
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          borderBottom: "1px solid var(--brand-line)",
+          background: "var(--brand-surface)",
+          padding: "12px 16px",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: 20,
+            cursor: "pointer",
+            padding: 4,
+            color: "var(--brand-text)",
+          }}
+          aria-label="Назад"
+        >
+          ←
         </button>
-        <h1 className="text-lg font-semibold text-gray-900">Уведомления</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
+          Уведомления
+        </h1>
       </header>
 
-      <div className="p-4">
-        <div className="mb-6 flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3">
+      <div style={{ padding: 16 }}>
+        {/* Global mute row */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderRadius: 14,
+            background: "var(--brand-surface)",
+            border: "1px solid var(--brand-line)",
+            padding: "12px 16px",
+            marginBottom: 16,
+          }}
+        >
           <div>
-            <p className="text-sm font-medium text-gray-900">Отключить все</p>
-            <p className="text-xs text-gray-400">Кроме системных</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
+              Отключить все
+            </p>
+            <p style={{ fontSize: 12, color: "var(--brand-sub)", margin: "2px 0 0" }}>
+              Кроме системных
+            </p>
           </div>
-          <button
-            type="button"
-            data-testid="toggle-global-mute"
+          <Toggle
+            on={!isGlobalMuted}
             onClick={isGlobalMuted ? unmuteAll : muteAll}
-            className={`relative h-6 w-11 rounded-full transition-colors ${
-              isGlobalMuted ? "bg-gray-300" : "bg-blue-500"
-            }`}
-            aria-label={isGlobalMuted ? "Включить уведомления" : "Отключить все уведомления"}
-          >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                isGlobalMuted ? "translate-x-0.5" : "translate-x-5"
-              }`}
-            />
-          </button>
+            label={isGlobalMuted ? "Включить уведомления" : "Отключить все уведомления"}
+            testId="toggle-global-mute"
+          />
         </div>
 
-        <ul className="space-y-1">
-          {ALL_CATEGORIES.map((key) => (
-            <li
+        {/* Category list */}
+        <div
+          style={{
+            borderRadius: 14,
+            background: "var(--brand-surface)",
+            border: "1px solid var(--brand-line)",
+            overflow: "hidden",
+          }}
+        >
+          {ALL_CATEGORIES.map((key, i) => (
+            <div
               key={key}
-              className="flex items-center justify-between rounded-lg px-4 py-3 hover:bg-gray-50"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "14px 16px",
+                borderBottom:
+                  i < ALL_CATEGORIES.length - 1 ? "1px solid var(--brand-line)" : "none",
+              }}
             >
-              <span className="text-sm text-gray-800">{CATEGORY_LABELS[key]}</span>
-              <button
-                type="button"
-                data-testid={`toggle-${key}`}
+              <span style={{ fontSize: 14, color: "var(--brand-text)" }}>
+                {CATEGORY_LABELS[key]}
+              </span>
+              <Toggle
+                on={prefs[key]}
                 disabled={key === "system"}
                 onClick={() => toggle(key)}
-                className={`relative h-6 w-11 rounded-full transition-colors disabled:cursor-not-allowed ${
-                  prefs[key] ? "bg-blue-500" : "bg-gray-300"
-                }`}
-                aria-label={`${CATEGORY_LABELS[key]}: ${prefs[key] ? "включено" : "выключено"}`}
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                    prefs[key] ? "translate-x-5" : "translate-x-0.5"
-                  }`}
-                />
-              </button>
-            </li>
+                label={`${CATEGORY_LABELS[key]}: ${prefs[key] ? "включено" : "выключено"}`}
+                testId={`toggle-${key}`}
+              />
+            </div>
           ))}
-        </ul>
+        </div>
       </div>
     </div>
   );

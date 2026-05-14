@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +25,26 @@ vi.mock("../src/lib/api", () => ({
 }));
 
 vi.mock("../src/hooks/useTelegramBack", () => ({ useTelegramBack: vi.fn() }));
+vi.mock("../src/hooks/useMe", () => ({
+  useMe: () => ({
+    status: "ok",
+    user: {
+      id: "u1",
+      display_name: "Test",
+      onboarded: true,
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      role: "user",
+    },
+  }),
+}));
+vi.mock("../src/hooks/useUser", () => ({
+  useUser: () => ({ data: undefined, isLoading: false, isError: false }),
+}));
+vi.mock("../src/hooks/useThemePreference", () => ({
+  useThemePreference: () => ({ pref: "system", setPref: vi.fn() }),
+}));
 
 import { SettingsScreen } from "../src/screens/SettingsScreen";
 
@@ -35,10 +56,13 @@ Object.defineProperty(window, "location", {
 });
 
 function renderSettings() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={["/settings"]}>
-      <SettingsScreen />
-    </MemoryRouter>,
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={["/settings"]}>
+        <SettingsScreen />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

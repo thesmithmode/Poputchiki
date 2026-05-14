@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTelegramBack } from "../hooks/useTelegramBack";
+import { useMe } from "../hooks/useMe";
+import { type ThemePref, useThemePreference } from "../hooks/useThemePreference";
+import { useUser } from "../hooks/useUser";
 import { apiFetch } from "../lib/api";
 import { clearTokens, getTokens } from "../lib/tokenStore";
 
@@ -8,9 +10,17 @@ const APP_VERSION = "0.1.0";
 
 type DeleteState = "idle" | "confirm" | "deleting";
 
+function monthsInService(createdAt: string): number {
+  const ms = Date.now() - new Date(createdAt).getTime();
+  return Math.floor(ms / (30 * 24 * 60 * 60 * 1000));
+}
+
 export function SettingsScreen() {
   const navigate = useNavigate();
-  useTelegramBack(() => navigate(-1));
+  const me = useMe();
+  const myId = me.status === "ok" ? me.user.id : "";
+  const { data: user } = useUser(myId);
+  const { pref, setPref } = useThemePreference();
   const [loggingOut, setLoggingOut] = useState(false);
   const [deleteState, setDeleteState] = useState<DeleteState>("idle");
   const [confirmText, setConfirmText] = useState("");
@@ -50,6 +60,11 @@ export function SettingsScreen() {
     window.location.reload();
   }
 
+  const displayName = user?.display_name ?? (me.status === "ok" ? me.user.display_name : "");
+  const months = user ? monthsInService(user.created_at) : 0;
+  const totalRides =
+    (user?.stats.rides_as_driver_completed ?? 0) + (user?.stats.rides_as_passenger ?? 0);
+
   return (
     <div
       style={{
@@ -57,6 +72,7 @@ export function SettingsScreen() {
         flexDirection: "column",
         minHeight: "100vh",
         background: "var(--brand-bg)",
+        color: "var(--brand-text)",
       }}
     >
       {/* Header */}
@@ -73,32 +89,110 @@ export function SettingsScreen() {
           zIndex: 20,
         }}
       >
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: 20,
-            cursor: "pointer",
-            padding: 4,
-            color: "var(--brand-text)",
-          }}
-          aria-label="Назад"
-        >
-          ←
-        </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
-          Настройки
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--brand-text)", margin: 0 }}>
+          Профиль
         </h1>
       </div>
 
-      <div style={{ flex: 1, padding: "12px 16px 40px" }}>
+      <div style={{ flex: 1, padding: "16px 16px 80px" }}>
+        {/* Hero card */}
+        <div
+          style={{
+            background: "var(--brand-surface)",
+            border: "1px solid var(--brand-line)",
+            borderRadius: 16,
+            padding: "20px 16px",
+            textAlign: "center",
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              background: user?.avatar_url ? "transparent" : "var(--brand-surface2)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 32,
+              margin: "0 auto 12px",
+              overflow: "hidden",
+            }}
+          >
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt={displayName}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              "👤"
+            )}
+          </div>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 700,
+              color: "var(--brand-text)",
+              marginBottom: 4,
+            }}
+          >
+            {displayName || "—"}
+          </div>
+          {user?.tg_username && (
+            <div style={{ fontSize: 13, color: "var(--brand-sub)" }}>@{user.tg_username}</div>
+          )}
+
+          {user && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 0,
+                marginTop: 16,
+              }}
+            >
+              <BigStat value={user.stats.likes_received} label="лайки" />
+              <BigStat
+                value={user.stats.avg_stars !== null ? user.stats.avg_stars.toFixed(1) : "—"}
+                label="рейтинг"
+              />
+              <BigStat value={totalRides} label="поездки" />
+            </div>
+          )}
+
+          {myId && (
+            <button
+              type="button"
+              onClick={() => navigate(`/users/${myId}`)}
+              style={{
+                marginTop: 16,
+                padding: "10px 16px",
+                background: "var(--brand-surface2)",
+                color: "var(--brand-text)",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Открыть профиль · {months} мес. в сервисе
+            </button>
+          )}
+        </div>
+
+        {/* Theme */}
+        <SectionTitle>Тема</SectionTitle>
         <Section>
-          <RowLink label="🔔 Уведомления" onClick={() => navigate("/settings/notifications")} />
+          <ThemeToggle pref={pref} onChange={setPref} />
         </Section>
 
+        {/* Settings */}
+        <SectionTitle>Настройки</SectionTitle>
         <Section>
+          <RowLink label="🔔 Уведомления" onClick={() => navigate("/settings/notifications")} />
           <RowLink label="📄 Политика конфиденциальности" onClick={() => navigate("/privacy")} />
           <RowLink label="📋 Условия использования" onClick={() => navigate("/terms")} />
         </Section>
@@ -106,14 +200,14 @@ export function SettingsScreen() {
         <Section>
           <RowButton
             label={loggingOut ? "Выходим..." : "Выйти"}
-            color="#e54e5c"
+            color="var(--brand-danger)"
             disabled={loggingOut}
             onClick={handleLogout}
             testId="logout-btn"
           />
           <RowButton
             label="Удалить аккаунт"
-            color="#e54e5c"
+            color="var(--brand-danger)"
             disabled={deleteState !== "idle"}
             onClick={() => setDeleteState("confirm")}
             testId="delete-account-btn"
@@ -158,7 +252,12 @@ export function SettingsScreen() {
             }}
           >
             <div
-              style={{ fontSize: 16, fontWeight: 700, color: "var(--brand-text)", marginBottom: 8 }}
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--brand-text)",
+                marginBottom: 8,
+              }}
             >
               Удалить аккаунт?
             </div>
@@ -212,7 +311,7 @@ export function SettingsScreen() {
                 style={{
                   flex: 1,
                   padding: "12px",
-                  background: confirmText === "УДАЛИТЬ" ? "#e54e5c" : "#fca5a5",
+                  background: confirmText === "УДАЛИТЬ" ? "var(--brand-danger)" : "#fca5a5",
                   border: "none",
                   borderRadius: 10,
                   fontSize: 14,
@@ -231,6 +330,32 @@ export function SettingsScreen() {
   );
 }
 
+function BigStat({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div style={{ padding: "8px 0", borderRight: "1px solid var(--brand-line)" }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: "var(--brand-text)" }}>{value}</div>
+      <div style={{ fontSize: 11, color: "var(--brand-sub)", marginTop: 2 }}>{label}</div>
+    </div>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        color: "var(--brand-sub)",
+        textTransform: "uppercase",
+        letterSpacing: "0.06em",
+        margin: "16px 4px 8px",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function Section({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -239,10 +364,60 @@ function Section({ children }: { children: React.ReactNode }) {
         borderRadius: 16,
         overflow: "hidden",
         border: "1px solid var(--brand-line)",
-        marginBottom: 12,
+        marginBottom: 4,
       }}
     >
       {children}
+    </div>
+  );
+}
+
+function ThemeToggle({
+  pref,
+  onChange,
+}: {
+  pref: ThemePref;
+  onChange: (p: ThemePref) => void;
+}) {
+  const opts: { id: ThemePref; label: string }[] = [
+    { id: "system", label: "Системная" },
+    { id: "light", label: "Светлая" },
+    { id: "dark", label: "Тёмная" },
+  ];
+  return (
+    <div
+      data-testid="theme-toggle"
+      style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr 1fr",
+        gap: 4,
+        padding: 4,
+      }}
+    >
+      {opts.map((o) => {
+        const active = pref === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            data-testid={`theme-${o.id}`}
+            onClick={() => onChange(o.id)}
+            style={{
+              padding: "10px 8px",
+              borderRadius: 10,
+              border: "none",
+              background: active ? "var(--brand-primary)" : "transparent",
+              color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

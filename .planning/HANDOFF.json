@@ -1,0 +1,38 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-05-14T14:46:31.847Z",
+  "source": "auto-postool",
+  "partial": false,
+  "phase": null,
+  "phase_name": null,
+  "phase_dir": null,
+  "plan": null,
+  "task": null,
+  "total_tasks": null,
+  "status": "auto-checkpoint",
+  "completed_tasks": [],
+  "remaining_tasks": [],
+  "blockers": [],
+  "human_actions_pending": [],
+  "decisions": [],
+  "uncommitted_files": [
+    {
+      "status": "M",
+      "path": ".memory/daily/2026-05-14.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/flush.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
+    },
+    {
+      "status": "??",
+      "path": ".planning/"
+    }
+  ],
+  "next_action": null,
+  "context_notes": "Recent commits:\ne1afa11 CHORE: обновить memory-логи — 2026-05-14\n489dc08 FIX: убрать дубликат кнопки карты, FAB на всех вкладках, Профиль вместо Настроек + theme toggle, фикс зависания карты\nd63ca1a CHORE: biome format MapScreen.test.tsx — убрать лишние пустые строки\n6dd2209 FIX: показывать FAB только на главном экране /; тесты для остальных табов\nfe496fc TEST: убрать тесты back-кнопки из MapScreen — карта теперь таб, кнопки назад нет"
+}

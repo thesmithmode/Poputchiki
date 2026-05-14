@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
@@ -25,7 +25,6 @@ export function FeedScreen() {
   useRealtime();
   const { filters, setFilters, resetFilters } = useFilters();
   const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
-  const [view, setView] = useState<"list" | "map">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [density, setDensity] = useState<"compact" | "cozy">(() => {
     return (localStorage.getItem("pp_density") as "compact" | "cozy") ?? "cozy";
@@ -35,8 +34,6 @@ export function FeedScreen() {
     setDensity(next);
     localStorage.setItem("pp_density", next);
   };
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<unknown>(null);
   const filteredRides = useMemo(
     () => applyFilters(data?.rides ?? [], filters, favoriteIds),
     [data, filters, favoriteIds],
@@ -56,45 +53,6 @@ export function FeedScreen() {
     filters.trustMinLikes > 0 ||
     filters.favoritesOnly ||
     filters.verifiedOnly;
-
-  useEffect(() => {
-    if (view !== "map" || !mapRef.current || !filteredRides.length) return;
-
-    let destroyed = false;
-
-    import("leaflet").then((L) => {
-      if (destroyed || !mapRef.current) return;
-
-      if (mapInstanceRef.current) {
-        (mapInstanceRef.current as { remove: () => void }).remove();
-        mapInstanceRef.current = null;
-      }
-
-      const map = L.map(mapRef.current).setView([55.78, 49.12], 12);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-      }).addTo(map);
-
-      for (const ride of filteredRides) {
-        L.marker([ride.from_lat, ride.from_lng]).addTo(map).bindPopup(ride.from_label);
-      }
-
-      mapInstanceRef.current = map;
-    });
-
-    return () => {
-      destroyed = true;
-    };
-  }, [view, filteredRides]);
-
-  useEffect(() => {
-    return () => {
-      if (mapInstanceRef.current) {
-        (mapInstanceRef.current as { remove: () => void }).remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
 
   if (isLoading) {
     return (
@@ -232,66 +190,46 @@ export function FeedScreen() {
           >
             <Icon name={density === "compact" ? "list" : "grid"} size={16} />
           </button>
-          <button
-            type="button"
-            onClick={() => setView((v) => (v === "list" ? "map" : "list"))}
-            style={{
-              padding: "6px 12px",
-              borderRadius: 12,
-              border: "none",
-              background: view === "map" ? "var(--brand-primary)" : "var(--brand-surface2)",
-              color: view === "map" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              boxShadow: view === "map" ? "none" : "var(--shadow-sm)",
-            }}
-          >
-            {view === "list" ? "Карта" : "Список"}
-          </button>
         </div>
       </div>
 
       {/* Quick destination chips */}
-      {view === "list" && (
-        <div
-          style={{
-            padding: "10px 16px 4px",
-            display: "flex",
-            gap: 6,
-            overflowX: "auto",
-            scrollbarWidth: "none",
-          }}
-        >
-          {QUICK_CHIPS.map((chip) => {
-            const active = filters.direction === chip.query;
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                onClick={() => handleChipClick(chip.query)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 999,
-                  border: "none",
-                  flexShrink: 0,
-                  background: active ? "var(--brand-primary)" : "var(--brand-surface)",
-                  color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
-                  fontSize: 12.5,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  boxShadow: "var(--shadow-sm)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {chip.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      <div
+        style={{
+          padding: "10px 16px 4px",
+          display: "flex",
+          gap: 6,
+          overflowX: "auto",
+          scrollbarWidth: "none",
+        }}
+      >
+        {QUICK_CHIPS.map((chip) => {
+          const active = filters.direction === chip.query;
+          return (
+            <button
+              key={chip.id}
+              type="button"
+              onClick={() => handleChipClick(chip.query)}
+              style={{
+                padding: "8px 14px",
+                borderRadius: 999,
+                border: "none",
+                flexShrink: 0,
+                background: active ? "var(--brand-primary)" : "var(--brand-surface)",
+                color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
+                fontSize: 12.5,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+                boxShadow: "var(--shadow-sm)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Trust filter banner */}
       {trustOn && (
@@ -338,58 +276,50 @@ export function FeedScreen() {
       )}
 
       {/* Content */}
-      {view === "list" ? (
-        <div
-          data-testid="ride-list"
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            gap: density === "compact" ? 3 : 8,
-            padding: "12px 16px 24px",
-          }}
-        >
-          {!filteredRides.length ? (
+      <div
+        data-testid="ride-list"
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: density === "compact" ? 3 : 8,
+          padding: "12px 16px 24px",
+        }}
+      >
+        {!filteredRides.length ? (
+          <div
+            style={{
+              padding: "40px 20px",
+              textAlign: "center",
+            }}
+          >
             <div
               style={{
-                padding: "40px 20px",
-                textAlign: "center",
+                fontSize: 15,
+                fontWeight: 600,
+                color: "var(--brand-text)",
+                marginBottom: 4,
               }}
             >
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 600,
-                  color: "var(--brand-text)",
-                  marginBottom: 4,
-                }}
-              >
-                Ничего не найдено
-              </div>
-              <div style={{ fontSize: 13, color: "var(--brand-sub)" }}>
-                Попробуйте изменить фильтры
-              </div>
+              Ничего не найдено
             </div>
-          ) : (
-            filteredRides.map((ride) => (
-              <RideCard
-                key={ride.id}
-                ride={ride}
-                density={density}
-                onClick={handleCardClick}
-                isFavorited={isFavorite(ride.driver_id)}
-                onToggleFavorite={() => toggleFavorite(ride.driver_id)}
-              />
-            ))
-          )}
-        </div>
-      ) : (
-        <div
-          data-testid="ride-map"
-          ref={mapRef}
-          style={{ height: "calc(100vh - 120px)", flex: 1 }}
-        />
-      )}
+            <div style={{ fontSize: 13, color: "var(--brand-sub)" }}>
+              Попробуйте изменить фильтры
+            </div>
+          </div>
+        ) : (
+          filteredRides.map((ride) => (
+            <RideCard
+              key={ride.id}
+              ride={ride}
+              density={density}
+              onClick={handleCardClick}
+              isFavorited={isFavorite(ride.driver_id)}
+              onToggleFavorite={() => toggleFavorite(ride.driver_id)}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }

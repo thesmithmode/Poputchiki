@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FeedScreen } from "../src/screens/FeedScreen";
@@ -123,47 +123,6 @@ describe("FeedScreen", () => {
     renderWithQuery(<FeedScreen />);
     await waitFor(() => {
       expect(screen.getByText(/ошибка/i) || screen.getByText(/что-то пошло не так/i)).toBeTruthy();
-    });
-  });
-
-  it("переключает вид списка и карты по кнопке", async () => {
-    const rides = [makeRide()];
-    mockedApiFetch.mockResolvedValueOnce({ rides, nextCursor: null });
-    renderWithQuery(<FeedScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /карта|map/i })).toBeInTheDocument();
-    });
-
-    // Initially list view is visible
-    const listContainer = document.querySelector("[data-testid='ride-list']");
-    const mapContainer = document.querySelector("[data-testid='ride-map']");
-    if (listContainer && mapContainer) {
-      expect(listContainer).toBeVisible();
-    }
-
-    // Click toggle button to switch to map view
-    fireEvent.click(screen.getByRole("button", { name: /карта|map/i }));
-
-    await waitFor(() => {
-      const mapEl = document.querySelector("[data-testid='ride-map']");
-      expect(mapEl).toBeInTheDocument();
-    });
-  });
-
-  it("отображает контейнер карты в режиме карты при наличии поездок", async () => {
-    const rides = [makeRide(), makeRide()];
-    mockedApiFetch.mockResolvedValueOnce({ rides, nextCursor: null });
-    renderWithQuery(<FeedScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /карта|map/i })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: /карта|map/i }));
-
-    await waitFor(() => {
-      expect(document.querySelector("[data-testid='ride-map']")).toBeInTheDocument();
     });
   });
 });

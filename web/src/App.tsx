@@ -102,16 +102,19 @@ function OfflineBanner() {
 }
 
 const TAB_PATHS = new Set(["/", "/map", "/favorites", "/settings", "/settings/notifications"]);
+// Map is full-screen — tab bar overlays it, no bottom padding needed
+const FULL_SCREEN_PATHS = new Set(["/map"]);
 
 function AppShell() {
   const location = useLocation();
   const showTabs = TAB_PATHS.has(location.pathname);
+  const isFullScreen = FULL_SCREEN_PATHS.has(location.pathname);
   return (
     <>
       <a href="#main-content" className="skip-link">
         Перейти к основному контенту
       </a>
-      <main id="main-content" style={showTabs ? { paddingBottom: 80 } : undefined}>
+      <main id="main-content" style={showTabs && !isFullScreen ? { paddingBottom: 64 } : undefined}>
         <Routes>
           <Route path="/" element={<FeedScreen />} />
           <Route path="/rides" element={<FeedScreen />} />

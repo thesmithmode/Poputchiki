@@ -7,16 +7,55 @@ const DEFAULT_CENTER: [number, number] = [55.79, 49.18];
 const DEFAULT_ZOOM = 12;
 const CLUSTER_THRESHOLD = 50;
 
+function useDarkMode() {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
+  useEffect(() => {
+    const obs = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    });
+    obs.observe(document.documentElement, { attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
+
 export function MapScreen() {
   const navigate = useNavigate();
+  const isDark = useDarkMode();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
+  const tileLayerRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
   const polylinesRef = useRef<unknown[]>([]);
   const clusterGroupRef = useRef<unknown>(null);
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Swap tile layer when theme changes
+  useEffect(() => {
+    const map = mapRef.current as {
+      addLayer: (l: unknown) => void;
+      removeLayer: (l: unknown) => void;
+    } | null;
+    if (!map || !tileLayerRef.current) return;
+
+    import("leaflet").then((L) => {
+      if (tileLayerRef.current) {
+        map.removeLayer(tileLayerRef.current);
+      }
+      const tileUrl = isDark
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"
+        : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png";
+      const tile = L.tileLayer(tileUrl, {
+        maxZoom: 19,
+        subdomains: "abcd",
+        attribution: "© OpenStreetMap contributors, © CARTO",
+      });
+      tile.addTo(map as ReturnType<typeof L.map>);
+      tileLayerRef.current = tile;
+    });
+  }, [isDark]);
 
   useEffect(() => {
     let destroyed = false;
@@ -26,16 +65,16 @@ export function MapScreen() {
 
       const [L] = await Promise.all([
         import("leaflet"),
-        // @ts-ignore — leaflet.markercluster augments leaflet, no module types
+        // @ts-ignore
         import("leaflet.markercluster"),
       ]);
 
       if (destroyed || !mapContainerRef.current) return;
 
-      // Cleanup previous
       if (mapRef.current) {
         (mapRef.current as { remove: () => void }).remove();
         mapRef.current = null;
+        tileLayerRef.current = null;
       }
 
       const map = L.map(mapContainerRef.current, {
@@ -45,11 +84,17 @@ export function MapScreen() {
         preferCanvas: true,
       });
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
-        maxZoom: 19,
-      }).addTo(map);
+      const tileUrl = document.documentElement.classList.contains("dark")
+        ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png"
+        : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png";
 
+      const tile = L.tileLayer(tileUrl, {
+        maxZoom: 19,
+        subdomains: "abcd",
+        attribution: "© OpenStreetMap contributors, © CARTO",
+      });
+      tile.addTo(map);
+      tileLayerRef.current = tile;
       mapRef.current = map;
 
       const loadRides = async () => {
@@ -88,6 +133,7 @@ export function MapScreen() {
       if (mapRef.current) {
         (mapRef.current as { remove: () => void }).remove();
         mapRef.current = null;
+        tileLayerRef.current = null;
       }
     };
   }, []);
@@ -95,7 +141,6 @@ export function MapScreen() {
   function renderMarkers(map: unknown, L: typeof import("leaflet"), rideList: Ride[]) {
     const lMap = map as ReturnType<typeof L.map>;
 
-    // Clear old markers + polylines
     for (const m of markersRef.current) {
       lMap.removeLayer(m as Parameters<typeof lMap.removeLayer>[0]);
     }
@@ -131,13 +176,12 @@ export function MapScreen() {
         marker.on("click", () => setSelected(ride));
         markersRef.current.push(marker);
 
-        // Route line from→to
         const line = L.polyline(
           [
             [ride.from_lat, ride.from_lng],
             [ride.to_lat, ride.to_lng],
           ],
-          { color: "#0ea5e9", weight: 2, opacity: 0.6, dashArray: "4 4" },
+          { color: "var(--brand-primary, #2d5a3d)", weight: 2, opacity: 0.6, dashArray: "4 4" },
         ).addTo(lMap);
         polylinesRef.current.push(line);
       }
@@ -146,11 +190,16 @@ export function MapScreen() {
 
   const seatsLeft = selected ? selected.seats_total - selected.seats_taken : 0;
 
+  const glassStyle: React.CSSProperties = {
+    background: isDark ? "rgba(28,28,30,0.92)" : "rgba(255,255,255,0.96)",
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+    color: isDark ? "#fff" : "var(--brand-text, #0e1410)",
+  };
+
   return (
-    <div
-      data-testid="map-screen"
-      style={{ position: "relative", height: "100vh", overflow: "hidden" }}
-    >
+    <div data-testid="map-screen" style={{ position: "fixed", inset: 0, zIndex: 0 }}>
       {loading && (
         <div
           data-testid="map-loading"
@@ -160,12 +209,10 @@ export function MapScreen() {
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
-            background: "rgba(255,255,255,0.95)",
+            ...glassStyle,
             borderRadius: 20,
             padding: "6px 14px",
             fontSize: 13,
-            color: "#666",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
           }}
         >
           Загрузка...
@@ -189,11 +236,9 @@ export function MapScreen() {
             zIndex: 5,
             padding: "8px 12px",
             borderRadius: 999,
-            background: "rgba(255,255,255,0.96)",
+            ...glassStyle,
             fontSize: 12.5,
             fontWeight: 600,
-            color: "#15191f",
-            boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
@@ -209,7 +254,7 @@ export function MapScreen() {
         style={{
           position: "absolute",
           right: 12,
-          bottom: selected ? 180 : 28,
+          bottom: selected ? 176 : 100,
           zIndex: 5,
           display: "flex",
           flexDirection: "column",
@@ -220,7 +265,7 @@ export function MapScreen() {
           type="button"
           data-testid="zoom-in"
           onClick={() => (mapRef.current as { zoomIn: () => void } | null)?.zoomIn()}
-          style={zoomBtnStyle}
+          style={{ ...zoomBtnBase, ...glassStyle }}
         >
           +
         </button>
@@ -228,45 +273,18 @@ export function MapScreen() {
           type="button"
           data-testid="zoom-out"
           onClick={() => (mapRef.current as { zoomOut: () => void } | null)?.zoomOut()}
-          style={zoomBtnStyle}
+          style={{ ...zoomBtnBase, ...glassStyle }}
         >
           −
         </button>
       </div>
-
-      {/* Back button */}
-      <button
-        type="button"
-        data-testid="back-btn"
-        onClick={() => navigate(-1)}
-        style={{
-          position: "absolute",
-          top: 12,
-          right: 12,
-          zIndex: 10,
-          background: "rgba(255,255,255,0.96)",
-          border: "none",
-          borderRadius: 12,
-          width: 40,
-          height: 40,
-          fontSize: 18,
-          cursor: "pointer",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        aria-label="Назад"
-      >
-        ←
-      </button>
 
       {/* Selected ride card */}
       {selected && (
         <div
           style={{
             position: "absolute",
-            bottom: 12,
+            bottom: 88,
             left: 12,
             right: 12,
             zIndex: 5,
@@ -279,18 +297,17 @@ export function MapScreen() {
             style={{
               width: "100%",
               textAlign: "left",
-              background: "#fff",
+              ...glassStyle,
               borderRadius: 16,
               padding: 16,
-              border: "1px solid #e5e7eb",
-              boxShadow: "0 12px 28px -6px rgba(15,23,42,0.18)",
+              border: isDark
+                ? "1px solid rgba(255,255,255,0.08)"
+                : "1px solid var(--brand-line, rgba(15,23,42,0.06))",
               cursor: "pointer",
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#15191f" }}>
-                {selected.from_label}
-              </div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>{selected.from_label}</div>
               <button
                 type="button"
                 data-testid="close-selected"
@@ -302,7 +319,7 @@ export function MapScreen() {
                   background: "none",
                   border: "none",
                   fontSize: 16,
-                  color: "#7c8694",
+                  color: "var(--brand-sub, #6b716e)",
                   cursor: "pointer",
                   padding: "0 4px",
                 }}
@@ -310,7 +327,7 @@ export function MapScreen() {
                 ✕
               </button>
             </div>
-            <div style={{ fontSize: 13, color: "#7c8694", marginBottom: 10 }}>
+            <div style={{ fontSize: 13, color: "var(--brand-sub, #6b716e)", marginBottom: 10 }}>
               → {selected.to_label}
             </div>
             <div
@@ -319,7 +336,6 @@ export function MapScreen() {
                 gap: 12,
                 fontSize: 13,
                 fontWeight: 600,
-                color: "#15191f",
               }}
             >
               <span>{selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}</span>
@@ -334,15 +350,12 @@ export function MapScreen() {
   );
 }
 
-const zoomBtnStyle: React.CSSProperties = {
+const zoomBtnBase: React.CSSProperties = {
   width: 40,
   height: 40,
   borderRadius: 12,
   border: "none",
   cursor: "pointer",
-  background: "rgba(255,255,255,0.96)",
-  color: "#333",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
   fontSize: 18,
   fontWeight: 700,
   display: "flex",

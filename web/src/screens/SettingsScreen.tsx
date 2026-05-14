@@ -56,14 +56,14 @@ export function SettingsScreen() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
       }}
     >
       {/* Header */}
       <div
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
@@ -82,28 +82,27 @@ export function SettingsScreen() {
             fontSize: 20,
             cursor: "pointer",
             padding: 4,
-            color: "#333",
+            color: "var(--brand-text)",
           }}
           aria-label="Назад"
         >
           ←
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0 }}>Настройки</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
+          Настройки
+        </h1>
       </div>
 
       <div style={{ flex: 1, padding: "12px 16px 40px" }}>
-        {/* Notifications section */}
         <Section>
           <RowLink label="🔔 Уведомления" onClick={() => navigate("/settings/notifications")} />
         </Section>
 
-        {/* Legal section */}
         <Section>
           <RowLink label="📄 Политика конфиденциальности" onClick={() => navigate("/privacy")} />
           <RowLink label="📋 Условия использования" onClick={() => navigate("/terms")} />
         </Section>
 
-        {/* Account section */}
         <Section>
           <RowButton
             label={loggingOut ? "Выходим..." : "Выйти"}
@@ -121,16 +120,19 @@ export function SettingsScreen() {
           />
         </Section>
 
-        {/* Version footer */}
         <div
-          style={{ textAlign: "center", fontSize: 12, color: "#b0b7c1", marginTop: 24 }}
+          style={{
+            textAlign: "center",
+            fontSize: 12,
+            color: "var(--brand-sub)",
+            marginTop: 24,
+          }}
           data-testid="app-version"
         >
           Poputchiki v{APP_VERSION}
         </div>
       </div>
 
-      {/* Delete confirmation modal */}
       {deleteState === "confirm" && (
         <div
           data-testid="delete-confirm-modal"
@@ -147,17 +149,20 @@ export function SettingsScreen() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--brand-surface)",
               borderRadius: 16,
               padding: 24,
               width: "100%",
               maxWidth: 380,
+              border: "1px solid var(--brand-line)",
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#15191f", marginBottom: 8 }}>
+            <div
+              style={{ fontSize: 16, fontWeight: 700, color: "var(--brand-text)", marginBottom: 8 }}
+            >
               Удалить аккаунт?
             </div>
-            <div style={{ fontSize: 14, color: "#7c8694", marginBottom: 16 }}>
+            <div style={{ fontSize: 14, color: "var(--brand-sub)", marginBottom: 16 }}>
               Это действие необратимо. Все ваши поездки и данные будут удалены. Введите{" "}
               <strong>УДАЛИТЬ</strong> для подтверждения.
             </div>
@@ -169,11 +174,13 @@ export function SettingsScreen() {
               style={{
                 width: "100%",
                 padding: "10px 12px",
-                border: "1px solid #e5e7eb",
+                border: "1px solid var(--brand-line)",
                 borderRadius: 8,
                 fontSize: 14,
                 boxSizing: "border-box",
                 marginBottom: 16,
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
               }}
             />
             <div style={{ display: "flex", gap: 8 }}>
@@ -186,12 +193,13 @@ export function SettingsScreen() {
                 style={{
                   flex: 1,
                   padding: "12px",
-                  background: "#f0f1f3",
+                  background: "var(--brand-surface2)",
                   border: "none",
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: "pointer",
+                  color: "var(--brand-text)",
                 }}
               >
                 Отмена
@@ -227,10 +235,10 @@ function Section({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
-        background: "#fff",
+        background: "var(--brand-surface)",
         borderRadius: 16,
         overflow: "hidden",
-        border: "1px solid #e5e7eb",
+        border: "1px solid var(--brand-line)",
         marginBottom: 12,
       }}
     >
@@ -252,15 +260,15 @@ function RowLink({ label, onClick }: { label: string; onClick: () => void }) {
         padding: "14px 16px",
         background: "none",
         border: "none",
-        borderBottom: "1px solid #f0f1f3",
+        borderBottom: "1px solid var(--brand-line)",
         fontSize: 15,
-        color: "#15191f",
+        color: "var(--brand-text)",
         cursor: "pointer",
         textAlign: "left",
       }}
     >
       {label}
-      <span style={{ color: "#b0b7c1" }}>→</span>
+      <span style={{ color: "var(--brand-sub)" }}>→</span>
     </button>
   );
 }
@@ -290,10 +298,10 @@ function RowButton({
         padding: "14px 16px",
         background: "none",
         border: "none",
-        borderBottom: "1px solid #f0f1f3",
+        borderBottom: "1px solid var(--brand-line)",
         fontSize: 15,
         fontWeight: 600,
-        color: disabled ? "#b0b7c1" : color,
+        color: disabled ? "var(--brand-sub)" : color,
         cursor: disabled ? "not-allowed" : "pointer",
         textAlign: "left",
       }}

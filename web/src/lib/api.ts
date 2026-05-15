@@ -25,9 +25,15 @@ function getCsrfToken(): string | null {
 // не запускают N конкурирующих.
 let refreshInFlight: Promise<boolean> | null = null;
 
+/* c8 ignore start -- test-only utility for module state reset */
+export function _resetRefreshState(): void {
+  refreshInFlight = null;
+}
+/* c8 ignore stop */
+
 async function tryRefresh(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
-  refreshInFlight = (async () => {
+  const run = (async () => {
     const tokens = getTokens();
     if (!tokens) return false;
     try {
@@ -47,15 +53,14 @@ async function tryRefresh(): Promise<boolean> {
       return true;
     } catch {
       return false;
-    } finally {
-      // микрозадача: очистить после resolve, чтобы следующие 401 после рефреша
-      // могли запустить новый рефреш если опять понадобится
-      queueMicrotask(() => {
-        refreshInFlight = null;
-      });
     }
   })();
-  return refreshInFlight;
+  refreshInFlight = run;
+  try {
+    return await run;
+  } finally {
+    refreshInFlight = null;
+  }
 }
 
 async function doFetch(path: string, init?: RequestInit): Promise<Response> {

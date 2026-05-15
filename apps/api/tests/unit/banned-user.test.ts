@@ -1,7 +1,11 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { _resetUserStateCache, bannedUser } from "../../src/middleware/banned-user";
+import {
+  _resetUserStateCache,
+  bannedUser,
+  invalidateUserState,
+} from "../../src/middleware/banned-user";
 import type { AppUser } from "../../src/middleware/identity-guard";
 
 type BanRow = {
@@ -140,5 +144,14 @@ describe("bannedUser middleware", () => {
     await app.request("/api/rides");
     await app.request("/api/rides");
     expect(sql).toHaveBeenCalledOnce();
+  });
+
+  it("SENTINEL: invalidateUserState — следующий запрос идёт в SQL", async () => {
+    const sql = makeSql({ is_banned: false, ban_reason: null, banned_at: null });
+    const app = makeApp(sql, testUser);
+    await app.request("/api/rides");
+    invalidateUserState(testUser.id);
+    await app.request("/api/rides");
+    expect(sql).toHaveBeenCalledTimes(2);
   });
 });

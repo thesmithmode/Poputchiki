@@ -37,11 +37,12 @@ async function getUserState(sql: postgres.Sql, userId: string): Promise<UserStat
   `;
   const state = row ?? null;
 
-  // FIFO-ish eviction если переполнен — простая защита от memory leak
+  /* c8 ignore start -- defensive eviction; не покрываем тестом 50k entries */
   if (cache.size >= MAX_ENTRIES) {
     const firstKey = cache.keys().next().value;
     if (firstKey !== undefined) cache.delete(firstKey);
   }
+  /* c8 ignore stop */
   cache.set(userId, { state, expires: now + TTL_MS });
   return state;
 }

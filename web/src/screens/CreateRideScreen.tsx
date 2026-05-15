@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AddressAutocomplete, type Coords } from "../components/AddressAutocomplete";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import { apiFetch } from "../lib/api";
@@ -52,6 +53,9 @@ export function CreateRideScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMainButton, setHasMainButton] = useState(false);
+  // Координаты от выбора в autocomplete. null = надо геокодить на submit.
+  const [fromCoords, setFromCoords] = useState<Coords | null>(null);
+  const [toCoords, setToCoords] = useState<Coords | null>(null);
   const submitRef = useRef<() => void>(() => {});
 
   function validate(): string | null {
@@ -85,12 +89,13 @@ export function CreateRideScreen() {
     wa?.MainButton?.showProgress(false);
 
     try {
-      // Geocode both labels via Nominatim
+      // Geocode только если координаты не получены из autocomplete.
+      // Сохранение из preset/geocode-suggest избегает повторного запроса и rate-limit.
       type GeoResult = { lat: string; lon: string };
-      const geocode = async (label: string): Promise<{ lat: number; lng: number } | null> => {
+      const geocode = async (label: string): Promise<Coords | null> => {
         try {
           const trimmed = label.trim();
-          const q = /казань/i.test(trimmed) ? trimmed : `${trimmed}, Казань`;
+          const q = /казань|татарстан/i.test(trimmed) ? trimmed : `${trimmed}, Казань`;
           const results = await apiFetch<GeoResult[]>(`/geocode/search?q=${encodeURIComponent(q)}`);
           if (!Array.isArray(results) || results.length === 0) return null;
           const first = results[0];
@@ -104,14 +109,14 @@ export function CreateRideScreen() {
         }
       };
 
-      const [fromCoords, toCoords] = await Promise.all([
-        geocode(form.from_label.trim()),
-        geocode(form.to_label.trim()),
+      const [resolvedFrom, resolvedTo] = await Promise.all([
+        fromCoords ?? geocode(form.from_label.trim()),
+        toCoords ?? geocode(form.to_label.trim()),
       ]);
 
-      if (!fromCoords || !toCoords) {
+      if (!resolvedFrom || !resolvedTo) {
         setError(
-          "Не удалось найти адрес. Уточните название — например: «ТЦ Кольцо, Казань» или полный адрес улицы",
+          "Не удалось найти адрес. Выберите подсказку из списка или уточните название — например: «ТЦ Кольцо, Казань»",
         );
         return;
       }
@@ -127,11 +132,11 @@ export function CreateRideScreen() {
         method: "POST",
         body: JSON.stringify({
           from_label: form.from_label.trim(),
-          from_lat: fromCoords.lat,
-          from_lng: fromCoords.lng,
+          from_lat: resolvedFrom.lat,
+          from_lng: resolvedFrom.lng,
           to_label: form.to_label.trim(),
-          to_lat: toCoords.lat,
-          to_lng: toCoords.lng,
+          to_lat: resolvedTo.lat,
+          to_lng: resolvedTo.lng,
           departure_at,
           price_rub,
           seats_total: form.seats_total,
@@ -236,13 +241,13 @@ export function CreateRideScreen() {
           <div
             data-testid="form-error"
             style={{
-              background: "#fef2f2",
-              border: "1px solid #fca5a5",
+              background: "var(--brand-danger-soft)",
+              border: "1px solid var(--brand-danger)",
               borderRadius: 8,
               padding: "10px 14px",
               marginBottom: 12,
               fontSize: 14,
-              color: "#dc2626",
+              color: "var(--brand-danger)",
             }}
           >
             {error}
@@ -251,21 +256,27 @@ export function CreateRideScreen() {
 
         <Section title="Маршрут">
           <Field label="Откуда">
-            <input
-              data-testid="input-from"
+            <AddressAutocomplete
+              testId="input-from"
               value={form.from_label}
-              onChange={(e) => setForm((f) => ({ ...f, from_label: e.target.value }))}
+              onChange={(v, coords) => {
+                setForm((f) => ({ ...f, from_label: v }));
+                setFromCoords(coords ?? null);
+              }}
               placeholder="Адрес отправления"
-              style={inputStyle}
+              inputStyle={inputStyle}
             />
           </Field>
           <Field label="Куда">
-            <input
-              data-testid="input-to"
+            <AddressAutocomplete
+              testId="input-to"
               value={form.to_label}
-              onChange={(e) => setForm((f) => ({ ...f, to_label: e.target.value }))}
+              onChange={(v, coords) => {
+                setForm((f) => ({ ...f, to_label: v }));
+                setToCoords(coords ?? null);
+              }}
               placeholder="Адрес назначения"
-              style={inputStyle}
+              inputStyle={inputStyle}
             />
           </Field>
         </Section>
@@ -296,28 +307,32 @@ export function CreateRideScreen() {
         <Section title="Детали">
           <Field label="Мест (1–4)">
             <div style={{ display: "flex", gap: 8 }}>
-              {([1, 2, 3, 4] as const).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  data-testid={`seats-${n}`}
-                  onClick={() => setForm((f) => ({ ...f, seats_total: n }))}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    borderRadius: 8,
-                    border: "1px solid",
-                    borderColor: form.seats_total === n ? "#0ea5e9" : "#e5e7eb",
-                    background: form.seats_total === n ? "#e0f2fe" : "#fff",
-                    color: form.seats_total === n ? "#0369a1" : "#374151",
-                    fontWeight: 600,
-                    fontSize: 15,
-                    cursor: "pointer",
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
+              {([1, 2, 3, 4] as const).map((n) => {
+                const active = form.seats_total === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    data-testid={`seats-${n}`}
+                    aria-pressed={active}
+                    onClick={() => setForm((f) => ({ ...f, seats_total: n }))}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      borderRadius: 8,
+                      border: "1px solid",
+                      borderColor: active ? "var(--brand-primary)" : "var(--brand-line)",
+                      background: active ? "var(--brand-primary-soft)" : "var(--brand-surface)",
+                      color: active ? "var(--brand-primary)" : "var(--brand-text)",
+                      fontWeight: 600,
+                      fontSize: 15,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
             </div>
           </Field>
 
@@ -329,7 +344,7 @@ export function CreateRideScreen() {
                 gap: 8,
                 marginBottom: 8,
                 fontSize: 14,
-                color: "#374151",
+                color: "var(--brand-text)",
               }}
             >
               <input
@@ -376,7 +391,7 @@ export function CreateRideScreen() {
               gap: 10,
               fontSize: 15,
               fontWeight: 600,
-              color: "#15191f",
+              color: "var(--brand-text)",
               cursor: "pointer",
             }}
           >
@@ -394,27 +409,31 @@ export function CreateRideScreen() {
             <div data-testid="recurring-fields" style={{ marginTop: 16 }}>
               <Field label="Дни недели">
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {WEEKDAY_LABELS.map((label, i) => (
-                    <button
-                      key={label}
-                      type="button"
-                      data-testid={`weekday-${i}`}
-                      onClick={() => toggleWeekday(i)}
-                      style={{
-                        padding: "7px 12px",
-                        borderRadius: 8,
-                        border: "1px solid",
-                        borderColor: form.weekdays.includes(i) ? "#0ea5e9" : "#e5e7eb",
-                        background: form.weekdays.includes(i) ? "#e0f2fe" : "#fff",
-                        color: form.weekdays.includes(i) ? "#0369a1" : "#374151",
-                        fontWeight: 600,
-                        fontSize: 13,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  {WEEKDAY_LABELS.map((label, i) => {
+                    const active = form.weekdays.includes(i);
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        data-testid={`weekday-${i}`}
+                        aria-pressed={active}
+                        onClick={() => toggleWeekday(i)}
+                        style={{
+                          padding: "7px 12px",
+                          borderRadius: 8,
+                          border: "1px solid",
+                          borderColor: active ? "var(--brand-primary)" : "var(--brand-line)",
+                          background: active ? "var(--brand-primary-soft)" : "var(--brand-surface)",
+                          color: active ? "var(--brand-primary)" : "var(--brand-text)",
+                          fontWeight: 600,
+                          fontSize: 13,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </Field>
               <div

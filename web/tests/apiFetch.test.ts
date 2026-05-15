@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiFetch } from "../src/lib/api";
+import { ApiError, _resetRefreshState, apiFetch } from "../src/lib/api";
 import * as tokenStore from "../src/lib/tokenStore";
 
 const originalFetch = globalThis.fetch;
 
 beforeEach(() => {
+  _resetRefreshState();
   vi.spyOn(tokenStore, "getTokens").mockReturnValue(null);
   Object.defineProperty(document, "cookie", {
     writable: true,
@@ -145,5 +146,52 @@ describe("apiFetch", () => {
       RequestInit,
     ];
     expect(url).not.toContain("/api/api/");
+  });
+
+  it("SENTINEL: 401 → tryRefresh → retry с новым токеном вернёт 200", async () => {
+    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "old", refresh: "ref" });
+    const setTokensSpy = vi.spyOn(tokenStore, "setTokens").mockImplementation(() => {});
+
+    const fetchMock = vi
+      .fn()
+      // 1. /api/users/me → 401
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: "unauthorized" }),
+      })
+      // 2. /auth/refresh → 200 с новыми токенами
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ access_token: "new", refresh_token: "newref" }),
+      })
+      // 3. /api/users/me retry → 200
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ id: "u" }),
+      });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const result = await apiFetch<{ id: string }>("/users/me");
+    expect(result.id).toBe("u");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(setTokensSpy).toHaveBeenCalledWith("new", "newref");
+  });
+
+  it("SENTINEL: 401 → refresh тоже 401 → ApiError 401 (не зацикливается)", async () => {
+    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "old", refresh: "ref" });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ error: "unauthorized" }),
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(apiFetch("/users/me")).rejects.toMatchObject({ status: 401 });
+    // /users/me (1) + /auth/refresh (1) — без retry, без зацикливания
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

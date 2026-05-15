@@ -203,4 +203,26 @@ describe("GET /rides — кэш", () => {
     await app.request("/rides?priceMax=200");
     expect(vi.mocked(withIdentity)).toHaveBeenCalledTimes(2);
   });
+
+  it("SENTINEL: разные юзеры — разные cache-ключи (нет leak ответа между юзерами)", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValue([makeRide()] as any);
+    const cache = new GeoCache(200, 5_000);
+    const userA: AppUser = {
+      id: "00000000-0000-4000-a000-00000000000a",
+      tgId: 2001,
+      role: "user",
+    };
+    const userB: AppUser = {
+      id: "00000000-0000-4000-a000-00000000000b",
+      tgId: 2002,
+      role: "user",
+    };
+    const appA = makeApp(userA, cache);
+    const appB = makeApp(userB, cache);
+    await appA.request("/rides");
+    await appB.request("/rides");
+    // Same query string but different user → no cache hit for B → DB called twice
+    expect(vi.mocked(withIdentity)).toHaveBeenCalledTimes(2);
+  });
 });

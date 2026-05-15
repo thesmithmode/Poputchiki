@@ -123,7 +123,18 @@ export function MapScreen() {
         }
       };
 
-      map.on("moveend", loadRides);
+      // Debounce: активный pan на карте генерит десятки moveend/sec → без
+      // debounce при 50k DAU = DoS на /rides. 400ms — пользователь успевает
+      // отпустить палец, запрос идёт один раз.
+      let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+      const debouncedLoadRides = () => {
+        if (debounceTimer) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          debounceTimer = null;
+          loadRides();
+        }, 400);
+      };
+      map.on("moveend", debouncedLoadRides);
       setTimeout(() => {
         map.invalidateSize();
         if (!destroyed) setLoading(false);
@@ -327,7 +338,8 @@ export function MapScreen() {
         </button>
       </div>
 
-      {/* Selected ride card */}
+      {/* Selected ride card: близкая кнопка как абсолютный sibling, не вложена внутрь
+          основной кнопки карточки — иначе invalid HTML (nested <button>) + React warning. */}
       {selected && (
         <div
           style={{
@@ -347,50 +359,48 @@ export function MapScreen() {
               textAlign: "left",
               ...glassStyle,
               borderRadius: 16,
-              padding: 16,
+              padding: "16px 44px 16px 16px",
               border: isDark
                 ? "1px solid rgba(255,255,255,0.08)"
                 : "1px solid var(--brand-line, rgba(15,23,42,0.06))",
               cursor: "pointer",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>{selected.from_label}</div>
-              <button
-                type="button"
-                data-testid="close-selected"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelected(null);
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  fontSize: 16,
-                  color: "var(--brand-sub, #6b716e)",
-                  cursor: "pointer",
-                  padding: "0 4px",
-                }}
-              >
-                ✕
-              </button>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+              {selected.from_label}
             </div>
             <div style={{ fontSize: 13, color: "var(--brand-sub, #6b716e)", marginBottom: 10 }}>
               → {selected.to_label}
             </div>
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
+            <div style={{ display: "flex", gap: 12, fontSize: 13, fontWeight: 600 }}>
               <span>{selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}</span>
               <span style={{ color: seatsLeft === 0 ? "#e54e5c" : "#4dab6e" }}>
                 {seatsLeft === 0 ? "Нет мест" : `${seatsLeft} мест`}
               </span>
             </div>
+          </button>
+          <button
+            type="button"
+            data-testid="close-selected"
+            aria-label="Закрыть карточку"
+            onClick={() => setSelected(null)}
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              width: 32,
+              height: 32,
+              background: "none",
+              border: "none",
+              fontSize: 18,
+              color: "var(--brand-sub, #6b716e)",
+              cursor: "pointer",
+              padding: 0,
+              borderRadius: 8,
+              zIndex: 1,
+            }}
+          >
+            ✕
           </button>
         </div>
       )}

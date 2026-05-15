@@ -4,6 +4,7 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { encryptPii } from "../db/crypto";
 import { withIdentity } from "../db/with-identity";
+import { invalidateUserState } from "../middleware/banned-user";
 import type { AppUser } from "../middleware/identity-guard";
 
 const PatchMeInput = z.object({
@@ -297,6 +298,11 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
 
     // Anonymize (SECURITY DEFINER function bypasses RLS)
     await sql`SELECT app.anonymize_user(${user.id}::uuid)`;
+
+    // Сбросить in-memory кэш состояния — anonymize выставил deleted_at, кэш TTL 30s
+    // продолжал бы пропускать юзера. После invalidate следующий запрос с этим access
+    // токеном попадёт в SELECT и вернёт 401.
+    invalidateUserState(user.id);
 
     // Revoke all refresh tokens (revoked_tokens deny-all for app role — bare sql ok)
     await sql`

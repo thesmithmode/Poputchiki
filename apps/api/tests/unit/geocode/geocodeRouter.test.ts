@@ -91,19 +91,17 @@ describe("GET /api/geocode/search", () => {
     expect(mockFetch).toHaveBeenCalledOnce();
   });
 
-  it("fallback статический список при ошибке Nominatim", async () => {
+  it("SENTINEL: 503 при ошибке Nominatim — не подменяет результаты пользовательского запроса", async () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED"));
     const app = makeApp(mockFetch as unknown as typeof fetch);
-    const res = await app.request("/api/geocode/search?q=Царёво", {
+    const res = await app.request("/api/geocode/search?q=Москва", {
       headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("30");
     const body = await readJson(res);
-    expect(Array.isArray(body)).toBe(true);
-    expect(body.length).toBeGreaterThan(0);
-    expect(body[0]).toHaveProperty("display_name");
-    expect(body[0]).toHaveProperty("lat");
-    expect(body[0]).toHaveProperty("lon");
+    expect(body.error).toBe("geocoder_unavailable");
+    expect(body.results).toEqual([]);
   });
 
   it("429 при превышении 1 req/sec на user", async () => {

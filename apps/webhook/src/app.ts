@@ -27,8 +27,8 @@ export function createApp(
     if (update.message) {
       await handleMessage(botToken, domain, update.message);
     }
-    if (update.callback_query) {
-    }
+    // callback_query пока не используется — bot UI без inline-кнопок. Возвращаем
+    // 200 чтобы Telegram не ретраил update.
     return c.json({ ok: true });
   }
 

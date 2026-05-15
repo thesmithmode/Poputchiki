@@ -146,7 +146,7 @@ describe("CreateRideScreen", () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId("form-error")).toHaveTextContent(
-        "Не удалось определить координаты",
+        "Не удалось найти адрес",
       );
     });
     // POST /rides не вызывался
@@ -166,7 +166,7 @@ describe("CreateRideScreen", () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId("form-error")).toHaveTextContent(
-        "Не удалось определить координаты",
+        "Не удалось найти адрес",
       );
     });
   });
@@ -209,7 +209,7 @@ describe("CreateRideScreen", () => {
     });
     await waitFor(() => {
       expect(screen.getByTestId("form-error")).toHaveTextContent(
-        "Не удалось определить координаты",
+        "Не удалось найти адрес",
       );
     });
   });

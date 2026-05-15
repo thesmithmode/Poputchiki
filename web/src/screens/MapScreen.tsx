@@ -131,7 +131,9 @@ export function MapScreen() {
       }, 80);
     }
 
-    init();
+    init().catch(() => {
+      if (!destroyed) setLoading(false);
+    });
 
     return () => {
       destroyed = true;

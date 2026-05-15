@@ -3,17 +3,18 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 
-interface MeFull {
+interface MeBasic {
   id: string;
   display_name: string;
-  phone?: string | null;
-  apt_number?: string | null;
 }
 
 export function EditProfileScreen() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
+  // phone/apt_number PII зашифрованы в БД (phone_enc/apt_number_enc).
+  // GET /users/me их не возвращает — пользователь вводит новое значение либо
+  // оставляет поле пустым (PATCH с undefined игнорирует поле).
   const [phone, setPhone] = useState("");
   const [aptNumber, setAptNumber] = useState("");
   const [loading, setLoading] = useState(true);
@@ -23,12 +24,10 @@ export function EditProfileScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch<MeFull>("/users/me")
+    apiFetch<MeBasic>("/users/me")
       .then((u) => {
         if (cancelled) return;
         setDisplayName(u.display_name ?? "");
-        setPhone(u.phone ?? "");
-        setAptNumber(u.apt_number ?? "");
         setLoading(false);
       })
       .catch(() => {
@@ -148,7 +147,7 @@ export function EditProfileScreen() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+7 999 123-45-67"
+              placeholder="+7 999 123-45-67 (оставьте пустым чтобы не менять)"
               maxLength={20}
               style={inputStyle}
             />
@@ -160,7 +159,7 @@ export function EditProfileScreen() {
               type="text"
               value={aptNumber}
               onChange={(e) => setAptNumber(e.target.value)}
-              placeholder="Дом 5, кв. 123"
+              placeholder="Дом 5, кв. 123 (оставьте пустым чтобы не менять)"
               maxLength={50}
               style={inputStyle}
             />

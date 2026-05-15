@@ -106,7 +106,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       return tx<Record<string, unknown>[]>`
         SELECT r.*,
                u.display_name AS driver_display_name,
-               u.photo_url    AS driver_photo_url,
+               u.avatar_url   AS driver_photo_url,
                u.tg_id        AS driver_tg_id
         FROM rides r
         JOIN users u ON r.driver_id = u.id
@@ -164,7 +164,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         return tx<Record<string, unknown>[]>`
           SELECT r.*,
                  u.display_name AS driver_display_name,
-                 u.photo_url    AS driver_photo_url,
+                 u.avatar_url   AS driver_photo_url,
                  u.tg_id        AS driver_tg_id
           FROM rides r
           JOIN users u ON r.driver_id = u.id
@@ -177,7 +177,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       return tx<Record<string, unknown>[]>`
         SELECT r.*,
                u.display_name AS driver_display_name,
-               u.photo_url    AS driver_photo_url,
+               u.avatar_url   AS driver_photo_url,
                u.tg_id        AS driver_tg_id
         FROM rides r
         JOIN users u ON r.driver_id = u.id

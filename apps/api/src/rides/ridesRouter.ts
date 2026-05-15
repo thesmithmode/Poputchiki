@@ -526,28 +526,28 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
           await tx`SELECT pg_advisory_xact_lock(hashtext(${rideId}::text))`;
 
-          // Apply each provided field
-          /* c8 ignore start -- optional field updates: each branch trivially correct, testing all combos would be exponential */
-          if (p.from_label !== undefined)
-            await tx`UPDATE rides SET from_label = ${p.from_label} WHERE id = ${rideId}`;
-          if (p.from_lat !== undefined)
-            await tx`UPDATE rides SET from_lat = ${p.from_lat} WHERE id = ${rideId}`;
-          if (p.from_lng !== undefined)
-            await tx`UPDATE rides SET from_lng = ${p.from_lng} WHERE id = ${rideId}`;
-          if (p.to_label !== undefined)
-            await tx`UPDATE rides SET to_label = ${p.to_label} WHERE id = ${rideId}`;
-          if (p.to_lat !== undefined)
-            await tx`UPDATE rides SET to_lat = ${p.to_lat} WHERE id = ${rideId}`;
-          if (p.to_lng !== undefined)
-            await tx`UPDATE rides SET to_lng = ${p.to_lng} WHERE id = ${rideId}`;
-          if (p.departure_at !== undefined)
+          // postgres.js: sql({...}, ...keys) → "SET col1=..., col2=..." с безопасным
+          // escaping. departure_at нуждается в явном ::timestamptz cast — обрабатывается
+          // отдельным statement только при наличии этого поля.
+          /* c8 ignore start -- optional field updates: combinations exponential */
+          const updatable: Record<string, unknown> = {};
+          if (p.from_label !== undefined) updatable.from_label = p.from_label;
+          if (p.from_lat !== undefined) updatable.from_lat = p.from_lat;
+          if (p.from_lng !== undefined) updatable.from_lng = p.from_lng;
+          if (p.to_label !== undefined) updatable.to_label = p.to_label;
+          if (p.to_lat !== undefined) updatable.to_lat = p.to_lat;
+          if (p.to_lng !== undefined) updatable.to_lng = p.to_lng;
+          if (p.price_rub !== undefined) updatable.price_rub = p.price_rub;
+          if (p.seats_total !== undefined) updatable.seats_total = p.seats_total;
+          if (p.comment !== undefined) updatable.comment = p.comment;
+
+          const keys = Object.keys(updatable);
+          if (keys.length > 0) {
+            await tx`UPDATE rides SET ${tx(updatable, ...keys)} WHERE id = ${rideId}`;
+          }
+          if (p.departure_at !== undefined) {
             await tx`UPDATE rides SET departure_at = ${p.departure_at}::timestamptz WHERE id = ${rideId}`;
-          if (p.price_rub !== undefined)
-            await tx`UPDATE rides SET price_rub = ${p.price_rub} WHERE id = ${rideId}`;
-          if (p.seats_total !== undefined)
-            await tx`UPDATE rides SET seats_total = ${p.seats_total} WHERE id = ${rideId}`;
-          if (p.comment !== undefined)
-            await tx`UPDATE rides SET comment = ${p.comment} WHERE id = ${rideId}`;
+          }
           /* c8 ignore stop */
 
           const changedKeyFields =

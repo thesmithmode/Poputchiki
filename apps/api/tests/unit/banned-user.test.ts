@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
-import { describe, expect, it, vi } from "vitest";
-import { bannedUser } from "../../src/middleware/banned-user";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { _resetUserStateCache, bannedUser } from "../../src/middleware/banned-user";
 import type { AppUser } from "../../src/middleware/identity-guard";
 
 type BanRow = {
@@ -36,6 +36,12 @@ function makeApp(sql: postgres.Sql, user?: AppUser) {
 const testUser: AppUser = { id: "uuid-1", tgId: 123, role: "user" };
 
 describe("bannedUser middleware", () => {
+  beforeEach(() => {
+    // Кэш user-state in-memory — сбрасывать между тестами иначе testUser.id
+    // переиспользуется и cache hit подменяет SQL ответ
+    _resetUserStateCache();
+  });
+
   it("/api/users/me bypasses ban check (banned user still sees own /me)", async () => {
     const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
     const app = makeApp(sql, testUser);
@@ -125,5 +131,14 @@ describe("bannedUser middleware", () => {
     const app = makeApp(sql, testUser);
     const res = await app.request("/api/rides");
     expect(res.status).toBe(200);
+  });
+
+  it("SENTINEL: повторный запрос того же юзера в окне TTL — SQL вызывается один раз (кэш)", async () => {
+    const sql = makeSql({ is_banned: false, ban_reason: null, banned_at: null });
+    const app = makeApp(sql, testUser);
+    await app.request("/api/rides");
+    await app.request("/api/rides");
+    await app.request("/api/rides");
+    expect(sql).toHaveBeenCalledOnce();
   });
 });

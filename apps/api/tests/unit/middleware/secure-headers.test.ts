@@ -85,9 +85,9 @@ describe("secureHeadersMiddleware", () => {
     expect(csp).toContain("https://t.me");
   });
 
-  it("SENTINEL: connect-src contains https://nominatim.openstreetmap.org", async () => {
+  it("SENTINEL: connect-src НЕ содержит nominatim.openstreetmap.org (фронт ходит через /api/geocode)", async () => {
     const csp = (await getHeaders()).get("content-security-policy") ?? "";
-    expect(csp).toContain("https://nominatim.openstreetmap.org");
+    expect(csp).not.toContain("https://nominatim.openstreetmap.org");
   });
 
   it("SENTINEL: frame-ancestors contains https://web.telegram.org and https://*.telegram.org", async () => {

@@ -9,8 +9,20 @@ const sql = createPool(env.DATABASE_URL);
 const listenSql = createListenSql(env.DATABASE_URL);
 
 // Dispatcher is async — start it before the server accepts connections.
-// If it fails on startup (DB unreachable), the process will crash and be restarted by Docker.
-const dispatcher = await createDispatcher(listenSql, "rides_changed");
+// If it fails on startup (DB unreachable), залогировать причину перед exit чтобы
+// Docker restart log не оставался безмолвным `unhandledRejection`.
+let dispatcher: Awaited<ReturnType<typeof createDispatcher>>;
+try {
+  dispatcher = await createDispatcher(listenSql, "rides_changed");
+} catch (err) {
+  console.error(
+    JSON.stringify({
+      msg: "dispatcher_init_failed",
+      error: err instanceof Error ? err.message : String(err),
+    }),
+  );
+  process.exit(1);
+}
 
 const app = createApp(sql, env.JWT_SECRET, dispatcher);
 

@@ -7,12 +7,6 @@ const NOMINATIM_URL = process.env.NOMINATIM_URL ?? "http://nominatim:8080";
 // Kazan region bounding box for Nominatim: left,top,right,bottom
 const BBOX_KAZAN = "48.6,56.2,49.5,55.5";
 
-const FALLBACK_RESULTS = [
-  { place_id: 0, display_name: "ЖК Царёво, Казань", lat: "55.7558", lon: "49.1221" },
-  { place_id: 1, display_name: "Казань, Республика Татарстан", lat: "55.7558", lon: "49.1221" },
-  { place_id: 2, display_name: "Казань, вокзал Казань-1", lat: "55.7887", lon: "49.1115" },
-];
-
 interface GeocodeRouterOptions {
   cache?: GeoCache | undefined;
   _fetch?: typeof fetch | undefined;
@@ -66,7 +60,11 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       cache.set(cacheKey, results);
       return c.json(results);
     } catch {
-      return c.json(FALLBACK_RESULTS);
+      // Раньше возвращали FALLBACK_RESULTS — но это подменяло пользовательский запрос
+      // на захардкоженный список ("Москва" → "ЖК Царёво, Казань"). Лучше 503 + пустой
+      // список: фронт показывает явную ошибку, юзер понимает что сервис не работает.
+      c.header("Retry-After", "30");
+      return c.json({ error: "geocoder_unavailable", results: [] }, 503);
     }
   });
 

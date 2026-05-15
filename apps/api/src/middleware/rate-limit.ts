@@ -15,7 +15,9 @@ export function rateLimit(sql: postgres.Sql, opts?: RateLimitOptions): Middlewar
   return async (c, next) => {
     const ip = getClientIp(c);
 
-    const retryAfter = String(60 - new Date().getSeconds());
+    // Math.max(1, ...) — на границе окна (seconds === 60 в редкой race) значение
+    // могло быть 0; клиент должен ждать хотя бы 1 секунду.
+    const retryAfter = String(Math.max(1, 60 - new Date().getSeconds()));
 
     const ipKey = `ip:${ip}`;
     const [ipRow] = await sql`

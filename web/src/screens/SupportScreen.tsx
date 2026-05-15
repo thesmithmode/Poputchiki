@@ -53,7 +53,7 @@ export function SupportScreen() {
           minHeight: "100vh",
         }}
       >
-        <p style={{ fontSize: 14, color: "#7c8694" }}>Загрузка...</p>
+        <p style={{ fontSize: 14, color: "var(--brand-sub)" }}>Загрузка...</p>
       </div>
     );
   }
@@ -90,13 +90,15 @@ export function SupportScreen() {
             fontSize: 20,
             cursor: "pointer",
             padding: 4,
-            color: "#333",
+            color: "var(--brand-text)",
           }}
           aria-label="Назад"
         >
           ←
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0 }}>Поддержка</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
+          Поддержка
+        </h1>
       </header>
 
       <div style={{ padding: 16, flex: 1 }}>
@@ -181,7 +183,7 @@ export function SupportScreen() {
                   borderRadius: 10,
                   fontSize: 14,
                   cursor: "pointer",
-                  color: "#555",
+                  color: "var(--brand-sub)",
                 }}
               >
                 Отмена
@@ -193,7 +195,12 @@ export function SupportScreen() {
         {!tickets || tickets.length === 0 ? (
           <div
             data-testid="support-empty"
-            style={{ textAlign: "center", padding: "48px 0", color: "#7c8694", fontSize: 14 }}
+            style={{
+              textAlign: "center",
+              padding: "48px 0",
+              color: "var(--brand-sub)",
+              fontSize: 14,
+            }}
           >
             Нет обращений
           </div>
@@ -211,7 +218,7 @@ export function SupportScreen() {
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: "#7c8694" }}>
+                  <span style={{ fontSize: 13, color: "var(--brand-sub)" }}>
                     {new Date(t.created_at).toLocaleDateString("ru-RU")}
                   </span>
                   <span
@@ -225,7 +232,9 @@ export function SupportScreen() {
                     {t.status}
                   </span>
                 </div>
-                <p style={{ fontSize: 14, color: "#15191f", margin: "0 0 6px" }}>{t.text}</p>
+                <p style={{ fontSize: 14, color: "var(--brand-text)", margin: "0 0 6px" }}>
+                  {t.text}
+                </p>
                 {t.reply_text && (
                   <div
                     style={{

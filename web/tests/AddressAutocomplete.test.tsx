@@ -13,9 +13,8 @@ import { apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
-// Debounce компонента 800ms. В тестах ждём чуть больше реальным таймером —
-// fake timers конфликтуют с waitFor (waitFor использует setInterval).
-const DEBOUNCE_WAIT = 950;
+// Debounce 350ms — ждём чуть больше реальным таймером.
+const DEBOUNCE_WAIT = 500;
 
 function Harness({
   initial = "",
@@ -58,11 +57,10 @@ describe("AddressAutocomplete", () => {
     expect(screen.getByTestId("addr")).toBeInTheDocument();
   });
 
-  it("показывает пресеты при focus с пустым значением", () => {
+  it("focus с пустым значением — не показывает list/hint/empty/loading", () => {
     render(<Harness />);
     fireEvent.focus(screen.getByTestId("addr"));
-    expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
-    expect(screen.getByText("ЖК Царёво, Усады, Татарстан")).toBeInTheDocument();
+    expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
   });
 
   it("не показывает dropdown пока input без focus", () => {
@@ -70,30 +68,21 @@ describe("AddressAutocomplete", () => {
     expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
   });
 
-  it("фильтрует пресеты по подстроке", () => {
+  it("при <3 символах показывает hint вместо запроса", async () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "Кольцо" } });
-    expect(screen.getByText("ТЦ Кольцо, Казань")).toBeInTheDocument();
-    expect(screen.queryByText("ЖК Царёво, Усады, Татарстан")).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: "ТЦ" } });
+    expect(screen.getByTestId("addr-hint")).toHaveTextContent("Введите минимум 3");
+    await new Promise((r) => setTimeout(r, DEBOUNCE_WAIT));
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 
-  it("клик по пресету подставляет label без coords", () => {
-    const onChange = vi.fn();
-    render(<Harness onChange={onChange} />);
-    const input = screen.getByTestId("addr");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "Кольцо" } });
-    fireEvent.mouseDown(screen.getByText("ТЦ Кольцо, Казань"));
-    expect(onChange).toHaveBeenLastCalledWith("ТЦ Кольцо, Казань", undefined);
-    expect(screen.getByTestId("coords-mirror")).toHaveTextContent("none");
-  });
-
-  it("Escape закрывает dropdown", () => {
+  it("Escape закрывает dropdown с hint", () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "ТЦ" } });
     expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
     fireEvent.keyDown(input, { key: "Escape" });
     expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
@@ -101,24 +90,17 @@ describe("AddressAutocomplete", () => {
 
   it("click outside закрывает dropdown", () => {
     render(<Harness />);
-    fireEvent.focus(screen.getByTestId("addr"));
+    const input = screen.getByTestId("addr");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "ТЦ" } });
     expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
     fireEvent.mouseDown(screen.getByTestId("outside"));
     expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
   });
 
-  it("не дёргает geocode при <3 символах", async () => {
-    render(<Harness />);
-    const input = screen.getByTestId("addr");
-    fireEvent.focus(input);
-    fireEvent.change(input, { target: { value: "ТЦ" } });
-    await new Promise((r) => setTimeout(r, DEBOUNCE_WAIT));
-    expect(mockedApiFetch).not.toHaveBeenCalled();
-  });
-
-  it("debounced geocode после 800ms с ≥3 символами", async () => {
+  it("debounced geocode при ≥3 символах", async () => {
     mockedApiFetch.mockResolvedValueOnce([
-      { display_name: "Аэропорт Казань, ул Aero, Казань", lat: "55.6", lon: "49.27" },
+      { display_name: "Аэропорт Казань", lat: "55.6", lon: "49.27" },
     ]);
     render(<Harness />);
     const input = screen.getByTestId("addr");
@@ -132,8 +114,7 @@ describe("AddressAutocomplete", () => {
     );
   });
 
-  it("клик по geocode-результату передаёт coords", async () => {
-    // Используем уникальное слово в display_name — иначе findByText матчит preset
+  it("клик по результату передаёт coords из dropdown", async () => {
     mockedApiFetch.mockResolvedValueOnce([
       { display_name: "Стадион Рубин, Чистопольская, Казань", lat: "55.8204", lon: "49.1192" },
     ]);
@@ -148,25 +129,32 @@ describe("AddressAutocomplete", () => {
     });
   });
 
-  it("geocode сбой не падает, остаются пресеты", async () => {
+  it("сбой geocode → empty message", async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error("503"));
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: "Кольцо" } });
-    await new Promise((r) => setTimeout(r, DEBOUNCE_WAIT));
-    expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
-    expect(screen.getByText("ТЦ Кольцо, Казань")).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("addr-empty")).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
   });
 
-  it("geocode с не-массивом игнорируется", async () => {
+  it("geocode возвращает не-массив → empty message", async () => {
     mockedApiFetch.mockResolvedValueOnce({ error: "geocoder_unavailable" } as never);
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: "Кольцо" } });
-    await new Promise((r) => setTimeout(r, DEBOUNCE_WAIT));
-    expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("addr-empty")).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
   });
 
   it("geocode с NaN-coords отбрасывает запись", async () => {
@@ -202,7 +190,7 @@ describe("AddressAutocomplete", () => {
     });
   });
 
-  it("query содержит 'Казань' если регион ещё не введён", async () => {
+  it("query содержит 'Татарстан' если регион ещё не введён", async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
     render(<Harness />);
     const input = screen.getByTestId("addr");
@@ -215,7 +203,7 @@ describe("AddressAutocomplete", () => {
       { timeout: 2000 },
     );
     const calls = mockedApiFetch.mock.calls.map(([p]) => decodeURIComponent(p as string));
-    expect(calls.some((p) => p.includes("Казань"))).toBe(true);
+    expect(calls.some((p) => p.includes("Татарстан"))).toBe(true);
   });
 
   it("query не задваивает регион если уже есть 'Татарстан'", async () => {
@@ -232,7 +220,34 @@ describe("AddressAutocomplete", () => {
     );
     const calls = mockedApiFetch.mock.calls.map(([p]) => decodeURIComponent(p as string));
     const last = calls[calls.length - 1] ?? "";
-    // Запрос не содержит ", Казань" т.к. уже задан регион "Татарстан"
-    expect(last).not.toMatch(/Татарстан,\s*Казань$/);
+    expect(last).not.toMatch(/Татарстан,\s*Татарстан$/);
+  });
+
+  it("показывает до 12 результатов из Nominatim", async () => {
+    const results = Array.from({ length: 15 }, (_, i) => ({
+      display_name: `Адрес ${i}, Казань`,
+      lat: `55.${i.toString().padStart(2, "0")}`,
+      lon: `49.${i.toString().padStart(2, "0")}`,
+    }));
+    mockedApiFetch.mockResolvedValueOnce(results);
+    render(<Harness />);
+    const input = screen.getByTestId("addr");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Адрес" } });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("addr-option-11")).toBeInTheDocument();
+      },
+      { timeout: 2000 },
+    );
+    expect(screen.queryByTestId("addr-option-12")).not.toBeInTheDocument();
+  });
+
+  it("PRESETS убраны — нет hardcoded адресов в dropdown без запроса", () => {
+    render(<Harness />);
+    const input = screen.getByTestId("addr");
+    fireEvent.focus(input);
+    expect(screen.queryByText("ЖК Царёво, Усады, Татарстан")).not.toBeInTheDocument();
+    expect(screen.queryByText("ТЦ Кольцо, Казань")).not.toBeInTheDocument();
   });
 });

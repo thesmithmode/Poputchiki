@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T11:00:36.509Z",
+  "timestamp": "2026-05-15T11:29:03.516Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -31,8 +31,40 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/geocode/geocodeRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/geocode/geocodeRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "infra/docker-compose.prod.yml"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/AddressAutocomplete.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/index.css"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/CreateRideScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/tests/AddressAutocomplete.test.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/tests/CreateRideScreen.test.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n902be15 FIX: driver_tg_id как JSON number вместо bigint-string\nd191d2e TEST: покрытие /rides/mine + MyRidesScreen + EditProfileScreen\nc5d36a8 FIX: код-ревью — SQL column avatar_url + EditProfile без preload PII\nc69794a FEAT: экраны прототипа — MyRides, EditProfile, multi-step CreateRide, driver в RideCard\n2344bfc FEAT: дизайн-система — токены, типографика, self-host шрифты"
+  "context_notes": "Recent commits:\nd7debf5 FIX: CreateRide MainButton double-tap race — submittingRef guard\n4e51fdf CHORE: обновить memory-логи + HANDOFF — squash dev->main 2026-05-15 экраны прототипа\n902be15 FIX: driver_tg_id как JSON number вместо bigint-string\nd191d2e TEST: покрытие /rides/mine + MyRidesScreen + EditProfileScreen\nc5d36a8 FIX: код-ревью — SQL column avatar_url + EditProfile без preload PII"
 }

@@ -2,10 +2,13 @@ import { Hono } from "hono";
 import type { AppUser } from "../middleware/identity-guard";
 import { GeoCache } from "./geoCache";
 
-const NOMINATIM_URL = process.env.NOMINATIM_URL ?? "http://nominatim:8080";
+// Public Nominatim by default — self-hosted профиль в compose отключён.
+// Policy public Nominatim: 1 req/sec per IP + обязательный User-Agent (ставим ниже).
+// Свой кэш + per-user rate-limit ниже снижают нагрузку на их инфру.
+const NOMINATIM_URL = process.env.NOMINATIM_URL ?? "https://nominatim.openstreetmap.org";
 
-// Kazan region bounding box for Nominatim: left,top,right,bottom
-const BBOX_KAZAN = "48.6,56.2,49.5,55.5";
+// Татарстан bbox для Nominatim: left,top,right,bottom (полоса от Зеленодольска до Чистополя).
+const BBOX_TATARSTAN = "47.8,56.7,53.5,53.9";
 
 interface GeocodeRouterOptions {
   cache?: GeoCache | undefined;
@@ -46,8 +49,8 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       const url = new URL(`${NOMINATIM_URL}/search`);
       url.searchParams.set("q", q);
       url.searchParams.set("format", "json");
-      url.searchParams.set("limit", "10");
-      url.searchParams.set("viewbox", BBOX_KAZAN);
+      url.searchParams.set("limit", "12");
+      url.searchParams.set("viewbox", BBOX_TATARSTAN);
       url.searchParams.set("bounded", "0");
       url.searchParams.set("addressdetails", "1");
 

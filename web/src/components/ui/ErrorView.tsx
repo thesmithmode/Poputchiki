@@ -16,7 +16,9 @@ export function ErrorView({ message, onRetry }: Props) {
         gap: 12,
       }}
     >
-      <p style={{ color: "#e74c3c", fontSize: 14, textAlign: "center", margin: 0 }}>{message}</p>
+      <p style={{ color: "var(--brand-danger)", fontSize: 14, textAlign: "center", margin: 0 }}>
+        {message}
+      </p>
       {onRetry && (
         <button
           type="button"

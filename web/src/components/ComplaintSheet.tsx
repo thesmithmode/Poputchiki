@@ -91,7 +91,7 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
               fontSize: 22,
               cursor: "pointer",
               padding: 4,
-              color: "#555",
+              color: "var(--brand-sub)",
             }}
             aria-label="Закрыть"
           >

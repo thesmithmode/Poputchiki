@@ -119,4 +119,37 @@ describe("GET /api/geocode/search", () => {
     const res2 = await app.request("/api/geocode/search?q=other", { headers });
     expect(res2.status).toBe(429);
   });
+
+  it("SENTINEL: дефолт NOMINATIM_URL — публичный nominatim.openstreetmap.org", async () => {
+    // Self-hosted Nominatim профиль в compose выключен. Если кто-то вернёт дефолт
+    // на 'http://nominatim:8080' — этот тест упадёт и поймает регрессию prod-инфры.
+    const prev = process.env.NOMINATIM_URL;
+    // biome-ignore lint/performance/noDelete: нужно реально удалить env var, чтобы сработал ?? default
+    delete process.env.NOMINATIM_URL;
+    try {
+      vi.resetModules();
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValue(
+          new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } }),
+        );
+      const fresh = await import("../../../src/geocode/geocodeRouter");
+      const app = new Hono();
+      app.use("/api/*", identityGuard(JWT_SECRET));
+      app.route(
+        "/api/geocode",
+        fresh.createGeocodeRouter({
+          _fetch: mockFetch as unknown as typeof fetch,
+          _lastRequestAt: new Map(),
+        }),
+      );
+      await app.request("/api/geocode/search?q=Казань", {
+        headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+      });
+      const calledUrl = String(mockFetch.mock.calls[0]?.[0]);
+      expect(calledUrl).toMatch(/^https:\/\/nominatim\.openstreetmap\.org/);
+    } finally {
+      if (prev !== undefined) process.env.NOMINATIM_URL = prev;
+    }
+  });
 });

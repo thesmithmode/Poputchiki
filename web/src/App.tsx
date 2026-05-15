@@ -54,8 +54,10 @@ function NotFoundPage() {
       }}
     >
       <div style={{ fontSize: 48 }}>🔍</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: "#15191f" }}>Страница не найдена</div>
-      <div style={{ fontSize: 14, color: "#7c8694", textAlign: "center" }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--brand-text)" }}>
+        Страница не найдена
+      </div>
+      <div style={{ fontSize: 14, color: "var(--brand-sub)", textAlign: "center" }}>
         Такой страницы не существует
       </div>
       <button
@@ -209,10 +211,10 @@ function AppRoutes() {
           background: "var(--brand-bg, #f4f5f4)",
         }}
       >
-        <p style={{ fontSize: 15, color: "#e54e5c", margin: 0, textAlign: "center" }}>
+        <p style={{ fontSize: 15, color: "var(--brand-danger)", margin: 0, textAlign: "center" }}>
           Ошибка подключения
         </p>
-        <p style={{ fontSize: 13, color: "#7c8694", margin: 0, textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--brand-sub)", margin: 0, textAlign: "center" }}>
           {me.message}
         </p>
         <button

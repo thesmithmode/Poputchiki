@@ -108,6 +108,9 @@ services:
       DOMAIN: ${DOMAIN}
       NODE_ENV: production
       PORT: 3000
+      # Геокодер: публичный Nominatim (self-hosted профиль выключен в compose).
+      # Override через .env если поднимешь свой Nominatim.
+      NOMINATIM_URL: ${NOMINATIM_URL:-https://nominatim.openstreetmap.org}
     depends_on:
       postgres:
         condition: service_healthy

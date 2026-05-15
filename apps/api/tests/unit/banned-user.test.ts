@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import { bannedUser } from "../../src/middleware/banned-user";
 import type { AppUser } from "../../src/middleware/identity-guard";
 
-type BanRow = { is_banned: boolean; ban_reason: string | null; banned_at: string | null };
+type BanRow = {
+  is_banned: boolean;
+  ban_reason: string | null;
+  banned_at: string | null;
+  deleted_at?: string | null;
+};
 
 function makeSql(row?: BanRow): postgres.Sql {
   const fn = vi.fn().mockResolvedValue(row ? [row] : []);
@@ -31,12 +36,40 @@ function makeApp(sql: postgres.Sql, user?: AppUser) {
 const testUser: AppUser = { id: "uuid-1", tgId: 123, role: "user" };
 
 describe("bannedUser middleware", () => {
-  it("/api/users/me bypasses ban check — no DB query, calls next", async () => {
+  it("/api/users/me bypasses ban check (banned user still sees own /me)", async () => {
     const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
     const app = makeApp(sql, testUser);
     const res = await app.request("/api/users/me");
     expect(res.status).toBe(200);
-    expect(sql).not.toHaveBeenCalled();
+    // DB still queried — deleted_at check happens before /me whitelist
+    expect(sql).toHaveBeenCalled();
+  });
+
+  it("SENTINEL: deleted (anonymized) user → 401 even on /api/users/me", async () => {
+    const sql = makeSql({
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      deleted_at: "2026-01-01T00:00:00Z",
+    });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/users/me");
+    expect(res.status).toBe(401);
+    // biome-ignore lint/suspicious/noExplicitAny: test helper
+    const body = (await res.json()) as any;
+    expect(body.error).toBe("unauthorized");
+  });
+
+  it("SENTINEL: deleted user on /api/rides → 401", async () => {
+    const sql = makeSql({
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      deleted_at: "2026-01-01T00:00:00Z",
+    });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/rides");
+    expect(res.status).toBe(401);
   });
 
   it("non-banned user — calls next with 200", async () => {

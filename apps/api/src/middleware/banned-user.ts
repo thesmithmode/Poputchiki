@@ -4,11 +4,6 @@ import type { AppUser } from "./identity-guard";
 
 export function bannedUser(sql: postgres.Sql): MiddlewareHandler {
   return async (c, next) => {
-    // Allow /api/users/me through — user needs to see their ban reason
-    if (c.req.path === "/api/users/me") {
-      await next();
-      return;
-    }
     const user = c.get("user" as never) as AppUser;
     if (!user) {
       await next();
@@ -16,10 +11,27 @@ export function bannedUser(sql: postgres.Sql): MiddlewareHandler {
     }
 
     const [row] = await sql<
-      { is_banned: boolean; ban_reason: string | null; banned_at: string | null }[]
+      {
+        is_banned: boolean;
+        ban_reason: string | null;
+        banned_at: string | null;
+        deleted_at: string | null;
+      }[]
     >`
-      SELECT is_banned, ban_reason, banned_at FROM users WHERE id = ${user.id} LIMIT 1
+      SELECT is_banned, ban_reason, banned_at, deleted_at FROM users WHERE id = ${user.id} LIMIT 1
     `;
+
+    // Deleted (anonymized) user → 401, no access at all, even to /api/users/me
+    if (row?.deleted_at) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+
+    // /api/users/me — banned user needs to see their ban reason
+    if (c.req.path === "/api/users/me") {
+      await next();
+      return;
+    }
+
     if (row?.is_banned) {
       return c.json({ error: "banned", reason: row.ban_reason, banned_at: row.banned_at }, 403);
     }

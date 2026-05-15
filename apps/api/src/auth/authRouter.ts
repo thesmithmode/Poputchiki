@@ -142,37 +142,33 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const userId = typeof payload.uid === "string" ? payload.uid : null;
     /* c8 ignore stop */
 
-    // Check revocation
-    if (oldJti) {
-      const [revoked] = await sql`
-        SELECT 1 FROM revoked_tokens WHERE jti = ${oldJti} LIMIT 1
-      `;
-      if (revoked) {
-        return c.json({ error: "token revoked" }, 401);
-      }
-    }
-
-    // Verify user still exists and is not soft-deleted.
     /* c8 ignore next -- uid always present in signed tokens */
     if (!userId) return c.json({ error: "invalid token" }, 401);
-    const [userRow] = await sql`
-      SELECT id FROM users WHERE id = ${userId} AND deleted_at IS NULL LIMIT 1
+
+    // Verify user still exists, is not soft-deleted AND not banned.
+    // banned/deleted users must not be able to refresh tokens indefinitely.
+    const [userRow] = await sql<{ id: string; tg_id: string | number; role: string }[]>`
+      SELECT id, tg_id, role FROM users
+      WHERE id = ${userId} AND deleted_at IS NULL AND is_banned = false
+      LIMIT 1
     `;
     if (!userRow) {
       return c.json({ error: "user not found" }, 401);
     }
 
-    // Revoke the old refresh token
+    // Atomic CAS-style revocation: INSERT first, RETURNING tells us who won the race.
+    // If oldJti was already revoked (concurrent /refresh on same token, or replay)
+    // → no row inserted → 401. Closes race between SELECT check and INSERT.
     /* c8 ignore next -- oldJti always non-null for issued refresh tokens */
     if (oldJti) {
-      try {
-        await sql`
-          INSERT INTO revoked_tokens (jti, user_id)
-          VALUES (${oldJti}, ${userId})
-          ON CONFLICT (jti) DO NOTHING
-        `;
-      } catch {
-        // best-effort revocation — don't fail the request
+      const claimed = await sql<{ jti: string }[]>`
+        INSERT INTO revoked_tokens (jti, user_id)
+        VALUES (${oldJti}, ${userId})
+        ON CONFLICT (jti) DO NOTHING
+        RETURNING jti
+      `;
+      if (claimed.length === 0) {
+        return c.json({ error: "token revoked" }, 401);
       }
     }
 
@@ -181,8 +177,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const jwtBase = {
       sub: String(payload.sub),
       uid: String(payload.uid),
-      /* c8 ignore next -- defensive: refresh tokens always carry role */
-      role: String(payload.role ?? "user"),
+      role: userRow.role,
     };
     const [newAccess, newRefresh] = await Promise.all([
       sign(
@@ -194,6 +189,11 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
         jwtSecret,
       ),
     ]);
+
+    // Reissue identity cookies — tg_uid is session-scoped; if it expired
+    // between auth and refresh, next /api/* call would fail identityGuard.
+    setCookie(c, "tg_uid", String(payload.sub), AUTH_COOKIE_DEFAULTS);
+    setCookie(c, "csrf_token", crypto.randomUUID(), CSRF_COOKIE_DEFAULTS);
 
     return c.json({ access_token: newAccess, refresh_token: newRefresh });
   });

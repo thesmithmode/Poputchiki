@@ -71,14 +71,17 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const user = c.get("user" as never) as AppUser;
 
     const shouldCache = !p.cursor && !p.favoritesOnly;
+    // Cache key MUST include user.id — RLS may filter ride visibility per user
+    // (block-lists, role-based gating). Without user prefix, юзер A может получить
+    // закэшированный ответ юзера B.
     const cacheKey = shouldCache
-      ? JSON.stringify(
+      ? `${user.id}:${JSON.stringify(
           Object.fromEntries(
             Object.entries(p)
               .filter(([k]) => k !== "cursor")
               .sort(([a], [b]) => a.localeCompare(b)),
           ),
-        )
+        )}`
       : null;
     if (cacheKey) {
       const hit = cache.get(cacheKey);

@@ -41,7 +41,7 @@ export function EventsScreen() {
             height: 36,
             borderRadius: 10,
             border: "none",
-            background: "var(--brand-surface2)",
+            background: "var(--brand-surface-2)",
             color: "var(--brand-text)",
             cursor: "pointer",
             fontSize: 18,

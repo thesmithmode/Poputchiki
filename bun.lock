@@ -73,6 +73,8 @@
       "name": "@poputchiki/web",
       "version": "0.1.0",
       "dependencies": {
+        "@fontsource/onest": "^5.2.11",
+        "@fontsource/unbounded": "^5.2.8",
         "@poputchiki/shared": "workspace:*",
         "@tanstack/react-query": "^5.62.7",
         "@telegram-apps/sdk-react": "^2.0.24",
@@ -254,6 +256,10 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
     "@exodus/bytes": ["@exodus/bytes@1.15.0", "", { "peerDependencies": { "@noble/hashes": "^1.8.0 || ^2.0.0" }, "optionalPeers": ["@noble/hashes"] }, "sha512-UY0nlA+feH81UGSHv92sLEPLCeZFjXOuHhrIo0HQydScuQc8s0A7kL/UdgwgDq8g8ilksmuoF35YVTNphV2aBQ=="],
+
+    "@fontsource/onest": ["@fontsource/onest@5.2.11", "", {}, "sha512-YDOHuJ+HFf4rl6+vBzEoAGul+GyEOIlziepq+7UDT4839LyiFU1clVZqNmqmCRjwWidPTMUJIv1k9e+5UtuQOw=="],
+
+    "@fontsource/unbounded": ["@fontsource/unbounded@5.2.8", "", {}, "sha512-tBHtKB+s5tKvQXEWy5h86sDY5hzVLsEbW6TGphSjUY9b/gawUPvXv5vFS4ZdPbGDcvSqMMy6eXkqdcsKI29dig=="],
 
     "@isaacs/cliui": ["@isaacs/cliui@9.0.0", "", {}, "sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg=="],
 

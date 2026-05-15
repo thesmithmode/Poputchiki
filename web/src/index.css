@@ -3,52 +3,88 @@
 @tailwind utilities;
 
 :root {
+  /* === SURFACES === */
   --brand-bg: #f4f5f4;
   --brand-surface: #ffffff;
-  --brand-surface2: #eeefee;
+  --brand-surface-2: #eeefee;
   --brand-inset: #e4e6e4;
 
+  /* === TEXT === */
   --brand-text: #0e1410;
-  --brand-ink2: #2a312d;
+  --brand-ink-2: #2a312d;
   --brand-sub: #6b716e;
   --brand-faint: #a8acaa;
+
+  /* === LINES & BORDERS === */
   --brand-line: rgba(14, 20, 16, 0.08);
   --brand-line-soft: rgba(14, 20, 16, 0.04);
   --brand-hairline: rgba(14, 20, 16, 0.1);
   --brand-border: rgba(14, 20, 16, 0.08);
 
+  /* === PRIMARY (forest green) — FAB, active tabs, CTAs === */
   --brand-primary: #2d5a3d;
   --brand-primary-ink: #ffffff;
   --brand-primary-soft: #d8e5dc;
   --brand-primary-tint: #ebf1ed;
   --brand-primary-line: rgba(45, 90, 61, 0.18);
 
+  /* === ACCENT (warm terracotta) === */
   --brand-accent: #b6553a;
   --brand-accent-soft: #f4ddd2;
   --brand-accent-ink: #ffffff;
 
+  /* === SEMANTIC === */
   --brand-warn: #9b7320;
   --brand-warn-soft: #f4e8c8;
   --brand-danger: #b53d3d;
   --brand-danger-soft: #f1d6d0;
 
+  /* === ROUTE DOT (start / end pins on a ride card) === */
+  --route-from: #3d6b8a;
+  --route-to: #7c8694;
+
+  /* === SHADOWS / ELEVATION === */
   --shadow-sm: 0 1px 2px rgba(14, 20, 16, 0.05), 0 0 0 1px rgba(14, 20, 16, 0.04);
   --shadow-md: 0 4px 14px -4px rgba(14, 20, 16, 0.1), 0 0 0 1px rgba(14, 20, 16, 0.05);
   --shadow-lg: 0 18px 40px -16px rgba(14, 20, 16, 0.2), 0 0 0 1px rgba(14, 20, 16, 0.05);
+  --shadow-fab: 0 6px 18px -4px rgba(45, 90, 61, 0.5), 0 0 0 4px #ffffff;
 
+  /* === TAB BAR === */
   --tab-bar-bg: rgba(255, 255, 255, 0.92);
   --tab-bar-border: rgba(15, 23, 42, 0.06);
   --tab-bar-ring: #ffffff;
+
+  /* === RADII === */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 999px;
+
+  /* === SPACING === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* === TYPE FAMILIES === */
+  --font-sans: "Onest", -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --font-display: "Unbounded", "Onest", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
 
 .dark {
   --brand-bg: #000000;
   --brand-surface: #111313;
-  --brand-surface2: #1a1d1c;
+  --brand-surface-2: #1a1d1c;
   --brand-inset: #222625;
 
   --brand-text: #ffffff;
-  --brand-ink2: rgba(255, 255, 255, 0.85);
+  --brand-ink-2: rgba(255, 255, 255, 0.85);
   --brand-sub: rgba(255, 255, 255, 0.55);
   --brand-faint: rgba(255, 255, 255, 0.32);
   --brand-line: rgba(255, 255, 255, 0.08);
@@ -74,6 +110,7 @@
   --shadow-sm: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-fab: 0 6px 18px -4px rgba(122, 196, 149, 0.45), 0 0 0 4px #000000;
 
   --tab-bar-bg: rgba(20, 20, 22, 0.85);
   --tab-bar-border: rgba(255, 255, 255, 0.06);
@@ -87,8 +124,76 @@ body,
 }
 
 body {
-  font-family: "Onest", -apple-system, "SF Pro Text", "Inter", system-ui, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  color: var(--brand-text);
+  background: var(--brand-bg);
+}
+
+/* === SEMANTIC TYPE SCALE === */
+.pp-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--brand-text);
+}
+.pp-h1 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+  color: var(--brand-text);
+}
+.pp-h2 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--brand-text);
+}
+.pp-h3 {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.3;
+  color: var(--brand-text);
+}
+.pp-body {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--brand-text);
+}
+.pp-body-strong {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--brand-text);
+}
+.pp-caption {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--brand-sub);
+}
+.pp-eyebrow {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1.2;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--brand-sub);
+}
+.pp-num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 /* WCAG AA focus-visible ring for keyboard navigation */

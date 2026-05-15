@@ -28,4 +28,5 @@ __pycache__/
 
 # Claude Code tool artifacts
 skills-lock.json
+.claude/scratch/
 

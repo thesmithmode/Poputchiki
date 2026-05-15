@@ -92,8 +92,7 @@ export function BottomTabBar() {
                   alignItems: "center",
                   justifyContent: "center",
                   marginTop: -10,
-                  boxShadow:
-                    "0 6px 18px -4px rgba(45,90,61,0.5), 0 0 0 4px var(--tab-bar-ring, #fff)",
+                  boxShadow: "var(--shadow-fab)",
                   transition: "transform 0.08s",
                 }}
               >

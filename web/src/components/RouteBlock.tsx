@@ -12,13 +12,13 @@ interface RouteBlockProps {
 export function RouteBlock({
   fromLabel,
   toLabel,
-  fromColor = "#3D6B8A",
-  toColor = "#7C8694",
+  fromColor = "var(--route-from)",
+  toColor = "var(--route-to)",
   compact = false,
   dark = false,
 }: RouteBlockProps) {
-  const textColor = dark ? "#ffffff" : "#15191F";
-  const lineColor = dark ? "rgba(255,255,255,0.15)" : "#D8DEE6";
+  const textColor = dark ? "#ffffff" : "var(--brand-text)";
+  const lineColor = dark ? "rgba(255,255,255,0.15)" : "var(--brand-line)";
   const fontMain = compact ? 12.5 : 13.5;
   const lineH = compact ? 12 : 16;
 

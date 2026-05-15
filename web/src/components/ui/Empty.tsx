@@ -17,7 +17,9 @@ export function Empty({ text, "data-testid": testId = "empty-state" }: Props) {
       }}
     >
       <span style={{ fontSize: 40 }}>🚗</span>
-      <p style={{ color: "#7c8694", fontSize: 14, textAlign: "center", margin: 0 }}>{text}</p>
+      <p style={{ color: "var(--brand-sub)", fontSize: 14, textAlign: "center", margin: 0 }}>
+        {text}
+      </p>
     </div>
   );
 }

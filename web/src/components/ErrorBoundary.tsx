@@ -40,12 +40,14 @@ export class ErrorBoundary extends Component<Props, State> {
               gap: 12,
             }}
           >
-            <p style={{ fontSize: 15, color: "#e74c3c", margin: 0 }}>Что-то пошло не так</p>
+            <p style={{ fontSize: 15, color: "var(--brand-danger)", margin: 0 }}>
+              Что-то пошло не так
+            </p>
             {this.state.errorMessage && (
               <pre
                 style={{
                   fontSize: 11,
-                  color: "#555",
+                  color: "var(--brand-sub)",
                   background: "#f5f5f5",
                   padding: 8,
                   borderRadius: 6,

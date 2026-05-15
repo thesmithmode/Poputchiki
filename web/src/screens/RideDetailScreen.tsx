@@ -74,7 +74,7 @@ export function RideDetailScreen({ id }: Props) {
           background: "var(--brand-bg)",
         }}
       >
-        <p style={{ color: "#e54e5c", fontSize: 14 }}>
+        <p style={{ color: "var(--brand-danger)", fontSize: 14 }}>
           {is404 ? "Поездка не найдена" : "Ошибка загрузки"}
         </p>
       </div>

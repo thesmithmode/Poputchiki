@@ -58,7 +58,7 @@ export function AdminScreen() {
           minHeight: "100vh",
         }}
       >
-        <p style={{ color: "#7c8694", fontSize: 14 }}>Загрузка...</p>
+        <p style={{ color: "var(--brand-sub)", fontSize: 14 }}>Загрузка...</p>
       </div>
     );
   }
@@ -74,7 +74,7 @@ export function AdminScreen() {
           minHeight: "100vh",
         }}
       >
-        <p style={{ color: "#e74c3c", fontSize: 15 }}>Доступ запрещён</p>
+        <p style={{ color: "var(--brand-danger)", fontSize: 15 }}>Доступ запрещён</p>
       </div>
     );
   }
@@ -90,7 +90,7 @@ export function AdminScreen() {
           minHeight: "100vh",
         }}
       >
-        <p style={{ color: "#7c8694", fontSize: 14 }}>Загрузка...</p>
+        <p style={{ color: "var(--brand-sub)", fontSize: 14 }}>Загрузка...</p>
       </div>
     );
   }
@@ -153,13 +153,13 @@ export function AdminScreen() {
             fontSize: 20,
             cursor: "pointer",
             padding: 4,
-            color: "#333",
+            color: "var(--brand-text)",
           }}
           aria-label="Назад"
         >
           ←
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
           Панель администратора
         </h1>
       </header>
@@ -207,7 +207,14 @@ export function AdminScreen() {
         {tab === "tickets" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {!tickets || tickets.length === 0 ? (
-              <p style={{ textAlign: "center", color: "#7c8694", fontSize: 14, padding: "32px 0" }}>
+              <p
+                style={{
+                  textAlign: "center",
+                  color: "var(--brand-sub)",
+                  fontSize: 14,
+                  padding: "32px 0",
+                }}
+              >
                 Нет открытых тикетов
               </p>
             ) : (
@@ -221,9 +228,11 @@ export function AdminScreen() {
                     border: "1px solid #e5e7eb",
                   }}
                 >
-                  <p style={{ fontSize: 14, margin: "0 0 8px", color: "#15191f" }}>{t.text}</p>
+                  <p style={{ fontSize: 14, margin: "0 0 8px", color: "var(--brand-text)" }}>
+                    {t.text}
+                  </p>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "#7c8694" }}>
+                    <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>
                       {new Date(t.created_at).toLocaleDateString("ru-RU")}
                     </span>
                     <button
@@ -295,7 +304,7 @@ export function AdminScreen() {
                             padding: "8px 12px",
                             fontSize: 13,
                             cursor: "pointer",
-                            color: "#555",
+                            color: "var(--brand-sub)",
                           }}
                         >
                           Отмена
@@ -312,7 +321,14 @@ export function AdminScreen() {
         {tab === "complaints" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {!complaints || complaints.length === 0 ? (
-              <p style={{ textAlign: "center", color: "#7c8694", fontSize: 14, padding: "32px 0" }}>
+              <p
+                style={{
+                  textAlign: "center",
+                  color: "var(--brand-sub)",
+                  fontSize: 14,
+                  padding: "32px 0",
+                }}
+              >
                 Нет открытых жалоб
               </p>
             ) : (
@@ -327,9 +343,11 @@ export function AdminScreen() {
                     border: "1px solid #e5e7eb",
                   }}
                 >
-                  <p style={{ fontSize: 14, margin: "0 0 8px", color: "#15191f" }}>{c.reason}</p>
+                  <p style={{ fontSize: 14, margin: "0 0 8px", color: "var(--brand-text)" }}>
+                    {c.reason}
+                  </p>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "#7c8694" }}>
+                    <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>
                       {new Date(c.created_at).toLocaleDateString("ru-RU")}
                     </span>
                     <button

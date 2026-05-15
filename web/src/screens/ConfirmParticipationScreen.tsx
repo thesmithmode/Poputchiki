@@ -39,12 +39,12 @@ export function ConfirmParticipationScreen() {
       {state === "already_confirmed" ? (
         <div
           data-testid="already-confirmed-msg"
-          style={{ textAlign: "center", fontSize: 16, color: "#7c8694" }}
+          style={{ textAlign: "center", fontSize: 16, color: "var(--brand-sub)" }}
         >
           Вы уже подтвердили участие в этой поездке.
         </div>
       ) : state === "error" ? (
-        <div style={{ textAlign: "center", fontSize: 15, color: "#e74c3c" }}>
+        <div style={{ textAlign: "center", fontSize: 15, color: "var(--brand-danger)" }}>
           Ошибка. Попробуйте ещё раз.
         </div>
       ) : (
@@ -57,10 +57,19 @@ export function ConfirmParticipationScreen() {
           >
             🚗
           </div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, margin: "0 0 8px", color: "#15191f" }}>
+          <h1
+            style={{ fontSize: 20, fontWeight: 600, margin: "0 0 8px", color: "var(--brand-text)" }}
+          >
             Подтверждение участия
           </h1>
-          <p style={{ fontSize: 14, color: "#7c8694", textAlign: "center", marginBottom: 32 }}>
+          <p
+            style={{
+              fontSize: 14,
+              color: "var(--brand-sub)",
+              textAlign: "center",
+              marginBottom: 32,
+            }}
+          >
             Подтвердите, что вы участвовали в этой поездке.
           </p>
           <button
@@ -111,10 +120,17 @@ export function ConfirmParticipationScreen() {
             }}
           >
             <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
-            <h2 style={{ fontSize: 19, fontWeight: 700, margin: "0 0 8px", color: "#15191f" }}>
+            <h2
+              style={{
+                fontSize: 19,
+                fontWeight: 700,
+                margin: "0 0 8px",
+                color: "var(--brand-text)",
+              }}
+            >
               Спасибо!
             </h2>
-            <p style={{ fontSize: 14, color: "#7c8694", marginBottom: 24 }}>
+            <p style={{ fontSize: 14, color: "var(--brand-sub)", marginBottom: 24 }}>
               Хотите оставить лайк или отзыв водителю?
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -146,7 +162,7 @@ export function ConfirmParticipationScreen() {
                   padding: "13px 0",
                   fontSize: 15,
                   cursor: "pointer",
-                  color: "#555",
+                  color: "var(--brand-sub)",
                 }}
               >
                 Позже

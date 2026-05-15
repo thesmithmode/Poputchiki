@@ -17,7 +17,7 @@ export function FavoritesScreen() {
           minHeight: "100vh",
         }}
       >
-        <p style={{ fontSize: 14, color: "#7c8694" }}>Загрузка...</p>
+        <p style={{ fontSize: 14, color: "var(--brand-sub)" }}>Загрузка...</p>
       </div>
     );
   }
@@ -54,20 +54,27 @@ export function FavoritesScreen() {
             fontSize: 20,
             cursor: "pointer",
             padding: 4,
-            color: "#333",
+            color: "var(--brand-text)",
           }}
           aria-label="Назад"
         >
           ←
         </button>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: "#15191f", margin: 0 }}>Избранные</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 600, color: "var(--brand-text)", margin: 0 }}>
+          Избранные
+        </h1>
       </header>
 
       <div style={{ padding: 16, flex: 1 }}>
         {favorites.length === 0 ? (
           <div
             data-testid="favorites-empty"
-            style={{ textAlign: "center", padding: "48px 0", color: "#7c8694", fontSize: 14 }}
+            style={{
+              textAlign: "center",
+              padding: "48px 0",
+              color: "var(--brand-sub)",
+              fontSize: 14,
+            }}
           >
             Нет избранных
           </div>
@@ -122,9 +129,13 @@ function FavoriteRow({ entry, onNavigate, onToggleNotify, onRemove }: FavoriteRo
           padding: 0,
         }}
       >
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#15191f" }}>{entry.display_name}</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--brand-text)" }}>
+          {entry.display_name}
+        </div>
         {entry.tg_username && (
-          <div style={{ fontSize: 12, color: "#7c8694", marginTop: 2 }}>@{entry.tg_username}</div>
+          <div style={{ fontSize: 12, color: "var(--brand-sub)", marginTop: 2 }}>
+            @{entry.tg_username}
+          </div>
         )}
       </button>
       <button

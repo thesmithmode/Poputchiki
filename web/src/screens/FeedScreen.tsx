@@ -83,7 +83,7 @@ export function FeedScreen() {
           background: "var(--brand-bg)",
         }}
       >
-        <p style={{ color: "#e54e5c", fontSize: 14 }}>Ошибка: что-то пошло не так</p>
+        <p style={{ color: "var(--brand-danger)", fontSize: 14 }}>Ошибка: что-то пошло не так</p>
       </div>
     );
   }

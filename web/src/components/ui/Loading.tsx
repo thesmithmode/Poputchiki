@@ -17,7 +17,7 @@ export function Loading({
         padding: "32px 0",
       }}
     >
-      <p style={{ color: "#7c8694", fontSize: 14 }}>{text}</p>
+      <p style={{ color: "var(--brand-sub)", fontSize: 14 }}>{text}</p>
     </div>
   );
 }

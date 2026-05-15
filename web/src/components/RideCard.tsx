@@ -237,7 +237,7 @@ export function RideCard({
             width: 8,
             height: 8,
             borderRadius: "50%",
-            background: "#3D6B8A",
+            background: "var(--route-from)",
             flexShrink: 0,
           }}
         />
@@ -262,7 +262,7 @@ export function RideCard({
             flexShrink: 0,
           }}
         />
-        <Icon name="pin" size={13} style={{ color: "var(--brand-sub)", flexShrink: 0 }} />
+        <Icon name="pin" size={13} style={{ color: "var(--route-to)", flexShrink: 0 }} />
         <div
           style={{
             fontSize: 13.5,

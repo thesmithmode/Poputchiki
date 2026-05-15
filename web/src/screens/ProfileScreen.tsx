@@ -183,7 +183,7 @@ export function ProfileScreen({ id }: Props) {
               width: 80,
               height: 80,
               borderRadius: "50%",
-              background: user.avatar_url ? "transparent" : "var(--brand-surface2)",
+              background: user.avatar_url ? "transparent" : "var(--brand-surface-2)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -222,7 +222,7 @@ export function ProfileScreen({ id }: Props) {
               gridTemplateColumns: "1fr 1fr",
               gap: 4,
               padding: 4,
-              background: "var(--brand-surface2)",
+              background: "var(--brand-surface-2)",
               borderRadius: 12,
               marginTop: 12,
             }}
@@ -329,7 +329,7 @@ export function ProfileScreen({ id }: Props) {
           style={{
             display: "flex",
             margin: "0 16px 12px",
-            background: "var(--brand-surface2)",
+            background: "var(--brand-surface-2)",
             borderRadius: 10,
             padding: 3,
           }}

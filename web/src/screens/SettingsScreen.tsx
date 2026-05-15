@@ -113,7 +113,7 @@ export function SettingsScreen() {
               width: 80,
               height: 80,
               borderRadius: "50%",
-              background: user?.avatar_url ? "transparent" : "var(--brand-surface2)",
+              background: user?.avatar_url ? "transparent" : "var(--brand-surface-2)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -289,7 +289,7 @@ export function SettingsScreen() {
                 style={{
                   flex: 1,
                   padding: "12px",
-                  background: "var(--brand-surface2)",
+                  background: "var(--brand-surface-2)",
                   border: "none",
                   borderRadius: 10,
                   fontSize: 14,

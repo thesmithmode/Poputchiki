@@ -183,15 +183,54 @@ export function SettingsScreen() {
           <ThemeToggle pref={pref} onChange={setPref} />
         </Section>
 
+        {/* Профиль */}
+        <SectionTitle>Профиль</SectionTitle>
+        <Section>
+          <RowLink
+            label="✏️ Редактировать профиль"
+            testId="link-edit-profile"
+            onClick={() => navigate("/me/edit")}
+          />
+          <RowLink
+            label="🗂 Мои поездки"
+            testId="link-my-rides"
+            onClick={() => navigate("/me/rides")}
+          />
+          <RowLink
+            label="⭐ Избранные водители"
+            testId="link-favorites"
+            onClick={() => navigate("/favorites")}
+          />
+        </Section>
+
         {/* Settings */}
         <SectionTitle>Аккаунт</SectionTitle>
         <Section>
-          <RowLink label="🔔 Уведомления" onClick={() => navigate("/settings/notifications")} />
+          <RowLink
+            label="🔔 Уведомления"
+            testId="link-notifications"
+            onClick={() => navigate("/settings/notifications")}
+          />
         </Section>
 
         <SectionTitle>О приложении</SectionTitle>
         <Section>
-          <RowLink label="ℹ️ О приложении" onClick={() => navigate("/about")} />
+          <RowLink label="ℹ️ О приложении" testId="link-about" onClick={() => navigate("/about")} />
+          <RowLink
+            label="💬 Поддержка"
+            testId="link-support"
+            onClick={() => navigate("/support")}
+          />
+          <RowLink
+            label="🔒 Конфиденциальность"
+            testId="link-privacy"
+            onClick={() => navigate("/privacy")}
+          />
+          <RowLink
+            label="📜 Условия использования"
+            testId="link-terms"
+            onClick={() => navigate("/terms")}
+          />
         </Section>
 
         <Section>
@@ -468,10 +507,19 @@ function ThemeToggle({
   );
 }
 
-function RowLink({ label, onClick }: { label: string; onClick: () => void }) {
+function RowLink({
+  label,
+  onClick,
+  testId,
+}: {
+  label: string;
+  onClick: () => void;
+  testId?: string;
+}) {
   return (
     <button
       type="button"
+      data-testid={testId}
       onClick={onClick}
       style={{
         display: "flex",

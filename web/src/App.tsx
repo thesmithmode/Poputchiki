@@ -12,10 +12,12 @@ import { AboutScreen } from "./screens/AboutScreen";
 import { AdminScreen } from "./screens/AdminScreen";
 import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
 import { CreateRideScreen } from "./screens/CreateRideScreen";
+import { EditProfileScreen } from "./screens/EditProfileScreen";
 import { EventsScreen } from "./screens/EventsScreen";
 import { FavoritesScreen } from "./screens/FavoritesScreen";
 import { FeedScreen } from "./screens/FeedScreen";
 import { MapScreen } from "./screens/MapScreen";
+import { MyRidesScreen } from "./screens/MyRidesScreen";
 import { NotificationPreferencesScreen } from "./screens/NotificationPreferencesScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
@@ -136,6 +138,8 @@ function AppShell() {
           <Route path="/rides/:id" element={<RideDetailRoute />} />
           <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
           <Route path="/users/:id" element={<ProfileRoute />} />
+          <Route path="/me/rides" element={<MyRidesScreen />} />
+          <Route path="/me/edit" element={<EditProfileScreen />} />
           <Route path="/settings" element={<SettingsScreen />} />
           <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
           <Route path="/support" element={<SupportScreen />} />

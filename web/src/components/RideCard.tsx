@@ -1,5 +1,6 @@
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import type { Ride } from "../types/ride";
+import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
 interface RideCardProps {
@@ -279,8 +280,46 @@ export function RideCard({
         </div>
       </div>
 
-      {/* Bottom row: seats + comment */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Bottom row: driver + seats + comment */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          paddingTop: 8,
+          borderTop: "1px solid var(--brand-line-soft)",
+        }}
+      >
+        {ride.driver_display_name && (
+          <div
+            data-testid="driver-info"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: "var(--brand-sub)",
+              fontWeight: 500,
+              minWidth: 0,
+            }}
+          >
+            <Avatar
+              tgId={ride.driver_tg_id ?? 0}
+              photoUrl={ride.driver_photo_url ?? null}
+              displayName={ride.driver_display_name}
+              size={18}
+            />
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {ride.driver_display_name}
+            </span>
+          </div>
+        )}
         <div
           style={{
             display: "inline-flex",
@@ -289,6 +328,7 @@ export function RideCard({
             fontSize: 12,
             color: noSeats ? "var(--brand-danger)" : "var(--brand-sub)",
             fontWeight: 500,
+            flexShrink: 0,
           }}
         >
           <Icon name="seat" size={13} />
@@ -304,6 +344,7 @@ export function RideCard({
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              textAlign: "right",
             }}
           >
             {ride.comment}

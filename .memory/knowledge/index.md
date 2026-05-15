@@ -64,4 +64,7 @@
 | [[concepts/csp-tile-provider-telegram]] | CSP in Telegram WebApp blocks cartocdn.com tiles; switch to tile.openstreetmap.org | daily/2026-05-14.md | 2026-05-14 |
 | [[concepts/telegram-mainbutton-dom-conflict]] | DOM FAB duplicates Telegram MainButton; use `hasMainButton` state guard to show only one | daily/2026-05-14.md | 2026-05-14 |
 | [[concepts/css-filter-dark-map-theme]] | CSS `filter: invert(1) hue-rotate(180deg)` on Leaflet tiles for dark theme — no extra tile provider needed | daily/2026-05-14.md | 2026-05-14 |
-| [[connections/telegram-webapp-invisible-constraints]] | 5 undocumented Telegram WebApp constraints: CSP, URL cache, hash injection, MainButton, X-Frame-Options | daily/2026-05-08.md, daily/2026-05-13.md, daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/non-blocking-map-loading]] | Show Leaflet map immediately; 5s fallback timer for CSP-blocked or unreachable tile providers | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/leaflet-async-init-test-timing]] | mapRef.current = null in tests — Leaflet init is async; wait for init before dispatching click events | daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/telegram-disable-vertical-swipes]] | Telegram intercepts vertical swipes for swipe-to-close; call `disableVerticalSwipes()` to allow map panning | daily/2026-05-14.md | 2026-05-14 |
+| [[connections/telegram-webapp-invisible-constraints]] | 6 undocumented Telegram WebApp constraints: CSP, URL cache, hash injection, MainButton, X-Frame-Options, swipe intercept | daily/2026-05-08.md, daily/2026-05-13.md, daily/2026-05-14.md | 2026-05-14 |

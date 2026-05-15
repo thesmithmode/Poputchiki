@@ -1,5 +1,29 @@
 # Build Log
 
+## [2026-05-14T21:30:00+03:00] compile | 2026-05-14.md (sixth pass — corrections)
+- Source: daily/2026-05-14.md
+- Articles created: [[concepts/leaflet-async-init-test-timing]] (canonical rename from `leaflet-test-async-init`), [[concepts/telegram-swipe-leaflet-conflict]] (duplicate of `telegram-disable-vertical-swipes` — orphan, will be caught by lint)
+- Articles updated: [[concepts/css-filter-dark-map-theme]] (added `telegram-swipe-leaflet-conflict` related-concept link; session 20:53 source), [[connections/telegram-webapp-invisible-constraints]] (corrected slug to `telegram-swipe-leaflet-conflict`)
+- Index updated: fixed slug `leaflet-test-async-init` → `leaflet-async-init-test-timing`; removed duplicate connections entry; added `telegram-disable-vertical-swipes` row
+- Note: Prior fifth-pass article `leaflet-test-async-init` was created with wrong filename slug; corrected here. `telegram-swipe-leaflet-conflict.md` is a duplicate of `telegram-disable-vertical-swipes.md` created before discovering the canonical file existed.
+
+## [2026-05-14T21:05:00+03:00] compile | 2026-05-14.md (fifth pass — session 20:53)
+- Source: daily/2026-05-14.md
+- Articles created: [[concepts/leaflet-test-async-init]], [[concepts/telegram-disable-vertical-swipes]]
+- Articles updated: [[concepts/css-filter-dark-map-theme]] (added brightness/saturate soft-dim variant; user rejected invert as "depressing"), [[connections/telegram-webapp-invisible-constraints]] (added 6th constraint: vertical swipe intercept)
+
+## [2026-05-14T23:59:00+03:00] compile | 2026-05-14.md (fourth pass — non-blocking map pattern)
+- Source: daily/2026-05-14.md
+- Articles created: [[concepts/non-blocking-map-loading]]
+- Articles updated: [[knowledge/index.md]] (added non-blocking-map-loading entry)
+- Note: Extracted from session 17:45 (Антон screenshot showing infinite map load). Pattern: show MapContainer immediately, 5s fallback timer for CSP/network failures. Missed by prior passes which focused on Telegram constraints.
+
+## [2026-05-14T20:30:00+03:00] compile | 2026-05-14.md (third pass — full log review)
+- Source: daily/2026-05-14.md
+- Articles created: (none — all concepts already captured in passes 1 and 2)
+- Articles updated: [[concepts/memory-flush-system]] (corrected FLUSH_OK count: 4→5; added timestamps 13:24, 13:28, 16:33, 17:31, 18:22)
+- Note: Session 19:54 (squash merge dev→main sprint#8) is operational, no extractable concept. All knowledge from sessions 12:58, 17:11, 17:45, 18:44 already compiled.
+
 ## [2026-05-14T22:30:00+03:00] compile | 2026-05-14.md (second pass — sessions 17:45, 18:44)
 - Source: daily/2026-05-14.md
 - Articles created: [[concepts/csp-tile-provider-telegram]], [[concepts/telegram-mainbutton-dom-conflict]], [[concepts/css-filter-dark-map-theme]], [[connections/telegram-webapp-invisible-constraints]]

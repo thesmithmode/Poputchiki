@@ -61,6 +61,9 @@ export const RideDTO = z.object({
   status: RideStatus,
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
+  driver_display_name: z.string().nullable().optional(),
+  driver_photo_url: z.string().nullable().optional(),
+  driver_tg_id: z.number().int().nullable().optional(),
 });
 
 export type RideDTO = z.infer<typeof RideDTO>;

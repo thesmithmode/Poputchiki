@@ -32,10 +32,13 @@ function nowTimePlus(minutes: number) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+type Step = 1 | 2 | 3;
+
 export function CreateRideScreen() {
   const navigate = useNavigate();
   useTelegramBack(() => navigate(-1));
   const { notification } = useTelegramHaptic();
+  const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>({
     from_label: "",
     to_label: "",
@@ -53,18 +56,25 @@ export function CreateRideScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMainButton, setHasMainButton] = useState(false);
-  // Координаты от выбора в autocomplete. null = надо геокодить на submit.
   const [fromCoords, setFromCoords] = useState<Coords | null>(null);
   const [toCoords, setToCoords] = useState<Coords | null>(null);
   const submitRef = useRef<() => void>(() => {});
 
-  function validate(): string | null {
+  function validateStep1(): string | null {
     if (!form.from_label.trim()) return "Укажите откуда";
     if (!form.to_label.trim()) return "Укажите куда";
+    return null;
+  }
+
+  function validateStep2(): string | null {
     if (!form.date || !form.time) return "Укажите дату и время";
     const departure = new Date(`${form.date}T${form.time}`);
     if (Number.isNaN(departure.getTime())) return "Неверная дата";
     if (departure <= new Date()) return "Дата должна быть в будущем";
+    return null;
+  }
+
+  function validateStep3(): string | null {
     if (!form.price_free && form.price_rub !== "" && Number(form.price_rub) <= 0) {
       return "Цена должна быть больше 0";
     }
@@ -74,8 +84,28 @@ export function CreateRideScreen() {
     return null;
   }
 
+  function validateAll(): string | null {
+    return validateStep1() ?? validateStep2() ?? validateStep3();
+  }
+
+  const handleNext = () => {
+    const err = step === 1 ? validateStep1() : step === 2 ? validateStep2() : null;
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
+  };
+
+  const handleBack = () => {
+    setError(null);
+    if (step > 1) setStep((s) => (s - 1) as Step);
+    else navigate(-1);
+  };
+
   const handleSubmit = async () => {
-    const err = validate();
+    const err = validateAll();
     if (err) {
       setError(err);
       return;
@@ -89,8 +119,6 @@ export function CreateRideScreen() {
     wa?.MainButton?.showProgress(false);
 
     try {
-      // Geocode только если координаты не получены из autocomplete.
-      // Сохранение из preset/geocode-suggest избегает повторного запроса и rate-limit.
       type GeoResult = { lat: string; lon: string };
       const geocode = async (label: string): Promise<Coords | null> => {
         try {
@@ -154,7 +182,7 @@ export function CreateRideScreen() {
     }
   };
 
-  submitRef.current = handleSubmit;
+  submitRef.current = step === 3 ? handleSubmit : handleNext;
 
   useEffect(() => {
     const wa = getTelegramWebApp();
@@ -171,7 +199,7 @@ export function CreateRideScreen() {
       };
     };
     if (!twa.MainButton) return;
-    twa.MainButton.text = "Создать поездку";
+    twa.MainButton.text = step === 3 ? "Создать поездку" : "Далее";
     twa.MainButton.show();
     setHasMainButton(true);
     const cb = () => submitRef.current();
@@ -181,7 +209,7 @@ export function CreateRideScreen() {
       twa.MainButton?.hide();
       setHasMainButton(false);
     };
-  }, []);
+  }, [step]);
 
   function toggleWeekday(d: number) {
     setForm((f) => ({
@@ -189,6 +217,8 @@ export function CreateRideScreen() {
       weekdays: f.weekdays.includes(d) ? f.weekdays.filter((x) => x !== d) : [...f.weekdays, d],
     }));
   }
+
+  const stepTitle = step === 1 ? "Маршрут" : step === 2 ? "Дата и время" : "Детали";
 
   return (
     <div
@@ -200,7 +230,6 @@ export function CreateRideScreen() {
         color: "var(--brand-text)",
       }}
     >
-      {/* Header */}
       <div
         style={{
           background: "var(--brand-surface)",
@@ -216,7 +245,9 @@ export function CreateRideScreen() {
       >
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          data-testid="back-btn"
+          onClick={handleBack}
+          aria-label="Назад"
           style={{
             background: "none",
             border: "none",
@@ -225,7 +256,6 @@ export function CreateRideScreen() {
             padding: 4,
             color: "var(--brand-text)",
           }}
-          aria-label="Назад"
         >
           ←
         </button>
@@ -234,9 +264,42 @@ export function CreateRideScreen() {
         >
           Новая поездка
         </h1>
+        <div className="pp-caption" data-testid="step-indicator">
+          Шаг {step}/3
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div
+        data-testid="progress-bar"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr 1fr",
+          gap: 6,
+          padding: "10px 16px 6px",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line-soft)",
+        }}
+      >
+        {([1, 2, 3] as const).map((s) => (
+          <div
+            key={s}
+            data-testid={`progress-${s}`}
+            style={{
+              height: 4,
+              borderRadius: 4,
+              background: s <= step ? "var(--brand-primary)" : "var(--brand-line)",
+              transition: "background 0.2s",
+            }}
+          />
+        ))}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px 120px" }}>
+        <div className="pp-eyebrow" style={{ marginBottom: 10 }}>
+          {stepTitle}
+        </div>
+
         {error && (
           <div
             data-testid="form-error"
@@ -254,216 +317,230 @@ export function CreateRideScreen() {
           </div>
         )}
 
-        <Section title="Маршрут">
-          <Field label="Откуда">
-            <AddressAutocomplete
-              testId="input-from"
-              value={form.from_label}
-              onChange={(v, coords) => {
-                setForm((f) => ({ ...f, from_label: v }));
-                setFromCoords(coords ?? null);
-              }}
-              placeholder="Адрес отправления"
-              inputStyle={inputStyle}
-            />
-          </Field>
-          <Field label="Куда">
-            <AddressAutocomplete
-              testId="input-to"
-              value={form.to_label}
-              onChange={(v, coords) => {
-                setForm((f) => ({ ...f, to_label: v }));
-                setToCoords(coords ?? null);
-              }}
-              placeholder="Адрес назначения"
-              inputStyle={inputStyle}
-            />
-          </Field>
-        </Section>
-
-        <Section title="Дата и время">
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <Field label="Дата">
-              <input
-                data-testid="input-date"
-                type="date"
-                value={form.date}
-                onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                style={inputStyle}
+        {step === 1 && (
+          <Section>
+            <Field label="Откуда">
+              <AddressAutocomplete
+                testId="input-from"
+                value={form.from_label}
+                onChange={(v, coords) => {
+                  setForm((f) => ({ ...f, from_label: v }));
+                  setFromCoords(coords ?? null);
+                }}
+                placeholder="Адрес отправления"
+                inputStyle={inputStyle}
               />
             </Field>
-            <Field label="Время">
-              <input
-                data-testid="input-time"
-                type="time"
-                value={form.time}
-                onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-                style={inputStyle}
+            <Field label="Куда">
+              <AddressAutocomplete
+                testId="input-to"
+                value={form.to_label}
+                onChange={(v, coords) => {
+                  setForm((f) => ({ ...f, to_label: v }));
+                  setToCoords(coords ?? null);
+                }}
+                placeholder="Адрес назначения"
+                inputStyle={inputStyle}
               />
             </Field>
-          </div>
-        </Section>
+          </Section>
+        )}
 
-        <Section title="Детали">
-          <Field label="Мест (1–4)">
-            <div style={{ display: "flex", gap: 8 }}>
-              {([1, 2, 3, 4] as const).map((n) => {
-                const active = form.seats_total === n;
-                return (
-                  <button
-                    key={n}
-                    type="button"
-                    data-testid={`seats-${n}`}
-                    aria-pressed={active}
-                    onClick={() => setForm((f) => ({ ...f, seats_total: n }))}
-                    style={{
-                      flex: 1,
-                      padding: "10px 0",
-                      borderRadius: 8,
-                      border: "1px solid",
-                      borderColor: active ? "var(--brand-primary)" : "var(--brand-line)",
-                      background: active ? "var(--brand-primary-soft)" : "var(--brand-surface)",
-                      color: active ? "var(--brand-primary)" : "var(--brand-text)",
-                      fontWeight: 600,
-                      fontSize: 15,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {n}
-                  </button>
-                );
-              })}
+        {step === 2 && (
+          <Section>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <Field label="Дата">
+                <input
+                  data-testid="input-date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  style={inputStyle}
+                />
+              </Field>
+              <Field label="Время">
+                <input
+                  data-testid="input-time"
+                  type="time"
+                  value={form.time}
+                  onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
+                  style={inputStyle}
+                />
+              </Field>
             </div>
-          </Field>
+          </Section>
+        )}
 
-          <Field label="Цена">
-            <label
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 8,
-                fontSize: 14,
-                color: "var(--brand-text)",
-              }}
-            >
-              <input
-                data-testid="price-free-checkbox"
-                type="checkbox"
-                checked={form.price_free}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, price_free: e.target.checked, price_rub: "" }))
-                }
-              />
-              Договорная (бесплатно)
-            </label>
-            {!form.price_free && (
-              <input
-                data-testid="input-price"
-                type="number"
-                min="1"
-                value={form.price_rub}
-                onChange={(e) => setForm((f) => ({ ...f, price_rub: e.target.value }))}
-                placeholder="Цена в рублях"
-                style={inputStyle}
-              />
-            )}
-          </Field>
-
-          <Field label={`Комментарий (${form.comment.length}/200)`}>
-            <textarea
-              data-testid="input-comment"
-              value={form.comment}
-              onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
-              placeholder="Дополнительная информация..."
-              maxLength={200}
-              rows={3}
-              style={{ ...inputStyle, resize: "none" }}
-            />
-          </Field>
-        </Section>
-
-        <Section title="">
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontSize: 15,
-              fontWeight: 600,
-              color: "var(--brand-text)",
-              cursor: "pointer",
-            }}
-          >
-            <input
-              data-testid="recurring-checkbox"
-              type="checkbox"
-              checked={form.is_recurring}
-              onChange={(e) => setForm((f) => ({ ...f, is_recurring: e.target.checked }))}
-              style={{ width: 18, height: 18 }}
-            />
-            Регулярная поездка
-          </label>
-
-          {form.is_recurring && (
-            <div data-testid="recurring-fields" style={{ marginTop: 16 }}>
-              <Field label="Дни недели">
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {WEEKDAY_LABELS.map((label, i) => {
-                    const active = form.weekdays.includes(i);
+        {step === 3 && (
+          <>
+            <Section>
+              <Field label="Мест (1–4)">
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([1, 2, 3, 4] as const).map((n) => {
+                    const active = form.seats_total === n;
                     return (
                       <button
-                        key={label}
+                        key={n}
                         type="button"
-                        data-testid={`weekday-${i}`}
+                        data-testid={`seats-${n}`}
                         aria-pressed={active}
-                        onClick={() => toggleWeekday(i)}
+                        onClick={() => setForm((f) => ({ ...f, seats_total: n }))}
                         style={{
-                          padding: "7px 12px",
+                          flex: 1,
+                          padding: "10px 0",
                           borderRadius: 8,
                           border: "1px solid",
                           borderColor: active ? "var(--brand-primary)" : "var(--brand-line)",
                           background: active ? "var(--brand-primary-soft)" : "var(--brand-surface)",
                           color: active ? "var(--brand-primary)" : "var(--brand-text)",
                           fontWeight: 600,
-                          fontSize: 13,
+                          fontSize: 15,
                           cursor: "pointer",
                         }}
                       >
-                        {label}
+                        {n}
                       </button>
                     );
                   })}
                 </div>
               </Field>
-              <div
-                style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 }}
+
+              <Field label="Цена">
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 8,
+                    fontSize: 14,
+                    color: "var(--brand-text)",
+                  }}
+                >
+                  <input
+                    data-testid="price-free-checkbox"
+                    type="checkbox"
+                    checked={form.price_free}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, price_free: e.target.checked, price_rub: "" }))
+                    }
+                  />
+                  Договорная (бесплатно)
+                </label>
+                {!form.price_free && (
+                  <input
+                    data-testid="input-price"
+                    type="number"
+                    min="1"
+                    value={form.price_rub}
+                    onChange={(e) => setForm((f) => ({ ...f, price_rub: e.target.value }))}
+                    placeholder="Цена в рублях"
+                    style={inputStyle}
+                  />
+                )}
+              </Field>
+
+              <Field label={`Комментарий (${form.comment.length}/200)`}>
+                <textarea
+                  data-testid="input-comment"
+                  value={form.comment}
+                  onChange={(e) => setForm((f) => ({ ...f, comment: e.target.value }))}
+                  placeholder="Дополнительная информация..."
+                  maxLength={200}
+                  rows={3}
+                  style={{ ...inputStyle, resize: "none" }}
+                />
+              </Field>
+            </Section>
+
+            <Section>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: "var(--brand-text)",
+                  cursor: "pointer",
+                }}
               >
-                <Field label="Действует с">
-                  <input
-                    data-testid="input-active-from"
-                    type="date"
-                    value={form.active_from}
-                    onChange={(e) => setForm((f) => ({ ...f, active_from: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </Field>
-                <Field label="До (необяз.)">
-                  <input
-                    data-testid="input-active-to"
-                    type="date"
-                    value={form.active_to}
-                    onChange={(e) => setForm((f) => ({ ...f, active_to: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </Field>
-              </div>
-            </div>
-          )}
-        </Section>
+                <input
+                  data-testid="recurring-checkbox"
+                  type="checkbox"
+                  checked={form.is_recurring}
+                  onChange={(e) => setForm((f) => ({ ...f, is_recurring: e.target.checked }))}
+                  style={{ width: 18, height: 18 }}
+                />
+                Регулярная поездка
+              </label>
+
+              {form.is_recurring && (
+                <div data-testid="recurring-fields" style={{ marginTop: 16 }}>
+                  <Field label="Дни недели">
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {WEEKDAY_LABELS.map((label, i) => {
+                        const active = form.weekdays.includes(i);
+                        return (
+                          <button
+                            key={label}
+                            type="button"
+                            data-testid={`weekday-${i}`}
+                            aria-pressed={active}
+                            onClick={() => toggleWeekday(i)}
+                            style={{
+                              padding: "7px 12px",
+                              borderRadius: 8,
+                              border: "1px solid",
+                              borderColor: active ? "var(--brand-primary)" : "var(--brand-line)",
+                              background: active
+                                ? "var(--brand-primary-soft)"
+                                : "var(--brand-surface)",
+                              color: active ? "var(--brand-primary)" : "var(--brand-text)",
+                              fontWeight: 600,
+                              fontSize: 13,
+                              cursor: "pointer",
+                            }}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </Field>
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 8,
+                      marginTop: 8,
+                    }}
+                  >
+                    <Field label="Действует с">
+                      <input
+                        data-testid="input-active-from"
+                        type="date"
+                        value={form.active_from}
+                        onChange={(e) => setForm((f) => ({ ...f, active_from: e.target.value }))}
+                        style={inputStyle}
+                      />
+                    </Field>
+                    <Field label="До (необяз.)">
+                      <input
+                        data-testid="input-active-to"
+                        type="date"
+                        value={form.active_to}
+                        onChange={(e) => setForm((f) => ({ ...f, active_to: e.target.value }))}
+                        style={inputStyle}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              )}
+            </Section>
+          </>
+        )}
       </div>
 
-      {/* Bottom fallback button (non-TG environment) — скрыта когда TG MainButton активна */}
       {!hasMainButton && (
         <div
           style={{
@@ -476,15 +553,38 @@ export function CreateRideScreen() {
             backdropFilter: "blur(20px)",
             borderTop: "1px solid var(--brand-line)",
             zIndex: 30,
+            display: "flex",
+            gap: 8,
           }}
         >
+          {step > 1 && (
+            <button
+              type="button"
+              data-testid="prev-step-btn"
+              onClick={handleBack}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                padding: "14px",
+                background: "var(--brand-surface-2)",
+                border: "none",
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 600,
+                color: "var(--brand-text)",
+                cursor: "pointer",
+              }}
+            >
+              Назад
+            </button>
+          )}
           <button
             type="button"
-            data-testid="submit-btn"
-            onClick={handleSubmit}
+            data-testid={step === 3 ? "submit-btn" : "next-step-btn"}
+            onClick={step === 3 ? handleSubmit : handleNext}
             disabled={submitting}
             style={{
-              width: "100%",
+              flex: 2,
               padding: "14px",
               background: submitting ? "var(--brand-primary-soft)" : "var(--brand-primary)",
               border: "none",
@@ -495,7 +595,7 @@ export function CreateRideScreen() {
               cursor: submitting ? "not-allowed" : "pointer",
             }}
           >
-            {submitting ? "Создаём..." : "Создать поездку"}
+            {step === 3 ? (submitting ? "Создаём..." : "Создать поездку") : "Далее"}
           </button>
         </div>
       )}
@@ -514,7 +614,7 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ children }: { children: React.ReactNode }) {
   return (
     <div
       style={{
@@ -525,20 +625,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
         border: "1px solid var(--brand-line)",
       }}
     >
-      {title ? (
-        <div
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: "var(--brand-sub)",
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-            marginBottom: 12,
-          }}
-        >
-          {title}
-        </div>
-      ) : null}
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{children}</div>
     </div>
   );

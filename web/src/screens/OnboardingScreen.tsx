@@ -38,7 +38,13 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
   if (legalView) {
     return (
       <div
-        style={{ position: "fixed", inset: 0, background: "#fff", overflowY: "auto", zIndex: 100 }}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "var(--brand-bg)",
+          overflowY: "auto",
+          zIndex: 100,
+        }}
       >
         <button
           type="button"
@@ -47,16 +53,16 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
           style={{
             position: "sticky",
             top: 0,
-            background: "#fff",
+            background: "var(--brand-surface)",
             border: "none",
             padding: "12px 16px",
             fontSize: 14,
-            color: "#2d5a3d",
+            color: "var(--brand-primary)",
             cursor: "pointer",
             display: "block",
             width: "100%",
             textAlign: "left",
-            borderBottom: "1px solid #e5e7eb",
+            borderBottom: "1px solid var(--brand-line)",
           }}
         >
           ← Назад
@@ -69,18 +75,45 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
   return (
     <div
       data-testid="onboarding-screen"
-      className="flex min-h-screen flex-col items-center justify-center bg-white px-6"
+      style={{
+        display: "flex",
+        minHeight: "100vh",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--brand-bg)",
+        padding: "0 24px",
+        gap: 24,
+      }}
     >
-      <h1 className="mb-2 text-2xl font-bold text-gray-900">Добро пожаловать!</h1>
-      <p className="mb-8 text-sm text-gray-500">Шаг {step} из 2</p>
+      <div style={{ textAlign: "center" }}>
+        <div className="pp-display" style={{ marginBottom: 8 }}>
+          Попутчики
+        </div>
+        <div className="pp-caption" style={{ color: "var(--brand-sub)" }}>
+          ЖК Царёво · Казань
+        </div>
+      </div>
+
+      <div className="pp-h1" style={{ textAlign: "center" }}>
+        Добро пожаловать!
+      </div>
+      <p className="pp-caption" style={{ marginTop: -16 }}>
+        Шаг {step} из 2
+      </p>
 
       {step === 1 && (
-        <div data-testid="onboarding-step-1" className="w-full max-w-sm">
-          <p className="mb-3 text-sm text-gray-500">
-            Ваше имя в Telegram: <span className="font-medium text-gray-700">{displayName}</span>
+        <div data-testid="onboarding-step-1" style={{ width: "100%", maxWidth: 360 }}>
+          <p className="pp-body" style={{ color: "var(--brand-sub)", marginBottom: 12 }}>
+            Ваше имя в Telegram:{" "}
+            <span style={{ color: "var(--brand-text)", fontWeight: 600 }}>{displayName}</span>
           </p>
-          <label htmlFor="onboarding-name" className="mb-1 block text-sm font-medium text-gray-700">
-            Псевдоним <span className="font-normal text-gray-400">(необязательно)</span>
+          <label
+            htmlFor="onboarding-name"
+            className="pp-eyebrow"
+            style={{ display: "block", marginBottom: 6 }}
+          >
+            Псевдоним (необязательно)
           </label>
           <input
             id="onboarding-name"
@@ -90,16 +123,37 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
             onChange={(e) => setNickname(e.target.value)}
             maxLength={50}
             placeholder={displayName}
-            className="mb-2 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm"
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              background: "var(--brand-surface)",
+              border: "1px solid var(--brand-line)",
+              borderRadius: 12,
+              fontSize: 14,
+              color: "var(--brand-text)",
+              fontFamily: "inherit",
+              outline: "none",
+            }}
           />
-          <p className="mb-6 text-xs text-gray-400">
+          <p className="pp-caption" style={{ color: "var(--brand-faint)", margin: "8px 0 20px" }}>
             Если оставить пустым — будет отображаться имя из Telegram
           </p>
           <button
             type="button"
             data-testid="onboarding-next-1"
             onClick={() => setStep(2)}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white"
+            style={{
+              width: "100%",
+              padding: "12px 24px",
+              background: "var(--brand-primary)",
+              color: "var(--brand-primary-ink)",
+              border: "none",
+              borderRadius: 12,
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
           >
             Далее
           </button>
@@ -107,22 +161,38 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
       )}
 
       {step === 2 && (
-        <div data-testid="onboarding-step-2" className="w-full max-w-sm">
-          <label className="mb-6 flex items-start gap-3">
+        <div data-testid="onboarding-step-2" style={{ width: "100%", maxWidth: 360 }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 10,
+              marginBottom: 20,
+              cursor: "pointer",
+            }}
+          >
             <input
               data-testid="onboarding-consent"
               type="checkbox"
               checked={consent}
               onChange={(e) => setConsent(e.target.checked)}
-              className="mt-0.5"
+              style={{ marginTop: 4 }}
             />
-            <span className="text-sm text-gray-700">
+            <span className="pp-body" style={{ color: "var(--brand-text)" }}>
               Я соглашаюсь с{" "}
               <button
                 type="button"
                 data-testid="legal-terms-btn"
                 onClick={() => setLegalView("terms")}
-                className="underline text-blue-600 bg-transparent border-none p-0 cursor-pointer text-sm"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  color: "var(--brand-primary)",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  font: "inherit",
+                }}
               >
                 условиями использования
               </button>{" "}
@@ -131,20 +201,44 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
                 type="button"
                 data-testid="legal-privacy-btn"
                 onClick={() => setLegalView("privacy")}
-                className="underline text-blue-600 bg-transparent border-none p-0 cursor-pointer text-sm"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  color: "var(--brand-primary)",
+                  textDecoration: "underline",
+                  cursor: "pointer",
+                  font: "inherit",
+                }}
               >
                 политикой конфиденциальности
               </button>{" "}
               сервиса Попутчики ЖК Царёво
             </span>
           </label>
-          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+          {error && (
+            <p className="pp-caption" style={{ color: "var(--brand-danger)", marginBottom: 12 }}>
+              {error}
+            </p>
+          )}
           <button
             type="button"
             data-testid="onboarding-finish"
             disabled={!consent || loading}
             onClick={handleFinish}
-            className="w-full rounded-lg bg-blue-600 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+            style={{
+              width: "100%",
+              padding: "12px 24px",
+              background: "var(--brand-primary)",
+              color: "var(--brand-primary-ink)",
+              border: "none",
+              borderRadius: 12,
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: !consent || loading ? "not-allowed" : "pointer",
+              opacity: !consent || loading ? 0.5 : 1,
+              fontFamily: "inherit",
+            }}
           >
             {loading ? "Сохраняем..." : "Начать"}
           </button>
@@ -152,7 +246,18 @@ export function OnboardingScreen({ displayName, onComplete }: Props) {
             type="button"
             data-testid="onboarding-back-2"
             onClick={() => setStep(1)}
-            className="mt-3 w-full text-sm text-gray-500 underline"
+            style={{
+              marginTop: 12,
+              width: "100%",
+              padding: "8px 16px",
+              background: "transparent",
+              border: "none",
+              color: "var(--brand-sub)",
+              fontSize: 14,
+              textDecoration: "underline",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
           >
             Назад
           </button>

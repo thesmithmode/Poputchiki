@@ -104,7 +104,10 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<Record<string, unknown>[]>`
-        SELECT r.*
+        SELECT r.*,
+               u.display_name      AS driver_display_name,
+               u.avatar_url        AS driver_photo_url,
+               to_jsonb(u.tg_id)   AS driver_tg_id
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         WHERE r.status = 'active'
@@ -149,6 +152,46 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const payload = { rides, nextCursor };
     if (cacheKey) cache.set(cacheKey, payload);
     return c.json(payload);
+  });
+
+  app.get("/mine", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    const role = c.req.query("role") === "passenger" ? "passenger" : "driver";
+    const when = c.req.query("when") === "past" ? "past" : "future";
+
+    const rows = await withIdentity(sql, user, async (tx) => {
+      if (role === "driver") {
+        return tx<Record<string, unknown>[]>`
+          SELECT r.*,
+                 u.display_name      AS driver_display_name,
+                 u.avatar_url        AS driver_photo_url,
+                 to_jsonb(u.tg_id)   AS driver_tg_id
+          FROM rides r
+          JOIN users u ON r.driver_id = u.id
+          WHERE r.driver_id = app.current_user_id()
+            ${when === "future" ? tx`AND r.departure_at >= NOW()` : tx`AND r.departure_at < NOW()`}
+          ORDER BY r.departure_at ${when === "future" ? tx`ASC` : tx`DESC`}
+          LIMIT 100
+        `;
+      }
+      return tx<Record<string, unknown>[]>`
+        SELECT r.*,
+               u.display_name      AS driver_display_name,
+               u.avatar_url        AS driver_photo_url,
+               to_jsonb(u.tg_id)   AS driver_tg_id
+        FROM rides r
+        JOIN users u ON r.driver_id = u.id
+        WHERE r.id IN (
+          SELECT ride_id FROM ride_requests
+          WHERE passenger_id = app.current_user_id() AND status = 'accepted'
+        )
+          ${when === "future" ? tx`AND r.departure_at >= NOW()` : tx`AND r.departure_at < NOW()`}
+        ORDER BY r.departure_at ${when === "future" ? tx`ASC` : tx`DESC`}
+        LIMIT 100
+      `;
+    });
+
+    return c.json({ rides: rows });
   });
 
   app.get("/:id", async (c) => {

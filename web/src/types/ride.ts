@@ -14,4 +14,7 @@ export interface Ride {
   status: string;
   comment: string | null;
   created_at: string;
+  driver_display_name?: string | null;
+  driver_photo_url?: string | null;
+  driver_tg_id?: number | null;
 }

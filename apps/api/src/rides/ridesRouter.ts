@@ -105,9 +105,9 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<Record<string, unknown>[]>`
         SELECT r.*,
-               u.display_name AS driver_display_name,
-               u.avatar_url   AS driver_photo_url,
-               u.tg_id        AS driver_tg_id
+               u.display_name      AS driver_display_name,
+               u.avatar_url        AS driver_photo_url,
+               to_jsonb(u.tg_id)   AS driver_tg_id
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         WHERE r.status = 'active'
@@ -163,9 +163,9 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       if (role === "driver") {
         return tx<Record<string, unknown>[]>`
           SELECT r.*,
-                 u.display_name AS driver_display_name,
-                 u.avatar_url   AS driver_photo_url,
-                 u.tg_id        AS driver_tg_id
+                 u.display_name      AS driver_display_name,
+                 u.avatar_url        AS driver_photo_url,
+                 to_jsonb(u.tg_id)   AS driver_tg_id
           FROM rides r
           JOIN users u ON r.driver_id = u.id
           WHERE r.driver_id = app.current_user_id()
@@ -176,9 +176,9 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       }
       return tx<Record<string, unknown>[]>`
         SELECT r.*,
-               u.display_name AS driver_display_name,
-               u.avatar_url   AS driver_photo_url,
-               u.tg_id        AS driver_tg_id
+               u.display_name      AS driver_display_name,
+               u.avatar_url        AS driver_photo_url,
+               to_jsonb(u.tg_id)   AS driver_tg_id
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         WHERE r.id IN (

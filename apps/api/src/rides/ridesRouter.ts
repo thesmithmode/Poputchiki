@@ -3,9 +3,11 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
+import type { GeoCache } from "../geocode/geoCache";
 import { isUniqueViolation } from "../lib/db-errors";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
+import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -57,7 +59,7 @@ const GetRidesQuery = z.object({
   cursor: z.string().optional(),
 });
 
-export function createRidesRouter(sql: postgres.Sql): Hono {
+export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCache): Hono {
   const app = new Hono();
 
   app.get("/", async (c) => {
@@ -67,6 +69,21 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     }
     const p = parsed.data;
     const user = c.get("user" as never) as AppUser;
+
+    const shouldCache = !p.cursor && !p.favoritesOnly;
+    const cacheKey = shouldCache
+      ? JSON.stringify(
+          Object.fromEntries(
+            Object.entries(p)
+              .filter(([k]) => k !== "cursor")
+              .sort(([a], [b]) => a.localeCompare(b)),
+          ),
+        )
+      : null;
+    if (cacheKey) {
+      const hit = cache.get(cacheKey);
+      if (hit !== undefined) return c.json(hit);
+    }
 
     let cursor: CursorData | null = null;
     if (p.cursor) {
@@ -126,7 +143,9 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     const lastRide = rides[PAGE_SIZE - 1];
     const nextCursor = hasMore && lastRide ? encodeCursor(lastRide) : null;
 
-    return c.json({ rides, nextCursor });
+    const payload = { rides, nextCursor };
+    if (cacheKey) cache.set(cacheKey, payload);
+    return c.json(payload);
   });
 
   app.get("/:id", async (c) => {
@@ -210,6 +229,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
     }
 
     // Audit recorded by global auditLog middleware — no manual INSERT here.
+    cache.clear();
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: ride.id, type: "created" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );
@@ -250,6 +270,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       );
 
       // Notify driver (fire-and-forget via LISTEN/NOTIFY)
+      cache.clear();
       sql`
         SELECT pg_notify(
           'ride_request',
@@ -589,6 +610,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       }
     }
 
+    cache.clear();
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "updated" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );
@@ -710,6 +732,7 @@ export function createRidesRouter(sql: postgres.Sql): Hono {
       `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
+    cache.clear();
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "cancelled" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );

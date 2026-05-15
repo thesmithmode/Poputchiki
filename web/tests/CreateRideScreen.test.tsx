@@ -145,9 +145,7 @@ describe("CreateRideScreen", () => {
       fireEvent.click(screen.getByTestId("submit-btn"));
     });
     await waitFor(() => {
-      expect(screen.getByTestId("form-error")).toHaveTextContent(
-        "Не удалось определить координаты",
-      );
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось найти адрес");
     });
     // POST /rides не вызывался
     const ridesCalls = mockedApiFetch.mock.calls.filter(([path]) => path === "/rides");
@@ -165,9 +163,7 @@ describe("CreateRideScreen", () => {
       fireEvent.click(screen.getByTestId("submit-btn"));
     });
     await waitFor(() => {
-      expect(screen.getByTestId("form-error")).toHaveTextContent(
-        "Не удалось определить координаты",
-      );
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось найти адрес");
     });
   });
 
@@ -208,9 +204,7 @@ describe("CreateRideScreen", () => {
       fireEvent.click(screen.getByTestId("submit-btn"));
     });
     await waitFor(() => {
-      expect(screen.getByTestId("form-error")).toHaveTextContent(
-        "Не удалось определить координаты",
-      );
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось найти адрес");
     });
   });
 

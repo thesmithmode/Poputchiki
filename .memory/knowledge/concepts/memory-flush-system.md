@@ -48,4 +48,4 @@ A `FLUSH_ERROR` with exit code 1 typically indicates one of: a missing or malfor
 - [[daily/2026-05-01.md]] - Memory system in use; first successful compilation of knowledge base
 - [[daily/2026-05-02.md]] - FLUSH_ERROR at 22:43 and 23:10 (exit code 1 both times); repeated failure confirms persistent issue; no session content captured for the day
 - [[daily/2026-05-03.md]] - FLUSH_ERROR at least 10 times throughout the day (exit code 1 most; one "Control request timeout: initialize" at 14:28); rich session content exists only because sessions wrote structured logs manually; systemic environment issue confirmed
-- [[daily/2026-05-14.md]] - 6 FLUSH_ERRORs (exit code 1) interspersed with 4 FLUSH_OK results; pattern continues 12 days after first observation; intermittent success confirms partial functionality — not a total credential or environment failure
+- [[daily/2026-05-14.md]] - 6 FLUSH_ERRORs (exit code 1) interspersed with 5 FLUSH_OK results (13:24, 13:28, 16:33, 17:31, 18:22); pattern continues 12 days after first observation; intermittent success confirms partial functionality — not a total credential or environment failure

@@ -34,4 +34,8 @@ export class GeoCache {
   size(): number {
     return this.map.size;
   }
+
+  clear(): void {
+    this.map.clear();
+  }
 }

@@ -91,9 +91,7 @@ export function CreateRideScreen() {
         try {
           const trimmed = label.trim();
           const q = /казань/i.test(trimmed) ? trimmed : `${trimmed}, Казань`;
-          const results = await apiFetch<GeoResult[]>(
-            `/geocode/search?q=${encodeURIComponent(q)}`,
-          );
+          const results = await apiFetch<GeoResult[]>(`/geocode/search?q=${encodeURIComponent(q)}`);
           if (!Array.isArray(results) || results.length === 0) return null;
           const first = results[0];
           if (!first) return null;
@@ -112,7 +110,9 @@ export function CreateRideScreen() {
       ]);
 
       if (!fromCoords || !toCoords) {
-        setError("Не удалось найти адрес. Уточните название — например: «ТЦ Кольцо, Казань» или полный адрес улицы");
+        setError(
+          "Не удалось найти адрес. Уточните название — например: «ТЦ Кольцо, Казань» или полный адрес улицы",
+        );
         return;
       }
 

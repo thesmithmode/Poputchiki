@@ -67,6 +67,10 @@ export function CreateRideScreen() {
   function validateStep1(): string | null {
     if (!form.from_label.trim()) return "Укажите откуда";
     if (!form.to_label.trim()) return "Укажите куда";
+    // Coords обязательны из dropdown — иначе POST с label, который Nominatim не нашёл,
+    // приведёт к ложно-успешной поездке без точки на карте.
+    if (!fromCoords) return "Выберите адрес «Откуда» из списка подсказок";
+    if (!toCoords) return "Выберите адрес «Куда» из списка подсказок";
     return null;
   }
 
@@ -129,35 +133,15 @@ export function CreateRideScreen() {
     wa?.MainButton?.showProgress(false);
 
     try {
-      type GeoResult = { lat: string; lon: string };
-      const geocode = async (label: string): Promise<Coords | null> => {
-        try {
-          const trimmed = label.trim();
-          const q = /казань|татарстан/i.test(trimmed) ? trimmed : `${trimmed}, Казань`;
-          const results = await apiFetch<GeoResult[]>(`/geocode/search?q=${encodeURIComponent(q)}`);
-          if (!Array.isArray(results) || results.length === 0) return null;
-          const first = results[0];
-          if (!first) return null;
-          const lat = Number.parseFloat(first.lat);
-          const lng = Number.parseFloat(first.lon);
-          if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-          return { lat, lng };
-        } catch {
-          return null;
-        }
-      };
-
-      const [resolvedFrom, resolvedTo] = await Promise.all([
-        fromCoords ?? geocode(form.from_label.trim()),
-        toCoords ?? geocode(form.to_label.trim()),
-      ]);
-
-      if (!resolvedFrom || !resolvedTo) {
-        setError(
-          "Не удалось найти адрес. Выберите подсказку из списка или уточните название — например: «ТЦ Кольцо, Казань»",
-        );
+      // Coords уже валидированы в validateStep1 — здесь они гарантированно есть.
+      // Не делаем повторного geocode на submit, чтобы избежать rate-limit и расхождения
+      // между показанной подсказкой и реальной точкой.
+      if (!fromCoords || !toCoords) {
+        setError("Выберите адреса «Откуда» и «Куда» из списка подсказок");
         return;
       }
+      const resolvedFrom = fromCoords;
+      const resolvedTo = toCoords;
 
       const departure_at = new Date(`${form.date}T${form.time}`).toISOString();
       const price_rub = form.price_free

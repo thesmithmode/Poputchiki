@@ -8,8 +8,8 @@ export interface Coords {
 
 export interface AddressSuggestion {
   label: string;
-  source: "preset" | "geocode";
-  coords?: Coords;
+  source: "geocode";
+  coords: Coords;
 }
 
 interface NominatimResult {
@@ -26,37 +26,9 @@ interface AddressAutocompleteProps {
   inputStyle?: React.CSSProperties;
 }
 
-// Label-only пресеты: координаты резолвятся geocoder'ом на submit или приходят из geocode-suggest.
-// Выдумывать lat/lng запрещено (advisor #2): неверная точка ЖК уведёт людей в поле.
-const PRESETS: readonly string[] = [
-  "ЖК Царёво, Усады, Татарстан",
-  "Дом 1, ЖК Царёво",
-  "Дом 5, ЖК Царёво",
-  "Дом 10, ЖК Царёво",
-  "Дом 15, ЖК Царёво",
-  "Дом 20, ЖК Царёво",
-  "ТЦ Кольцо, Казань",
-  "ТЦ МЕГА, Казань",
-  "Аэропорт Казань",
-  "Ж/д вокзал Казань-1",
-  "Казанский Кремль",
-  "КФУ, Кремлёвская 18, Казань",
-  "Парк Победы, Казань",
-  "Парк Горького, Казань",
-  "Аквапарк Ривьера, Казань",
-  "ИТ-парк, Казань",
-  "Центральный стадион, Казань",
-  "Иннополис",
-];
-
-function matchPresets(query: string): string[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return PRESETS.slice(0, 5);
-  return PRESETS.filter((p) => p.toLowerCase().includes(q)).slice(0, 5);
-}
-
 const MIN_GEOCODE_CHARS = 3;
-const DEBOUNCE_MS = 800;
+const DEBOUNCE_MS = 350;
+const MAX_SUGGESTIONS = 12;
 
 export function AddressAutocomplete({
   value,
@@ -67,21 +39,19 @@ export function AddressAutocomplete({
 }: AddressAutocompleteProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [geoSuggestions, setGeoSuggestions] = useState<AddressSuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-
-  const presets: AddressSuggestion[] = matchPresets(value).map((p) => ({
-    label: p,
-    source: "preset",
-  }));
 
   const fetchGeoSuggestions = useCallback(async (query: string) => {
     const trimmed = query.trim();
     if (trimmed.length < MIN_GEOCODE_CHARS) {
       setGeoSuggestions([]);
+      setLoading(false);
       return;
     }
+    setLoading(true);
     try {
-      const q = /казань|татарстан/i.test(trimmed) ? trimmed : `${trimmed}, Казань`;
+      const q = /казань|татарстан/i.test(trimmed) ? trimmed : `${trimmed}, Татарстан`;
       const results = await apiFetch<NominatimResult[]>(
         `/geocode/search?q=${encodeURIComponent(q)}`,
       );
@@ -89,13 +59,13 @@ export function AddressAutocomplete({
         setGeoSuggestions([]);
         return;
       }
-      const mapped: AddressSuggestion[] = results.slice(0, 5).flatMap((r) => {
+      const mapped: AddressSuggestion[] = results.slice(0, MAX_SUGGESTIONS).flatMap((r) => {
         const lat = Number.parseFloat(r.lat);
         const lng = Number.parseFloat(r.lon);
         if (Number.isNaN(lat) || Number.isNaN(lng)) return [];
         return [
           {
-            label: r.display_name?.split(",").slice(0, 3).join(",").trim() || trimmed,
+            label: r.display_name?.split(",").slice(0, 4).join(",").trim() || trimmed,
             source: "geocode" as const,
             coords: { lat, lng },
           },
@@ -103,14 +73,16 @@ export function AddressAutocomplete({
       });
       setGeoSuggestions(mapped);
     } catch {
-      // Сетевой сбой / 429 / 503 — тихо проглатываем, остаются пресеты.
       setGeoSuggestions([]);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (!value) {
       setGeoSuggestions([]);
+      setLoading(false);
       return;
     }
     const timer = setTimeout(() => fetchGeoSuggestions(value), DEBOUNCE_MS);
@@ -126,12 +98,16 @@ export function AddressAutocomplete({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
 
-  const suggestions: AddressSuggestion[] = [...presets, ...geoSuggestions];
-
   function pick(s: AddressSuggestion) {
     onChange(s.label, s.coords);
     setOpen(false);
   }
+
+  const showHint = open && value.trim().length > 0 && value.trim().length < MIN_GEOCODE_CHARS;
+  const showLoading = open && loading && geoSuggestions.length === 0;
+  const showEmpty =
+    open && !loading && geoSuggestions.length === 0 && value.trim().length >= MIN_GEOCODE_CHARS;
+  const showList = open && geoSuggestions.length > 0;
 
   return (
     <div ref={wrapperRef} style={{ position: "relative" }}>
@@ -152,7 +128,7 @@ export function AddressAutocomplete({
         aria-autocomplete="list"
         style={inputStyle}
       />
-      {open && suggestions.length > 0 && (
+      {(showList || showLoading || showEmpty || showHint) && (
         <div
           data-testid={testId ? `${testId}-listbox` : undefined}
           style={{
@@ -166,47 +142,84 @@ export function AddressAutocomplete({
             border: "1px solid var(--brand-line)",
             borderRadius: 8,
             boxShadow: "var(--shadow-md)",
-            maxHeight: 260,
+            maxHeight: 320,
             overflowY: "auto",
             zIndex: 50,
           }}
         >
-          {suggestions.map((s, idx) => (
-            <button
-              key={`${s.source}-${idx}-${s.label}`}
-              type="button"
-              data-testid={testId ? `${testId}-option-${idx}` : undefined}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                pick(s);
-              }}
+          {showHint && (
+            <div
+              data-testid={testId ? `${testId}-hint` : undefined}
               style={{
-                width: "100%",
-                textAlign: "left",
                 padding: "10px 12px",
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                fontSize: 14,
-                color: "var(--brand-text)",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
+                fontSize: 13,
+                color: "var(--brand-sub)",
               }}
             >
-              <span
-                aria-hidden="true"
+              Введите минимум {MIN_GEOCODE_CHARS} символа
+            </div>
+          )}
+          {showLoading && (
+            <div
+              data-testid={testId ? `${testId}-loading` : undefined}
+              style={{
+                padding: "10px 12px",
+                fontSize: 13,
+                color: "var(--brand-sub)",
+              }}
+            >
+              Поиск…
+            </div>
+          )}
+          {showEmpty && (
+            <div
+              data-testid={testId ? `${testId}-empty` : undefined}
+              style={{
+                padding: "10px 12px",
+                fontSize: 13,
+                color: "var(--brand-sub)",
+              }}
+            >
+              Ничего не найдено — уточните адрес
+            </div>
+          )}
+          {showList &&
+            geoSuggestions.map((s, idx) => (
+              <button
+                key={`${idx}-${s.label}`}
+                type="button"
+                data-testid={testId ? `${testId}-option-${idx}` : undefined}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  pick(s);
+                }}
                 style={{
-                  fontSize: 12,
-                  color: "var(--brand-sub)",
-                  minWidth: 16,
+                  width: "100%",
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: "var(--brand-text)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
                 }}
               >
-                {s.source === "preset" ? "★" : "○"}
-              </span>
-              <span>{s.label}</span>
-            </button>
-          ))}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--brand-sub)",
+                    minWidth: 16,
+                  }}
+                >
+                  ○
+                </span>
+                <span>{s.label}</span>
+              </button>
+            ))}
         </div>
       )}
     </div>

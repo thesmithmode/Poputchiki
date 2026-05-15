@@ -14,12 +14,42 @@ vi.mock("../src/lib/telegram", () => ({
   getTelegramWebApp: vi.fn(() => undefined),
 }));
 
+// Мокаем AddressAutocomplete на простой input с подставленными coords при изменении —
+// поведение dropdown тестируется отдельно в AddressAutocomplete.test.tsx.
+vi.mock("../src/components/AddressAutocomplete", () => {
+  return {
+    AddressAutocomplete: ({
+      value,
+      onChange,
+      testId,
+    }: {
+      value: string;
+      onChange: (v: string, c?: { lat: number; lng: number }) => void;
+      testId?: string;
+    }) => {
+      const FAKE_COORDS: Record<string, { lat: number; lng: number }> = {
+        "ЖК Царёво": { lat: 55.8945, lng: 49.2043 },
+        "ул. Баумана": { lat: 55.7887, lng: 49.1222 },
+      };
+      return (
+        <div>
+          <input
+            data-testid={testId}
+            value={value}
+            onChange={(e) => {
+              const v = e.target.value;
+              onChange(v, FAKE_COORDS[v]);
+            }}
+          />
+        </div>
+      );
+    },
+  };
+});
+
 import { apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
-
-const GEO_FROM = [{ lat: "55.8945", lon: "49.2043", display_name: "ЖК Царёво, Казань" }];
-const GEO_TO = [{ lat: "55.7887", lon: "49.1222", display_name: "ул. Баумана, Казань" }];
 
 function renderScreen(initialPath = "/rides/new") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -33,6 +63,7 @@ function renderScreen(initialPath = "/rides/new") {
 }
 
 function fillFromTo() {
+  // Mock автокомплита подставляет coords именно для этих labels.
   fireEvent.change(screen.getByTestId("input-from"), { target: { value: "ЖК Царёво" } });
   fireEvent.change(screen.getByTestId("input-to"), { target: { value: "ул. Баумана" } });
 }
@@ -143,6 +174,18 @@ describe("CreateRideScreen", () => {
     });
   });
 
+  it("step 1: ошибка если coords не выбраны из dropdown (произвольный текст)", async () => {
+    renderScreen();
+    fireEvent.change(screen.getByTestId("input-from"), { target: { value: "случайный текст" } });
+    fireEvent.change(screen.getByTestId("input-to"), { target: { value: "другой текст" } });
+    fireEvent.click(screen.getByTestId("next-step-btn"));
+    await waitFor(() => {
+      expect(screen.getByTestId("form-error")).toHaveTextContent(
+        /Выберите адрес «Откуда» из списка подсказок/,
+      );
+    });
+  });
+
   it("step 3: показывает ошибку если Регулярный но нет дней", async () => {
     renderScreen();
     goToStep3();
@@ -155,37 +198,8 @@ describe("CreateRideScreen", () => {
     });
   });
 
-  it("step 3: показывает ошибку если geocode не разрешил координаты", async () => {
-    mockedApiFetch.mockResolvedValue([]);
-    renderScreen();
-    goToStep3();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("submit-btn"));
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось найти адрес");
-    });
-    const ridesCalls = mockedApiFetch.mock.calls.filter(([path]) => path === "/rides");
-    expect(ridesCalls).toHaveLength(0);
-  });
-
-  it("step 3: показывает ошибку если один geocode не разрешился", async () => {
-    mockedApiFetch.mockResolvedValueOnce(GEO_FROM).mockResolvedValueOnce([]);
-    renderScreen();
-    goToStep3();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("submit-btn"));
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось найти адрес");
-    });
-  });
-
-  it("step 3: успешный submit вызывает POST /rides с координатами Казани", async () => {
-    mockedApiFetch
-      .mockResolvedValueOnce(GEO_FROM)
-      .mockResolvedValueOnce(GEO_TO)
-      .mockResolvedValueOnce({ id: "new-ride-id" });
+  it("step 3: успешный submit вызывает POST /rides с coords из dropdown — без повторного geocode", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ id: "new-ride-id" });
 
     renderScreen();
     goToStep3();
@@ -197,31 +211,20 @@ describe("CreateRideScreen", () => {
       expect(ridesCalls).toHaveLength(1);
       const [, init] = ridesCalls[0] ?? [];
       const body = JSON.parse((init as RequestInit).body as string);
-      expect(body.from_lat).not.toBe(55.75);
       expect(body.from_lat).toBeCloseTo(55.8945, 3);
       expect(body.from_lng).toBeCloseTo(49.2043, 3);
       expect(body.to_lat).toBeCloseTo(55.7887, 3);
       expect(body.to_lng).toBeCloseTo(49.1222, 3);
     });
-  });
-
-  it("step 3: при падении geocode API показывает ошибку", async () => {
-    mockedApiFetch.mockRejectedValue(new Error("Network error"));
-    renderScreen();
-    goToStep3();
-    await act(async () => {
-      fireEvent.click(screen.getByTestId("submit-btn"));
-    });
-    await waitFor(() => {
-      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось найти адрес");
-    });
+    // SENTINEL: на submit НЕТ вызова /geocode/search — coords пришли из dropdown.
+    const geocodeCalls = mockedApiFetch.mock.calls.filter(([path]) =>
+      String(path).startsWith("/geocode"),
+    );
+    expect(geocodeCalls).toHaveLength(0);
   });
 
   it("step 3: показывает ошибку при сбое /rides", async () => {
-    mockedApiFetch
-      .mockResolvedValueOnce(GEO_FROM)
-      .mockResolvedValueOnce(GEO_TO)
-      .mockRejectedValueOnce(new Error("Network error"));
+    mockedApiFetch.mockRejectedValueOnce(new Error("Network error"));
 
     renderScreen();
     goToStep3();
@@ -234,10 +237,7 @@ describe("CreateRideScreen", () => {
   });
 
   it("step 3: price_rub передаётся null при договорной", async () => {
-    mockedApiFetch
-      .mockResolvedValueOnce(GEO_FROM)
-      .mockResolvedValueOnce(GEO_TO)
-      .mockResolvedValueOnce({ id: "x" });
+    mockedApiFetch.mockResolvedValueOnce({ id: "x" });
 
     renderScreen();
     goToStep3();

@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  /* Нативные UI-контролы (date/time picker иконки, scrollbar) — следуют этой схеме.
+     Без неё иконки <input type="date|time"> остаются чёрными в тёмной теме. */
+  color-scheme: light;
+
   /* === SURFACES === */
   --brand-bg: #f4f5f4;
   --brand-surface: #ffffff;
@@ -78,6 +82,9 @@
 }
 
 .dark {
+  /* Нативные иконки <input type="date|time"> в тёмной теме — белые вместо чёрных. */
+  color-scheme: dark;
+
   --brand-bg: #000000;
   --brand-surface: #111313;
   --brand-surface-2: #1a1d1c;

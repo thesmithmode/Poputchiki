@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GeoCache } from "../../../src/geocode/geoCache";
 import type { AppUser } from "../../../src/middleware/identity-guard";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
 
@@ -20,13 +21,13 @@ const USER: AppUser = {
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockSql = vi.fn() as any;
 
-function makeApp(user: AppUser = USER) {
+function makeApp(user: AppUser = USER, cache?: GeoCache) {
   const app = new Hono();
   app.use("/rides/*", async (c, next) => {
     c.set("user" as never, user);
     await next();
   });
-  app.route("/rides", createRidesRouter(mockSql));
+  app.route("/rides", createRidesRouter(mockSql, cache ?? new GeoCache(200, 5_000)));
   return app;
 }
 
@@ -150,5 +151,56 @@ describe("GET /rides — basic", () => {
     expect(res.status).toBe(422);
     const body = await readJson(res);
     expect(body.error).toBe("validation failed");
+  });
+});
+
+describe("GET /rides — кэш", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("второй запрос с теми же фильтрами не идёт в DB", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValue([] as any);
+    const cache = new GeoCache(200, 5_000);
+    const app = makeApp(USER, cache);
+    await app.request("/rides");
+    await app.request("/rides");
+    expect(vi.mocked(withIdentity)).toHaveBeenCalledOnce();
+  });
+
+  it("favoritesOnly=true — кэш пропускается, каждый запрос идёт в DB", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValue([] as any);
+    const cache = new GeoCache(200, 5_000);
+    const app = makeApp(USER, cache);
+    await app.request("/rides?favoritesOnly=true");
+    await app.request("/rides?favoritesOnly=true");
+    expect(vi.mocked(withIdentity)).toHaveBeenCalledTimes(2);
+  });
+
+  it("cursor присутствует — кэш пропускается", async () => {
+    const ride = makeRide();
+    const cursor = btoa(JSON.stringify({ d: ride.departure_at, i: ride.id }))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=/g, "");
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValue([] as any);
+    const cache = new GeoCache(200, 5_000);
+    const app = makeApp(USER, cache);
+    await app.request(`/rides?cursor=${cursor}`);
+    await app.request(`/rides?cursor=${cursor}`);
+    expect(vi.mocked(withIdentity)).toHaveBeenCalledTimes(2);
+  });
+
+  it("разные фильтры — разные cache-ключи, DB вызывается на каждый уникальный набор", async () => {
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValue([] as any);
+    const cache = new GeoCache(200, 5_000);
+    const app = makeApp(USER, cache);
+    await app.request("/rides?priceMax=100");
+    await app.request("/rides?priceMax=200");
+    expect(vi.mocked(withIdentity)).toHaveBeenCalledTimes(2);
   });
 });

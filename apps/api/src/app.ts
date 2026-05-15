@@ -26,6 +26,7 @@ import { createRealtimeRouter } from "./realtime/realtimeRouter";
 import { createReviewsRouter } from "./reviews/reviewsRouter";
 import { createRideRequestsRouter } from "./ride-requests/rideRequestsRouter";
 import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter";
+import { ridesCache } from "./rides/ridesCache";
 import { createRidesRouter } from "./rides/ridesRouter";
 import { createSupportRouter } from "./support/supportRouter";
 import { createUsersRouter } from "./users/usersRouter";
@@ -80,7 +81,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
       app.use("/api/*", rateLimit(sql));
       app.use("/api/*", idempotency(sql));
       app.use("/api/*", auditLog(sql));
-      app.route("/api/rides", createRidesRouter(sql));
+      app.route("/api/rides", createRidesRouter(sql, ridesCache));
       app.route("/api/ride-templates", createRideTemplatesRouter(sql));
       if (dispatcher) {
         app.route("/api/realtime", createRealtimeRouter(dispatcher));

@@ -249,7 +249,16 @@ export function MapScreen() {
   };
 
   return (
-    <div data-testid="map-screen" style={{ position: "fixed", inset: 0, zIndex: 0 }}>
+    <div
+      data-testid="map-screen"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100dvh",
+        overflow: "hidden",
+        background: "var(--brand-bg)",
+      }}
+    >
       {loading && (
         <div
           data-testid="map-loading"
@@ -258,7 +267,7 @@ export function MapScreen() {
             top: 16,
             left: "50%",
             transform: "translateX(-50%)",
-            zIndex: 10,
+            zIndex: 1000,
             ...glassStyle,
             borderRadius: 20,
             padding: "6px 14px",
@@ -272,10 +281,10 @@ export function MapScreen() {
       <div
         ref={mapContainerRef}
         data-testid="leaflet-container"
-        style={{ position: "absolute", inset: 0 }}
+        style={{ position: "absolute", inset: 0, zIndex: 0 }}
       />
 
-      {/* Ride count chip */}
+      {/* Ride count chip — z-index выше Leaflet popup pane (700), иначе панели карты перекрывают chip */}
       {!loading && (
         <div
           data-testid="rides-count"
@@ -283,7 +292,7 @@ export function MapScreen() {
             position: "absolute",
             left: 12,
             top: 16,
-            zIndex: 5,
+            zIndex: 1000,
             padding: "8px 12px",
             borderRadius: 999,
             ...glassStyle,
@@ -305,7 +314,7 @@ export function MapScreen() {
           position: "absolute",
           right: 12,
           bottom: selected ? 176 : 100,
-          zIndex: 5,
+          zIndex: 1000,
           display: "flex",
           flexDirection: "column",
           gap: 6,
@@ -347,7 +356,7 @@ export function MapScreen() {
             bottom: 88,
             left: 12,
             right: 12,
-            zIndex: 5,
+            zIndex: 1000,
           }}
         >
           <button

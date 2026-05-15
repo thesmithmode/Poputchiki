@@ -73,7 +73,8 @@ describe("CreateRideScreen", () => {
   it("выбирает количество мест кнопкой", () => {
     renderScreen();
     fireEvent.click(screen.getByTestId("seats-2"));
-    expect(screen.getByTestId("seats-2")).toHaveStyle({ background: "#e0f2fe" });
+    expect(screen.getByTestId("seats-2")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("seats-1")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("чекбокс договорная скрывает поле цены", () => {
@@ -101,9 +102,9 @@ describe("CreateRideScreen", () => {
     renderScreen();
     fireEvent.click(screen.getByTestId("recurring-checkbox"));
     fireEvent.click(screen.getByTestId("weekday-0"));
-    expect(screen.getByTestId("weekday-0")).toHaveStyle({ background: "#e0f2fe" });
+    expect(screen.getByTestId("weekday-0")).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(screen.getByTestId("weekday-0"));
-    expect(screen.getByTestId("weekday-0")).toHaveStyle({ background: "#fff" });
+    expect(screen.getByTestId("weekday-0")).toHaveAttribute("aria-pressed", "false");
   });
 
   it("показывает ошибку если откуда пустое", async () => {

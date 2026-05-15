@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T08:38:00.645Z",
+  "timestamp": "2026-05-15T09:09:57.096Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,35 +18,7 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".claude/settings.local.json"
-    },
-    {
-      "status": "M",
-      "path": ".memory/daily/2026-05-14.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/knowledge/concepts/css-filter-dark-map-theme.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/knowledge/concepts/memory-flush-system.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/knowledge/connections/telegram-webapp-invisible-constraints.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/knowledge/index.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/knowledge/log.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/compile.log"
+      "path": ".memory/daily/2026-05-15.md"
     },
     {
       "status": "M",
@@ -58,37 +30,9 @@
     },
     {
       "status": "M",
-      "path": ".memory/scripts/state.json"
-    },
-    {
-      "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "??",
-      "path": ".memory/daily/2026-05-15.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/csp-tile-provider-telegram.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/leaflet-async-init-test-timing.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/non-blocking-map-loading.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/telegram-disable-vertical-swipes.md"
-    },
-    {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/telegram-mainbutton-dom-conflict.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n8164b75 FEAT: in-memory кэш GET /rides TTL 5s с инвалидацией на мутациях\n3dab38a FIX: biome форматирование тестов CreateRideScreen — схлопнуть toHaveTextContent\n8050646 TEST: обновить тексты ошибок геокодинга в тестах\n975f9ef FIX: biome форматирование CreateRideScreen\n253489e CHORE: синхронизировать dev с main"
+  "context_notes": "Recent commits:\n6f509ec CHORE: синхронизировать dev с main\nd25f6fd FIX: hardening MED+LOW + auth/identity + кэш /rides — squash dev\n729757e FIX: тесты под новое поведение + покрытие веток\na675f57 FIX: hardening MED+LOW — кэш, лимиты, geocode, CSP, MapScreen, refresh-flow\nf4e6faa FIX: auth/identity hardening — deleted_at, is_banned, cache key, atomic CAS"
 }

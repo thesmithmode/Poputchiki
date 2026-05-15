@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T09:09:57.096Z",
+  "timestamp": "2026-05-15T10:23:06.899Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -31,8 +31,60 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "biome.json"
+    },
+    {
+      "status": "M",
+      "path": "bun.lock"
+    },
+    {
+      "status": "M",
+      "path": "web/package.json"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/BottomTabBar.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/RideCard.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/RouteBlock.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/index.css"
+    },
+    {
+      "status": "M",
+      "path": "web/src/main.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/EventsScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/FeedScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/ProfileScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/SettingsScreen.tsx"
+    },
+    {
+      "status": "??",
+      "path": ".claude/scratch/"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n6f509ec CHORE: синхронизировать dev с main\nd25f6fd FIX: hardening MED+LOW + auth/identity + кэш /rides — squash dev\n729757e FIX: тесты под новое поведение + покрытие веток\na675f57 FIX: hardening MED+LOW — кэш, лимиты, geocode, CSP, MapScreen, refresh-flow\nf4e6faa FIX: auth/identity hardening — deleted_at, is_banned, cache key, atomic CAS"
+  "context_notes": "Recent commits:\n53cbe7d CHORE: обновить memory-логи — сессия 2026-05-15 (UI map+autocomplete+theme)\nb2afde3 FEAT: AddressAutocomplete — пресеты ЖК Царёво/Казани + debounced geocode-suggest\n4123fbd FIX: CreateRideScreen — хардкоды светлых цветов на CSS-vars + aria-pressed\na5bcd48 FIX: системная тема смешивает light+dark — приоритизировать Telegram colorScheme\nf4b174d FIX: UI карты скрыт на ПК — relative+100dvh, z-index выше Leaflet panes"
 }

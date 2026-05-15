@@ -59,6 +59,10 @@ export function CreateRideScreen() {
   const [fromCoords, setFromCoords] = useState<Coords | null>(null);
   const [toCoords, setToCoords] = useState<Coords | null>(null);
   const submitRef = useRef<() => void>(() => {});
+  // Idempotency guard для POST /rides: MainButton.text обновляется в useEffect[step]
+  // асинхронно, есть окно ~10мс где text="Далее", но submitRef.current=handleSubmit.
+  // Двойной клик в этом окне без guard'а создаст две поездки.
+  const submittingRef = useRef(false);
 
   function validateStep1(): string | null {
     if (!form.from_label.trim()) return "Укажите откуда";
@@ -95,6 +99,7 @@ export function CreateRideScreen() {
       return;
     }
     setError(null);
+    // setStep clamps to <3, повторный synchronous click безопасен (max до step 3).
     setStep((s) => (s < 3 ? ((s + 1) as Step) : s));
   };
 
@@ -105,8 +110,13 @@ export function CreateRideScreen() {
   };
 
   const handleSubmit = async () => {
+    // Guard от двойного клика: step !== 3 → MainButton ещё не переключился, отбрасываем.
+    // submittingRef блокирует повторный submit пока fetch in-flight.
+    if (step !== 3 || submittingRef.current) return;
+    submittingRef.current = true;
     const err = validateAll();
     if (err) {
+      submittingRef.current = false;
       setError(err);
       return;
     }
@@ -177,6 +187,7 @@ export function CreateRideScreen() {
       notification("error");
       setError("Не удалось создать поездку. Попробуйте ещё раз.");
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
       wa?.MainButton?.hideProgress();
     }

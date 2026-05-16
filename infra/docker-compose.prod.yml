@@ -108,9 +108,10 @@ services:
       DOMAIN: ${DOMAIN}
       NODE_ENV: production
       PORT: 3000
-      # Геокодер: публичный Nominatim (self-hosted профиль выключен в compose).
-      # Override через .env если поднимешь свой Nominatim.
-      NOMINATIM_URL: ${NOMINATIM_URL:-https://nominatim.openstreetmap.org}
+      # Геокодер: self-hosted Nominatim в той же compose-сети. Дефолт переключён
+      # на внутренний URL — после импорта PBF Татарстана (~15-30min при первом
+      # старте) запросы пойдут локально. Override через .env при необходимости.
+      NOMINATIM_URL: ${NOMINATIM_URL:-http://nominatim:8080}
     depends_on:
       postgres:
         condition: service_healthy

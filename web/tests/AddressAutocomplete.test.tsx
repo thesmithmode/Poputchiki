@@ -61,7 +61,7 @@ describe("AddressAutocomplete", () => {
     render(<Harness />);
     fireEvent.focus(screen.getByTestId("addr"));
     expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
-    expect(screen.getByText(/ЖК Царёво, главный КПП/)).toBeInTheDocument();
+    expect(screen.getByText(/Царёво Village, ул\. Тукая, д\. 4/)).toBeInTheDocument();
   });
 
   it("не показывает dropdown пока input без focus", () => {
@@ -252,7 +252,7 @@ describe("AddressAutocomplete", () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
-    expect(screen.getByText(/ЖК Царёво, главный КПП/)).toBeInTheDocument();
+    expect(screen.getByText(/Царёво Village, ул\. Тукая, д\. 4/)).toBeInTheDocument();
     expect(screen.getByText(/Казанский аэропорт/)).toBeInTheDocument();
   });
 });

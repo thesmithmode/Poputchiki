@@ -5,16 +5,24 @@ import { GeoCache } from "./geoCache";
 // Public Nominatim by default — self-hosted профиль в compose отключён.
 // Policy public Nominatim: 1 req/sec per IP + обязательный User-Agent (ставим ниже).
 // Свой кэш + per-user rate-limit ниже снижают нагрузку на их инфру.
-const NOMINATIM_URL = process.env.NOMINATIM_URL ?? "https://nominatim.openstreetmap.org";
+const NOMINATIM_DEFAULT = "https://nominatim.openstreetmap.org";
 
-// Рабочая зона: Казань + ЖК Царёво + аэропорт + окрестности до Старого Шигалеево.
+// Рабочая зона: Казань + ЖК Царёво + аэропорт + окрестности до Старо��о Шигалеево.
 // Nominatim viewbox формат: left(min_lon),top(max_lat),right(max_lon),bottom(min_lat)
 const BBOX_KAZAN_AREA = "48.5,56.2,50.0,55.3";
+
+// bounded=1 у Nominatim advisory — при пустом resultset он может вернуть
+// результаты за пределами viewbox (Москва, Питер итд.). Хард-фильтр гарантирует зону.
+const LAT_MIN = 55.3, LAT_MAX = 56.2, LON_MIN = 48.5, LON_MAX = 50.0;
+function inKazanArea(lat: number, lon: number): boolean {
+  return lat >= LAT_MIN && lat <= LAT_MAX && lon >= LON_MIN && lon <= LON_MAX;
+}
 
 interface GeocodeRouterOptions {
   cache?: GeoCache | undefined;
   _fetch?: typeof fetch | undefined;
   _lastRequestAt?: Map<string, number> | undefined;
+  _nominatimUrl?: string | undefined;
 }
 
 export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
@@ -47,7 +55,8 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     }
 
     try {
-      const url = new URL(`${NOMINATIM_URL}/search`);
+      const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
+      const url = new URL(`${nominatimUrl}/search`);
       url.searchParams.set("q", q);
       url.searchParams.set("format", "json");
       url.searchParams.set("limit", "12");
@@ -60,7 +69,14 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
         signal: AbortSignal.timeout(5000),
       });
 
-      const results = await resp.json();
+      const raw = await resp.json();
+      const results = Array.isArray(raw)
+        ? raw.filter((r: { lat?: string; lon?: string }) => {
+            const lat = Number(r.lat);
+            const lon = Number(r.lon);
+            return !Number.isNaN(lat) && !Number.isNaN(lon) && inKazanArea(lat, lon);
+          })
+        : raw;
       cache.set(cacheKey, results);
       return c.json(results);
     } catch {

@@ -126,32 +126,45 @@ describe("GET /api/geocode/search", () => {
     expect(res2.status).toBe(429);
   });
 
+  it("SENTINEL: результаты вне bbox Казани фильтруются на бэке", async () => {
+    // bounded=1 advisory — Nominatim может вернуть Москву/Питер при пустом local resultset.
+    // Хард-фильтр на бэке должен убрать всё за пределами 55.3-56.2°N / 48.5-50.0°E.
+    const outOfArea = [
+      { place_id: 10, display_name: "Москва, ул. Тукая", lat: "55.75", lon: "37.62" },
+      { place_id: 11, display_name: "Санкт-Петербург", lat: "59.95", lon: "30.32" },
+    ];
+    const inArea = [
+      { place_id: 12, display_name: "ул. Тукая, Казань", lat: "55.81", lon: "49.43" },
+    ];
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([...outOfArea, ...inArea]), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request("/api/geocode/search?q=Тукая", {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson<{ place_id: number }[]>(res);
+    expect(body.map((r) => r.place_id)).toEqual([12]);
+  });
+
   it("SENTINEL: дефолт NOMINATIM_URL — публичный nominatim.openstreetmap.org", async () => {
     // Self-hosted Nominatim профиль в compose выключен. Если кто-то вернёт дефолт
     // на 'http://nominatim:8080' — этот тест упадёт и поймает регрессию prod-инфры.
+    // _nominatimUrl не передаём → читается из process.env → fallback на NOMINATIM_DEFAULT.
     const prev = process.env.NOMINATIM_URL;
     // biome-ignore lint/performance/noDelete: нужно реально удалить env var, чтобы сработал ?? default
     delete process.env.NOMINATIM_URL;
     try {
-      vi.resetModules();
       const mockFetch = vi
         .fn()
         .mockResolvedValue(
           new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } }),
         );
-      const fresh = await import("../../../src/geocode/geocodeRouter");
-      const app = new Hono();
-      app.use("/api/*", identityGuard(JWT_SECRET));
-      app.route(
-        "/api/geocode",
-        fresh.createGeocodeRouter({
-          _fetch: mockFetch as unknown as typeof fetch,
-          _lastRequestAt: new Map(),
-        }),
-      );
-      await app.request("/api/geocode/search?q=Казань", {
-        headers: authH(token),
-      });
+      const app = makeApp(mockFetch as unknown as typeof fetch, undefined, new Map());
+      await app.request("/api/geocode/search?q=Казань", { headers: authH(token) });
       const calledUrl = String(mockFetch.mock.calls[0]?.[0]);
       expect(calledUrl).toMatch(/^https:\/\/nominatim\.openstreetmap\.org/);
     } finally {

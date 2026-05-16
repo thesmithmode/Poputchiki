@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T12:01:49.378Z",
+  "timestamp": "2026-05-16T12:12:35.135Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,10 +18,6 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".claude/settings.local.json"
-    },
-    {
-      "status": "M",
       "path": ".memory/daily/2026-05-16.md"
     },
     {
@@ -37,58 +33,10 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "M",
-      "path": "web/src/App.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/ComplaintSheet.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/ErrorBoundary.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/FiltersPanel.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/ui/ErrorView.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/ui/Skeleton.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/index.css"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/AdminScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/ConfirmParticipationScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/FavoritesScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/RideDetailScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/SettingsScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/SupportScreen.tsx"
+      "status": "??",
+      "path": ".memory/scripts/session-flush-b72238b4-5602-4735-85e8-967739a0dbca-20260516-151210.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing\n6ab39e4 CHORE: обновить memory-логи — 2026-05-16\nb4691c0 CHORE: biome autofix — import order и форматирование тестов\nb95ffc4 FIX: геокодер хард-фильтр bbox Казани + fix vi.resetModules в тесте"
+  "context_notes": "Recent commits:\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session\n8dc37c2 FIX: тема — заменить hardcoded цвета на CSS-токены --brand-*\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing\n6ab39e4 CHORE: обновить memory-логи — 2026-05-16"
 }

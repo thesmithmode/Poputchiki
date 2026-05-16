@@ -2,6 +2,7 @@
  * Integration: PATCH /api/users/me
  * Requires: Postgres + migrations 000-010 applied.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,7 +24,7 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -62,7 +63,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ display_name: "Updated Name" }),
@@ -84,7 +85,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ phone }),
@@ -113,7 +114,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ display_name: "" }),
@@ -128,7 +129,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ display_name: "x".repeat(51) }),
@@ -143,7 +144,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({}),
@@ -166,7 +167,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ onboarded: true }),

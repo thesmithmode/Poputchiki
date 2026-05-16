@@ -2,7 +2,7 @@ import type postgres from "postgres";
 import { withLock } from "./lib/with-lock.js";
 
 const LOCK_ID = 100001;
-const NONCE_TTL = "10 minutes";
+const NONCE_TTL = "1 hour"; // должен быть ≥ MAX_AGE_SECONDS из verifyInitData.ts
 
 export async function cleanupNonces(sql: postgres.Sql): Promise<{ deleted: number } | null> {
   // useServiceRole: nonces DELETE-политика ограничена poputchiki_service (миграция 019).

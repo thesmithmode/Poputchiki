@@ -2,6 +2,7 @@
  * Integration: GET /api/users/me + GET /api/users/:id
  * Requires: Postgres + migrations 000-010 applied.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -31,7 +32,7 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -68,7 +69,7 @@ describe("GET /api/users/me", () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request("/api/users/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
@@ -100,7 +101,7 @@ describe("GET /api/users/me", () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request("/api/users/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     const body = await readJson(res);
     expect(body).not.toHaveProperty("phone_enc");
@@ -121,7 +122,7 @@ describe("GET /api/users/me", () => {
     const app = makeApp();
     const token = await makeToken(BANNED);
     const res = await app.request("/api/users/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${BANNED.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -139,7 +140,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: "not-valid-json{{{",
@@ -154,7 +155,7 @@ describe("PATCH /api/users/me", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ME.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ apt_number: "42A" }),
@@ -174,7 +175,7 @@ describe("PATCH /api/users/me", () => {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
-          Cookie: `tg_uid=${ME.tgId}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ display_name: "Updated Name" }),
@@ -191,7 +192,7 @@ describe("GET /api/users/:id", () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request(`/api/users/${OTHER.id}`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("private, no-store");
@@ -212,7 +213,7 @@ describe("GET /api/users/:id", () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request("/api/users/not-a-uuid", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(400);
   });
@@ -221,7 +222,7 @@ describe("GET /api/users/:id", () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request(`/api/users/${BANNED.id}`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(404);
   });
@@ -230,7 +231,7 @@ describe("GET /api/users/:id", () => {
     const app = makeApp();
     const token = await makeToken(ME);
     const res = await app.request("/api/users/00000000-0000-4000-d000-2deadbeef000", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ME.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(404);
   });

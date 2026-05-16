@@ -2,6 +2,7 @@
  * Integration: POST/DELETE/GET/PATCH /api/favorites
  * Requires: Postgres + all migrations applied.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,7 +24,7 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -64,7 +65,7 @@ describe("POST /api/favorites", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_id: USER_B.id }),
@@ -83,7 +84,7 @@ describe("POST /api/favorites", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_id: USER_B.id }),
@@ -98,7 +99,7 @@ describe("POST /api/favorites", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_id: USER_A.id }),
@@ -113,7 +114,7 @@ describe("POST /api/favorites", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({}),
@@ -133,7 +134,7 @@ describe("GET /api/favorites/me", () => {
     const app = makeApp();
     const token = await makeToken(USER_A);
     const res = await app.request("/api/favorites/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER_A.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -148,7 +149,7 @@ describe("GET /api/favorites/me", () => {
     const app = makeApp();
     const token = await makeToken(USER_B);
     const res = await app.request("/api/favorites/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER_B.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -165,7 +166,7 @@ describe("PATCH /api/favorites/:target_id", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ notify: false }),
@@ -182,7 +183,7 @@ describe("PATCH /api/favorites/:target_id", () => {
       method: "PATCH",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ notify: false }),
@@ -197,7 +198,7 @@ describe("DELETE /api/favorites/:target_id", () => {
     const token = await makeToken(USER_A);
     const res = await app.request(`/api/favorites/${USER_B.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER_A.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(204);
   });
@@ -207,7 +208,7 @@ describe("DELETE /api/favorites/:target_id", () => {
     const token = await makeToken(USER_A);
     const res = await app.request(`/api/favorites/${USER_B.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER_A.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(404);
   });

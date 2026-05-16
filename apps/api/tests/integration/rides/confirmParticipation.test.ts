@@ -2,6 +2,7 @@
  * Integration: POST /api/rides/:id/confirm-participation — passenger confirms attendance.
  * Requires: Postgres + all migrations applied.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -29,7 +30,7 @@ let pastRideId: string;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -91,7 +92,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(PASSENGER);
     const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${PASSENGER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(422);
   });
@@ -107,7 +108,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(PASSENGER);
     const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${PASSENGER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -120,7 +121,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(PASSENGER);
     const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${PASSENGER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(409);
   });
@@ -136,7 +137,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(DRIVER); // driver tries to confirm OTHER's participation
     const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${DRIVER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(403);
   });
@@ -152,7 +153,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(PASSENGER);
     const res = await app.request(`/api/rides/${pastRideId}/confirm-participation`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${PASSENGER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(410);
   });
@@ -164,7 +165,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(OTHER);
     const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${OTHER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(404);
   });
@@ -174,7 +175,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     const token = await makeToken(PASSENGER);
     const res = await app.request("/api/rides/not-a-uuid/confirm-participation", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${PASSENGER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(400);
   });

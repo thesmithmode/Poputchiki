@@ -2,6 +2,7 @@
  * Integration tests: POST /api/rides/:id/request — seat booking through app.book_seat().
  * Покрывает: happy path, no_seats, already_requested, invalid uuid, auth.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -43,6 +44,7 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
       uid: user.id,
       role: user.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -114,7 +116,7 @@ describe("POST /api/rides/:id/request — happy path", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${PASSENGER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -137,7 +139,7 @@ describe("POST /api/rides/:id/request — error cases", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${PASSENGER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -152,7 +154,7 @@ describe("POST /api/rides/:id/request — error cases", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${PASSENGER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -169,7 +171,7 @@ describe("POST /api/rides/:id/request — error cases", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${PASSENGER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -182,7 +184,7 @@ describe("POST /api/rides/:id/request — error cases", () => {
     const token = await makeToken(PASSENGER);
     const headers = {
       Authorization: `Bearer ${token}`,
-      Cookie: `tg_uid=${PASSENGER.tgId}`,
+      Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       "X-Forwarded-For": TEST_IP,
     };
     const r1 = await app.request(`/api/rides/${rideId}/request`, { method: "POST", headers });

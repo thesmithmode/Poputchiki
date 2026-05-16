@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GeoCache } from "../../../src/geocode/geoCache";
 import { createGeocodeRouter } from "../../../src/geocode/geocodeRouter";
 import { identityGuard } from "../../../src/middleware/identity-guard";
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 
-const JWT_SECRET = "test-geocode-secret";
+const JWT_SECRET = "test-geocode-secret-32-chars!!!!!";
 const USER = { id: "00000000-0000-4000-b000-000000000001", tgId: 123001, role: "user" as const };
 
 async function makeToken() {
@@ -17,11 +18,16 @@ async function makeToken() {
       uid: USER.id,
       role: USER.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
     JWT_SECRET,
   );
+}
+
+function authH(token: string) {
+  return { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` };
 }
 
 function makeApp(mockFetch: typeof fetch, cache?: GeoCache, lastRequestAt?: Map<string, number>) {
@@ -57,7 +63,7 @@ describe("GET /api/geocode/search", () => {
     const mockFetch = vi.fn();
     const app = makeApp(mockFetch as unknown as typeof fetch);
     const res = await app.request("/api/geocode/search", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+      headers: authH(token),
     });
     expect(res.status).toBe(400);
   });
@@ -70,7 +76,7 @@ describe("GET /api/geocode/search", () => {
     );
     const app = makeApp(mockFetch as unknown as typeof fetch);
     const res = await app.request("/api/geocode/search?q=Царёво", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+      headers: authH(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -85,7 +91,7 @@ describe("GET /api/geocode/search", () => {
     );
     const cache = new GeoCache();
     const app = makeApp(mockFetch as unknown as typeof fetch, cache);
-    const headers = { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` };
+    const headers = authH(token);
     await app.request("/api/geocode/search?q=Царёво", { headers });
     await app.request("/api/geocode/search?q=Царёво", { headers });
     expect(mockFetch).toHaveBeenCalledOnce();
@@ -95,7 +101,7 @@ describe("GET /api/geocode/search", () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED"));
     const app = makeApp(mockFetch as unknown as typeof fetch);
     const res = await app.request("/api/geocode/search?q=Москва", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+      headers: authH(token),
     });
     expect(res.status).toBe(503);
     expect(res.headers.get("retry-after")).toBe("30");
@@ -111,7 +117,7 @@ describe("GET /api/geocode/search", () => {
         new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } }),
       );
     const app = makeApp(mockFetch as unknown as typeof fetch);
-    const headers = { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` };
+    const headers = authH(token);
     // First request passes
     const res1 = await app.request("/api/geocode/search?q=test", { headers });
     expect(res1.status).toBe(200);
@@ -144,7 +150,7 @@ describe("GET /api/geocode/search", () => {
         }),
       );
       await app.request("/api/geocode/search?q=Казань", {
-        headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+        headers: authH(token),
       });
       const calledUrl = String(mockFetch.mock.calls[0]?.[0]);
       expect(calledUrl).toMatch(/^https:\/\/nominatim\.openstreetmap\.org/);

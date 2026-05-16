@@ -31,7 +31,7 @@ function makeSql() {
 }
 
 describe("POST /auth/telegram — cookie sentinel", () => {
-  it("response sets tg_uid with SameSite=None;Secure", async () => {
+  it("response sets sess_bind with SameSite=None;Secure", async () => {
     const router = createAuthRouter(makeSql());
     const res = await router.request("/telegram", {
       method: "POST",
@@ -41,10 +41,10 @@ describe("POST /auth/telegram — cookie sentinel", () => {
 
     expect(res.status).toBe(200);
     const cookies = res.headers.getSetCookie();
-    const tgCookie = cookies.find((c: string) => c.startsWith("tg_uid="));
-    expect(tgCookie).toBeTruthy();
-    expect(tgCookie).toContain("SameSite=None");
-    expect(tgCookie).toContain("Secure");
+    const bindCookie = cookies.find((c: string) => c.startsWith("sess_bind="));
+    expect(bindCookie).toBeTruthy();
+    expect(bindCookie).toContain("SameSite=None");
+    expect(bindCookie).toContain("Secure");
   });
 
   it("response sets csrf_token with SameSite=None;Secure", async () => {

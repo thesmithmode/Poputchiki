@@ -2,6 +2,7 @@
  * Integration: POST/DELETE /api/likes
  * Requires: Postgres + all migrations applied.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -44,12 +45,12 @@ let sql: ReturnType<typeof createPool>;
 async function authHeaders(u: TestUser, json = false): Promise<Record<string, string>> {
   const now = Math.floor(Date.now() / 1000);
   const token = await sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
   const h: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    Cookie: `tg_uid=${u.tgId}`,
+    Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
   };
   if (json) h["Content-Type"] = "application/json";
   return h;

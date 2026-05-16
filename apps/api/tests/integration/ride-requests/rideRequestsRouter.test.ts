@@ -2,6 +2,7 @@
  * Integration: POST /api/ride-requests/:id/{accept,reject,cancel}
  * Verifies state transitions, seats_taken refund, RLS isolation.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -36,7 +37,7 @@ let rideId: string;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -48,8 +49,8 @@ function makeApp(): Hono {
   return app;
 }
 
-function authHeaders(u: { tgId: number }, token: string) {
-  return { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${u.tgId}` };
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` };
 }
 
 async function makeRequest(status: "pending" | "accepted" | "rejected" | "cancelled" = "pending") {
@@ -103,7 +104,7 @@ describe("POST /api/ride-requests/:id/accept", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/accept`, {
       method: "POST",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -120,7 +121,7 @@ describe("POST /api/ride-requests/:id/accept", () => {
     const token = await makeToken(STRANGER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/accept`, {
       method: "POST",
-      headers: authHeaders(STRANGER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(404);
   });
@@ -131,7 +132,7 @@ describe("POST /api/ride-requests/:id/accept", () => {
       "/api/ride-requests/00000000-0000-4000-c000-700000000099/accept",
       {
         method: "POST",
-        headers: authHeaders(DRIVER, token),
+        headers: authHeaders(token),
       },
     );
     expect(res.status).toBe(404);
@@ -144,7 +145,7 @@ describe("POST /api/ride-requests/:id/reject", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/reject`, {
       method: "POST",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -161,7 +162,7 @@ describe("POST /api/ride-requests/:id/reject", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/reject`, {
       method: "POST",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(409);
   });
@@ -173,7 +174,7 @@ describe("POST /api/ride-requests/:id/cancel", () => {
     const token = await makeToken(PASSENGER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/cancel`, {
       method: "POST",
-      headers: authHeaders(PASSENGER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -190,7 +191,7 @@ describe("POST /api/ride-requests/:id/cancel", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/cancel`, {
       method: "POST",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(403);
   });
@@ -200,7 +201,7 @@ describe("POST /api/ride-requests/:id/cancel", () => {
     const token = await makeToken(PASSENGER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/cancel`, {
       method: "POST",
-      headers: authHeaders(PASSENGER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(409);
   });
@@ -209,7 +210,7 @@ describe("POST /api/ride-requests/:id/cancel", () => {
     const token = await makeToken(PASSENGER);
     const res = await makeApp().request("/api/ride-requests/not-uuid/cancel", {
       method: "POST",
-      headers: authHeaders(PASSENGER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(400);
   });

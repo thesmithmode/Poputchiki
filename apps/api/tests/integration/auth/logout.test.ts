@@ -66,7 +66,7 @@ describe("POST /auth/logout — revoke effect", () => {
 
     // cookies cleared
     const cookie = logoutRes.headers.get("set-cookie") ?? "";
-    expect(cookie).toContain("tg_uid=;");
+    expect(cookie).toContain("sess_bind=;");
 
     await sql`DELETE FROM rate_limit_buckets WHERE key LIKE 'auth:%'`.catch(() => null);
 

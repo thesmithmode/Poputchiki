@@ -2,6 +2,7 @@
  * Integration: POST/GET /api/support/messages + admin endpoints
  * Requires: Postgres + all migrations applied.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,7 +24,7 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -65,7 +66,7 @@ describe("POST /api/support/messages", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ text: "I need help with my account" }),
@@ -85,7 +86,7 @@ describe("POST /api/support/messages", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ text: "" }),
@@ -105,7 +106,7 @@ describe("GET /api/support/messages/me", () => {
     const app = makeApp();
     const token = await makeToken(USER);
     const res = await app.request("/api/support/messages/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -117,7 +118,7 @@ describe("GET /api/support/messages/me", () => {
     const app = makeApp();
     const token = await makeToken(USER_B);
     const res = await app.request("/api/support/messages/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER_B.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -130,7 +131,7 @@ describe("GET /api/admin/support/messages", () => {
     const app = makeApp();
     const token = await makeToken(ADMIN);
     const res = await app.request("/api/admin/support/messages", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${ADMIN.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -142,7 +143,7 @@ describe("GET /api/admin/support/messages", () => {
     const app = makeApp();
     const token = await makeToken(USER);
     const res = await app.request("/api/admin/support/messages", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` },
+      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
     });
     expect(res.status).toBe(403);
   });
@@ -160,7 +161,7 @@ describe("POST /api/admin/support/messages/:id/reply", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${ADMIN.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ reply_text: "Your issue has been resolved." }),
@@ -182,7 +183,7 @@ describe("POST /api/admin/support/messages/:id/reply", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ reply_text: "Hack" }),

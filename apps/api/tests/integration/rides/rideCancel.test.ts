@@ -5,6 +5,7 @@
  * - audit_log запись с daily_cancels
  * - 4-я отмена за день → flagged_for_review=true
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -44,7 +45,7 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
     JWT_SECRET,
   );
 }
@@ -57,8 +58,8 @@ function makeApp(): Hono {
   return app;
 }
 
-function authHeaders(u: { tgId: number }, token: string) {
-  return { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${u.tgId}` };
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` };
 }
 
 async function seedRide(): Promise<string> {
@@ -121,7 +122,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}/cancel`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -150,7 +151,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
     const token = await makeToken(STRANGER);
     const res = await makeApp().request(`/api/rides/${rideId}/cancel`, {
       method: "PATCH",
-      headers: authHeaders(STRANGER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(403);
   });
@@ -161,7 +162,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}/cancel`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(409);
   });
@@ -170,7 +171,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request("/api/rides/00000000-0000-4000-c000-720000000099/cancel", {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(404);
   });
@@ -179,7 +180,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request("/api/rides/garbage/cancel", {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(400);
   });
@@ -203,7 +204,7 @@ describe("PATCH /api/rides/:id/cancel", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}/cancel`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);

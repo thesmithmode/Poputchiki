@@ -38,8 +38,9 @@ describe("parseApiEnv", () => {
     expect(() => parseApiEnv({ ...VALID_ENV, DATABASE_URL: "" })).toThrow();
   });
 
-  it("JWT_SECRET слишком короткий (менее 16 символов) → бросает ZodError", () => {
+  it("JWT_SECRET слишком короткий (менее 32 символов) → бросает ZodError", () => {
     expect(() => parseApiEnv({ ...VALID_ENV, JWT_SECRET: "short" })).toThrow();
+    expect(() => parseApiEnv({ ...VALID_ENV, JWT_SECRET: "exactly-16-chars" })).toThrow();
   });
 
   it("PORT невалидный (не число) → бросает ZodError", () => {

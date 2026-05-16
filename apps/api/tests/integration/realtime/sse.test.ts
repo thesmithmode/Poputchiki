@@ -3,6 +3,7 @@
  * Requires: Postgres + migrations applied.
  * Uses Node http.createServer (real HTTP) so stream.onAbort fires → finally block covered.
  */
+import { sessBind } from "../../helpers/auth";
 import { randomUUID } from "node:crypto";
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -49,7 +50,7 @@ async function makeAuthHeaders(user: { id: string; tgId: number; role: string })
   );
   return {
     Authorization: `Bearer ${token}`,
-    Cookie: `tg_uid=${user.tgId}`,
+    Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
   };
 }
 

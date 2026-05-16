@@ -2,6 +2,7 @@
  * Integration tests: GET /api/rides/mine against real Postgres.
  * role=driver|passenger × when=future|past, RLS, driver_display_name.
  */
+import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -45,6 +46,7 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
       uid: user.id,
       role: user.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -73,7 +75,7 @@ async function authedRequest(
   return app.request(`/api/${path}`, {
     headers: {
       Authorization: `Bearer ${token}`,
-      Cookie: `tg_uid=${user.tgId}`,
+      Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       "X-Forwarded-For": TEST_IP,
     },
   });

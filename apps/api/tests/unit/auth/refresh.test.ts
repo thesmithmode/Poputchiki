@@ -58,7 +58,7 @@ describe("POST /auth/refresh", () => {
     expect(body.access_token).not.toBe(refreshToken);
   });
 
-  it("SENTINEL: успешный refresh — переустанавливает tg_uid и csrf_token cookies", async () => {
+  it("SENTINEL: успешный refresh — переустанавливает sess_bind и csrf_token cookies", async () => {
     const router = createAuthRouter(makeSql());
     const refreshToken = await makeRefreshToken();
 
@@ -71,7 +71,8 @@ describe("POST /auth/refresh", () => {
     expect(res.status).toBe(200);
     const setCookies = res.headers.getSetCookie?.() ?? [res.headers.get("set-cookie") ?? ""];
     const joined = setCookies.join("; ");
-    expect(joined).toContain("tg_uid=99999");
+    // sess_bind = HMAC(jwtSecret, accessJti) — точное значение не предсказать, проверяем наличие
+    expect(joined).toMatch(/sess_bind=[0-9a-f]{32}/);
     expect(joined).toContain("csrf_token=");
   });
 

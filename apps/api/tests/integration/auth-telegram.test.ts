@@ -71,7 +71,7 @@ describe("POST /auth/telegram — happy path", () => {
     expect(body.user?.tg_id).toBe(TG_ID);
   });
 
-  it("sets tg_uid and csrf_token cookies", async () => {
+  it("sets sess_bind and csrf_token cookies", async () => {
     const now = Math.floor(Date.now() / 1000);
     const initData = makeInitData(TG_ID + 1, now, BOT_TOKEN);
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 1}`.catch(() => null);
@@ -81,14 +81,15 @@ describe("POST /auth/telegram — happy path", () => {
       body: JSON.stringify({ initData }),
     });
     const cookieHeader = res.headers.get("set-cookie") ?? "";
-    const hasUid = cookieHeader.includes(`tg_uid=${TG_ID + 1}`);
+    const hasBind = /sess_bind=[0-9a-f]{32}/.test(cookieHeader);
     const hasCsrf = cookieHeader.includes("csrf_token=");
-    expect(hasUid).toBe(true);
+    expect(hasBind).toBe(true);
     expect(hasCsrf).toBe(true);
-    const tgUidPart = cookieHeader.split(/,(?=\s*\w+=)/).find((p) => p.includes("tg_uid=")) ?? "";
+    const sessBindPart =
+      cookieHeader.split(/,(?=\s*\w+=)/).find((p) => p.includes("sess_bind=")) ?? "";
     const csrfPart =
       cookieHeader.split(/,(?=\s*\w+=)/).find((p) => p.includes("csrf_token=")) ?? "";
-    expect(/HttpOnly/i.test(tgUidPart)).toBe(true);
+    expect(/HttpOnly/i.test(sessBindPart)).toBe(true);
     expect(/HttpOnly/i.test(csrfPart)).toBe(false);
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 1}`.catch(() => null);
   });
@@ -319,7 +320,7 @@ describe("POST /auth/logout — logout endpoint", () => {
     const body = await readJson(logoutRes);
     expect(body.ok).toBe(true);
     const cookieHeader = logoutRes.headers.get("set-cookie") ?? "";
-    expect(cookieHeader).toContain("tg_uid=");
+    expect(cookieHeader).toContain("sess_bind=");
     expect(cookieHeader).toContain("csrf_token=");
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 200}`.catch(() => null);
   });

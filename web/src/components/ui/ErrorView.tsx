@@ -25,8 +25,8 @@ export function ErrorView({ message, onRetry }: Props) {
           data-testid="retry-btn"
           onClick={onRetry}
           style={{
-            background: "#2563eb",
-            color: "#fff",
+            background: "var(--brand-primary)",
+            color: "var(--brand-primary-ink)",
             border: "none",
             borderRadius: 8,
             padding: "8px 20px",

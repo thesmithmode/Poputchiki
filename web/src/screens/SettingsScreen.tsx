@@ -347,12 +347,13 @@ export function SettingsScreen() {
                 style={{
                   flex: 1,
                   padding: "12px",
-                  background: confirmText === "УДАЛИТЬ" ? "var(--brand-danger)" : "#fca5a5",
+                  background:
+                    confirmText === "УДАЛИТЬ" ? "var(--brand-danger)" : "var(--brand-danger-soft)",
                   border: "none",
                   borderRadius: 10,
                   fontSize: 14,
                   fontWeight: 600,
-                  color: "#fff",
+                  color: confirmText === "УДАЛИТЬ" ? "#fff" : "var(--brand-sub)",
                   cursor: confirmText === "УДАЛИТЬ" ? "pointer" : "not-allowed",
                 }}
               >

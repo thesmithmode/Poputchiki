@@ -13,7 +13,8 @@ export function Skeleton({ lines = 3, "data-testid": testId = "skeleton" }: Prop
           style={{
             height: 16,
             borderRadius: 8,
-            background: "linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)",
+            background:
+              "linear-gradient(90deg, var(--brand-surface-2) 25%, var(--brand-inset) 50%, var(--brand-surface-2) 75%)",
             width: i === lines - 1 ? "60%" : "100%",
           }}
         />

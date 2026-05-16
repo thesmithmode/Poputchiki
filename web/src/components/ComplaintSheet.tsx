@@ -53,7 +53,7 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
         zIndex: 100,
         display: "flex",
         alignItems: "flex-end",
-        background: "rgba(0,0,0,0.4)",
+        background: "rgba(0,0,0,0.5)",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -65,7 +65,8 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
       <div
         style={{
           width: "100%",
-          background: "#fff",
+          background: "var(--brand-surface)",
+          color: "var(--brand-text)",
           borderRadius: "16px 16px 0 0",
           padding: "20px 16px 32px",
         }}
@@ -134,7 +135,9 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
             width: "100%",
             minHeight: 72,
             borderRadius: 10,
-            border: "1px solid #d1d5db",
+            border: "1px solid var(--brand-line)",
+            background: "var(--brand-surface-2)",
+            color: "var(--brand-text)",
             padding: "8px 10px",
             fontSize: 14,
             resize: "vertical",
@@ -150,8 +153,8 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
           style={{
             marginTop: 14,
             width: "100%",
-            background: reason ? "#2563eb" : "#d1d5db",
-            color: "#fff",
+            background: reason ? "var(--brand-primary)" : "var(--brand-inset)",
+            color: reason ? "var(--brand-primary-ink)" : "var(--brand-sub)",
             border: "none",
             borderRadius: 12,
             padding: "13px 0",

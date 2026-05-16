@@ -29,13 +29,13 @@ export function FavoritesScreen() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
       }}
     >
       <header
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
@@ -108,10 +108,10 @@ function FavoriteRow({ entry, onNavigate, onToggleNotify, onRemove }: FavoriteRo
     <div
       data-testid={`fav-${entry.target_id}`}
       style={{
-        background: "#fff",
+        background: "var(--brand-surface)",
         borderRadius: 12,
         padding: "12px 16px",
-        border: "1px solid #e5e7eb",
+        border: "1px solid var(--brand-line)",
         display: "flex",
         alignItems: "center",
         gap: 12,

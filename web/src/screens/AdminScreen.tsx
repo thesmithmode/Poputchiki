@@ -128,13 +128,13 @@ export function AdminScreen() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
       }}
     >
       <header
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
@@ -164,7 +164,13 @@ export function AdminScreen() {
         </h1>
       </header>
 
-      <div style={{ display: "flex", borderBottom: "1px solid #e5e7eb", background: "#fff" }}>
+      <div
+        style={{
+          display: "flex",
+          borderBottom: "1px solid var(--brand-line)",
+          background: "var(--brand-surface)",
+        }}
+      >
         <button
           type="button"
           data-testid="tab-tickets"
@@ -176,8 +182,9 @@ export function AdminScreen() {
             border: "none",
             fontSize: 14,
             fontWeight: tab === "tickets" ? 700 : 400,
-            color: tab === "tickets" ? "#2563eb" : "#7c8694",
-            borderBottom: tab === "tickets" ? "2px solid #2563eb" : "2px solid transparent",
+            color: tab === "tickets" ? "var(--brand-primary)" : "var(--brand-sub)",
+            borderBottom:
+              tab === "tickets" ? "2px solid var(--brand-primary)" : "2px solid transparent",
             cursor: "pointer",
           }}
         >
@@ -194,8 +201,9 @@ export function AdminScreen() {
             border: "none",
             fontSize: 14,
             fontWeight: tab === "complaints" ? 700 : 400,
-            color: tab === "complaints" ? "#2563eb" : "#7c8694",
-            borderBottom: tab === "complaints" ? "2px solid #2563eb" : "2px solid transparent",
+            color: tab === "complaints" ? "var(--brand-primary)" : "var(--brand-sub)",
+            borderBottom:
+              tab === "complaints" ? "2px solid var(--brand-primary)" : "2px solid transparent",
             cursor: "pointer",
           }}
         >
@@ -222,10 +230,10 @@ export function AdminScreen() {
                 <div
                   key={t.id}
                   style={{
-                    background: "#fff",
+                    background: "var(--brand-surface)",
                     borderRadius: 12,
                     padding: "12px 16px",
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--brand-line)",
                   }}
                 >
                   <p style={{ fontSize: 14, margin: "0 0 8px", color: "var(--brand-text)" }}>
@@ -244,8 +252,8 @@ export function AdminScreen() {
                       }}
                       style={{
                         marginLeft: "auto",
-                        background: "#2563eb",
-                        color: "#fff",
+                        background: "var(--brand-primary)",
+                        color: "var(--brand-primary-ink)",
                         border: "none",
                         borderRadius: 8,
                         padding: "6px 12px",
@@ -269,7 +277,9 @@ export function AdminScreen() {
                           width: "100%",
                           minHeight: 80,
                           borderRadius: 8,
-                          border: "1px solid #d1d5db",
+                          border: "1px solid var(--brand-line)",
+                          background: "var(--brand-surface-2)",
+                          color: "var(--brand-text)",
                           padding: "8px 10px",
                           fontSize: 13,
                           resize: "vertical",
@@ -283,8 +293,8 @@ export function AdminScreen() {
                           disabled={!replyText.trim() || submitting}
                           onClick={() => submitReply(t.id)}
                           style={{
-                            background: "#2563eb",
-                            color: "#fff",
+                            background: "var(--brand-primary)",
+                            color: "var(--brand-primary-ink)",
                             border: "none",
                             borderRadius: 8,
                             padding: "8px 16px",
@@ -299,7 +309,7 @@ export function AdminScreen() {
                           onClick={() => setReplyingTo(null)}
                           style={{
                             background: "none",
-                            border: "1px solid #d1d5db",
+                            border: "1px solid var(--brand-line)",
                             borderRadius: 8,
                             padding: "8px 12px",
                             fontSize: 13,
@@ -337,10 +347,10 @@ export function AdminScreen() {
                   key={c.id}
                   data-testid={`complaint-${c.id}`}
                   style={{
-                    background: "#fff",
+                    background: "var(--brand-surface)",
                     borderRadius: 12,
                     padding: "12px 16px",
-                    border: "1px solid #e5e7eb",
+                    border: "1px solid var(--brand-line)",
                   }}
                 >
                   <p style={{ fontSize: 14, margin: "0 0 8px", color: "var(--brand-text)" }}>
@@ -356,8 +366,8 @@ export function AdminScreen() {
                       onClick={() => resolveComplaint(c.id)}
                       style={{
                         marginLeft: "auto",
-                        background: "#16a34a",
-                        color: "#fff",
+                        background: "var(--brand-primary)",
+                        color: "var(--brand-primary-ink)",
                         border: "none",
                         borderRadius: 8,
                         padding: "6px 12px",

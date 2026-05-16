@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T12:33:50.930Z",
+  "timestamp": "2026-05-16T12:36:39.258Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,21 +18,21 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".memory/daily/2026-05-16.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/flush.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
+    },
+    {
+      "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/geocode/geocodeRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/AddressAutocomplete.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/lib/tsarevoPresets.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n09df5d5 CHORE: обновить memory-логи — сессия 2026-05-16 address autocomplete\ned83671 FEAT: умные пресеты адресов + MapPicker для CreateRideScreen\n5bf8a5d CHORE: обновить memory-логи — 2026-05-16 session\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session\n8dc37c2 FIX: тема — заменить hardcoded цвета на CSS-токены --brand-*"
+  "context_notes": "Recent commits:\nfbfad99 FIX: smart matching presets — word-boundary токены, нормализация unicode\n09df5d5 CHORE: обновить memory-логи — сессия 2026-05-16 address autocomplete\ned83671 FEAT: умные пресеты адресов + MapPicker для CreateRideScreen\n5bf8a5d CHORE: обновить memory-логи — 2026-05-16 session\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session"
 }

@@ -7,6 +7,18 @@ import { GeoCache } from "./geoCache";
 // Свой кэш + per-user rate-limit ниже снижают нагрузку на их инфру.
 const NOMINATIM_DEFAULT = "https://nominatim.openstreetmap.org";
 
+// Public Nominatim: 1 req/sec policy. Self-hosted (например http://nominatim:8080 в compose) —
+// свой инстанс, безопасно держать ~10 rps на пользователя.
+const PUBLIC_NOMINATIM_HOST = "nominatim.openstreetmap.org";
+function rateLimitIntervalMs(nominatimUrl: string): number {
+  try {
+    const host = new URL(nominatimUrl).host;
+    return host === PUBLIC_NOMINATIM_HOST ? 1000 : 100;
+  } catch {
+    return 1000;
+  }
+}
+
 // Рабочая зона: Казань + ЖК Царёво + аэропорт + окрестности до Старо��о Шигалеево.
 // Nominatim viewbox формат: left(min_lon),top(max_lat),right(max_lon),bottom(min_lat)
 const BBOX_KAZAN_AREA = "48.5,56.2,50.0,55.3";
@@ -84,10 +96,11 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     const q = c.req.query("q");
     if (!q?.trim()) return c.json({ error: "q is required" }, 400);
 
-    // 1 req/sec per user rate limit
+    const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
+    const rateMs = rateLimitIntervalMs(nominatimUrl);
     const now = Date.now();
     const lastAt = lastRequestAt.get(user.id) ?? 0;
-    if (now - lastAt < 1000) {
+    if (now - lastAt < rateMs) {
       c.header("Retry-After", "1");
       return c.json({ error: "rate limit exceeded" }, 429);
     }
@@ -100,7 +113,6 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     }
 
     try {
-      const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
       const url = buildSearchUrl(nominatimUrl, q);
 
       const resp = await fetchFn(url.toString(), {
@@ -140,9 +152,11 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       return c.json({ error: "out_of_area" }, 400);
     }
 
+    const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
+    const rateMs = rateLimitIntervalMs(nominatimUrl);
     const now = Date.now();
     const lastAt = lastRequestAt.get(user.id) ?? 0;
-    if (now - lastAt < 1000) {
+    if (now - lastAt < rateMs) {
       c.header("Retry-After", "1");
       return c.json({ error: "rate limit exceeded" }, 429);
     }
@@ -153,7 +167,6 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     if (cached !== undefined) return c.json(cached);
 
     try {
-      const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
       const url = new URL(`${nominatimUrl}/reverse`);
       url.searchParams.set("lat", String(lat));
       url.searchParams.set("lon", String(lon));

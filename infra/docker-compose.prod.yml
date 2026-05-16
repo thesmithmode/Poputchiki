@@ -114,6 +114,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      nominatim:
+        condition: service_started
     volumes:
       - /opt/poputchiki/logs:/app/logs
     networks:
@@ -273,16 +275,21 @@ services:
   nominatim:
     image: mediagis/nominatim:4.4
     restart: unless-stopped
-    profiles:
-      - nominatim
     environment:
-      PBF_URL: https://download.geofabrik.de/russia/volga-fed-district-latest.osm.pbf
-      REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district-updates/
+      PBF_URL: https://download.geofabrik.de/russia/volga-fed-district/tatarstan-latest.osm.pbf
+      REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district/tatarstan-updates/
       NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
+      IMPORT_STYLE: address
     volumes:
       - /opt/poputchiki/nominatim-data:/var/lib/postgresql/14/main
     networks:
       - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/status?format=json || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 30m
     logging:
       driver: json-file
       options:

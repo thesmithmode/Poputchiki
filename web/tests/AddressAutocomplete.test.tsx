@@ -57,11 +57,11 @@ describe("AddressAutocomplete", () => {
     expect(screen.getByTestId("addr")).toBeInTheDocument();
   });
 
-  it("focus с пустым значением — показывает пресеты Царёво", () => {
+  it("focus с пустым значением — НЕ показывает список (пресеты только при typing)", () => {
     render(<Harness />);
     fireEvent.focus(screen.getByTestId("addr"));
-    expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
-    expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
+    expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
+    expect(screen.queryByText("Царёво Village, ул. Тукая, д. 4")).not.toBeInTheDocument();
   });
 
   it("не показывает dropdown пока input без focus", () => {
@@ -248,11 +248,30 @@ describe("AddressAutocomplete", () => {
     );
   });
 
-  it("пресеты Царёво показываются при фокусе без запроса", () => {
+  it("пресеты Царёво НЕ показываются при пустом focus — только при typing", () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
+    expect(screen.queryByText("Царёво Village, ул. Тукая, д. 4")).not.toBeInTheDocument();
+    fireEvent.change(input, { target: { value: "Тукая 4" } });
     expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
-    expect(screen.getByText(/Казанский аэропорт/)).toBeInTheDocument();
+  });
+
+  it("smart matching: 'тукая 31' даёт preset д.31 если он есть в списке", () => {
+    render(<Harness />);
+    const input = screen.getByTestId("addr");
+    fireEvent.focus(input);
+    // В presetsData нет д.31 → пустой список (фронт-side), Nominatim покроет через structured search.
+    // Но "тукая 4" → matches preset д.4 через алиас.
+    fireEvent.change(input, { target: { value: "тукая 4" } });
+    expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
+  });
+
+  it("smart matching: 'мега' матчит ТЦ МЕГА через алиас", () => {
+    render(<Harness />);
+    const input = screen.getByTestId("addr");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "мега" } });
+    expect(screen.getByText(/ТЦ МЕГА/)).toBeInTheDocument();
   });
 });

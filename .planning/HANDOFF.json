@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T12:12:35.135Z",
+  "timestamp": "2026-05-16T12:36:39.258Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -31,12 +31,8 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "??",
-      "path": ".memory/scripts/session-flush-b72238b4-5602-4735-85e8-967739a0dbca-20260516-151210.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session\n8dc37c2 FIX: тема — заменить hardcoded цвета на CSS-токены --brand-*\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing\n6ab39e4 CHORE: обновить memory-логи — 2026-05-16"
+  "context_notes": "Recent commits:\nfbfad99 FIX: smart matching presets — word-boundary токены, нормализация unicode\n09df5d5 CHORE: обновить memory-логи — сессия 2026-05-16 address autocomplete\ned83671 FEAT: умные пресеты адресов + MapPicker для CreateRideScreen\n5bf8a5d CHORE: обновить memory-логи — 2026-05-16 session\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session"
 }

@@ -21,6 +21,48 @@ function inKazanArea(lat: number, lon: number): boolean {
   return lat >= LAT_MIN && lat <= LAT_MAX && lon >= LON_MIN && lon <= LON_MAX;
 }
 
+// "Тукая 31", "ул. Тукая, д. 31", "г.Тукая 31" → { street: "Тукая 31" }.
+// Если совпало — используем structured search Nominatim с village/county/state, чтобы
+// public-инстанс не выдавал "ул. Тукая" из других городов России.
+const TSAREVO_STREET_RE =
+  /(?:^|\s)(?:ул\.?|улица|г\.?|город)?\s*(?:габдуллы\s+)?тук[ао]я\s*,?\s*(?:д\.?|дом)?\s*(\d+[а-я]?)\b/i;
+
+interface ParsedQuery {
+  structured: boolean;
+  params: Record<string, string>;
+}
+
+function parseQuery(q: string): ParsedQuery {
+  const m = q.match(TSAREVO_STREET_RE);
+  if (m) {
+    return {
+      structured: true,
+      params: {
+        street: `Тукая ${m[1]}`,
+        village: "Новое Шигалеево",
+        county: "Пестречинский район",
+        state: "Татарстан",
+        country: "Россия",
+      },
+    };
+  }
+  return { structured: false, params: { q } };
+}
+
+function buildSearchUrl(nominatimUrl: string, q: string): URL {
+  const url = new URL(`${nominatimUrl}/search`);
+  const parsed = parseQuery(q);
+  for (const [k, v] of Object.entries(parsed.params)) {
+    url.searchParams.set(k, v);
+  }
+  url.searchParams.set("format", "json");
+  url.searchParams.set("limit", "12");
+  url.searchParams.set("viewbox", BBOX_KAZAN_AREA);
+  url.searchParams.set("bounded", "1");
+  url.searchParams.set("addressdetails", "1");
+  return url;
+}
+
 interface GeocodeRouterOptions {
   cache?: GeoCache | undefined;
   _fetch?: typeof fetch | undefined;
@@ -59,13 +101,7 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
 
     try {
       const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
-      const url = new URL(`${nominatimUrl}/search`);
-      url.searchParams.set("q", q);
-      url.searchParams.set("format", "json");
-      url.searchParams.set("limit", "12");
-      url.searchParams.set("viewbox", BBOX_KAZAN_AREA);
-      url.searchParams.set("bounded", "1");
-      url.searchParams.set("addressdetails", "1");
+      const url = buildSearchUrl(nominatimUrl, q);
 
       const resp = await fetchFn(url.toString(), {
         headers: { "Accept-Language": "ru", "User-Agent": "Poputchiki/1.0" },
@@ -88,6 +124,58 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       // список: фронт показывает явную ошибку, юзер понимает что сервис не работает.
       c.header("Retry-After", "30");
       return c.json({ error: "geocoder_unavailable", results: [] }, 503);
+    }
+  });
+
+  app.get("/reverse", async (c) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    if (!user) return c.json({ error: "unauthorized" }, 401);
+
+    const lat = Number(c.req.query("lat"));
+    const lon = Number(c.req.query("lon"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      return c.json({ error: "lat/lon required" }, 400);
+    }
+    if (!inKazanArea(lat, lon)) {
+      return c.json({ error: "out_of_area" }, 400);
+    }
+
+    const now = Date.now();
+    const lastAt = lastRequestAt.get(user.id) ?? 0;
+    if (now - lastAt < 1000) {
+      c.header("Retry-After", "1");
+      return c.json({ error: "rate limit exceeded" }, 429);
+    }
+    lastRequestAt.set(user.id, now);
+
+    const cacheKey = `rev:${lat.toFixed(5)}:${lon.toFixed(5)}`;
+    const cached = cache.get(cacheKey);
+    if (cached !== undefined) return c.json(cached);
+
+    try {
+      const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
+      const url = new URL(`${nominatimUrl}/reverse`);
+      url.searchParams.set("lat", String(lat));
+      url.searchParams.set("lon", String(lon));
+      url.searchParams.set("format", "json");
+      url.searchParams.set("addressdetails", "1");
+      url.searchParams.set("zoom", "18");
+
+      const resp = await fetchFn(url.toString(), {
+        headers: { "Accept-Language": "ru", "User-Agent": "Poputchiki/1.0" },
+        signal: AbortSignal.timeout(5000),
+      });
+      const raw = (await resp.json()) as { display_name?: string; lat?: string; lon?: string };
+      const result = {
+        display_name: raw.display_name ?? `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+        lat: raw.lat ?? String(lat),
+        lon: raw.lon ?? String(lon),
+      };
+      cache.set(cacheKey, result);
+      return c.json(result);
+    } catch {
+      c.header("Retry-After", "30");
+      return c.json({ error: "geocoder_unavailable" }, 503);
     }
   });
 

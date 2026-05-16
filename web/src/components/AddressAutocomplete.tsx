@@ -46,7 +46,7 @@ export function AddressAutocomplete({
   const fetchGeoSuggestions = useCallback(async (query: string) => {
     const trimmed = query.trim();
     if (trimmed.length < MIN_GEOCODE_CHARS) {
-      setGeoSuggestions([]);
+      // Меньше 3 символов — пресеты уже выставлены синхронно в useEffect ниже.
       setLoading(false);
       return;
     }
@@ -69,12 +69,10 @@ export function AddressAutocomplete({
             ];
           })
         : [];
-      // Пресеты Царёво в начале списка, если совпадают с запросом
       const presets = getMatchingPresets(trimmed);
       const combined = [...presets, ...geo].slice(0, MAX_SUGGESTIONS);
       setGeoSuggestions(combined);
     } catch {
-      // При ошибке Nominatim показываем только пресеты
       setGeoSuggestions(getMatchingPresets(trimmed));
     } finally {
       setLoading(false);
@@ -83,8 +81,15 @@ export function AddressAutocomplete({
 
   useEffect(() => {
     const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      // Пустое поле — не показываем выпадашку. Пресеты появляются только когда юзер
+      // начал вводить (см. ниже). Это убирает спам пресетов на focus пустого поля.
+      setGeoSuggestions([]);
+      setLoading(false);
+      return;
+    }
     if (trimmed.length < MIN_GEOCODE_CHARS) {
-      // Короткий/пустой запрос — сразу показываем пресеты, не ждём дебаунс
+      // 1-2 символа: только пресеты, без удара по Nominatim.
       setGeoSuggestions(getMatchingPresets(trimmed));
       setLoading(false);
       return;

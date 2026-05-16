@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AddressAutocomplete, type Coords } from "../components/AddressAutocomplete";
+import { MapPicker } from "../components/MapPicker";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import { apiFetch } from "../lib/api";
@@ -58,6 +59,7 @@ export function CreateRideScreen() {
   const [hasMainButton, setHasMainButton] = useState(false);
   const [fromCoords, setFromCoords] = useState<Coords | null>(null);
   const [toCoords, setToCoords] = useState<Coords | null>(null);
+  const [pickerOpen, setPickerOpen] = useState<null | "from" | "to">(null);
   const submitRef = useRef<() => void>(() => {});
   // Idempotency guard для POST /rides: MainButton.text обновляется в useEffect[step]
   // асинхронно, есть окно ~10мс где text="Далее", но submitRef.current=handleSubmit.
@@ -315,31 +317,79 @@ export function CreateRideScreen() {
         {step === 1 && (
           <Section>
             <Field label="Откуда">
-              <AddressAutocomplete
-                testId="input-from"
-                value={form.from_label}
-                onChange={(v, coords) => {
-                  setForm((f) => ({ ...f, from_label: v }));
-                  setFromCoords(coords ?? null);
-                }}
-                placeholder="Адрес отправления"
-                inputStyle={inputStyle}
-              />
+              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <AddressAutocomplete
+                    testId="input-from"
+                    value={form.from_label}
+                    onChange={(v, coords) => {
+                      setForm((f) => ({ ...f, from_label: v }));
+                      setFromCoords(coords ?? null);
+                    }}
+                    placeholder="Адрес отправления"
+                    inputStyle={inputStyle}
+                  />
+                </div>
+                <button
+                  type="button"
+                  data-testid="open-map-from"
+                  onClick={() => setPickerOpen("from")}
+                  aria-label="Выбрать на карте"
+                  title="Выбрать на карте"
+                  style={mapButtonStyle}
+                >
+                  🗺
+                </button>
+              </div>
             </Field>
             <Field label="Куда">
-              <AddressAutocomplete
-                testId="input-to"
-                value={form.to_label}
-                onChange={(v, coords) => {
-                  setForm((f) => ({ ...f, to_label: v }));
-                  setToCoords(coords ?? null);
-                }}
-                placeholder="Адрес назначения"
-                inputStyle={inputStyle}
-              />
+              <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <AddressAutocomplete
+                    testId="input-to"
+                    value={form.to_label}
+                    onChange={(v, coords) => {
+                      setForm((f) => ({ ...f, to_label: v }));
+                      setToCoords(coords ?? null);
+                    }}
+                    placeholder="Адрес назначения"
+                    inputStyle={inputStyle}
+                  />
+                </div>
+                <button
+                  type="button"
+                  data-testid="open-map-to"
+                  onClick={() => setPickerOpen("to")}
+                  aria-label="Выбрать на карте"
+                  title="Выбрать на карте"
+                  style={mapButtonStyle}
+                >
+                  🗺
+                </button>
+              </div>
             </Field>
           </Section>
         )}
+        <MapPicker
+          open={pickerOpen === "from"}
+          initialCoords={fromCoords}
+          title="Откуда — выберите на карте"
+          onClose={() => setPickerOpen(null)}
+          onPick={(label, coords) => {
+            setForm((f) => ({ ...f, from_label: label }));
+            setFromCoords(coords);
+          }}
+        />
+        <MapPicker
+          open={pickerOpen === "to"}
+          initialCoords={toCoords}
+          title="Куда — выберите на карте"
+          onClose={() => setPickerOpen(null)}
+          onPick={(label, coords) => {
+            setForm((f) => ({ ...f, to_label: label }));
+            setToCoords(coords);
+          }}
+        />
 
         {step === 2 && (
           <Section>
@@ -607,6 +657,17 @@ const inputStyle: React.CSSProperties = {
   color: "var(--brand-text)",
   background: "var(--brand-surface)",
   boxSizing: "border-box",
+};
+
+const mapButtonStyle: React.CSSProperties = {
+  flex: "0 0 auto",
+  width: 44,
+  border: "1px solid var(--brand-line)",
+  borderRadius: 8,
+  background: "var(--brand-surface)",
+  color: "var(--brand-text)",
+  fontSize: 18,
+  cursor: "pointer",
 };
 
 function Section({ children }: { children: React.ReactNode }) {

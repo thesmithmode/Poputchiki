@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T09:28:33.196Z",
+  "timestamp": "2026-05-16T10:11:42.899Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -22,7 +22,7 @@
     },
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-15.md"
+      "path": ".memory/daily/2026-05-16.md"
     },
     {
       "status": "M",
@@ -37,14 +37,118 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "??",
-      "path": ".memory/daily/2026-05-16.md"
+      "status": "M",
+      "path": "apps/api/src/geocode/geocodeRouter.ts"
     },
     {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/useme-auth-flow.md"
+      "status": "M",
+      "path": "apps/api/tests/integration/complaints/complaintsRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/favorites/favoritesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/likes/likesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/notifications/notificationPreferences.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/realtime/sse.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/reviews/reviewsRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/ride-requests/rideRequestsRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/confirmParticipation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/getMyRides.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/getRide.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/getRides.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/markParticipants.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/rideCancel.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/ridePatch.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/rideRequest.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/ridesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/support/supportRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-delete-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-patch-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-schedule.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/security/sql-injection.spec.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/middleware/identity-guard.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/realtime/realtimeRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/lib/presetsData.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/MapScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n65a2b7f FIX: закрыть уязвимости auth — replay/cookie-bypass/access-ttl/freshness/entropy\n56f4a0c TEST: обновить тесты AddressAutocomplete под новое поведение с пресетами\n14634d5 FIX: auth-уязвимость разных профилей, геокодинг bbox, пресеты Царёво, карта маршрута\nbd6eaf3 REFACTOR: hardcoded text colors → CSS vars — fix тёмной темы\n5dada4b CHORE: обновить memory-логи + HANDOFF — fix геокодера 2026-05-15"
+  "context_notes": "Recent commits:\nb95ffc4 FIX: геокодер хард-фильтр bbox Казани + fix vi.resetModules в тесте\n87f86af FIX: getMatchingPresets убрать KEYWORDS-ветку — фильтровать только по label\n94e9748 FIX: пресеты адресов — реальные координаты ЖК Царёво Village + деревни\nf8db487 FIX: баг карты и цветов в тёмной теме — Leaflet marker 404, hardcoded hex\n91de73e CHORE: обновить memory-логи — auth-fix сессия 2026-05-16"
 }

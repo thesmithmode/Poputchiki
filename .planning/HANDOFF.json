@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T10:11:42.899Z",
+  "timestamp": "2026-05-16T12:01:49.378Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -38,117 +38,57 @@
     },
     {
       "status": "M",
-      "path": "apps/api/src/geocode/geocodeRouter.ts"
+      "path": "web/src/App.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/complaints/complaintsRouter.test.ts"
+      "path": "web/src/components/ComplaintSheet.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/favorites/favoritesRouter.test.ts"
+      "path": "web/src/components/ErrorBoundary.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/likes/likesRouter.test.ts"
+      "path": "web/src/components/FiltersPanel.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/notifications/notificationPreferences.test.ts"
+      "path": "web/src/components/ui/ErrorView.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/realtime/sse.test.ts"
+      "path": "web/src/components/ui/Skeleton.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/reviews/reviewsRouter.test.ts"
+      "path": "web/src/index.css"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/ride-requests/rideRequestsRouter.test.ts"
+      "path": "web/src/screens/AdminScreen.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
+      "path": "web/src/screens/ConfirmParticipationScreen.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/rides/confirmParticipation.test.ts"
+      "path": "web/src/screens/FavoritesScreen.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/rides/getMyRides.test.ts"
+      "path": "web/src/screens/RideDetailScreen.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/rides/getRide.test.ts"
+      "path": "web/src/screens/SettingsScreen.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/rides/getRides.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/markParticipants.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/rideCancel.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/ridePatch.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/rideRequest.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/ridesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/support/supportRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-delete-me.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-me.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-patch-me.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-schedule.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/security/sql-injection.spec.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/middleware/identity-guard.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/realtime/realtimeRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/lib/presetsData.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/MapScreen.tsx"
+      "path": "web/src/screens/SupportScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nb95ffc4 FIX: геокодер хард-фильтр bbox Казани + fix vi.resetModules в тесте\n87f86af FIX: getMatchingPresets убрать KEYWORDS-ветку — фильтровать только по label\n94e9748 FIX: пресеты адресов — реальные координаты ЖК Царёво Village + деревни\nf8db487 FIX: баг карты и цветов в тёмной теме — Leaflet marker 404, hardcoded hex\n91de73e CHORE: обновить memory-логи — auth-fix сессия 2026-05-16"
+  "context_notes": "Recent commits:\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing\n6ab39e4 CHORE: обновить memory-логи — 2026-05-16\nb4691c0 CHORE: biome autofix — import order и форматирование тестов\nb95ffc4 FIX: геокодер хард-фильтр bbox Казани + fix vi.resetModules в тесте"
 }

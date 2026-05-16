@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T11:29:03.516Z",
+  "timestamp": "2026-05-16T09:28:33.196Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,6 +18,10 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".claude/settings.local.json"
+    },
+    {
+      "status": "M",
       "path": ".memory/daily/2026-05-15.md"
     },
     {
@@ -33,38 +37,14 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "M",
-      "path": "apps/api/src/geocode/geocodeRouter.ts"
+      "status": "??",
+      "path": ".memory/daily/2026-05-16.md"
     },
     {
-      "status": "M",
-      "path": "apps/api/tests/unit/geocode/geocodeRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "infra/docker-compose.prod.yml"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/AddressAutocomplete.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/index.css"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/CreateRideScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/tests/AddressAutocomplete.test.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/tests/CreateRideScreen.test.tsx"
+      "status": "??",
+      "path": ".memory/knowledge/concepts/useme-auth-flow.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nd7debf5 FIX: CreateRide MainButton double-tap race — submittingRef guard\n4e51fdf CHORE: обновить memory-логи + HANDOFF — squash dev->main 2026-05-15 экраны прототипа\n902be15 FIX: driver_tg_id как JSON number вместо bigint-string\nd191d2e TEST: покрытие /rides/mine + MyRidesScreen + EditProfileScreen\nc5d36a8 FIX: код-ревью — SQL column avatar_url + EditProfile без preload PII"
+  "context_notes": "Recent commits:\n65a2b7f FIX: закрыть уязвимости auth — replay/cookie-bypass/access-ttl/freshness/entropy\n56f4a0c TEST: обновить тесты AddressAutocomplete под новое поведение с пресетами\n14634d5 FIX: auth-уязвимость разных профилей, геокодинг bbox, пресеты Царёво, карта маршрута\nbd6eaf3 REFACTOR: hardcoded text colors → CSS vars — fix тёмной темы\n5dada4b CHORE: обновить memory-логи + HANDOFF — fix геокодера 2026-05-15"
 }

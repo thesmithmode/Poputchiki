@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T12:49:30.744Z",
+  "timestamp": "2026-05-16T13:48:03.212Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -31,32 +31,8 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/src/geocode/geocodeRouter.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/geocode/geocodeRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "docs/PRD-Poputchiki-v0.1.md"
-    },
-    {
-      "status": "M",
-      "path": "docs/SPEC-Architecture-v0.1.md"
-    },
-    {
-      "status": "M",
-      "path": "infra/docker-compose.prod.yml"
-    },
-    {
-      "status": "M",
-      "path": "scripts/deploy.sh"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n4d73961 CHORE: обновить memory-логи — 2026-05-16 presets session\nfbfad99 FIX: smart matching presets — word-boundary токены, нормализация unicode\n09df5d5 CHORE: обновить memory-логи — сессия 2026-05-16 address autocomplete\ned83671 FEAT: умные пресеты адресов + MapPicker для CreateRideScreen\n5bf8a5d CHORE: обновить memory-логи — 2026-05-16 session"
+  "context_notes": "Recent commits:\neb4cea6 FEAT: бустить ЖК Царёво наверх в автокомплите адреса\n0da7551 FIX: PBF Татарстана с openstreetmap.fr (Geofabrik блокирует Россию)\neda82b1 FEAT: переключить дефолт NOMINATIM_URL на self-hosted http://nominatim:8080\nf0834f7 CHORE: обновить memory-логи — 2026-05-16 nominatim selfhost\n61b8537 FEAT: self-hosted Nominatim — PBF Татарстана через CI/CD"
 }

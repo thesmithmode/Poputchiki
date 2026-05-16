@@ -1638,3 +1638,33 @@ Error output: Check stderr output for details
 2026-05-16 15:43:02 INFO Flush complete for session a6ee107e-2c89-4cf4-9621-600a5c76168e
 2026-05-16 15:43:10 INFO Result: FLUSH_OK
 2026-05-16 15:43:10 INFO Flush complete for session d9a63ae3-eefb-4779-aa70-1df6f5fa6542
+2026-05-16 16:43:04 INFO [pre-compact] PreCompact fired: session=a6ee107e-2c89-4cf4-9621-600a5c76168e
+2026-05-16 16:43:04 INFO [pre-compact] Spawned flush.py for session a6ee107e-2c89-4cf4-9621-600a5c76168e (30 turns, 5409 chars)
+2026-05-16 16:43:05 INFO flush.py started for session a6ee107e-2c89-4cf4-9621-600a5c76168e, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-a6ee107e-2c89-4cf4-9621-600a5c76168e-20260516-164304.md
+2026-05-16 16:43:05 INFO Flushing session a6ee107e-2c89-4cf4-9621-600a5c76168e: 5408 chars
+2026-05-16 16:43:07 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 16:43:56 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-16 16:43:56 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-16 16:43:56 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-16 16:43:56 INFO Flush complete for session a6ee107e-2c89-4cf4-9621-600a5c76168e

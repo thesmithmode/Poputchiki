@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T12:12:35.135Z",
+  "timestamp": "2026-05-16T12:28:03.623Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -33,10 +33,42 @@
       "path": ".planning/HANDOFF.json"
     },
     {
+      "status": "M",
+      "path": "apps/api/src/geocode/geocodeRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/geocode/geocodeRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/AddressAutocomplete.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/lib/presetsData.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/lib/tsarevoPresets.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/CreateRideScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/tests/AddressAutocomplete.test.tsx"
+    },
+    {
       "status": "??",
-      "path": ".memory/scripts/session-flush-b72238b4-5602-4735-85e8-967739a0dbca-20260516-151210.md"
+      "path": "web/src/components/MapPicker.tsx"
+    },
+    {
+      "status": "??",
+      "path": "web/tests/tsarevoPresets.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session\n8dc37c2 FIX: тема — заменить hardcoded цвета на CSS-токены --brand-*\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing\n6ab39e4 CHORE: обновить memory-логи — 2026-05-16"
+  "context_notes": "Recent commits:\n5bf8a5d CHORE: обновить memory-логи — 2026-05-16 session\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session\n8dc37c2 FIX: тема — заменить hardcoded цвета на CSS-токены --brand-*\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing"
 }

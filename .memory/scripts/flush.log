@@ -1587,3 +1587,33 @@ Error output: Check stderr output for details
 2026-05-16 15:12:13 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-16 15:12:42 INFO Result: saved to daily log (1344 chars)
 2026-05-16 15:12:42 INFO Flush complete for session b72238b4-5602-4735-85e8-967739a0dbca
+2026-05-16 15:13:51 INFO [hook] SessionEnd fired: session=e07acb21-f808-44b9-8292-504dff68f7b0 source=unknown
+2026-05-16 15:13:51 INFO [hook] Spawned flush.py for session e07acb21-f808-44b9-8292-504dff68f7b0 (10 turns, 1203 chars)
+2026-05-16 15:13:52 INFO flush.py started for session e07acb21-f808-44b9-8292-504dff68f7b0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-e07acb21-f808-44b9-8292-504dff68f7b0-20260516-151351.md
+2026-05-16 15:13:52 INFO Flushing session e07acb21-f808-44b9-8292-504dff68f7b0: 1202 chars
+2026-05-16 15:13:54 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 15:14:25 ERROR Fatal error in message reader: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-16 15:14:25 ERROR Agent SDK error: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+Traceback (most recent call last):
+  File "C:\Soft\Projects\Poputchiki\.memory\scripts\flush.py", line 120, in run_flush
+    async for message in query(
+    ...<12 lines>...
+            pass
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\query.py", line 122, in query
+    async for message in client.process_query(
+    ...<2 lines>...
+        yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\client.py", line 147, in process_query
+    async for data in query.receive_messages():
+    ...<2 lines>...
+            yield message
+  File "C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_internal\query.py", line 726, in receive_messages
+    raise Exception(message.get("error", "Unknown error"))
+Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+
+2026-05-16 15:14:25 ERROR Result: FLUSH_ERROR: Exception: Command failed with exit code 1 (exit code: 1)
+Error output: Check stderr output for details
+2026-05-16 15:14:25 INFO Flush complete for session e07acb21-f808-44b9-8292-504dff68f7b0

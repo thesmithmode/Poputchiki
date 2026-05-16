@@ -1,8 +1,3 @@
-/**
- * Integration: GET /api/users/:id/schedule
- * Requires: Postgres + migrations applied.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +5,11 @@ import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createUsersRouter } from "../../../src/users/usersRouter";
+/**
+ * Integration: GET /api/users/:id/schedule
+ * Requires: Postgres + migrations applied.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -31,7 +31,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -88,7 +96,10 @@ describe("GET /api/users/:id/schedule", () => {
     const app = makeApp();
     const token = await makeToken(VIEWER);
     const res = await app.request(`/api/users/${DRIVER.id}/schedule`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -106,7 +117,10 @@ describe("GET /api/users/:id/schedule", () => {
     const app = makeApp();
     const token = await makeToken(VIEWER);
     const res = await app.request(`/api/users/${DRIVER.id}/schedule`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -117,7 +131,10 @@ describe("GET /api/users/:id/schedule", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request(`/api/users/${VIEWER.id}/schedule`, {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -128,7 +145,10 @@ describe("GET /api/users/:id/schedule", () => {
     const app = makeApp();
     const token = await makeToken(VIEWER);
     const res = await app.request("/api/users/not-uuid/schedule", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(400);
   });

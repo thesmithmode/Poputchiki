@@ -315,7 +315,9 @@ export function MapScreen() {
             gap: 6,
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand-primary)" }} />
+          <span
+            style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand-primary)" }}
+          />
           {rides.length} поездок
         </div>
       )}
@@ -395,7 +397,9 @@ export function MapScreen() {
             </div>
             <div style={{ display: "flex", gap: 12, fontSize: 13, fontWeight: 600 }}>
               <span>{selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}</span>
-              <span style={{ color: seatsLeft === 0 ? "var(--brand-danger)" : "var(--brand-primary)" }}>
+              <span
+                style={{ color: seatsLeft === 0 ? "var(--brand-danger)" : "var(--brand-primary)" }}
+              >
                 {seatsLeft === 0 ? "Нет мест" : `${seatsLeft} мест`}
               </span>
             </div>

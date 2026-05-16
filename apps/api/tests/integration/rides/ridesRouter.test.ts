@@ -1,9 +1,3 @@
-/**
- * Integration tests: POST /api/rides against real Postgres.
- * Requires: Postgres + migrations 000-005 applied.
- * Uses test users pre-inserted via withSystem to avoid auth overhead.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -13,6 +7,12 @@ import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: POST /api/rides against real Postgres.
+ * Requires: Postgres + migrations 000-005 applied.
+ * Uses test users pre-inserted via withSystem to avoid auth overhead.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 

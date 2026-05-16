@@ -1,8 +1,3 @@
-/**
- * Integration: POST/GET/PATCH/DELETE /api/ride-templates
- * Requires: Postgres + all migrations applied.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +5,11 @@ import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createRideTemplatesRouter } from "../../../src/ride-templates/rideTemplatesRouter";
+/**
+ * Integration: POST/GET/PATCH/DELETE /api/ride-templates
+ * Requires: Postgres + all migrations applied.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -23,7 +23,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -165,7 +173,10 @@ describe("GET /api/ride-templates/me", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -178,7 +189,10 @@ describe("GET /api/ride-templates/me", () => {
     const app = makeApp();
     const token = await makeToken(OTHER);
     const res = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -192,7 +206,10 @@ describe("PATCH /api/ride-templates/:id", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const list = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     const [tmpl] = await readJson(list);
     const res = await app.request(`/api/ride-templates/${tmpl.id}`, {
@@ -210,7 +227,10 @@ describe("PATCH /api/ride-templates/:id", () => {
     const app = makeApp();
     const driverToken = await makeToken(DRIVER);
     const list = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${driverToken}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, driverToken)}` },
+      headers: {
+        Authorization: `Bearer ${driverToken}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, driverToken)}`,
+      },
     });
     const [tmpl] = await readJson(list);
 
@@ -238,7 +258,10 @@ describe("PATCH /api/ride-templates/:id", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const list = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     const [tmpl] = await readJson(list);
     const res = await app.request(`/api/ride-templates/${tmpl.id}`, {
@@ -255,18 +278,27 @@ describe("DELETE /api/ride-templates/:id", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const list = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     const [tmpl] = await readJson(list);
 
     const res = await app.request(`/api/ride-templates/${tmpl.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(204);
 
     const after = await app.request("/api/ride-templates/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     const items = await readJson(after);
     expect(items.find((t: { id: string }) => t.id === tmpl.id)).toBeUndefined();
@@ -282,7 +314,10 @@ describe("DELETE /api/ride-templates/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await app.request("/api/ride-templates/00000000-0000-4000-f000-700000000099", {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(404);
   });
@@ -292,7 +327,10 @@ describe("DELETE /api/ride-templates/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await app.request("/api/ride-templates/garbage", {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(400);
   });

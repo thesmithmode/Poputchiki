@@ -1,11 +1,3 @@
-/**
- * Integration: PATCH /api/rides/:id/cancel
- * - driver-only, active → cancelled
- * - cascade ride_requests pending|accepted → cancelled
- * - audit_log запись с daily_cancels
- * - 4-я отмена за день → flagged_for_review=true
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -14,6 +6,14 @@ import { withSystem } from "../../../src/db/with-identity";
 import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration: PATCH /api/rides/:id/cancel
+ * - driver-only, active → cancelled
+ * - cascade ride_requests pending|accepted → cancelled
+ * - audit_log запись с daily_cancels
+ * - 4-я отмена за день → flagged_for_review=true
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -45,7 +45,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }

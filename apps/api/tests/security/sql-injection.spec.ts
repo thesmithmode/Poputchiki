@@ -1,3 +1,9 @@
+import { Hono } from "hono";
+import { sign } from "hono/jwt";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPool } from "../../src/db/pool";
+import { identityGuard } from "../../src/middleware/identity-guard";
+import { createRidesRouter } from "../../src/rides/ridesRouter";
 /**
  * Sentinel: SQL-injection protection via postgres-js parameterization.
  * Sends 20+ injection payloads to all filter/search endpoints.
@@ -9,12 +15,6 @@
  * Requires: Postgres running + all migrations applied.
  */
 import { sessBind } from "../helpers/auth";
-import { Hono } from "hono";
-import { sign } from "hono/jwt";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPool } from "../../src/db/pool";
-import { identityGuard } from "../../src/middleware/identity-guard";
-import { createRidesRouter } from "../../src/rides/ridesRouter";
 import { readJson } from "../helpers/json";
 import { buildDsn, withTestUser } from "../integration/setup";
 import type { TestUser } from "../integration/setup";

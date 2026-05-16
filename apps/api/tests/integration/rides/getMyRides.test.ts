@@ -1,8 +1,3 @@
-/**
- * Integration tests: GET /api/rides/mine against real Postgres.
- * role=driver|passenger × when=future|past, RLS, driver_display_name.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +6,11 @@ import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: GET /api/rides/mine against real Postgres.
+ * role=driver|passenger × when=future|past, RLS, driver_display_name.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 

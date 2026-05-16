@@ -1,8 +1,3 @@
-/**
- * Integration tests: POST /api/rides/:id/mark-participants — mark attending passengers after departure.
- * Покрывает: happy path, not_driver, before_departure, no_auth, invalid_body (non-UUID, empty array).
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -12,6 +7,11 @@ import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: POST /api/rides/:id/mark-participants — mark attending passengers after departure.
+ * Покрывает: happy path, not_driver, before_departure, no_auth, invalid_body (non-UUID, empty array).
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 

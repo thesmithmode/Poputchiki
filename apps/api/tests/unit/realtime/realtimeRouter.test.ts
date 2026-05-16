@@ -1,14 +1,14 @@
-/**
- * Unit tests for realtimeRouter — covers finally block (clearInterval + unsubscribe).
- * Uses a mock Dispatcher so no DB needed.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import type { Dispatcher } from "../../../src/realtime/dispatcher";
 import { createRealtimeRouter } from "../../../src/realtime/realtimeRouter";
+/**
+ * Unit tests for realtimeRouter — covers finally block (clearInterval + unsubscribe).
+ * Uses a mock Dispatcher so no DB needed.
+ */
+import { sessBind } from "../../helpers/auth";
 
 const JWT_SECRET = "test-secret-realtime-unit";
 

@@ -92,7 +92,10 @@ describe("identityGuard: JWT errors", () => {
       "different-secret",
     );
     const res2 = await app.request("/api/me", {
-      headers: { Authorization: `Bearer ${badToken}`, Cookie: `sess_bind=${sessBind(SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${badToken}`,
+        Cookie: `sess_bind=${sessBind(SECRET, token)}`,
+      },
     });
     expect(res2.status).toBe(401);
     // control: токен с правильным секретом проходит
@@ -118,12 +121,22 @@ describe("identityGuard: JWT errors", () => {
     const now = Math.floor(Date.now() / 1000);
     // Токен без jti — identityGuard должен вернуть 401
     const tokenNoJti = await sign(
-      { sub: String(TG_ID), uid: USER_UUID, typ: "access", role: "user", iat: now, exp: now + 86400 },
+      {
+        sub: String(TG_ID),
+        uid: USER_UUID,
+        typ: "access",
+        role: "user",
+        iat: now,
+        exp: now + 86400,
+      },
       SECRET,
     );
     const res = await app.request("/api/me", {
       // sess_bind без jti не вычислить корректно — передаём произвольное значение
-      headers: { Authorization: `Bearer ${tokenNoJti}`, Cookie: "sess_bind=anybindingvalue123456789012345" },
+      headers: {
+        Authorization: `Bearer ${tokenNoJti}`,
+        Cookie: "sess_bind=anybindingvalue123456789012345",
+      },
     });
     expect(res.status).toBe(401);
     expect(sql).not.toHaveBeenCalled();

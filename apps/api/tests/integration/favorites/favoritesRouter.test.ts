@@ -1,8 +1,3 @@
-/**
- * Integration: POST/DELETE/GET/PATCH /api/favorites
- * Requires: Postgres + all migrations applied.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +5,11 @@ import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { createFavoritesRouter } from "../../../src/favorites/favoritesRouter";
 import { identityGuard } from "../../../src/middleware/identity-guard";
+/**
+ * Integration: POST/DELETE/GET/PATCH /api/favorites
+ * Requires: Postgres + all migrations applied.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -24,7 +24,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -134,7 +142,10 @@ describe("GET /api/favorites/me", () => {
     const app = makeApp();
     const token = await makeToken(USER_A);
     const res = await app.request("/api/favorites/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -149,7 +160,10 @@ describe("GET /api/favorites/me", () => {
     const app = makeApp();
     const token = await makeToken(USER_B);
     const res = await app.request("/api/favorites/me", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -198,7 +212,10 @@ describe("DELETE /api/favorites/:target_id", () => {
     const token = await makeToken(USER_A);
     const res = await app.request(`/api/favorites/${USER_B.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(204);
   });
@@ -208,7 +225,10 @@ describe("DELETE /api/favorites/:target_id", () => {
     const token = await makeToken(USER_A);
     const res = await app.request(`/api/favorites/${USER_B.id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(404);
   });

@@ -1,8 +1,3 @@
-/**
- * Integration: GET/PUT /api/notifications/preferences
- * Requires: Postgres + all migrations applied.
- */
-import { sessBind } from "../../helpers/auth";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +5,11 @@ import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createNotificationsRouter } from "../../../src/notifications/notificationsRouter";
+/**
+ * Integration: GET/PUT /api/notifications/preferences
+ * Requires: Postgres + all migrations applied.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -22,7 +22,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -69,7 +77,10 @@ describe("GET /api/notifications/preferences", () => {
     const app = makeApp();
     const token = await makeToken(USER);
     const res = await app.request("/api/notifications/preferences", {
-      headers: { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);

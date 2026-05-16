@@ -13,7 +13,10 @@ const BBOX_KAZAN_AREA = "48.5,56.2,50.0,55.3";
 
 // bounded=1 у Nominatim advisory — при пустом resultset он может вернуть
 // результаты за пределами viewbox (Москва, Питер итд.). Хард-фильтр гарантирует зону.
-const LAT_MIN = 55.3, LAT_MAX = 56.2, LON_MIN = 48.5, LON_MAX = 50.0;
+const LAT_MIN = 55.3;
+const LAT_MAX = 56.2;
+const LON_MIN = 48.5;
+const LON_MAX = 50.0;
 function inKazanArea(lat: number, lon: number): boolean {
   return lat >= LAT_MIN && lat <= LAT_MAX && lon >= LON_MIN && lon <= LON_MAX;
 }

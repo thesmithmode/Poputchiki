@@ -338,7 +338,7 @@ Telegram MiniApp для жителей ЖК «Царёво», заменяющи
 | Frontend hosting | Caddy-контейнер за Traefik (`app.${DOMAIN}`) | $0 | Один атомарный deploy фронта+бэка через docker tag |
 | HTTPS / Domain | свой домен заказчика, поддомены `app/api/webhook.${DOMAIN}` | $0 (домен уже куплен) | Если домена нет — DuckDNS поддомен с DNS-challenge через Traefik |
 | Карта | Leaflet + OpenStreetMap tiles | $0, без API-key, без квот | |
-| Geocoding | self-hosted Nominatim (`mediagis/nominatim`) с импортом региона Татарстан (~50MB osm) | $0 | Без внешних квот, в той же docker-сети |
+| Geocoding | self-hosted Nominatim (`mediagis/nominatim:4.4`), PBF Татарстана ~80MB сжатый / ~700MB после импорта, ~15-30 мин импорт на 7vCPU/8GB, `NOMINATIM_URL=http://nominatim:8080`, rate-limit 10rps; fallback на public `nominatim.openstreetmap.org` если контейнер не healthy | $0 | Без внешних квот, в той же docker-сети |
 | Логи | pino JSON → файл с rotation, монтируется как volume | $0 | Loki/ELK — пост-MVP при росте |
 | Метрики | postgres_exporter + node_exporter + cadvisor → Prometheus → Grafana (опц. compose) | $0 | На том же сервере, basic-auth через Traefik |
 | Uptime / blackbox | Uptime Kuma (опц. compose) | $0 | Локальный мониторинг `/health` |

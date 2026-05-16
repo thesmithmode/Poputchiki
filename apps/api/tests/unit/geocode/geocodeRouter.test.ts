@@ -278,6 +278,55 @@ describe("GET /api/geocode/search", () => {
     expect(calledUrl.searchParams.get("street")).toBeNull();
   });
 
+  it("SENTINEL: NOMINATIM_URL=http://nominatim:8080 не утекает на openstreetmap.org", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } }),
+      );
+    const app = new Hono();
+    app.use("/api/*", identityGuard(JWT_SECRET));
+    app.route(
+      "/api/geocode",
+      createGeocodeRouter({
+        _fetch: mockFetch as unknown as typeof fetch,
+        _lastRequestAt: new Map(),
+        _nominatimUrl: "http://nominatim:8080",
+      }),
+    );
+    await app.request("/api/geocode/search?q=Казань", { headers: authH(token) });
+    const calledUrl = String(mockFetch.mock.calls[0]?.[0]);
+    expect(calledUrl).toMatch(/^http:\/\/nominatim:8080\//);
+    expect(calledUrl).not.toMatch(/openstreetmap\.org/);
+  });
+
+  it("SENTINEL: self-hosted Nominatim допускает 10 rps (rate-limit 100ms)", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockImplementation(
+        async () =>
+          new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } }),
+      );
+    const lastRequestAt = new Map<string, number>();
+    const app = new Hono();
+    app.use("/api/*", identityGuard(JWT_SECRET));
+    app.route(
+      "/api/geocode",
+      createGeocodeRouter({
+        _fetch: mockFetch as unknown as typeof fetch,
+        _lastRequestAt: lastRequestAt,
+        _nominatimUrl: "http://nominatim:8080",
+      }),
+    );
+    const r1 = await app.request("/api/geocode/search?q=a", { headers: authH(token) });
+    expect(r1.status).toBe(200);
+    // Затираем lastAt на 150ms назад — для public это всё ещё < 1000ms (429),
+    // для self-hosted это > 100ms (200). Проверяем что self-hosted пропускает.
+    lastRequestAt.set(USER.id, Date.now() - 150);
+    const r2 = await app.request("/api/geocode/search?q=b", { headers: authH(token) });
+    expect(r2.status).toBe(200);
+  });
+
   it("SENTINEL: дефолт NOMINATIM_URL — публичный nominatim.openstreetmap.org", async () => {
     // Self-hosted Nominatim профиль в compose выключен. Если кто-то вернёт дефолт
     // на 'http://nominatim:8080' — этот тест упадёт и поймает регрессию prod-инфры.

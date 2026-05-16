@@ -30,6 +30,13 @@ echo "=== deploy $SHA ==="
 echo "--- [0/7] ensure traefik ---"
 $COMPOSE up -d traefik
 
+# Идемпотентно поднять Nominatim. Если volume пуст — стартует импорт PBF Tatarstan
+# (~15-30min в фоне), api в это время продолжает работать через depends_on=service_started.
+# Volume /opt/poputchiki/nominatim-data НЕ удаляется ни здесь, ни в rollback — это
+# защищает от пере-импорта при каждом деплое.
+echo "--- [0.5/7] ensure nominatim ---"
+$COMPOSE up -d nominatim
+
 # Шаг 1: бэкап делает cron в 4:00 ежедневно — здесь пропускаем
 echo "--- [1/7] backup skipped (cron handles daily at 04:00) ---"
 

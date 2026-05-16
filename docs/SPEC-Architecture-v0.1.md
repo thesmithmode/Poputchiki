@@ -751,7 +751,7 @@ Internet → Traefik (443, ACME) → Docker network "poputchiki-internal"
                                    ├─ cron        (Bun worker, internal-only)
                                    ├─ web-server  (Caddy + SPA dist, Host=app.${DOMAIN})
                                    ├─ postgres    (postgres:16-alpine, internal-only)
-                                   ├─ nominatim   (mediagis/nominatim, internal, geocoding proxy)
+                                   ├─ nominatim   (mediagis/nominatim:4.4, internal, PBF Tatarstan ~700MB, импорт ~15-30min, 2GB RAM limit, healthcheck /status, depends_on=service_started чтобы api работал во время импорта; volume nominatim-data НЕ удаляется при rollback)
                                    ├─ prometheus  (опц., Host=metrics.${DOMAIN} с basic-auth)
                                    ├─ grafana     (опц., Host=grafana.${DOMAIN} с basic-auth)
                                    └─ uptime-kuma (опц., Host=status.${DOMAIN})

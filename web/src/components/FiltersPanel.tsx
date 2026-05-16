@@ -20,7 +20,12 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
   return (
     <div
       data-testid="filters-panel"
-      className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3"
+      className="flex flex-col gap-3 px-4 py-3"
+      style={{
+        background: "var(--brand-surface-2)",
+        borderBottom: "1px solid var(--brand-line)",
+        color: "var(--brand-text)",
+      }}
     >
       <input
         data-testid="filter-direction"
@@ -28,7 +33,12 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
         placeholder="Поиск по направлению"
         value={filters.direction}
         onChange={(e) => onChange({ direction: e.target.value })}
-        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+        className="w-full rounded-md px-3 py-1.5 text-sm"
+        style={{
+          background: "var(--brand-surface)",
+          color: "var(--brand-text)",
+          border: "1px solid var(--brand-line)",
+        }}
       />
 
       <div className="flex flex-wrap items-center gap-4">
@@ -121,7 +131,8 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             data-testid="filter-reset"
             type="button"
             onClick={onReset}
-            className="ml-auto text-xs text-gray-500 underline"
+            className="ml-auto text-xs underline"
+            style={{ color: "var(--brand-sub)" }}
           >
             Сбросить фильтры
           </button>

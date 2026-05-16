@@ -129,7 +129,16 @@
       "Bash(scp -i ~/.ssh/claude_racknerd_120 C:/Soft/Projects/Poputchiki/test_auth_sim2.ts root@192.3.12.148:/tmp/test_auth_sim2.ts)",
       "PowerShell(head *)",
       "Bash(grep -oE '[0-9]{8,}')",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(uv run *)",
+      "Skill(attack-review)",
+      "Bash(grep -rn \"Authorization.*Bearer.*\\\\${[a-zA-Z]*[Tt]oken[A-Z][a-zA-Z]*}\" apps/api/tests/ --include=\"*.ts\")",
+      "WebSearch",
+      "WebFetch(domain:www.tatre.ru)",
+      "WebFetch(domain:kazan.novostroyki.org)",
+      "WebFetch(domain:tsarevodom.ru)",
+      "WebFetch(domain:2gis.ru)",
+      "WebFetch(domain:nominatim.openstreetmap.org)"
     ]
   },
   "hooks": {

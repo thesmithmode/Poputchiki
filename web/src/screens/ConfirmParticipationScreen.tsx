@@ -32,7 +32,7 @@ export function ConfirmParticipationScreen() {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
         padding: 24,
       }}
     >
@@ -80,8 +80,9 @@ export function ConfirmParticipationScreen() {
             style={{
               width: "100%",
               maxWidth: 320,
-              background: state === "loading" ? "#93c5fd" : "#2563eb",
-              color: "#fff",
+              background:
+                state === "loading" ? "var(--brand-primary-soft)" : "var(--brand-primary)",
+              color: "var(--brand-primary-ink)",
               border: "none",
               borderRadius: 14,
               padding: "15px 0",
@@ -111,7 +112,7 @@ export function ConfirmParticipationScreen() {
         >
           <div
             style={{
-              background: "#fff",
+              background: "var(--brand-surface)",
               borderRadius: 20,
               padding: "28px 24px",
               width: "100%",
@@ -139,8 +140,8 @@ export function ConfirmParticipationScreen() {
                 data-testid="leave-review-btn"
                 onClick={() => navigate(`/rides/${id}`)}
                 style={{
-                  background: "#2563eb",
-                  color: "#fff",
+                  background: "var(--brand-primary)",
+                  color: "var(--brand-primary-ink)",
                   border: "none",
                   borderRadius: 12,
                   padding: "13px 0",
@@ -157,7 +158,7 @@ export function ConfirmParticipationScreen() {
                 onClick={() => navigate("/")}
                 style={{
                   background: "none",
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--brand-line)",
                   borderRadius: 12,
                   padding: "13px 0",
                   fontSize: 15,

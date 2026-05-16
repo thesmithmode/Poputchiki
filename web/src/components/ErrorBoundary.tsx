@@ -48,7 +48,7 @@ export class ErrorBoundary extends Component<Props, State> {
                 style={{
                   fontSize: 11,
                   color: "var(--brand-sub)",
-                  background: "#f5f5f5",
+                  background: "var(--brand-surface-2)",
                   padding: 8,
                   borderRadius: 6,
                   whiteSpace: "pre-wrap",
@@ -70,8 +70,8 @@ export class ErrorBoundary extends Component<Props, State> {
                 this.setState({ hasError: false, errorMessage: "", componentStack: "" })
               }
               style={{
-                background: "#2563eb",
-                color: "#fff",
+                background: "var(--brand-primary)",
+                color: "var(--brand-primary-ink)",
                 border: "none",
                 borderRadius: 8,
                 padding: "8px 20px",

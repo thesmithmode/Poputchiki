@@ -50,7 +50,7 @@ function NotFoundPage() {
         minHeight: "100vh",
         gap: 16,
         padding: 24,
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
       }}
     >
       <div style={{ fontSize: 48 }}>🔍</div>
@@ -71,7 +71,7 @@ function NotFoundPage() {
           borderRadius: 10,
           fontSize: 15,
           fontWeight: 700,
-          color: "#fff",
+          color: "var(--brand-primary-ink)",
           cursor: "pointer",
         }}
       >
@@ -95,8 +95,8 @@ function OfflineBanner() {
         left: 0,
         right: 0,
         zIndex: 9999,
-        background: "#374151",
-        color: "#fff",
+        background: "var(--brand-warn)",
+        color: "var(--brand-primary-ink)",
         textAlign: "center",
         padding: "8px 16px",
         fontSize: 13,
@@ -221,8 +221,8 @@ function AppRoutes() {
           type="button"
           onClick={() => window.location.reload()}
           style={{
-            background: "var(--brand-primary, #2D5A3D)",
-            color: "#fff",
+            background: "var(--brand-primary)",
+            color: "var(--brand-primary-ink)",
             border: "none",
             borderRadius: 10,
             padding: "12px 24px",

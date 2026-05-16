@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T10:11:42.899Z",
+  "timestamp": "2026-05-16T12:12:35.135Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,10 +18,6 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".claude/settings.local.json"
-    },
-    {
-      "status": "M",
       "path": ".memory/daily/2026-05-16.md"
     },
     {
@@ -37,118 +33,10 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "M",
-      "path": "apps/api/src/geocode/geocodeRouter.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/complaints/complaintsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/favorites/favoritesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/likes/likesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/notifications/notificationPreferences.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/realtime/sse.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/reviews/reviewsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/ride-requests/rideRequestsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/confirmParticipation.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/getMyRides.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/getRide.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/getRides.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/markParticipants.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/rideCancel.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/ridePatch.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/rideRequest.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/ridesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/support/supportRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-delete-me.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-me.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-patch-me.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/users/users-schedule.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/security/sql-injection.spec.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/middleware/identity-guard.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/realtime/realtimeRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/lib/presetsData.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/MapScreen.tsx"
+      "status": "??",
+      "path": ".memory/scripts/session-flush-b72238b4-5602-4735-85e8-967739a0dbca-20260516-151210.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nb95ffc4 FIX: геокодер хард-фильтр bbox Казани + fix vi.resetModules в тесте\n87f86af FIX: getMatchingPresets убрать KEYWORDS-ветку — фильтровать только по label\n94e9748 FIX: пресеты адресов — реальные координаты ЖК Царёво Village + деревни\nf8db487 FIX: баг карты и цветов в тёмной теме — Leaflet marker 404, hardcoded hex\n91de73e CHORE: обновить memory-логи — auth-fix сессия 2026-05-16"
+  "context_notes": "Recent commits:\nc088078 CHORE: обновить memory-логи — 2026-05-16 theme session\n8dc37c2 FIX: тема — заменить hardcoded цвета на CSS-токены --brand-*\n43c1377 FIX: verifyInitData — окно freshness Math.abs(age) для симметричного +-1h\n74f298e TEST: fix AddressAutocomplete тесты — regex и timing\n6ab39e4 CHORE: обновить memory-логи — 2026-05-16"
 }

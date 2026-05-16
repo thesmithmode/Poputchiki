@@ -1545,3 +1545,45 @@ Error output: Check stderr output for details
 2026-05-16 13:09:40 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-16 13:10:02 INFO Result: FLUSH_OK
 2026-05-16 13:10:02 INFO Flush complete for session 8e36112a-ac04-485d-b4d3-4fbd5aa0a981
+2026-05-16 13:31:22 INFO [hook] SessionEnd fired: session=8e36112a-ac04-485d-b4d3-4fbd5aa0a981 source=unknown
+2026-05-16 13:31:22 INFO [hook] Spawned flush.py for session 8e36112a-ac04-485d-b4d3-4fbd5aa0a981 (30 turns, 3668 chars)
+2026-05-16 13:31:23 INFO flush.py started for session 8e36112a-ac04-485d-b4d3-4fbd5aa0a981, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-8e36112a-ac04-485d-b4d3-4fbd5aa0a981-20260516-133122.md
+2026-05-16 13:31:23 INFO Flushing session 8e36112a-ac04-485d-b4d3-4fbd5aa0a981: 3667 chars
+2026-05-16 13:31:26 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 13:31:42 INFO Result: FLUSH_OK
+2026-05-16 13:31:42 INFO Flush complete for session 8e36112a-ac04-485d-b4d3-4fbd5aa0a981
+2026-05-16 13:32:02 INFO [hook] SessionEnd fired: session=1deca045-8c0b-413e-93ac-8ba61d8024d0 source=unknown
+2026-05-16 13:32:02 INFO [hook] Spawned flush.py for session 1deca045-8c0b-413e-93ac-8ba61d8024d0 (2 turns, 398 chars)
+2026-05-16 13:32:02 INFO flush.py started for session 1deca045-8c0b-413e-93ac-8ba61d8024d0, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-1deca045-8c0b-413e-93ac-8ba61d8024d0-20260516-133202.md
+2026-05-16 13:32:02 INFO Flushing session 1deca045-8c0b-413e-93ac-8ba61d8024d0: 397 chars
+2026-05-16 13:32:04 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 13:32:21 INFO Result: FLUSH_OK
+2026-05-16 13:32:21 INFO Flush complete for session 1deca045-8c0b-413e-93ac-8ba61d8024d0
+2026-05-16 14:49:25 INFO [hook] SessionEnd fired: session=b72238b4-5602-4735-85e8-967739a0dbca source=unknown
+2026-05-16 14:49:25 INFO [hook] Spawned flush.py for session b72238b4-5602-4735-85e8-967739a0dbca (24 turns, 8900 chars)
+2026-05-16 14:49:26 INFO flush.py started for session b72238b4-5602-4735-85e8-967739a0dbca, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-b72238b4-5602-4735-85e8-967739a0dbca-20260516-144925.md
+2026-05-16 14:49:26 INFO Flushing session b72238b4-5602-4735-85e8-967739a0dbca: 8899 chars
+2026-05-16 14:49:29 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 14:50:02 INFO Result: saved to daily log (1752 chars)
+2026-05-16 14:50:02 INFO Flush complete for session b72238b4-5602-4735-85e8-967739a0dbca
+2026-05-16 15:11:17 INFO [hook] SessionEnd fired: session=71fc9489-7ab0-4f15-837d-d299f0ebb23c source=unknown
+2026-05-16 15:11:17 INFO [hook] Spawned flush.py for session 71fc9489-7ab0-4f15-837d-d299f0ebb23c (20 turns, 4079 chars)
+2026-05-16 15:11:18 INFO flush.py started for session 71fc9489-7ab0-4f15-837d-d299f0ebb23c, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-71fc9489-7ab0-4f15-837d-d299f0ebb23c-20260516-151117.md
+2026-05-16 15:11:18 INFO Flushing session 71fc9489-7ab0-4f15-837d-d299f0ebb23c: 4078 chars
+2026-05-16 15:11:21 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 15:11:40 INFO [hook] SessionEnd fired: session=aba71fd9-81ec-42bb-a7ea-7490d8a2bb73 source=unknown
+2026-05-16 15:11:40 INFO [hook] Spawned flush.py for session aba71fd9-81ec-42bb-a7ea-7490d8a2bb73 (2 turns, 398 chars)
+2026-05-16 15:11:41 INFO flush.py started for session aba71fd9-81ec-42bb-a7ea-7490d8a2bb73, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-aba71fd9-81ec-42bb-a7ea-7490d8a2bb73-20260516-151140.md
+2026-05-16 15:11:41 INFO Flushing session aba71fd9-81ec-42bb-a7ea-7490d8a2bb73: 397 chars
+2026-05-16 15:11:43 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 15:11:49 INFO Result: saved to daily log (1319 chars)
+2026-05-16 15:11:49 INFO Flush complete for session 71fc9489-7ab0-4f15-837d-d299f0ebb23c
+2026-05-16 15:12:01 INFO Result: FLUSH_OK
+2026-05-16 15:12:01 INFO Flush complete for session aba71fd9-81ec-42bb-a7ea-7490d8a2bb73
+2026-05-16 15:12:10 INFO [hook] SessionEnd fired: session=b72238b4-5602-4735-85e8-967739a0dbca source=unknown
+2026-05-16 15:12:10 INFO [hook] Spawned flush.py for session b72238b4-5602-4735-85e8-967739a0dbca (25 turns, 8939 chars)
+2026-05-16 15:12:11 INFO flush.py started for session b72238b4-5602-4735-85e8-967739a0dbca, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-b72238b4-5602-4735-85e8-967739a0dbca-20260516-151210.md
+2026-05-16 15:12:11 INFO Flushing session b72238b4-5602-4735-85e8-967739a0dbca: 8938 chars
+2026-05-16 15:12:13 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-16 15:12:42 INFO Result: saved to daily log (1344 chars)
+2026-05-16 15:12:42 INFO Flush complete for session b72238b4-5602-4735-85e8-967739a0dbca

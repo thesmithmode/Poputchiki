@@ -137,8 +137,8 @@ export function RideDetailScreen({ id }: Props) {
           zIndex: 20,
           backdropFilter: "blur(18px) saturate(160%)",
           WebkitBackdropFilter: "blur(18px) saturate(160%)",
-          background: "rgba(255,255,255,0.78)",
-          borderBottom: "1px solid rgba(15,23,42,0.05)",
+          background: "var(--tab-bar-bg)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "10px 16px 12px",
           display: "flex",
           alignItems: "center",
@@ -154,7 +154,7 @@ export function RideDetailScreen({ id }: Props) {
             height: 36,
             borderRadius: 18,
             border: "none",
-            background: "#F1F4F8",
+            background: "var(--brand-surface-2)",
             color: "var(--brand-text)",
             display: "flex",
             alignItems: "center",
@@ -294,7 +294,7 @@ export function RideDetailScreen({ id }: Props) {
                 width: 52,
                 height: 52,
                 borderRadius: "50%",
-                background: "#D8E6DC",
+                background: "var(--brand-primary-soft)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -363,12 +363,13 @@ export function RideDetailScreen({ id }: Props) {
             style={{
               width: "100%",
               padding: "12px 16px",
-              background: likeStatus === "liked" ? "#22c55e" : "#F1F4F8",
+              background:
+                likeStatus === "liked" ? "var(--brand-primary)" : "var(--brand-surface-2)",
               border: "none",
               borderRadius: 12,
               fontSize: 14,
               fontWeight: 600,
-              color: likeStatus === "liked" ? "#fff" : "var(--brand-text)",
+              color: likeStatus === "liked" ? "var(--brand-primary-ink)" : "var(--brand-text)",
               cursor: likeStatus !== "idle" ? "not-allowed" : "pointer",
               marginBottom: 12,
               display: "flex",
@@ -438,7 +439,7 @@ export function RideDetailScreen({ id }: Props) {
                       width: 36,
                       height: 36,
                       borderRadius: "50%",
-                      background: "#D8E6DC",
+                      background: "var(--brand-primary-soft)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -489,7 +490,7 @@ export function RideDetailScreen({ id }: Props) {
           right: 0,
           padding: "12px 16px",
           paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-          background: "rgba(255,255,255,0.95)",
+          background: "var(--tab-bar-bg)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           borderTop: "1px solid var(--brand-border)",
@@ -504,7 +505,7 @@ export function RideDetailScreen({ id }: Props) {
           style={{
             flex: 1,
             padding: "12px 16px",
-            background: "#F1F4F8",
+            background: "var(--brand-surface-2)",
             borderRadius: 12,
             fontSize: 14,
             fontWeight: 600,
@@ -530,15 +531,15 @@ export function RideDetailScreen({ id }: Props) {
               padding: "12px 16px",
               background:
                 reqStatus === "sent"
-                  ? "#22c55e"
+                  ? "var(--brand-primary)"
                   : reqStatus !== "idle"
-                    ? "#93c5fd"
+                    ? "var(--brand-primary-soft)"
                     : "var(--brand-primary)",
               border: "none",
               borderRadius: 12,
               fontSize: 14,
               fontWeight: 600,
-              color: "#fff",
+              color: "var(--brand-primary-ink)",
               cursor: reqStatus !== "idle" ? "not-allowed" : "pointer",
               fontFamily: "inherit",
             }}
@@ -585,7 +586,7 @@ function StatBlock({
         style={{
           fontSize: 16,
           fontWeight: 600,
-          color: highlight ? "#e54e5c" : "var(--brand-text)",
+          color: highlight ? "var(--brand-danger)" : "var(--brand-text)",
           lineHeight: 1.2,
         }}
       >

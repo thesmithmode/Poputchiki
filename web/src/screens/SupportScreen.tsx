@@ -65,13 +65,13 @@ export function SupportScreen() {
         display: "flex",
         flexDirection: "column",
         minHeight: "100vh",
-        background: "#f8f9fa",
+        background: "var(--brand-bg)",
       }}
     >
       <header
         style={{
-          background: "#fff",
-          borderBottom: "1px solid #e5e7eb",
+          background: "var(--brand-surface)",
+          borderBottom: "1px solid var(--brand-line)",
           padding: "12px 16px",
           display: "flex",
           alignItems: "center",
@@ -108,8 +108,8 @@ export function SupportScreen() {
           onClick={() => setShowForm(true)}
           style={{
             width: "100%",
-            background: "#2563eb",
-            color: "#fff",
+            background: "var(--brand-primary)",
+            color: "var(--brand-primary-ink)",
             border: "none",
             borderRadius: 12,
             padding: "13px 0",
@@ -126,10 +126,10 @@ export function SupportScreen() {
           <div
             data-testid="new-ticket-form"
             style={{
-              background: "#fff",
+              background: "var(--brand-surface)",
               borderRadius: 12,
               padding: 16,
-              border: "1px solid #e5e7eb",
+              border: "1px solid var(--brand-line)",
               marginBottom: 16,
             }}
           >
@@ -143,7 +143,9 @@ export function SupportScreen() {
                 width: "100%",
                 minHeight: 100,
                 borderRadius: 8,
-                border: "1px solid #d1d5db",
+                border: "1px solid var(--brand-line)",
+                background: "var(--brand-surface-2)",
+                color: "var(--brand-text)",
                 padding: "8px 10px",
                 fontSize: 14,
                 resize: "vertical",
@@ -158,8 +160,8 @@ export function SupportScreen() {
                 onClick={handleSubmit}
                 style={{
                   flex: 1,
-                  background: newText.trim() ? "#2563eb" : "#d1d5db",
-                  color: "#fff",
+                  background: newText.trim() ? "var(--brand-primary)" : "var(--brand-inset)",
+                  color: newText.trim() ? "var(--brand-primary-ink)" : "var(--brand-sub)",
                   border: "none",
                   borderRadius: 10,
                   padding: "11px 0",
@@ -179,7 +181,7 @@ export function SupportScreen() {
                 style={{
                   padding: "11px 16px",
                   background: "none",
-                  border: "1px solid #d1d5db",
+                  border: "1px solid var(--brand-line)",
                   borderRadius: 10,
                   fontSize: 14,
                   cursor: "pointer",
@@ -211,10 +213,10 @@ export function SupportScreen() {
                 key={t.id}
                 data-testid={`ticket-${t.id}`}
                 style={{
-                  background: "#fff",
+                  background: "var(--brand-surface)",
                   borderRadius: 12,
                   padding: "12px 16px",
-                  border: "1px solid #e5e7eb",
+                  border: "1px solid var(--brand-line)",
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -226,7 +228,7 @@ export function SupportScreen() {
                     style={{
                       fontSize: 12,
                       fontWeight: 600,
-                      color: t.status === "resolved" ? "#16a34a" : "#d97706",
+                      color: t.status === "resolved" ? "var(--brand-primary)" : "var(--brand-warn)",
                     }}
                   >
                     {t.status}
@@ -238,12 +240,12 @@ export function SupportScreen() {
                 {t.reply_text && (
                   <div
                     style={{
-                      background: "#f0fdf4",
+                      background: "var(--brand-primary-tint)",
                       borderRadius: 8,
                       padding: "8px 10px",
                       fontSize: 13,
-                      color: "#15803d",
-                      borderLeft: "3px solid #16a34a",
+                      color: "var(--brand-primary)",
+                      borderLeft: "3px solid var(--brand-primary)",
                     }}
                   >
                     {t.reply_text}

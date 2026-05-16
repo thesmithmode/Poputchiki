@@ -7,8 +7,9 @@ import { GeoCache } from "./geoCache";
 // Свой кэш + per-user rate-limit ниже снижают нагрузку на их инфру.
 const NOMINATIM_URL = process.env.NOMINATIM_URL ?? "https://nominatim.openstreetmap.org";
 
-// Татарстан bbox для Nominatim: left,top,right,bottom (полоса от Зеленодольска до Чистополя).
-const BBOX_TATARSTAN = "47.8,56.7,53.5,53.9";
+// Рабочая зона: Казань + ЖК Царёво + аэропорт + окрестности до Старого Шигалеево.
+// Nominatim viewbox формат: left(min_lon),top(max_lat),right(max_lon),bottom(min_lat)
+const BBOX_KAZAN_AREA = "48.5,56.2,50.0,55.3";
 
 interface GeocodeRouterOptions {
   cache?: GeoCache | undefined;
@@ -50,8 +51,8 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       url.searchParams.set("q", q);
       url.searchParams.set("format", "json");
       url.searchParams.set("limit", "12");
-      url.searchParams.set("viewbox", BBOX_TATARSTAN);
-      url.searchParams.set("bounded", "0");
+      url.searchParams.set("viewbox", BBOX_KAZAN_AREA);
+      url.searchParams.set("bounded", "1");
       url.searchParams.set("addressdetails", "1");
 
       const resp = await fetchFn(url.toString(), {

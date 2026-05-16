@@ -32,9 +32,21 @@ $COMPOSE up -d traefik
 
 # Идемпотентно поднять Nominatim. Если volume пуст — стартует импорт PBF Tatarstan
 # (~15-30min в фоне), api в это время продолжает работать через depends_on=service_started.
-# Volume /opt/poputchiki/nominatim-data НЕ удаляется ни здесь, ни в rollback — это
-# защищает от пере-импорта при каждом деплое.
+# Volume /opt/poputchiki/nominatim-data в норме НЕ удаляется (защита от пере-импорта).
+# Recovery: если предыдущий импорт упал (restartCount>5 ИЛИ контейнер в restart-loop),
+# wipe volume + recreate чтобы fresh-import состоялся при следующем up.
 echo "--- [0.5/7] ensure nominatim ---"
+NOMINATIM_CID=$(docker ps -a --filter "name=infra-nominatim-1" --format "{{.ID}}" | head -n1)
+if [[ -n "$NOMINATIM_CID" ]]; then
+  RC=$(docker inspect -f '{{.RestartCount}}' "$NOMINATIM_CID" 2>/dev/null || echo 0)
+  HEALTH=$(docker inspect -f '{{.State.Health.Status}}' "$NOMINATIM_CID" 2>/dev/null || echo "")
+  if [[ "$RC" -gt 5 && "$HEALTH" != "healthy" ]]; then
+    echo "Nominatim restart-loop detected (RC=$RC, health=$HEALTH). Wiping nominatim-data."
+    $COMPOSE rm -sf nominatim || true
+    rm -rf /opt/poputchiki/nominatim-data
+    mkdir -p /opt/poputchiki/nominatim-data
+  fi
+fi
 $COMPOSE up -d nominatim
 
 # Шаг 1: бэкап делает cron в 4:00 ежедневно — здесь пропускаем

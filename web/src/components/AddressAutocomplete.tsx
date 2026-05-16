@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { byTsarevoFirst } from "../lib/addressBoost";
 import { apiFetch } from "../lib/api";
 import { getMatchingPresets } from "../lib/tsarevoPresets";
 
@@ -11,6 +12,10 @@ export interface AddressSuggestion {
   label: string;
   source: "geocode" | "preset";
   coords: Coords;
+  // Полный display_name от Nominatim — используем для буста по совпадению с
+  // "Царёво/Шигалеево" в полном адресе, label обрезан до 4 частей и совпадение там
+  // не всегда видно. Для preset не заполняется.
+  fullDisplay?: string;
 }
 
 interface NominatimResult {
@@ -60,15 +65,21 @@ export function AddressAutocomplete({
             const lat = Number.parseFloat(r.lat);
             const lng = Number.parseFloat(r.lon);
             if (Number.isNaN(lat) || Number.isNaN(lng)) return [];
+            const fullName = r.display_name ?? "";
             return [
               {
-                label: r.display_name?.split(",").slice(0, 4).join(",").trim() || trimmed,
+                label: fullName.split(",").slice(0, 4).join(",").trim() || trimmed,
                 source: "geocode" as const,
                 coords: { lat, lng },
+                fullDisplay: fullName,
               },
             ];
           })
         : [];
+      // Boost: царёво/шигалеево первыми среди geo. Дома, которых нет в захардкоженных
+      // пресетах (напр. "Тукая 31"), реально находятся в ЖК Царёво — без буста
+      // Nominatim может вернуть однофамильную улицу из другого района Татарстана.
+      geo.sort(byTsarevoFirst);
       const presets = getMatchingPresets(trimmed);
       const combined = [...presets, ...geo].slice(0, MAX_SUGGESTIONS);
       setGeoSuggestions(combined);

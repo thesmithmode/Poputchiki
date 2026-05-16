@@ -277,8 +277,12 @@ services:
     image: mediagis/nominatim:4.4
     restart: unless-stopped
     environment:
-      PBF_URL: https://download.geofabrik.de/russia/volga-fed-district/tatarstan-latest.osm.pbf
-      REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district/tatarstan-updates/
+      # Geofabrik блокирует прямую загрузку PBF России (302 → root, требует OSM login
+      # на osm-internal). Используем openstreetmap.fr (зеркало без auth, обновляется ежедневно).
+      PBF_URL: https://download.openstreetmap.fr/extracts/russia/volga_federal_district/tatarstan_republic-latest.osm.pbf
+      # Replication отключён — у openstreetmap.fr нет совместимого update-формата;
+      # для MVP допустимо стейл-данные раз в месяц, обновляем через пере-импорт по cron.
+      REPLICATION_URL: ""
       NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
       IMPORT_STYLE: address
     volumes:

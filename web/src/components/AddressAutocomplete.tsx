@@ -88,9 +88,9 @@ export function AddressAutocomplete({
       setLoading(false);
       return;
     }
+    // Пресеты показываем сразу (синхронно), не ждём debounce — это убирает 'empty' моргание.
+    setGeoSuggestions(getMatchingPresets(trimmed));
     if (trimmed.length < MIN_GEOCODE_CHARS) {
-      // 1-2 символа: только пресеты, без удара по Nominatim.
-      setGeoSuggestions(getMatchingPresets(trimmed));
       setLoading(false);
       return;
     }

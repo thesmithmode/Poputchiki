@@ -163,6 +163,51 @@ describe("GET /api/geocode/search", () => {
     expect(body.display_name).toMatch(/Тукая/);
   });
 
+  it("/reverse — 429 при превышении rate-limit", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ display_name: "ул. Тукая" }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const headers = authH(token);
+    const res1 = await app.request("/api/geocode/reverse?lat=55.81&lon=49.43", { headers });
+    expect(res1.status).toBe(200);
+    const res2 = await app.request("/api/geocode/reverse?lat=55.82&lon=49.44", { headers });
+    expect(res2.status).toBe(429);
+  });
+
+  it("/reverse — 503 при ошибке Nominatim", async () => {
+    const mockFetch = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request("/api/geocode/reverse?lat=55.81&lon=49.43", {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("30");
+  });
+
+  it("/reverse — 401 без авторизации", async () => {
+    const app = makeApp(fetch);
+    const res = await app.request("/api/geocode/reverse?lat=55.81&lon=49.43");
+    expect(res.status).toBe(401);
+  });
+
+  it("/reverse — fallback на coords если Nominatim не вернул display_name", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({}), { headers: { "Content-Type": "application/json" } }),
+      );
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request("/api/geocode/reverse?lat=55.81&lon=49.43", {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson<{ display_name: string }>(res);
+    expect(body.display_name).toContain("55.81");
+  });
+
   it("SENTINEL: результаты вне bbox Казани фильтруются на бэке", async () => {
     // bounded=1 advisory — Nominatim может вернуть Москву/Питер при пустом local resultset.
     // Хард-фильтр на бэке должен убрать всё за пределами 55.3-56.2°N / 48.5-50.0°E.

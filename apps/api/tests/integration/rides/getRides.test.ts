@@ -1,7 +1,3 @@
-/**
- * Integration tests: GET /api/rides against real Postgres.
- * Requires: Postgres + migrations 000-005 applied.
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -10,6 +6,11 @@ import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: GET /api/rides against real Postgres.
+ * Requires: Postgres + migrations 000-005 applied.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -37,6 +38,7 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
       uid: user.id,
       role: user.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -127,7 +129,7 @@ describe("GET /api/rides — pagination", () => {
     const res = await app.request("/api/rides", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -142,7 +144,7 @@ describe("GET /api/rides — pagination", () => {
     const token = await makeToken(DRIVER_A);
     const headers = {
       Authorization: `Bearer ${token}`,
-      Cookie: `tg_uid=${DRIVER_A.tgId}`,
+      Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       "X-Forwarded-For": TEST_IP,
     };
 
@@ -162,7 +164,7 @@ describe("GET /api/rides — pagination", () => {
     const token = await makeToken(DRIVER_A);
     const headers = {
       Authorization: `Bearer ${token}`,
-      Cookie: `tg_uid=${DRIVER_A.tgId}`,
+      Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       "X-Forwarded-For": TEST_IP,
     };
 
@@ -184,7 +186,7 @@ describe("GET /api/rides — validation", () => {
     const res = await app.request("/api/rides?fromLat=999", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -199,7 +201,7 @@ describe("GET /api/rides — validation", () => {
     const res = await app.request("/api/rides?cursor=%21%21invalid", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -215,7 +217,7 @@ describe("GET /api/rides — validation", () => {
     const res = await app.request(`/api/rides?cursor=${encodeURIComponent(badCursor)}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -232,7 +234,7 @@ describe("GET /api/rides — filters", () => {
     const res = await app.request("/api/rides?trustMinLikes=3", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -250,7 +252,7 @@ describe("GET /api/rides — filters", () => {
     const res = await app.request("/api/rides?seatsMin=2", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -279,7 +281,7 @@ describe("GET /api/rides — filters", () => {
     const res = await app.request(`/api/rides?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -292,7 +294,7 @@ describe("GET /api/rides — filters", () => {
     const res = await app.request("/api/rides?favoritesOnly=true", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER_A.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });

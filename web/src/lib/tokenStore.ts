@@ -21,3 +21,19 @@ export function setTokens(access: string, refresh: string): void {
 export function clearTokens(): void {
   localStorage.removeItem(KEY);
 }
+
+// Декодирует sub из JWT payload без верификации подписи.
+// Нужно для сравнения сохранённого tgId с текущим пользователем Telegram.
+export function decodeJwtSub(token: string): string | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const part = parts[1];
+    if (!part) return null;
+    const padded = part.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(padded)) as Record<string, unknown>;
+    return payload.sub != null ? String(payload.sub) : null;
+  } catch {
+    return null;
+  }
+}

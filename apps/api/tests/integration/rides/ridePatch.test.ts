@@ -1,6 +1,3 @@
-/**
- * Integration: PATCH /api/rides/:id — driver edits future ride.
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -9,6 +6,10 @@ import { withSystem } from "../../../src/db/with-identity";
 import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration: PATCH /api/rides/:id — driver edits future ride.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -35,7 +36,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -48,10 +57,10 @@ function makeApp(): Hono {
   return app;
 }
 
-function authHeaders(u: { tgId: number }, token: string) {
+function authHeaders(token: string) {
   return {
     Authorization: `Bearer ${token}`,
-    Cookie: `tg_uid=${u.tgId}`,
+    Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
     "Content-Type": "application/json",
   };
 }
@@ -115,7 +124,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ price_rub: 350, comment: "Обновил цену" }),
     });
     expect(res.status).toBe(200);
@@ -129,7 +138,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(STRANGER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(STRANGER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ price_rub: 999 }),
     });
     expect(res.status).toBe(403);
@@ -140,7 +149,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ price_rub: 100 }),
     });
     expect(res.status).toBe(410);
@@ -151,7 +160,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ seats_total: 1 }),
     });
     expect(res.status).toBe(422);
@@ -161,7 +170,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request("/api/rides/00000000-0000-4000-c000-710000000099", {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ price_rub: 100 }),
     });
     expect(res.status).toBe(404);
@@ -171,7 +180,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request("/api/rides/garbage", {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ price_rub: 100 }),
     });
     expect(res.status).toBe(400);
@@ -182,7 +191,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({}),
     });
     expect(res.status).toBe(422);
@@ -193,7 +202,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ from_lat: 999 }),
     });
     expect(res.status).toBe(422);
@@ -204,7 +213,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ price_rub: 250 }),
     });
     expect(res.status).toBe(200);
@@ -228,7 +237,7 @@ describe("PATCH /api/rides/:id", () => {
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/rides/${rideId}`, {
       method: "PATCH",
-      headers: authHeaders(DRIVER, token),
+      headers: authHeaders(token),
       body: JSON.stringify({ from_label: "Новый старт" }),
     });
     expect(res.status).toBe(200);

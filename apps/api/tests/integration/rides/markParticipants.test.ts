@@ -1,7 +1,3 @@
-/**
- * Integration tests: POST /api/rides/:id/mark-participants — mark attending passengers after departure.
- * Покрывает: happy path, not_driver, before_departure, no_auth, invalid_body (non-UUID, empty array).
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -11,6 +7,11 @@ import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: POST /api/rides/:id/mark-participants — mark attending passengers after departure.
+ * Покрывает: happy path, not_driver, before_departure, no_auth, invalid_body (non-UUID, empty array).
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -48,6 +49,7 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
       uid: user.id,
       role: user.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -121,7 +123,7 @@ describe("POST /api/rides/:id/mark-participants — happy path", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({
@@ -162,7 +164,7 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${OTHER_USER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({
@@ -186,7 +188,7 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({
@@ -226,7 +228,7 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({
@@ -249,7 +251,7 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({
@@ -272,7 +274,7 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({ passenger_ids: [PASSENGER_A.id] }),
@@ -292,7 +294,7 @@ describe("POST /api/rides/:id/mark-participants — error cases", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({ passenger_ids: [PASSENGER_A.id] }),

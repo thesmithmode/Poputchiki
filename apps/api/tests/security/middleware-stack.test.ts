@@ -65,11 +65,10 @@ describe("identity-guard: все /api/* mutating routes требуют JWT", () 
   }
 });
 
-describe("security: /api/* mutating routes блокируют запросы без tg_uid cookie", () => {
-  // CSRF middleware убран: Bearer-токен в Authorization уже гарантирует CSRF-защиту
-  // (формы/iframe не могут ставить кастомные заголовки). identityGuard требует оба:
-  // Authorization: Bearer + tg_uid cookie.
-  it("POST /api/rides с валидным JWT но без tg_uid cookie → 401", async () => {
+describe("security: /api/* mutating routes блокируют запросы без sess_bind cookie", () => {
+  // identityGuard требует оба: Authorization: Bearer + sess_bind cookie.
+  // sess_bind = HMAC(jwtSecret, jti) — не выводится из JWT без знания секрета.
+  it("POST /api/rides с валидным JWT но без sess_bind cookie → 401", async () => {
     const now = Math.floor(Date.now() / 1000);
     const token = await sign(
       {
@@ -88,7 +87,7 @@ describe("security: /api/* mutating routes блокируют запросы б�
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        // НЕТ tg_uid cookie → identityGuard вернёт 401
+        // НЕТ sess_bind cookie → identityGuard вернёт 401
         Origin: ALLOWED_ORIGIN,
       },
       body: JSON.stringify({

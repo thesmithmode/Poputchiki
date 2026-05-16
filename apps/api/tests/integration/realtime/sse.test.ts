@@ -1,8 +1,3 @@
-/**
- * Integration tests: GET /api/realtime/rides — SSE endpoint.
- * Requires: Postgres + migrations applied.
- * Uses Node http.createServer (real HTTP) so stream.onAbort fires → finally block covered.
- */
 import { randomUUID } from "node:crypto";
 import * as http from "node:http";
 import type { AddressInfo } from "node:net";
@@ -15,6 +10,12 @@ import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createDispatcher } from "../../../src/realtime/dispatcher";
 import { createRealtimeRouter } from "../../../src/realtime/realtimeRouter";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: GET /api/realtime/rides — SSE endpoint.
+ * Requires: Postgres + migrations applied.
+ * Uses Node http.createServer (real HTTP) so stream.onAbort fires → finally block covered.
+ */
+import { sessBind } from "../../helpers/auth";
 import { buildDsn } from "../setup";
 
 const JWT_SECRET = "test-secret-sse-integration";
@@ -49,7 +50,7 @@ async function makeAuthHeaders(user: { id: string; tgId: number; role: string })
   );
   return {
     Authorization: `Bearer ${token}`,
-    Cookie: `tg_uid=${user.tgId}`,
+    Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
   };
 }
 

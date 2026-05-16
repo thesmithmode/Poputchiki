@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
+import { getMatchingPresets } from "../lib/tsarevoPresets";
 
 export interface Coords {
   lat: number;
@@ -8,7 +9,7 @@ export interface Coords {
 
 export interface AddressSuggestion {
   label: string;
-  source: "geocode";
+  source: "geocode" | "preset";
   coords: Coords;
 }
 
@@ -51,37 +52,40 @@ export function AddressAutocomplete({
     }
     setLoading(true);
     try {
-      const q = /казань|татарстан/i.test(trimmed) ? trimmed : `${trimmed}, Татарстан`;
       const results = await apiFetch<NominatimResult[]>(
-        `/geocode/search?q=${encodeURIComponent(q)}`,
+        `/geocode/search?q=${encodeURIComponent(trimmed)}`,
       );
-      if (!Array.isArray(results)) {
-        setGeoSuggestions([]);
-        return;
-      }
-      const mapped: AddressSuggestion[] = results.slice(0, MAX_SUGGESTIONS).flatMap((r) => {
-        const lat = Number.parseFloat(r.lat);
-        const lng = Number.parseFloat(r.lon);
-        if (Number.isNaN(lat) || Number.isNaN(lng)) return [];
-        return [
-          {
-            label: r.display_name?.split(",").slice(0, 4).join(",").trim() || trimmed,
-            source: "geocode" as const,
-            coords: { lat, lng },
-          },
-        ];
-      });
-      setGeoSuggestions(mapped);
+      const geo: AddressSuggestion[] = Array.isArray(results)
+        ? results.slice(0, MAX_SUGGESTIONS).flatMap((r) => {
+            const lat = Number.parseFloat(r.lat);
+            const lng = Number.parseFloat(r.lon);
+            if (Number.isNaN(lat) || Number.isNaN(lng)) return [];
+            return [
+              {
+                label: r.display_name?.split(",").slice(0, 4).join(",").trim() || trimmed,
+                source: "geocode" as const,
+                coords: { lat, lng },
+              },
+            ];
+          })
+        : [];
+      // Пресеты Царёво в начале списка, если совпадают с запросом
+      const presets = getMatchingPresets(trimmed);
+      const combined = [...presets, ...geo].slice(0, MAX_SUGGESTIONS);
+      setGeoSuggestions(combined);
     } catch {
-      setGeoSuggestions([]);
+      // При ошибке Nominatim показываем только пресеты
+      setGeoSuggestions(getMatchingPresets(trimmed));
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    if (!value) {
-      setGeoSuggestions([]);
+    const trimmed = value.trim();
+    if (trimmed.length < MIN_GEOCODE_CHARS) {
+      // Короткий/пустой запрос — сразу показываем пресеты, не ждём дебаунс
+      setGeoSuggestions(getMatchingPresets(trimmed));
       setLoading(false);
       return;
     }
@@ -103,7 +107,7 @@ export function AddressAutocomplete({
     setOpen(false);
   }
 
-  const showHint = open && value.trim().length > 0 && value.trim().length < MIN_GEOCODE_CHARS;
+  const showHint = false; // пресеты заменили hint
   const showLoading = open && loading && geoSuggestions.length === 0;
   const showEmpty =
     open && !loading && geoSuggestions.length === 0 && value.trim().length >= MIN_GEOCODE_CHARS;

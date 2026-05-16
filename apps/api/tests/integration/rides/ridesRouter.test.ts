@@ -1,8 +1,3 @@
-/**
- * Integration tests: POST /api/rides against real Postgres.
- * Requires: Postgres + migrations 000-005 applied.
- * Uses test users pre-inserted via withSystem to avoid auth overhead.
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -12,6 +7,12 @@ import { auditLog } from "../../../src/middleware/audit-log";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: POST /api/rides against real Postgres.
+ * Requires: Postgres + migrations 000-005 applied.
+ * Uses test users pre-inserted via withSystem to avoid auth overhead.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -44,6 +45,7 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
       uid: user.id,
       role: user.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -143,7 +145,7 @@ describe("POST /api/rides — happy path", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_ESTABLISHED.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify(body),
@@ -177,7 +179,7 @@ describe("POST /api/rides — validation errors", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_ESTABLISHED.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({ ...BASE_BODY, departure_at: "2020-01-01T00:00:00.000Z" }),
@@ -193,7 +195,7 @@ describe("POST /api/rides — validation errors", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_ESTABLISHED.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({ ...BASE_BODY, departure_at: futureDate(), seats_total: 0 }),
@@ -213,7 +215,7 @@ describe("POST /api/rides — anti-bot", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_NEW.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({ ...BASE_BODY, departure_at: futureDate() }),
@@ -226,7 +228,7 @@ describe("POST /api/rides — anti-bot", () => {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${USER_NEW.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
       body: JSON.stringify({ ...BASE_BODY, departure_at: futureDate(3) }),
@@ -240,7 +242,7 @@ describe("POST /api/rides — anti-bot", () => {
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
-      Cookie: `tg_uid=${USER_NO_LIKES.tgId}`,
+      Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       "X-Forwarded-For": TEST_IP,
     };
 

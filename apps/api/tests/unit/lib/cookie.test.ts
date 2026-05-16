@@ -48,7 +48,7 @@ describe("COOKIE_DEFAULTS sentinel", () => {
     expect(csrfCookie).toContain("Secure");
   });
 
-  it("SENTINEL: AUTH cookies are HttpOnly (XSS defence for tg_uid)", () => {
+  it("SENTINEL: AUTH cookies are HttpOnly (XSS defence for sess_bind)", () => {
     expect(AUTH_COOKIE_DEFAULTS.httpOnly).toBe(true);
   });
 

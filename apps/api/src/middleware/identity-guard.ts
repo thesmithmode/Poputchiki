@@ -2,15 +2,16 @@ import type { MiddlewareHandler } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { verify } from "hono/jwt";
 import type postgres from "postgres";
+import { verifySessionBinding } from "../lib/cookie";
 
 export type AppUser = { id: string; tgId: number; role: string };
 
 export function identityGuard(jwtSecret: string, sql?: postgres.Sql): MiddlewareHandler {
   return async (c, next) => {
     const authHeader = c.req.header("Authorization");
-    const tgUidCookie = getCookie(c, "tg_uid");
+    const sessBindCookie = getCookie(c, "sess_bind");
 
-    if (!authHeader || !tgUidCookie) {
+    if (!authHeader || !sessBindCookie) {
       return c.json({ error: "unauthorized" }, 401);
     }
 
@@ -27,14 +28,20 @@ export function identityGuard(jwtSecret: string, sql?: postgres.Sql): Middleware
       return c.json({ error: "unauthorized" }, 401);
     }
 
-    if (tgUidCookie !== String(payload.sub)) {
-      setCookie(c, "tg_uid", "", { maxAge: 0, path: "/" });
+    // jti обязателен — все выданные access-токены содержат jti
+    const jti = typeof payload.jti === "string" ? payload.jti : null;
+    if (!jti) {
       return c.json({ error: "unauthorized" }, 401);
     }
 
-    // Check jti revocation (only when sql is provided and jti is present in token)
-    const jti = typeof payload.jti === "string" ? payload.jti : null;
-    if (sql && jti) {
+    // sess_bind = HMAC(jwtSecret, jti): знание JWT не позволяет вычислить cookie без секрета
+    if (!verifySessionBinding(jwtSecret, jti, sessBindCookie)) {
+      setCookie(c, "sess_bind", "", { maxAge: 0, path: "/" });
+      return c.json({ error: "unauthorized" }, 401);
+    }
+
+    // Проверка отозванности jti
+    if (sql) {
       const [revoked] = await sql`
         SELECT 1 FROM revoked_tokens WHERE jti = ${jti} LIMIT 1
       `;

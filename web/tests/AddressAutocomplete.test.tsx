@@ -57,10 +57,11 @@ describe("AddressAutocomplete", () => {
     expect(screen.getByTestId("addr")).toBeInTheDocument();
   });
 
-  it("focus с пустым значением — не показывает list/hint/empty/loading", () => {
+  it("focus с пустым значением — показывает пресеты Царёво", () => {
     render(<Harness />);
     fireEvent.focus(screen.getByTestId("addr"));
-    expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
+    expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
+    expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
   });
 
   it("не показывает dropdown пока input без focus", () => {
@@ -68,12 +69,13 @@ describe("AddressAutocomplete", () => {
     expect(screen.queryByTestId("addr-listbox")).not.toBeInTheDocument();
   });
 
-  it("при <3 символах показывает hint вместо запроса", async () => {
+  it("при <3 символах показывает пресеты, не hint и не geocode-запрос", async () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: "ТЦ" } });
-    expect(screen.getByTestId("addr-hint")).toHaveTextContent("Введите минимум 3");
+    expect(screen.queryByTestId("addr-hint")).not.toBeInTheDocument();
+    expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, DEBOUNCE_WAIT));
     expect(mockedApiFetch).not.toHaveBeenCalled();
   });
@@ -129,7 +131,7 @@ describe("AddressAutocomplete", () => {
     });
   });
 
-  it("сбой geocode → empty message", async () => {
+  it("сбой geocode → показывает пресеты Царёво вместо empty message", async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error("503"));
     render(<Harness />);
     const input = screen.getByTestId("addr");
@@ -137,13 +139,14 @@ describe("AddressAutocomplete", () => {
     fireEvent.change(input, { target: { value: "Кольцо" } });
     await waitFor(
       () => {
-        expect(screen.getByTestId("addr-empty")).toBeInTheDocument();
+        expect(screen.getByText(/ТЦ Кольцо/)).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
+    expect(screen.queryByTestId("addr-empty")).not.toBeInTheDocument();
   });
 
-  it("geocode возвращает не-массив → empty message", async () => {
+  it("geocode возвращает не-массив → показывает пресеты Царёво", async () => {
     mockedApiFetch.mockResolvedValueOnce({ error: "geocoder_unavailable" } as never);
     render(<Harness />);
     const input = screen.getByTestId("addr");
@@ -151,10 +154,11 @@ describe("AddressAutocomplete", () => {
     fireEvent.change(input, { target: { value: "Кольцо" } });
     await waitFor(
       () => {
-        expect(screen.getByTestId("addr-empty")).toBeInTheDocument();
+        expect(screen.getByText(/ТЦ Кольцо/)).toBeInTheDocument();
       },
       { timeout: 2000 },
     );
+    expect(screen.queryByTestId("addr-empty")).not.toBeInTheDocument();
   });
 
   it("geocode с NaN-coords отбрасывает запись", async () => {
@@ -190,7 +194,7 @@ describe("AddressAutocomplete", () => {
     });
   });
 
-  it("query содержит 'Татарстан' если регион ещё не введён", async () => {
+  it("query отправляется как есть, без автодобавления Татарстан", async () => {
     mockedApiFetch.mockResolvedValueOnce([]);
     render(<Harness />);
     const input = screen.getByTestId("addr");
@@ -203,7 +207,8 @@ describe("AddressAutocomplete", () => {
       { timeout: 2000 },
     );
     const calls = mockedApiFetch.mock.calls.map(([p]) => decodeURIComponent(p as string));
-    expect(calls.some((p) => p.includes("Татарстан"))).toBe(true);
+    expect(calls.some((p) => p.includes("q=Баумана"))).toBe(true);
+    expect(calls.some((p) => /q=.*Татарстан/.test(p))).toBe(false);
   });
 
   it("query не задваивает регион если уже есть 'Татарстан'", async () => {
@@ -237,17 +242,17 @@ describe("AddressAutocomplete", () => {
     await waitFor(
       () => {
         expect(screen.getByTestId("addr-option-11")).toBeInTheDocument();
+        expect(screen.queryByTestId("addr-option-12")).not.toBeInTheDocument();
       },
       { timeout: 2000 },
     );
-    expect(screen.queryByTestId("addr-option-12")).not.toBeInTheDocument();
   });
 
-  it("PRESETS убраны — нет hardcoded адресов в dropdown без запроса", () => {
+  it("пресеты Царёво показываются при фокусе без запроса", () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
-    expect(screen.queryByText("ЖК Царёво, Усады, Татарстан")).not.toBeInTheDocument();
-    expect(screen.queryByText("ТЦ Кольцо, Казань")).not.toBeInTheDocument();
+    expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
+    expect(screen.getByText(/Казанский аэропорт/)).toBeInTheDocument();
   });
 });

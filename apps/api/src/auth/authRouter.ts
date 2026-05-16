@@ -3,10 +3,11 @@ import { setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
 import type postgres from "postgres";
 import { withSystem } from "../db/with-identity";
-import { AUTH_COOKIE_DEFAULTS, CSRF_COOKIE_DEFAULTS } from "../lib/cookie";
+import { AUTH_COOKIE_DEFAULTS, CSRF_COOKIE_DEFAULTS, signSessionBinding } from "../lib/cookie";
+import { logger } from "../lib/logger";
 import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 
-const ACCESS_TTL = 24 * 60 * 60;
+const ACCESS_TTL = 15 * 60; // 15 минут: короткое окно компрометации, refresh transparent для UX
 const REFRESH_TTL = 30 * 24 * 60 * 60;
 
 export function createAuthRouter(sql: postgres.Sql): Hono {
@@ -89,9 +90,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     const now = Math.floor(Date.now() / 1000);
     const jwtBase = { sub: String(tgUser.id), uid: authUser.id, role: authUser.role };
+    const accessJti = crypto.randomUUID();
     const [accessToken, refreshToken] = await Promise.all([
       sign(
-        { ...jwtBase, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + ACCESS_TTL },
+        { ...jwtBase, typ: "access", jti: accessJti, iat: now, exp: now + ACCESS_TTL },
         jwtSecret,
       ),
       sign(
@@ -100,8 +102,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       ),
     ]);
 
-    setCookie(c, "tg_uid", String(tgUser.id), AUTH_COOKIE_DEFAULTS);
+    setCookie(c, "sess_bind", signSessionBinding(jwtSecret, accessJti), AUTH_COOKIE_DEFAULTS);
     setCookie(c, "csrf_token", crypto.randomUUID(), CSRF_COOKIE_DEFAULTS);
+
+    logger.info({ event: "auth.login", tg_id: tgUser.id, uid: authUser.id }, "user authenticated");
 
     return c.json({
       access_token: accessToken,
@@ -179,9 +183,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       uid: String(payload.uid),
       role: userRow.role,
     };
+    const newAccessJti = crypto.randomUUID();
     const [newAccess, newRefresh] = await Promise.all([
       sign(
-        { ...jwtBase, typ: "access", jti: crypto.randomUUID(), iat: now, exp: now + ACCESS_TTL },
+        { ...jwtBase, typ: "access", jti: newAccessJti, iat: now, exp: now + ACCESS_TTL },
         jwtSecret,
       ),
       sign(
@@ -190,10 +195,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       ),
     ]);
 
-    // Reissue identity cookies — tg_uid is session-scoped; if it expired
-    // between auth and refresh, next /api/* call would fail identityGuard.
-    setCookie(c, "tg_uid", String(payload.sub), AUTH_COOKIE_DEFAULTS);
+    setCookie(c, "sess_bind", signSessionBinding(jwtSecret, newAccessJti), AUTH_COOKIE_DEFAULTS);
     setCookie(c, "csrf_token", crypto.randomUUID(), CSRF_COOKIE_DEFAULTS);
+
+    logger.info({ event: "auth.refresh", tg_id: payload.sub, uid: userId }, "token refreshed");
 
     return c.json({ access_token: newAccess, refresh_token: newRefresh });
   });
@@ -268,8 +273,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       }
     }
 
-    setCookie(c, "tg_uid", "", { ...AUTH_COOKIE_DEFAULTS, maxAge: 0 });
+    setCookie(c, "sess_bind", "", { ...AUTH_COOKIE_DEFAULTS, maxAge: 0 });
     setCookie(c, "csrf_token", "", { ...CSRF_COOKIE_DEFAULTS, maxAge: 0 });
+
+    logger.info({ event: "auth.logout", uid: userId }, "user logged out");
 
     return c.json({ ok: true });
   });

@@ -23,7 +23,7 @@ export function parseWebhookEnv(raw: Record<string, string | undefined>): Webhoo
 const ApiEnvSchema = z
   .object({
     DATABASE_URL: z.string().min(1),
-    JWT_SECRET: z.string().min(16),
+    JWT_SECRET: z.string().min(32), // HS256 требует ≥256 бит; 32 символа ASCII = минимум
     BOT_TOKEN: z.string().min(1),
     ADMIN_TG_ID: z.string().optional(),
     ADMIN_TG_CHAT_ID: z.string().optional(),

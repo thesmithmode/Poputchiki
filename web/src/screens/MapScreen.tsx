@@ -171,9 +171,12 @@ export function MapScreen() {
           if (locateMarkerRef.current) {
             lMap.removeLayer(locateMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
           }
+          const locateColor =
+            getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
+            "#2d5a3d";
           const circle = L.circleMarker([lat, lng], {
             radius: 8,
-            fillColor: "#4DAB6E",
+            fillColor: locateColor,
             fillOpacity: 1,
             color: "#fff",
             weight: 2.5,
@@ -205,6 +208,15 @@ export function MapScreen() {
     markersRef.current = [];
     polylinesRef.current = [];
 
+    const cs = getComputedStyle(document.documentElement);
+    const colorPrimary = cs.getPropertyValue("--brand-primary").trim() || "#2d5a3d";
+    const rideIcon = L.divIcon({
+      className: "",
+      html: `<div style="width:10px;height:10px;border-radius:50%;background:${colorPrimary};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div>`,
+      iconSize: [10, 10],
+      iconAnchor: [5, 5],
+    });
+
     if (rideList.length >= CLUSTER_THRESHOLD) {
       const winL = (window as unknown as { L?: { MarkerClusterGroup?: unknown } }).L;
       const lAny = L as unknown as { MarkerClusterGroup?: unknown };
@@ -212,7 +224,7 @@ export function MapScreen() {
       const GroupClass = MC as new () => { addLayer: (l: unknown) => void };
       const group = new GroupClass();
       for (const ride of rideList) {
-        const marker = L.marker([ride.from_lat, ride.from_lng]);
+        const marker = L.marker([ride.from_lat, ride.from_lng], { icon: rideIcon });
         marker.on("click", () => setSelected(ride));
         group.addLayer(marker);
         markersRef.current.push(marker);
@@ -222,7 +234,7 @@ export function MapScreen() {
     } else {
       clusterGroupRef.current = null;
       for (const ride of rideList) {
-        const marker = L.marker([ride.from_lat, ride.from_lng]).addTo(lMap);
+        const marker = L.marker([ride.from_lat, ride.from_lng], { icon: rideIcon }).addTo(lMap);
         marker.on("click", () => setSelected(ride));
         markersRef.current.push(marker);
 
@@ -303,7 +315,9 @@ export function MapScreen() {
             gap: 6,
           }}
         >
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4DAB6E" }} />
+          <span
+            style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand-primary)" }}
+          />
           {rides.length} поездок
         </div>
       )}
@@ -383,7 +397,9 @@ export function MapScreen() {
             </div>
             <div style={{ display: "flex", gap: 12, fontSize: 13, fontWeight: 600 }}>
               <span>{selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}</span>
-              <span style={{ color: seatsLeft === 0 ? "#e54e5c" : "#4dab6e" }}>
+              <span
+                style={{ color: seatsLeft === 0 ? "var(--brand-danger)" : "var(--brand-primary)" }}
+              >
                 {seatsLeft === 0 ? "Нет мест" : `${seatsLeft} мест`}
               </span>
             </div>

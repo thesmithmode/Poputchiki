@@ -1,7 +1,3 @@
-/**
- * Integration: POST /api/complaints + auto-ban trigger.
- * Requires: Postgres + all migrations applied.
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,6 +5,11 @@ import { createComplaintsRouter } from "../../../src/complaints/complaintsRouter
 import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
+/**
+ * Integration: POST /api/complaints + auto-ban trigger.
+ * Requires: Postgres + all migrations applied.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -27,7 +28,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -74,7 +83,7 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[0]?.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "spam" }),
@@ -93,7 +102,7 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[0]?.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "spam" }),
@@ -108,7 +117,7 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[1]?.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "invalid" }),
@@ -123,7 +132,7 @@ describe("POST /api/complaints", () => {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${REPORTERS[1]?.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ target_user_id: REPORTERS[1]?.id, reason_code: "spam" }),
@@ -140,7 +149,7 @@ describe("POST /api/complaints", () => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          Cookie: `tg_uid=${reporter.tgId}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ target_user_id: TARGET.id, reason_code: "fraud" }),

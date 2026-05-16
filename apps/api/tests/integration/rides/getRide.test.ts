@@ -1,6 +1,3 @@
-/**
- * Integration tests: GET /api/rides/:id against real Postgres.
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -9,6 +6,10 @@ import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { rateLimit } from "../../../src/middleware/rate-limit";
 import { createRidesRouter } from "../../../src/rides/ridesRouter";
+/**
+ * Integration tests: GET /api/rides/:id against real Postgres.
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -37,6 +38,7 @@ async function makeToken(user: { id: string; tgId: number; role: string }): Prom
       uid: user.id,
       role: user.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -98,7 +100,7 @@ describe("GET /api/rides/:id", () => {
     const res = await app.request(`/api/rides/${rideId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -119,7 +121,7 @@ describe("GET /api/rides/:id", () => {
     const res = await app.request("/api/rides/not-a-valid-uuid", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -132,7 +134,7 @@ describe("GET /api/rides/:id", () => {
     const res = await app.request("/api/rides/00000000-0000-4000-c000-000000000000", {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${DRIVER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });
@@ -147,7 +149,7 @@ describe("GET /api/rides/:id", () => {
     const res = await app.request(`/api/rides/${rideId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${PASSENGER.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         "X-Forwarded-For": TEST_IP,
       },
     });

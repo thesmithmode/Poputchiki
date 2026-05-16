@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RouteBlock } from "../components/RouteBlock";
+import { RouteMapLeaflet } from "../components/RouteMapLeaflet";
 import { useMe } from "../hooks/useMe";
 import { useRide } from "../hooks/useRide";
 import { useTelegramBack } from "../hooks/useTelegramBack";
@@ -178,20 +179,14 @@ export function RideDetailScreen({ id }: Props) {
 
       {/* Scrollable content */}
       <div style={{ flex: 1, padding: "12px 16px 120px", overflowY: "auto" }}>
-        {/* Map placeholder */}
-        <div
-          data-testid="map-placeholder"
-          style={{
-            height: 180,
-            background: "#e8f0ea",
-            borderRadius: 18,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 12,
-          }}
-        >
-          <span style={{ color: "var(--brand-sub)", fontSize: 13 }}>Карта маршрута</span>
+        {/* Route map */}
+        <div data-testid="route-map" style={{ marginBottom: 12 }}>
+          <RouteMapLeaflet
+            fromLat={ride.from_lat}
+            fromLng={ride.from_lng}
+            toLat={ride.to_lat}
+            toLng={ride.to_lng}
+          />
         </div>
 
         {/* Route card */}

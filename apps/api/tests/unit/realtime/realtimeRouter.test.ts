@@ -1,13 +1,14 @@
-/**
- * Unit tests for realtimeRouter — covers finally block (clearInterval + unsubscribe).
- * Uses a mock Dispatcher so no DB needed.
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import type { Dispatcher } from "../../../src/realtime/dispatcher";
 import { createRealtimeRouter } from "../../../src/realtime/realtimeRouter";
+/**
+ * Unit tests for realtimeRouter — covers finally block (clearInterval + unsubscribe).
+ * Uses a mock Dispatcher so no DB needed.
+ */
+import { sessBind } from "../../helpers/auth";
 
 const JWT_SECRET = "test-secret-realtime-unit";
 
@@ -25,6 +26,7 @@ async function makeToken(): Promise<string> {
       uid: USER.id,
       role: USER.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -33,7 +35,7 @@ async function makeToken(): Promise<string> {
 }
 
 function makeAuthHeaders(token: string) {
-  return { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${USER.tgId}` };
+  return { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` };
 }
 
 function makeMockDispatcher(): { dispatcher: Dispatcher; notify: (p: string) => void } {

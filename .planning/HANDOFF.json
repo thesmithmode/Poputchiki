@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-15T11:29:03.516Z",
+  "timestamp": "2026-05-16T10:11:42.899Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,7 +18,11 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-15.md"
+      "path": ".claude/settings.local.json"
+    },
+    {
+      "status": "M",
+      "path": ".memory/daily/2026-05-16.md"
     },
     {
       "status": "M",
@@ -38,33 +42,113 @@
     },
     {
       "status": "M",
-      "path": "apps/api/tests/unit/geocode/geocodeRouter.test.ts"
+      "path": "apps/api/tests/integration/complaints/complaintsRouter.test.ts"
     },
     {
       "status": "M",
-      "path": "infra/docker-compose.prod.yml"
+      "path": "apps/api/tests/integration/favorites/favoritesRouter.test.ts"
     },
     {
       "status": "M",
-      "path": "web/src/components/AddressAutocomplete.tsx"
+      "path": "apps/api/tests/integration/likes/likesRouter.test.ts"
     },
     {
       "status": "M",
-      "path": "web/src/index.css"
+      "path": "apps/api/tests/integration/notifications/notificationPreferences.test.ts"
     },
     {
       "status": "M",
-      "path": "web/src/screens/CreateRideScreen.tsx"
+      "path": "apps/api/tests/integration/realtime/sse.test.ts"
     },
     {
       "status": "M",
-      "path": "web/tests/AddressAutocomplete.test.tsx"
+      "path": "apps/api/tests/integration/reviews/reviewsRouter.test.ts"
     },
     {
       "status": "M",
-      "path": "web/tests/CreateRideScreen.test.tsx"
+      "path": "apps/api/tests/integration/ride-requests/rideRequestsRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/confirmParticipation.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/getMyRides.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/getRide.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/getRides.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/markParticipants.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/rideCancel.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/ridePatch.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/rideRequest.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/ridesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/support/supportRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-delete-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-patch-me.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/users/users-schedule.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/security/sql-injection.spec.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/middleware/identity-guard.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/realtime/realtimeRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/lib/presetsData.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/MapScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nd7debf5 FIX: CreateRide MainButton double-tap race — submittingRef guard\n4e51fdf CHORE: обновить memory-логи + HANDOFF — squash dev->main 2026-05-15 экраны прототипа\n902be15 FIX: driver_tg_id как JSON number вместо bigint-string\nd191d2e TEST: покрытие /rides/mine + MyRidesScreen + EditProfileScreen\nc5d36a8 FIX: код-ревью — SQL column avatar_url + EditProfile без preload PII"
+  "context_notes": "Recent commits:\nb95ffc4 FIX: геокодер хард-фильтр bbox Казани + fix vi.resetModules в тесте\n87f86af FIX: getMatchingPresets убрать KEYWORDS-ветку — фильтровать только по label\n94e9748 FIX: пресеты адресов — реальные координаты ЖК Царёво Village + деревни\nf8db487 FIX: баг карты и цветов в тёмной теме — Leaflet marker 404, hardcoded hex\n91de73e CHORE: обновить memory-логи — auth-fix сессия 2026-05-16"
 }

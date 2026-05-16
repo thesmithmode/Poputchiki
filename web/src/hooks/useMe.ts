@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, apiFetch } from "../lib/api";
 import { getTelegramWebApp } from "../lib/telegram";
-import { clearTokens, getTokens, setTokens } from "../lib/tokenStore";
+import { clearTokens, decodeJwtSub, getTokens, setTokens } from "../lib/tokenStore";
 
 // useMe orchestrates boot:
 // 1. Нет токенов → telegramAuth() через initData.
@@ -59,6 +59,20 @@ export function useMe(): MeState {
     let cancelled = false;
 
     async function boot() {
+      // Если сохранённый токен принадлежит другому TG-пользователю — сбросить.
+      // Иначе User B, открыв app после User A, видит чужой профиль из localStorage.
+      const wa = getTelegramWebApp();
+      const currentTgId = (wa?.initDataUnsafe?.user as { id?: number } | undefined)?.id;
+      if (currentTgId !== undefined) {
+        const tokens = getTokens();
+        if (tokens) {
+          const storedSub = decodeJwtSub(tokens.access);
+          if (storedSub !== String(currentTgId)) {
+            clearTokens();
+          }
+        }
+      }
+
       if (!getTokens()) {
         const authErr = await telegramAuth();
         if (cancelled) return;

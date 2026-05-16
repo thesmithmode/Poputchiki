@@ -1,6 +1,3 @@
-/**
- * Integration: DELETE /api/users/me — soft-delete + anonymization (152-FZ).
- */
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -8,6 +5,10 @@ import { createPool } from "../../../src/db/pool";
 import { withSystem } from "../../../src/db/with-identity";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import { createUsersRouter } from "../../../src/users/usersRouter";
+/**
+ * Integration: DELETE /api/users/me — soft-delete + anonymization (152-FZ).
+ */
+import { sessBind } from "../../helpers/auth";
 import { readJson } from "../../helpers/json";
 import { buildDsn } from "../setup";
 
@@ -24,7 +25,15 @@ let sql: ReturnType<typeof createPool>;
 async function makeToken(u: { id: string; tgId: number; role: string }): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: String(u.tgId), uid: u.id, role: u.role, typ: "access", iat: now, exp: now + 3600 },
+    {
+      sub: String(u.tgId),
+      uid: u.id,
+      role: u.role,
+      typ: "access",
+      jti: crypto.randomUUID(),
+      iat: now,
+      exp: now + 3600,
+    },
     JWT_SECRET,
   );
 }
@@ -36,8 +45,8 @@ function makeApp() {
   return app;
 }
 
-function authHeaders(u: { tgId: number }, token: string) {
-  return { Authorization: `Bearer ${token}`, Cookie: `tg_uid=${u.tgId}` };
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}`, Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}` };
 }
 
 beforeAll(async () => {
@@ -76,7 +85,7 @@ describe("DELETE /api/users/me", () => {
     const token = await makeToken(USER);
     const res = await makeApp().request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
@@ -109,7 +118,7 @@ describe("DELETE /api/users/me", () => {
     const token = await makeToken(USER);
     await makeApp().request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
 
     const [ride] = await sql<{ status: string }[]>`SELECT status FROM rides WHERE id = ${rideId}`;
@@ -120,7 +129,7 @@ describe("DELETE /api/users/me", () => {
     const token = await makeToken(USER);
     await makeApp().request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
     const [audit] = await sql<{ action: string }[]>`
       SELECT action FROM audit_log
@@ -160,7 +169,7 @@ describe("DELETE /api/users/me", () => {
     const token = await makeToken(USER);
     await makeApp().request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
 
     const [req] = await sql<{ status: string }[]>`
@@ -192,7 +201,7 @@ describe("DELETE /api/users/me", () => {
     const token = await makeToken(USER);
     await makeApp().request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
 
     const [fav] = await sql<{ user_id: string }[]>`
@@ -208,11 +217,11 @@ describe("DELETE /api/users/me", () => {
     const app = makeApp();
     await app.request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
     const res = await app.request("/api/users/me", {
       method: "DELETE",
-      headers: authHeaders(USER, token),
+      headers: authHeaders(token),
     });
     expect(res.status).toBe(200);
 

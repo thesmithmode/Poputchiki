@@ -1,3 +1,9 @@
+import { Hono } from "hono";
+import { sign } from "hono/jwt";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createPool } from "../../src/db/pool";
+import { identityGuard } from "../../src/middleware/identity-guard";
+import { createRidesRouter } from "../../src/rides/ridesRouter";
 /**
  * Sentinel: SQL-injection protection via postgres-js parameterization.
  * Sends 20+ injection payloads to all filter/search endpoints.
@@ -8,12 +14,7 @@
  *
  * Requires: Postgres running + all migrations applied.
  */
-import { Hono } from "hono";
-import { sign } from "hono/jwt";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createPool } from "../../src/db/pool";
-import { identityGuard } from "../../src/middleware/identity-guard";
-import { createRidesRouter } from "../../src/rides/ridesRouter";
+import { sessBind } from "../helpers/auth";
 import { readJson } from "../helpers/json";
 import { buildDsn, withTestUser } from "../integration/setup";
 import type { TestUser } from "../integration/setup";
@@ -59,6 +60,7 @@ beforeAll(async () => {
       uid: testUser.id,
       role: testUser.role,
       typ: "access",
+      jti: crypto.randomUUID(),
       iat: now,
       exp: now + 3600,
     },
@@ -82,7 +84,7 @@ describe("SQL injection: GET /api/rides query params", () => {
       const res = await app.request(`/api/rides?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
-          Cookie: `tg_uid=${testUser.tgId}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
         },
       });
       expect(res.status).not.toBe(500);
@@ -103,7 +105,7 @@ describe("SQL injection: numeric params coercion blocks injection", () => {
     const res = await app.request(`/api/rides?${params}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${testUser.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       },
     });
     expect(res.status).toBe(422);
@@ -114,7 +116,7 @@ describe("SQL injection: numeric params coercion blocks injection", () => {
     const res = await app.request(`/api/rides?${params}`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Cookie: `tg_uid=${testUser.tgId}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
       },
     });
     expect(res.status).toBe(422);

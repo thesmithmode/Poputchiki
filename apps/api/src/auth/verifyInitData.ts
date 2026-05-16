@@ -62,7 +62,7 @@ export function verifyInitData(
     throw new TelegramAuthError("invalid hash");
   }
 
-  // auth_date freshness: ±5 minutes
+  // auth_date freshness: принимаем ±MAX_AGE_SECONDS (Telegram WebView reuse + clock skew)
   const authDateStr = params.get("auth_date");
   if (!authDateStr) {
     throw new TelegramAuthError("missing auth_date");

@@ -61,7 +61,7 @@ describe("AddressAutocomplete", () => {
     render(<Harness />);
     fireEvent.focus(screen.getByTestId("addr"));
     expect(screen.getByTestId("addr-listbox")).toBeInTheDocument();
-    expect(screen.getByText(/Царёво Village, ул\. Тукая, д\. 4/)).toBeInTheDocument();
+    expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
   });
 
   it("не показывает dropdown пока input без focus", () => {
@@ -242,17 +242,17 @@ describe("AddressAutocomplete", () => {
     await waitFor(
       () => {
         expect(screen.getByTestId("addr-option-11")).toBeInTheDocument();
+        expect(screen.queryByTestId("addr-option-12")).not.toBeInTheDocument();
       },
       { timeout: 2000 },
     );
-    expect(screen.queryByTestId("addr-option-12")).not.toBeInTheDocument();
   });
 
   it("пресеты Царёво показываются при фокусе без запроса", () => {
     render(<Harness />);
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
-    expect(screen.getByText(/Царёво Village, ул\. Тукая, д\. 4/)).toBeInTheDocument();
+    expect(screen.getByText("Царёво Village, ул. Тукая, д. 4")).toBeInTheDocument();
     expect(screen.getByText(/Казанский аэропорт/)).toBeInTheDocument();
   });
 });

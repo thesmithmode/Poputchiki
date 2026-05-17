@@ -2,12 +2,7 @@ import { NextResponse } from "next/server"
 import { headers } from "next/headers"
 import Stripe from "stripe"
 import { prisma } from "@/lib/prisma"
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-  apiVersion: "2024-11-20.acacia",
-})
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ""
+import { stripe, stripeWebhookSecret } from "@/lib/stripe"
 
 export async function POST(request: Request) {
   const body = await request.text()
@@ -21,27 +16,37 @@ export async function POST(request: Request) {
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
+    event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret)
   } catch (err) {
     console.error("Webhook signature verification failed:", err)
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
   }
 
   try {
+    const alreadyProcessed = await prisma.processedStripeEvent.findUnique({
+      where: { eventId: event.id },
+    })
+
+    if (alreadyProcessed) {
+      return NextResponse.json({ received: true, duplicate: true })
+    }
+
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session
         const userId = session.metadata?.userId
         const plan = session.metadata?.plan
 
-        if (userId && plan) {
+        if (userId && plan && typeof session.subscription === "string") {
+          const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription)
+
           await prisma.subscription.update({
             where: { userId },
             data: {
               status: plan === "PRO" ? "PRO" : "PREMIUM",
-              stripeSubscriptionId: session.subscription as string,
-              stripePriceId: session.subscription_details?.metadata?.price_id || null,
-              currentPeriodEnd: new Date(session.expires_at ? session.expires_at * 1000 : Date.now() + 30 * 24 * 60 * 60 * 1000),
+              stripeSubscriptionId: session.subscription,
+              stripePriceId: stripeSubscription.items.data[0]?.price.id || null,
+              currentPeriodEnd: new Date(stripeSubscription.current_period_end * 1000),
             },
           })
         }
@@ -81,6 +86,13 @@ export async function POST(request: Request) {
       default:
         console.log(`Unhandled event type: ${event.type}`)
     }
+
+    await prisma.processedStripeEvent.create({
+      data: {
+        eventId: event.id,
+        eventType: event.type,
+      },
+    })
 
     return NextResponse.json({ received: true })
   } catch (error) {

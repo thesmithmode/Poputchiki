@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type ZodIssue, z } from "zod";
 
 const WebhookEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
@@ -11,11 +11,14 @@ const WebhookEnvSchema = z.object({
 
 export type WebhookEnv = z.infer<typeof WebhookEnvSchema>;
 
+function formatZodIssues(issues: ZodIssue[]): string {
+  return issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
+}
+
 export function parseWebhookEnv(raw: Record<string, string | undefined>): WebhookEnv {
   const result = WebhookEnvSchema.safeParse(raw);
   if (!result.success) {
-    const issues = result.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
-    throw new Error(`Invalid environment variables:\n${issues}`);
+    throw new Error(`Invalid environment variables:\n${formatZodIssues(result.error.issues)}`);
   }
   return result.data;
 }
@@ -46,8 +49,7 @@ export type ApiEnv = z.infer<typeof ApiEnvSchema>;
 export function parseApiEnv(raw: Record<string, string | undefined>): ApiEnv {
   const result = ApiEnvSchema.safeParse(raw);
   if (!result.success) {
-    const issues = result.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
-    throw new Error(`Invalid environment variables:\n${issues}`);
+    throw new Error(`Invalid environment variables:\n${formatZodIssues(result.error.issues)}`);
   }
   return result.data;
 }

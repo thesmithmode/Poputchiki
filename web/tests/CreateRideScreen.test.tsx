@@ -261,6 +261,75 @@ describe("CreateRideScreen", () => {
     expect(screen.getByTestId("submit-btn")).toBeInTheDocument();
   });
 
+  it("регулярная поездка: создаёт шаблон, потом поездку с template_id", async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ id: "tmpl-123" }) // POST /ride-templates
+      .mockResolvedValueOnce({ id: "ride-456" }); // POST /rides
+
+    renderScreen();
+    goToStep3();
+    fireEvent.click(screen.getByTestId("recurring-checkbox"));
+    fireEvent.click(screen.getByTestId("weekday-0")); // Пн
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      const templateCalls = mockedApiFetch.mock.calls.filter(
+        ([path]) => path === "/ride-templates",
+      );
+      expect(templateCalls).toHaveLength(1);
+      const [, init] = templateCalls[0] ?? [];
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(body.weekdays).toContain(0);
+      expect(body.departure_time).toMatch(/^\d{2}:\d{2}$/);
+
+      const ridesCalls = mockedApiFetch.mock.calls.filter(([path]) => path === "/rides");
+      expect(ridesCalls).toHaveLength(1);
+      const [, ridesInit] = ridesCalls[0] ?? [];
+      const ridesBody = JSON.parse((ridesInit as RequestInit).body as string);
+      expect(ridesBody.template_id).toBe("tmpl-123");
+    });
+  });
+
+  it("регулярная поездка: ошибка template → ошибка показана, /rides не вызывается", async () => {
+    mockedApiFetch.mockRejectedValueOnce(new Error("template fail"));
+
+    renderScreen();
+    goToStep3();
+    fireEvent.click(screen.getByTestId("recurring-checkbox"));
+    fireEvent.click(screen.getByTestId("weekday-1")); // Вт
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось создать поездку");
+    });
+    const ridesCalls = mockedApiFetch.mock.calls.filter(([path]) => path === "/rides");
+    expect(ridesCalls).toHaveLength(0);
+  });
+
+  it("обычная (не регулярная) поездка: template_id не передаётся", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ id: "ride-789" });
+
+    renderScreen();
+    goToStep3();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      const ridesCalls = mockedApiFetch.mock.calls.filter(([path]) => path === "/rides");
+      expect(ridesCalls).toHaveLength(1);
+      const [, init] = ridesCalls[0] ?? [];
+      const body = JSON.parse((init as RequestInit).body as string);
+      expect(body.template_id).toBeNull();
+    });
+  });
+
   it("progress bar отражает текущий шаг", () => {
     renderScreen();
     expect(screen.getByTestId("progress-1")).toBeInTheDocument();

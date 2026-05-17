@@ -16,7 +16,7 @@ interface RequestRow {
 type Action = "accept" | "reject" | "cancel";
 
 interface DomainError extends Error {
-  code: "NOT_FOUND" | "FORBIDDEN" | "INVALID_STATE";
+  code: "NOT_FOUND" | "FORBIDDEN" | "INVALID_STATE" | "NO_SEATS";
 }
 
 function domainError(code: DomainError["code"], message: string): DomainError {
@@ -26,7 +26,7 @@ function domainError(code: DomainError["code"], message: string): DomainError {
 function isDomainError(err: unknown): err is DomainError {
   return (
     err instanceof Error &&
-    ["NOT_FOUND", "FORBIDDEN", "INVALID_STATE"].includes(
+    ["NOT_FOUND", "FORBIDDEN", "INVALID_STATE", "NO_SEATS"].includes(
       (err as Error & { code?: string }).code ?? "",
     )
   );
@@ -105,10 +105,17 @@ export function createRideRequestsRouter(sql: postgres.Sql): Hono {
               throw domainError("INVALID_STATE", "concurrent update");
             }
 
-            // Seat refund: reject (was pending → seat held) and cancel of accepted/pending.
-            // book_seat increments on request creation; reject/cancel must decrement.
+            // Seat management: book_seat вызывается ТОЛЬКО при accept (не при подаче заявки).
+            // unbook_seat — только при cancel принятой (accepted) заявки.
             let refunded = false;
-            if (action === "reject" || action === "cancel") {
+            if (action === "accept") {
+              const booked = await tx<{ id: string }[]>`
+                SELECT * FROM app.book_seat(${row.ride_id}::uuid)
+              `;
+              if (booked.length === 0) {
+                throw domainError("NO_SEATS", "no_seats");
+              }
+            } else if (action === "cancel" && row.status === "accepted") {
               const refundRows = await tx<{ id: string }[]>`
                 SELECT id FROM app.unbook_seat(${row.ride_id}::uuid)
               `;
@@ -123,6 +130,7 @@ export function createRideRequestsRouter(sql: postgres.Sql): Hono {
         if (isDomainError(err)) {
           if (err.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
           if (err.code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+          if (err.code === "NO_SEATS") return c.json({ error: "no_seats" }, 409);
           return c.json({ error: "invalid_state", message: err.message }, 409);
         }
         /* c8 ignore next -- defensive: re-throw unknown errors */

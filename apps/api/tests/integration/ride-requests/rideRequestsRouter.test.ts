@@ -65,7 +65,9 @@ async function makeRequest(status: "pending" | "accepted" | "rejected" | "cancel
   return await withSystem(sql, async (tx) => {
     // reset rides + ride_requests
     await tx`DELETE FROM ride_requests WHERE ride_id = ${rideId}`;
-    await tx`UPDATE rides SET seats_taken = 1 WHERE id = ${rideId}`;
+    // Место забронировано только для accepted — pending/rejected/cancelled = 0
+    const seatsTaken = status === "accepted" ? 1 : 0;
+    await tx`UPDATE rides SET seats_taken = ${seatsTaken} WHERE id = ${rideId}`;
     const [row] = await tx<{ id: string }[]>`
       INSERT INTO ride_requests (ride_id, passenger_id, status)
       VALUES (${rideId}, ${PASSENGER.id}, ${status})
@@ -107,7 +109,7 @@ afterAll(async () => {
 });
 
 describe("POST /api/ride-requests/:id/accept", () => {
-  it("200 — driver accepts pending → status=accepted, seats_taken не меняется", async () => {
+  it("200 — driver accepts pending → status=accepted, seats_taken увеличивается на 1 (book_seat)", async () => {
     const reqId = await makeRequest("pending");
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/accept`, {
@@ -121,7 +123,8 @@ describe("POST /api/ride-requests/:id/accept", () => {
     const [ride] = await sql<{ seats_taken: number }[]>`
       SELECT seats_taken FROM rides WHERE id = ${rideId}
     `;
-    expect(ride?.seats_taken).toBe(1);
+    // makeRequest("pending") устанавливает seats_taken=0; accept вызывает book_seat → 1
+    expect(Number(ride?.seats_taken)).toBe(1);
   });
 
   it("404 — чужой driver (RLS скрывает запрос — не утечка существования)", async () => {
@@ -148,7 +151,7 @@ describe("POST /api/ride-requests/:id/accept", () => {
 });
 
 describe("POST /api/ride-requests/:id/reject", () => {
-  it("200 — driver reject pending → seats_taken-=1", async () => {
+  it("200 — driver reject pending → seats_taken не меняется (место не было забронировано)", async () => {
     const reqId = await makeRequest("pending");
     const token = await makeToken(DRIVER);
     const res = await makeApp().request(`/api/ride-requests/${reqId}/reject`, {
@@ -158,11 +161,12 @@ describe("POST /api/ride-requests/:id/reject", () => {
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(body.status).toBe("rejected");
-    expect(body.seat_refunded).toBe(true);
+    expect(body.seat_refunded).toBe(false);
     const [ride] = await sql<{ seats_taken: number }[]>`
       SELECT seats_taken FROM rides WHERE id = ${rideId}
     `;
-    expect(ride?.seats_taken).toBe(0);
+    // makeRequest("pending") устанавливает seats_taken=0; reject не вызывает unbook_seat
+    expect(Number(ride?.seats_taken)).toBe(0);
   });
 
   it("409 — reject из status=accepted", async () => {
@@ -177,6 +181,23 @@ describe("POST /api/ride-requests/:id/reject", () => {
 });
 
 describe("POST /api/ride-requests/:id/cancel", () => {
+  it("200 — passenger cancel pending → seats_taken не меняется (не было забронировано)", async () => {
+    const reqId = await makeRequest("pending");
+    const token = await makeToken(PASSENGER);
+    const res = await makeApp().request(`/api/ride-requests/${reqId}/cancel`, {
+      method: "POST",
+      headers: authHeaders(token),
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.status).toBe("cancelled");
+    expect(body.seat_refunded).toBe(false);
+    const [ride] = await sql<{ seats_taken: number }[]>`
+      SELECT seats_taken FROM rides WHERE id = ${rideId}
+    `;
+    expect(Number(ride?.seats_taken)).toBe(0);
+  });
+
   it("200 — passenger cancel accepted → seats_taken-=1", async () => {
     const reqId = await makeRequest("accepted");
     const token = await makeToken(PASSENGER);

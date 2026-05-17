@@ -145,7 +145,10 @@
       "Bash(Select-Object Name, Mode)",
       "Bash(grep -n \"sql\\\\`\" C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\apps\\\\api\\\\tests\\\\unit\\\\rides\\\\rideRequest.test.ts)",
       "Bash(grep -n \"sql\\\\`\\\\|mockSql\\\\|const sql\" \"C:/Soft/Projects/Poputchiki/apps/api/tests/unit/rides/rideRequest.test.ts\")",
-      "PowerShell(git add *)"
+      "PowerShell(git add *)",
+      "PowerShell(git commit -m $msg)",
+      "PowerShell($msg = \"FEAT: 9 ���䨪ᮢ UI - 㢥��������, ���������, 䨫����, lazy-����㧪�, ����न�� \\(BUG-1..9\\)\")",
+      "PowerShell(git checkout *)"
     ]
   },
   "hooks": {

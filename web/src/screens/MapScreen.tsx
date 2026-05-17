@@ -65,6 +65,7 @@ export function MapScreen() {
   const [selected, setSelected] = useState<Ride | null>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
 
   // Swap tile layer when theme changes
   useEffect(() => {
@@ -213,37 +214,85 @@ export function MapScreen() {
     };
   }, []);
 
+  function applyLocationOnMap(lat: number, lng: number) {
+    const lMap = mapRef.current as {
+      flyTo: (c: [number, number], z: number) => void;
+      addLayer: (l: unknown) => void;
+      removeLayer: (l: unknown) => void;
+    };
+    import("leaflet").then((L) => {
+      if (locateMarkerRef.current) {
+        lMap.removeLayer(locateMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
+      }
+      const locateColor =
+        getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
+        "#2d5a3d";
+      const circle = L.circleMarker([lat, lng], {
+        radius: 8,
+        fillColor: locateColor,
+        fillOpacity: 1,
+        color: "#fff",
+        weight: 2.5,
+      }).addTo(lMap as ReturnType<typeof L.map>);
+      locateMarkerRef.current = circle;
+      lMap.flyTo([lat, lng], 15);
+      setLocating(false);
+    });
+  }
+
   function handleLocate() {
     if (!mapRef.current || locating) return;
     setLocating(true);
+    setLocateError(null);
+
+    // Telegram WebApp LocationManager (Bot API 8.0+)
+    const tgWA = getTelegramWebApp() as unknown as {
+      LocationManager?: {
+        init?: (cb: () => void) => void;
+        requestLocation?: (
+          cb: (loc: { latitude: number; longitude: number } | null) => void,
+        ) => void;
+        isInited?: boolean;
+        isLocationAvailable?: boolean;
+      };
+    };
+    const lm = tgWA?.LocationManager;
+    if (lm?.requestLocation) {
+      const doRequest = () =>
+        lm.requestLocation?.((loc) => {
+          if (loc) {
+            applyLocationOnMap(loc.latitude, loc.longitude);
+          } else {
+            setLocating(false);
+            setLocateError("Геолокация недоступна");
+          }
+        });
+      if (!lm.isInited && lm.init) {
+        lm.init(doRequest);
+      } else {
+        doRequest();
+      }
+      return;
+    }
+
+    // Fallback: browser geolocation API
+    if (!navigator.geolocation) {
+      setLocating(false);
+      setLocateError("Геолокация не поддерживается");
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        const lMap = mapRef.current as {
-          flyTo: (c: [number, number], z: number) => void;
-          addLayer: (l: unknown) => void;
-          removeLayer: (l: unknown) => void;
-        };
-        import("leaflet").then((L) => {
-          if (locateMarkerRef.current) {
-            lMap.removeLayer(locateMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
-          }
-          const locateColor =
-            getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
-            "#2d5a3d";
-          const circle = L.circleMarker([lat, lng], {
-            radius: 8,
-            fillColor: locateColor,
-            fillOpacity: 1,
-            color: "#fff",
-            weight: 2.5,
-          }).addTo(lMap as ReturnType<typeof L.map>);
-          locateMarkerRef.current = circle;
-          lMap.flyTo([lat, lng], 15);
-          setLocating(false);
-        });
+        applyLocationOnMap(pos.coords.latitude, pos.coords.longitude);
       },
-      () => setLocating(false),
+      (err) => {
+        setLocating(false);
+        if (err.code === 1) {
+          setLocateError("Разрешите доступ к геолокации");
+        } else {
+          setLocateError("Не удалось определить местоположение");
+        }
+      },
       { timeout: 10000, enableHighAccuracy: true },
     );
   }
@@ -388,6 +437,27 @@ export function MapScreen() {
             style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand-primary)" }}
           />
           {rides.length} поездок
+        </div>
+      )}
+
+      {/* Geolocation error toast */}
+      {locateError && (
+        <div
+          style={{
+            position: "absolute",
+            top: 56,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 1000,
+            ...glassStyle,
+            borderRadius: 20,
+            padding: "6px 14px",
+            fontSize: 13,
+            color: "var(--brand-danger, #c0392b)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {locateError}
         </div>
       )}
 

@@ -20,6 +20,7 @@ const w = () => window as unknown as WindowWithTelegram;
 describe("App", () => {
   beforeEach(() => {
     document.documentElement.className = "";
+    localStorage.removeItem("themePreference");
     w().Telegram = undefined;
   });
 
@@ -33,7 +34,8 @@ describe("App", () => {
     expect(window.location.hash === "" || window.location.hash.startsWith("#/")).toBe(true);
   });
 
-  it("подхватывает Telegram colorScheme=dark → класс dark на html", () => {
+  it("подхватывает Telegram colorScheme=dark → класс dark на html (при system preference)", () => {
+    localStorage.setItem("themePreference", "system");
     w().Telegram = {
       WebApp: {
         colorScheme: "dark",

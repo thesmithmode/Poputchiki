@@ -210,6 +210,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             'first_name', u.display_name,
             'last_name', NULL,
             'tg_id', u.tg_id,
+            'tg_username', u.tg_username,
             'likes_received_count', u.likes_received_count,
             'created_at', u.created_at
           ) AS driver,
@@ -363,8 +364,8 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       cache.clear();
       sql`
         SELECT pg_notify(
-          'ride_request',
-          ${JSON.stringify({ ride_id: rideId, passenger_id: user.id, driver_id: result.driverId, category: "ride_request" })}
+          'notify_user',
+          ${JSON.stringify({ ride_id: rideId, passenger_id: user.id, user_id: result.driverId, category: "ride_request" })}
         )
       `.catch(
         /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
@@ -376,7 +377,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         INSERT INTO user_notifications (user_id, category, ride_id, data)
         VALUES (
           ${result.driverId}::uuid,
-          'ride_request',
+          'notify_user',
           ${rideId}::uuid,
           ${JSON.stringify({ passenger_id: user.id, passenger_name: result.passengerName, request_id: result.rideRequest?.id })}::jsonb
         )
@@ -469,8 +470,8 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     for (const passengerId of passenger_ids) {
       sql`
         SELECT pg_notify(
-          'participation_request',
-          ${JSON.stringify({ ride_id: rideId, passenger_id: passengerId, driver_id: user.id, category: "participation_request" })}
+          'notify_user',
+          ${JSON.stringify({ ride_id: rideId, user_id: passengerId, category: "participation_request" })}
         )
       `.catch(
         /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
@@ -703,7 +704,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       for (const passengerId of result.affectedPassengers) {
         sql`
           SELECT pg_notify(
-            'ride_request',
+            'notify_user',
             ${JSON.stringify({
               ride_id: rideId,
               user_id: passengerId,
@@ -811,7 +812,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     for (const passengerId of result.affectedPassengers) {
       sql`
         SELECT pg_notify(
-          'ride_request',
+          'notify_user',
           ${JSON.stringify({
             ride_id: rideId,
             user_id: passengerId,
@@ -825,7 +826,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     if (result.dailyCancels > 3) {
       sql`
         SELECT pg_notify(
-          'ride_request',
+          'notify_user',
           ${JSON.stringify({
             ride_id: rideId,
             user_id: user.id,

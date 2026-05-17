@@ -5,6 +5,7 @@ import { Icon } from "../components/Icon";
 import { RideCard } from "../components/RideCard";
 import { useFavorites } from "../hooks/useFavorites";
 import { applyFilters, useFilters } from "../hooks/useFilters";
+import { useMe } from "../hooks/useMe";
 import { useRealtime } from "../hooks/useRealtime";
 import { useRides } from "../hooks/useRides";
 import type { Ride } from "../types/ride";
@@ -23,6 +24,8 @@ export function FeedScreen() {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useRides();
   useRealtime();
+  const me = useMe();
+  const myUserId = me.status === "ok" ? me.user.id : null;
   const { filters, setFilters, resetFilters } = useFilters();
   const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
   const [showFilters, setShowFilters] = useState(false);
@@ -316,6 +319,7 @@ export function FeedScreen() {
               onClick={handleCardClick}
               isFavorited={isFavorite(ride.driver_id)}
               onToggleFavorite={() => toggleFavorite(ride.driver_id)}
+              isOwnRide={myUserId !== null && ride.driver_id === myUserId}
             />
           ))
         )}

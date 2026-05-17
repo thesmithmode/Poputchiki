@@ -314,8 +314,8 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     for (const { passenger_id, ride_id } of affectedPassengers) {
       sql`
         SELECT pg_notify(
-          'ride_cancelled',
-          ${JSON.stringify({ ride_id, passenger_id, driver_id: user.id, category: "ride_cancelled" })}
+          'notify_user',
+          ${JSON.stringify({ ride_id, user_id: passenger_id, category: "ride_cancelled" })}
         )
       `.catch(() => {});
     }

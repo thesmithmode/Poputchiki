@@ -279,13 +279,72 @@ function AppRoutes() {
     return (
       <div
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          background: "var(--brand-bg, #f4f5f4)",
           minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <p>Загрузка...</p>
+        {/* Header skeleton */}
+        <div
+          style={{
+            padding: "16px 16px 8px",
+            background: "var(--brand-surface, #fff)",
+            borderBottom: "1px solid var(--brand-line, rgba(15,23,42,0.06))",
+          }}
+        >
+          <div
+            style={{
+              width: 140,
+              height: 20,
+              borderRadius: 6,
+              background: "var(--brand-line, #e8e9e8)",
+            }}
+          />
+        </div>
+        {/* Ride card skeletons */}
+        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {[88, 96, 80, 92].map((h, i) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
+              key={i}
+              style={{
+                height: h,
+                borderRadius: 16,
+                background: "var(--brand-surface, #fff)",
+                border: "1px solid var(--brand-line, rgba(15,23,42,0.06))",
+              }}
+            />
+          ))}
+        </div>
+        {/* BottomTabBar skeleton */}
+        <div
+          style={{
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 64,
+            background: "var(--brand-surface, #fff)",
+            borderTop: "1px solid var(--brand-line, rgba(15,23,42,0.06))",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-around",
+            padding: "0 16px",
+          }}
+        >
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                background: "var(--brand-line, #e8e9e8)",
+              }}
+            />
+          ))}
+        </div>
       </div>
     );
   }

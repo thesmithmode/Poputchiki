@@ -67,6 +67,12 @@ export function MapScreen() {
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!locateError) return;
+    const t = setTimeout(() => setLocateError(null), 3500);
+    return () => clearTimeout(t);
+  }, [locateError]);
+
   // Swap tile layer when theme changes
   useEffect(() => {
     const map = mapRef.current as {
@@ -257,6 +263,15 @@ export function MapScreen() {
       };
     };
     const lm = tgWA?.LocationManager;
+
+    // На PC Telegram нет LocationManager → browser geolocation тоже не работает в iframe.
+    // Предупреждаем сразу, не пытаясь делать запрос.
+    if (tgWA && !lm) {
+      setLocating(false);
+      setLocateError("Геолокация доступна только в мобильном Telegram");
+      return;
+    }
+
     if (lm?.requestLocation) {
       const doRequest = () =>
         lm.requestLocation?.((loc) => {
@@ -288,7 +303,9 @@ export function MapScreen() {
       (err) => {
         setLocating(false);
         if (err.code === 1) {
-          setLocateError("Разрешите доступ к геолокации");
+          setLocateError("Разрешите геолокацию в настройках Telegram");
+        } else if (err.code === 2) {
+          setLocateError("Геолокация временно недоступна");
         } else {
           setLocateError("Не удалось определить местоположение");
         }

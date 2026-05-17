@@ -25,22 +25,29 @@ export type MeState =
   | { status: "ok"; user: MeUser }
   | { status: "error"; message: string };
 
-async function telegramAuth(): Promise<string | null> {
+type TelegramAuthResult = { user: MeUser } | { error: string };
+
+async function telegramAuth(): Promise<TelegramAuthResult> {
   const wa = getTelegramWebApp();
   const initData = wa?.initData ?? "";
   try {
-    const auth = await apiFetch<{ access_token: string; refresh_token: string }>("/auth/telegram", {
+    const auth = await apiFetch<{
+      access_token: string;
+      refresh_token: string;
+      user?: MeUser;
+    }>("/auth/telegram", {
       method: "POST",
       body: JSON.stringify({ initData }),
     });
     setTokens(auth.access_token, auth.refresh_token);
-    return null;
+    if (auth.user) return { user: auth.user };
+    return { error: "no user in response" };
   } catch (err) {
     if (err instanceof ApiError) {
       const b = err.body as { error?: string } | null;
-      return b?.error ?? "auth failed";
+      return { error: b?.error ?? "auth failed" };
     }
-    return String(err);
+    return { error: String(err) };
   }
 }
 
@@ -74,12 +81,15 @@ export function useMe(): MeState {
       }
 
       if (!getTokens()) {
-        const authErr = await telegramAuth();
+        const result = await telegramAuth();
         if (cancelled) return;
-        if (authErr !== null) {
-          setState({ status: "error", message: authErr });
+        if ("error" in result) {
+          setState({ status: "error", message: result.error });
           return;
         }
+        // Профиль пришёл прямо из /auth/telegram — GET /users/me не нужен.
+        applyUserState(result.user, setState);
+        return;
       }
 
       try {
@@ -91,18 +101,13 @@ export function useMe(): MeState {
           // apiFetch уже пробовал refresh внутри — раз вернулся 401, refresh не помог.
           // Очищаем токены и переавторизуемся через Telegram initData.
           clearTokens();
-          const authErr = await telegramAuth();
+          const result = await telegramAuth();
           if (cancelled) return;
-          if (authErr !== null) {
-            setState({ status: "error", message: authErr });
+          if ("error" in result) {
+            setState({ status: "error", message: result.error });
             return;
           }
-          try {
-            const user = await apiFetch<MeUser>("/users/me");
-            if (!cancelled) applyUserState(user, setState);
-          } catch (err2) {
-            if (!cancelled) setState({ status: "error", message: String(err2) });
-          }
+          applyUserState(result.user, setState);
         } else if (err instanceof ApiError && err.status === 403) {
           const body = err.body as { reason?: string; banned_at?: string } | null;
           setState({

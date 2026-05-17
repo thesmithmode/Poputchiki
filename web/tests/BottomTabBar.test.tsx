@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,10 +20,13 @@ vi.mock("react-router-dom", async (importOriginal) => {
 });
 
 function renderTabBar(path: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <BottomTabBar />
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={[path]}>
+        <BottomTabBar />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

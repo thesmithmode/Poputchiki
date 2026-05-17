@@ -170,3 +170,10 @@ model Progress {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+
+model ProcessedStripeEvent {
+  id          String   @id @default(cuid())
+  eventId     String   @unique
+  eventType   String
+  processedAt DateTime @default(now())
+}

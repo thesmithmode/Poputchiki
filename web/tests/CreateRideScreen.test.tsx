@@ -106,21 +106,21 @@ describe("CreateRideScreen", () => {
     expect(screen.getByTestId("input-time")).toBeInTheDocument();
   });
 
-  it("step 3: показывает кнопки выбора мест 1-4", () => {
+  it("step 3: показывает поле ввода количества мест", () => {
     renderScreen();
     goToStep3();
-    expect(screen.getByTestId("seats-1")).toBeInTheDocument();
-    expect(screen.getByTestId("seats-2")).toBeInTheDocument();
-    expect(screen.getByTestId("seats-3")).toBeInTheDocument();
-    expect(screen.getByTestId("seats-4")).toBeInTheDocument();
+    const input = screen.getByTestId("seats-input") as HTMLInputElement;
+    expect(input).toBeInTheDocument();
+    expect(input.type).toBe("number");
+    expect(Number(input.value)).toBe(3);
   });
 
-  it("step 3: выбирает количество мест кнопкой", () => {
+  it("step 3: изменяет количество мест через поле ввода", () => {
     renderScreen();
     goToStep3();
-    fireEvent.click(screen.getByTestId("seats-2"));
-    expect(screen.getByTestId("seats-2")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByTestId("seats-1")).toHaveAttribute("aria-pressed", "false");
+    const input = screen.getByTestId("seats-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "7" } });
+    expect(Number(input.value)).toBe(7);
   });
 
   it("step 3: чекбокс договорная скрывает поле цены", () => {

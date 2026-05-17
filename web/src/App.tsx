@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { BannedScreen } from "./components/BannedScreen";
 import { BottomTabBar } from "./components/BottomTabBar";
@@ -7,25 +7,61 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
+import { apiFetch } from "./lib/api";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
-import { AboutScreen } from "./screens/AboutScreen";
-import { AdminScreen } from "./screens/AdminScreen";
-import { ConfirmParticipationScreen } from "./screens/ConfirmParticipationScreen";
-import { CreateRideScreen } from "./screens/CreateRideScreen";
-import { EditProfileScreen } from "./screens/EditProfileScreen";
-import { EventsScreen } from "./screens/EventsScreen";
-import { FavoritesScreen } from "./screens/FavoritesScreen";
+// Критический путь — грузим синхронно
 import { FeedScreen } from "./screens/FeedScreen";
-import { MapScreen } from "./screens/MapScreen";
-import { MyRidesScreen } from "./screens/MyRidesScreen";
-import { NotificationPreferencesScreen } from "./screens/NotificationPreferencesScreen";
-import { OnboardingScreen } from "./screens/OnboardingScreen";
-import { ProfileScreen } from "./screens/ProfileScreen";
-import { RideDetailScreen } from "./screens/RideDetailScreen";
-import { SettingsScreen } from "./screens/SettingsScreen";
-import { SupportScreen } from "./screens/SupportScreen";
-import { PrivacyScreen } from "./screens/legal/PrivacyScreen";
-import { TermsScreen } from "./screens/legal/TermsScreen";
+// Тяжёлые / редко посещаемые — lazy
+const AboutScreen = lazy(() =>
+  import("./screens/AboutScreen").then((m) => ({ default: m.AboutScreen })),
+);
+const AdminScreen = lazy(() =>
+  import("./screens/AdminScreen").then((m) => ({ default: m.AdminScreen })),
+);
+const ConfirmParticipationScreen = lazy(() =>
+  import("./screens/ConfirmParticipationScreen").then((m) => ({
+    default: m.ConfirmParticipationScreen,
+  })),
+);
+const CreateRideScreen = lazy(() =>
+  import("./screens/CreateRideScreen").then((m) => ({ default: m.CreateRideScreen })),
+);
+const EditProfileScreen = lazy(() =>
+  import("./screens/EditProfileScreen").then((m) => ({ default: m.EditProfileScreen })),
+);
+const EventsScreen = lazy(() =>
+  import("./screens/EventsScreen").then((m) => ({ default: m.EventsScreen })),
+);
+const FavoritesScreen = lazy(() =>
+  import("./screens/FavoritesScreen").then((m) => ({ default: m.FavoritesScreen })),
+);
+const MapScreen = lazy(() => import("./screens/MapScreen").then((m) => ({ default: m.MapScreen })));
+const MyRidesScreen = lazy(() =>
+  import("./screens/MyRidesScreen").then((m) => ({ default: m.MyRidesScreen })),
+);
+const NotificationPreferencesScreen = lazy(() =>
+  import("./screens/NotificationPreferencesScreen").then((m) => ({
+    default: m.NotificationPreferencesScreen,
+  })),
+);
+const ProfileScreen = lazy(() =>
+  import("./screens/ProfileScreen").then((m) => ({ default: m.ProfileScreen })),
+);
+const RideDetailScreen = lazy(() =>
+  import("./screens/RideDetailScreen").then((m) => ({ default: m.RideDetailScreen })),
+);
+const SettingsScreen = lazy(() =>
+  import("./screens/SettingsScreen").then((m) => ({ default: m.SettingsScreen })),
+);
+const SupportScreen = lazy(() =>
+  import("./screens/SupportScreen").then((m) => ({ default: m.SupportScreen })),
+);
+const PrivacyScreen = lazy(() =>
+  import("./screens/legal/PrivacyScreen").then((m) => ({ default: m.PrivacyScreen })),
+);
+const TermsScreen = lazy(() =>
+  import("./screens/legal/TermsScreen").then((m) => ({ default: m.TermsScreen })),
+);
 
 function RideDetailRoute() {
   const { id = "" } = useParams<{ id: string }>();
@@ -108,6 +144,63 @@ function OfflineBanner() {
   );
 }
 
+function AutoOnboard() {
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch("/users/me", { method: "PATCH", body: JSON.stringify({ onboarded: true }) })
+      .then(() => window.location.reload())
+      .catch((e) => setError(String(e)));
+  }, []);
+
+  if (error) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          minHeight: "100vh",
+          gap: 16,
+          padding: 24,
+          background: "var(--brand-bg, #f4f5f4)",
+        }}
+      >
+        <p style={{ fontSize: 14, color: "var(--brand-danger)", textAlign: "center" }}>{error}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          style={{
+            background: "var(--brand-primary)",
+            color: "var(--brand-primary-ink)",
+            border: "none",
+            borderRadius: 10,
+            padding: "12px 24px",
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: "pointer",
+          }}
+        >
+          Повторить
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "var(--brand-bg, #f4f5f4)",
+      }}
+    />
+  );
+}
+
 const TAB_PATHS = new Set([
   "/",
   "/map",
@@ -129,27 +222,40 @@ function AppShell() {
         Перейти к основному контенту
       </a>
       <main id="main-content" style={showTabs && !isFullScreen ? { paddingBottom: 64 } : undefined}>
-        <Routes>
-          <Route path="/" element={<FeedScreen />} />
-          <Route path="/rides" element={<FeedScreen />} />
-          <Route path="/rides/new" element={<CreateRideScreen />} />
-          <Route path="/favorites" element={<FavoritesScreen />} />
-          <Route path="/map" element={<MapScreen />} />
-          <Route path="/events" element={<EventsScreen />} />
-          <Route path="/about" element={<AboutScreen />} />
-          <Route path="/rides/:id" element={<RideDetailRoute />} />
-          <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
-          <Route path="/users/:id" element={<ProfileRoute />} />
-          <Route path="/me/rides" element={<MyRidesScreen />} />
-          <Route path="/me/edit" element={<EditProfileScreen />} />
-          <Route path="/settings" element={<SettingsScreen />} />
-          <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
-          <Route path="/support" element={<SupportScreen />} />
-          <Route path="/admin" element={<AdminScreen />} />
-          <Route path="/privacy" element={<PrivacyScreen />} />
-          <Route path="/terms" element={<TermsScreen />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        <Suspense
+          fallback={
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: "60vh",
+              }}
+            />
+          }
+        >
+          <Routes>
+            <Route path="/" element={<FeedScreen />} />
+            <Route path="/rides" element={<FeedScreen />} />
+            <Route path="/rides/new" element={<CreateRideScreen />} />
+            <Route path="/favorites" element={<FavoritesScreen />} />
+            <Route path="/map" element={<MapScreen />} />
+            <Route path="/events" element={<EventsScreen />} />
+            <Route path="/about" element={<AboutScreen />} />
+            <Route path="/rides/:id" element={<RideDetailRoute />} />
+            <Route path="/rides/:id/confirm" element={<ConfirmParticipationScreen />} />
+            <Route path="/users/:id" element={<ProfileRoute />} />
+            <Route path="/me/rides" element={<MyRidesScreen />} />
+            <Route path="/me/edit" element={<EditProfileScreen />} />
+            <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
+            <Route path="/support" element={<SupportScreen />} />
+            <Route path="/admin" element={<AdminScreen />} />
+            <Route path="/privacy" element={<PrivacyScreen />} />
+            <Route path="/terms" element={<TermsScreen />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </main>
       <BottomTabBar />
     </>
@@ -189,12 +295,7 @@ function AppRoutes() {
   }
 
   if (me.status === "ok" && !me.user.onboarded) {
-    return (
-      <OnboardingScreen
-        displayName={me.user.display_name}
-        onComplete={() => window.location.reload()}
-      />
-    );
+    return <AutoOnboard />;
   }
 
   if (me.status === "error") {

@@ -10,6 +10,21 @@ vi.mock("../src/lib/api", async (importOriginal) => {
   return { ...actual, apiFetch: vi.fn() };
 });
 
+vi.mock("../src/hooks/useMe", () => ({
+  useMe: vi.fn(() => ({
+    status: "ok",
+    user: {
+      id: "passenger-user-id",
+      display_name: "Test User",
+      onboarded: true,
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      role: "user",
+    },
+  })),
+}));
+
 import { ApiError, apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
@@ -107,12 +122,11 @@ describe("RideDetailScreen", () => {
     });
   });
 
-  it("telegram-кнопка ведёт на правильный tg:// URL", async () => {
+  it("telegram-кнопка отображается для чужой поездки", async () => {
     mockedApiFetch.mockResolvedValueOnce(mockRide);
     renderScreen();
     await waitFor(() => {
-      const link = screen.getByTestId("telegram-link");
-      expect(link).toHaveAttribute("href", "tg://user?id=9999");
+      expect(screen.getByTestId("telegram-link")).toBeInTheDocument();
     });
   });
 

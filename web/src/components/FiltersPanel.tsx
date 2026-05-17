@@ -10,12 +10,11 @@ interface Props {
 export function FiltersPanel({ filters, onChange, onReset }: Props) {
   const hasActive =
     filters.direction !== DEFAULT_FILTERS.direction ||
+    filters.priceMin !== DEFAULT_FILTERS.priceMin ||
     filters.priceMax !== DEFAULT_FILTERS.priceMax ||
     filters.seatsMin !== DEFAULT_FILTERS.seatsMin ||
     filters.verifiedOnly !== DEFAULT_FILTERS.verifiedOnly ||
-    filters.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly ||
-    filters.trustMinAccountAgeDays !== DEFAULT_FILTERS.trustMinAccountAgeDays ||
-    filters.trustMinLikes !== DEFAULT_FILTERS.trustMinLikes;
+    filters.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly;
 
   return (
     <div
@@ -41,24 +40,43 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
         }}
       />
 
-      <div className="flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <span>Цена макс:</span>
-          <input
-            data-testid="filter-price-max"
-            type="range"
-            min={0}
-            max={2000}
-            step={50}
-            value={filters.priceMax ?? 2000}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              onChange({ priceMax: v >= 2000 ? null : v });
-            }}
-            className="w-24"
-          />
-          <span>{filters.priceMax === null ? "любая" : `${filters.priceMax} ₽`}</span>
-        </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm">Цена, ₽:</span>
+        <input
+          data-testid="filter-price-min"
+          type="number"
+          min={0}
+          placeholder="от"
+          value={filters.priceMin ?? ""}
+          onChange={(e) => {
+            const v = e.target.value === "" ? null : Number(e.target.value);
+            onChange({ priceMin: v });
+          }}
+          className="rounded-md px-2 py-1 text-sm w-20"
+          style={{
+            background: "var(--brand-surface)",
+            color: "var(--brand-text)",
+            border: "1px solid var(--brand-line)",
+          }}
+        />
+        <span className="text-sm">—</span>
+        <input
+          data-testid="filter-price-max"
+          type="number"
+          min={0}
+          placeholder="до"
+          value={filters.priceMax ?? ""}
+          onChange={(e) => {
+            const v = e.target.value === "" ? null : Number(e.target.value);
+            onChange({ priceMax: v });
+          }}
+          className="rounded-md px-2 py-1 text-sm w-20"
+          style={{
+            background: "var(--brand-surface)",
+            color: "var(--brand-text)",
+            border: "1px solid var(--brand-line)",
+          }}
+        />
 
         <label className="flex items-center gap-2 text-sm">
           <span>Мест мин:</span>
@@ -66,42 +84,12 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             data-testid="filter-seats-min"
             type="range"
             min={0}
-            max={4}
+            max={20}
             value={filters.seatsMin}
             onChange={(e) => onChange({ seatsMin: Number(e.target.value) })}
             className="w-20"
           />
           <span>{filters.seatsMin === 0 ? "любое" : filters.seatsMin}</span>
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <span>Возраст акк:</span>
-          <input
-            data-testid="filter-trust-age"
-            type="range"
-            min={0}
-            max={30}
-            value={filters.trustMinAccountAgeDays}
-            onChange={(e) => onChange({ trustMinAccountAgeDays: Number(e.target.value) })}
-            className="w-20"
-          />
-          <span>
-            {filters.trustMinAccountAgeDays === 0 ? "любой" : `${filters.trustMinAccountAgeDays}д`}
-          </span>
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <span>Лайков мин:</span>
-          <input
-            data-testid="filter-trust-likes"
-            type="range"
-            min={0}
-            max={10}
-            value={filters.trustMinLikes}
-            onChange={(e) => onChange({ trustMinLikes: Number(e.target.value) })}
-            className="w-20"
-          />
-          <span>{filters.trustMinLikes}</span>
         </label>
       </div>
 

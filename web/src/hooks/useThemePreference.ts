@@ -26,10 +26,10 @@ function isTelegramEnv(): boolean {
 }
 
 export function getStoredTheme(): ThemePref {
-  if (typeof localStorage === "undefined") return "system";
+  if (typeof localStorage === "undefined") return "light";
   const v = localStorage.getItem(STORAGE_KEY);
   if (v === "light" || v === "dark" || v === "system") return v;
-  return "system";
+  return "light";
 }
 
 export function applyTheme(pref: ThemePref): void {

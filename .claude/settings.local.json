@@ -141,7 +141,11 @@
       "WebFetch(domain:nominatim.openstreetmap.org)",
       "Bash(gh pr *)",
       "Bash(ls *)",
-      "Bash(grep -E \"\\\\.sql$\")"
+      "Bash(grep -E \"\\\\.sql$\")",
+      "Bash(Select-Object Name, Mode)",
+      "Bash(grep -n \"sql\\\\`\" C:\\\\Soft\\\\Projects\\\\Poputchiki\\\\apps\\\\api\\\\tests\\\\unit\\\\rides\\\\rideRequest.test.ts)",
+      "Bash(grep -n \"sql\\\\`\\\\|mockSql\\\\|const sql\" \"C:/Soft/Projects/Poputchiki/apps/api/tests/unit/rides/rideRequest.test.ts\")",
+      "PowerShell(git add *)"
     ]
   },
   "hooks": {

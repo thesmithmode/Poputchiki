@@ -41,6 +41,7 @@ describe("POST /rides/:id/request", () => {
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
     mockSql.mockResolvedValueOnce([]); // pg_notify fire-and-forget
+    mockSql.mockResolvedValueOnce([]); // user_notifications INSERT fire-and-forget
 
     const app = makeApp();
     const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
@@ -127,6 +128,7 @@ describe("POST /rides/:id/request", () => {
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
     mockSql.mockResolvedValueOnce([]); // pg_notify
+    mockSql.mockResolvedValueOnce([]); // user_notifications INSERT fire-and-forget
 
     const app = makeApp();
     await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });

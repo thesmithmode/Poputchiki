@@ -346,7 +346,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             RETURNING *
           `;
 
-          return { rideRequest, driverId: String(ride.driver_id) };
+          const [passengerUser] = await tx<{ display_name: string }[]>`
+            SELECT display_name FROM users WHERE id = ${user.id}::uuid
+          `;
+
+          return {
+            rideRequest,
+            driverId: String(ride.driver_id),
+            passengerName: passengerUser?.display_name ?? "",
+          };
         },
         "repeatable read",
       );
@@ -362,6 +370,17 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
         () => {},
       );
+
+      // Persist in-app notification for driver
+      sql`
+        INSERT INTO user_notifications (user_id, category, ride_id, data)
+        VALUES (
+          ${result.driverId}::uuid,
+          'ride_request',
+          ${rideId}::uuid,
+          ${JSON.stringify({ passenger_id: user.id, passenger_name: result.passengerName, request_id: result.rideRequest?.id })}::jsonb
+        )
+      `.catch(/* c8 ignore next */ () => {});
 
       return c.json(result.rideRequest, 201);
     } catch (err) {

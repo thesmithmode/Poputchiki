@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-17T09:29:31.805Z",
+  "timestamp": "2026-05-17T09:47:56.781Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -22,7 +22,7 @@
     },
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-16.md"
+      "path": ".memory/daily/2026-05-17.md"
     },
     {
       "status": "M",
@@ -37,54 +37,10 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "M",
-      "path": "apps/api/src/ride-requests/rideRequestsRouter.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/src/rides/ridesRouter.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/ride-requests/rideRequestsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/integration/rides/rideRequest.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/security/seats-race.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/ride-requests/rideRequestsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/rides/rideRequest.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/hooks/useRide.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/RideDetailScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/types/ride.ts"
-    },
-    {
-      "status": "??",
-      "path": ".memory/daily/2026-05-17.md"
-    },
-    {
       "status": "??",
       "path": "reviews/"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n8509e3c FIX: глобальная карта — убрать polylines, rich ride-карточки, починить PC Telegram\n628f5c2 FIX: тип ZodIssue и точка с запятой в formatZodIssues — typecheck+lint\nbe8906c FIX: централизовать Stripe-клиент, идемпотентность вебхуков, фикс subscription period\n41cd51e CHORE: обновить memory-логи — Nominatim self-hosted fix + boost\neb4cea6 FEAT: бустить ЖК Царёво наверх в автокомплите адреса"
+  "context_notes": "Recent commits:\n229aa4b FIX: book_seat — убрать проверку driver_id при accept\n9cd73c6 FEAT: регулярная поездка — создание шаблона перед поездкой (POST /ride-templates + template_id)\n53839d7 CHORE: обновить memory-логи — рефакторинг ride request flow (2026-05-17)\n44f6fe0 FEAT: рефакторинг flow записи — заявка без book_seat, место резервируется при accept\n8509e3c FIX: глобальная карта — убрать polylines, rich ride-карточки, починить PC Telegram"
 }

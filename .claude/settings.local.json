@@ -138,7 +138,11 @@
       "WebFetch(domain:kazan.novostroyki.org)",
       "WebFetch(domain:tsarevodom.ru)",
       "WebFetch(domain:2gis.ru)",
-      "WebFetch(domain:nominatim.openstreetmap.org)"
+      "WebFetch(domain:nominatim.openstreetmap.org)",
+      "Bash(gh pr *)",
+      "Bash(ls *)",
+      "Bash(grep -E \"\\\\.sql$\")",
+      "Bash(Select-Object Name, Mode)"
     ]
   },
   "hooks": {

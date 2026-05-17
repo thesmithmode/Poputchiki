@@ -151,6 +151,21 @@ export function createRideRequestsRouter(sql: postgres.Sql): Hono {
         )
       `.catch(/* c8 ignore next -- fire-and-forget notify */ () => {});
 
+      // Persist in-app notification (accept/reject → passenger; cancel → driver)
+      if (action !== "cancel") {
+        const notifCategory =
+          action === "accept" ? "ride_request_accepted" : "ride_request_rejected";
+        sql`
+          INSERT INTO user_notifications (user_id, category, ride_id, data)
+          VALUES (
+            ${result.request.passenger_id}::uuid,
+            ${notifCategory},
+            ${result.request.ride_id}::uuid,
+            ${JSON.stringify({ request_id: result.request.id })}::jsonb
+          )
+        `.catch(/* c8 ignore next */ () => {});
+      }
+
       return c.json({
         id: result.request.id,
         ride_id: result.request.ride_id,

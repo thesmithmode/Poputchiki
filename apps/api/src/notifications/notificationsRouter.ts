@@ -54,8 +54,42 @@ async function readPrefs(
   return result;
 }
 
+interface UserNotification {
+  id: string;
+  category: string;
+  ride_id: string | null;
+  data: Record<string, unknown> | null;
+  is_read: boolean;
+  created_at: string;
+}
+
 export function createNotificationsRouter(sql: postgres.Sql): Hono {
   const app = new Hono();
+
+  app.get("/", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    const notifications = await withIdentity(sql, user, async (tx) => {
+      return tx<UserNotification[]>`
+        SELECT id, category, ride_id, data, is_read, created_at
+        FROM user_notifications
+        WHERE user_id = ${user.id}::uuid
+        ORDER BY created_at DESC
+        LIMIT 50
+      `;
+    });
+    return c.json({ notifications });
+  });
+
+  app.post("/read-all", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    await withIdentity(sql, user, async (tx) => {
+      await tx`
+        UPDATE user_notifications SET is_read = true
+        WHERE user_id = ${user.id}::uuid AND is_read = false
+      `;
+    });
+    return c.json({ ok: true });
+  });
 
   app.get("/preferences", async (c) => {
     const user = c.get("user" as never) as AppUser;

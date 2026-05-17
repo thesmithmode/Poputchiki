@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-17T09:47:56.781Z",
+  "timestamp": "2026-05-17T10:27:24.273Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -35,12 +35,8 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "??",
-      "path": "reviews/"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n229aa4b FIX: book_seat — убрать проверку driver_id при accept\n9cd73c6 FEAT: регулярная поездка — создание шаблона перед поездкой (POST /ride-templates + template_id)\n53839d7 CHORE: обновить memory-логи — рефакторинг ride request flow (2026-05-17)\n44f6fe0 FEAT: рефакторинг flow записи — заявка без book_seat, место резервируется при accept\n8509e3c FIX: глобальная карта — убрать polylines, rich ride-карточки, починить PC Telegram"
+  "context_notes": "Recent commits:\n66a4003 FIX: apt-get upgrade в cron Dockerfile — патч libcap2 CVE-2026-4878 и libsystemd0 CVE-2026-29111\n9908801 FEAT: запись на поездку, регулярные поездки, UI водителя\nc07198a FIX: PBF Татарстана с openstreetmap.fr + буст ЖК Царёво в автокомплите\ndab7a9e FEAT: переключить дефолт NOMINATIM_URL на self-hosted http://nominatim:8080\na65577e FEAT: self-hosted Nominatim — PBF Татарстана через CI/CD"
 }

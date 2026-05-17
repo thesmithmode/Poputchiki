@@ -152,6 +152,30 @@ export function CreateRideScreen() {
           ? null
           : Number(form.price_rub);
 
+      // Регулярная поездка: сначала создаём шаблон, получаем template_id
+      let template_id: string | null = null;
+      if (form.is_recurring && form.weekdays.length > 0) {
+        const tmpl = await apiFetch<{ id: string }>("/ride-templates", {
+          method: "POST",
+          body: JSON.stringify({
+            from_label: form.from_label.trim(),
+            from_lat: resolvedFrom.lat,
+            from_lng: resolvedFrom.lng,
+            to_label: form.to_label.trim(),
+            to_lat: resolvedTo.lat,
+            to_lng: resolvedTo.lng,
+            departure_time: form.time,
+            weekdays: form.weekdays,
+            ...(price_rub != null && { price_rub }),
+            seats_total: form.seats_total,
+            ...(form.comment.trim() && { comment: form.comment.trim() }),
+            ...(form.active_from && { active_from: form.active_from }),
+            ...(form.active_to && { active_to: form.active_to }),
+          }),
+        });
+        template_id = tmpl.id;
+      }
+
       await apiFetch("/rides", {
         method: "POST",
         body: JSON.stringify({
@@ -165,6 +189,7 @@ export function CreateRideScreen() {
           price_rub,
           seats_total: form.seats_total,
           comment: form.comment.trim() || null,
+          template_id,
         }),
       });
       notification("success");

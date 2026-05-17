@@ -8,6 +8,7 @@ import { useMe } from "../hooks/useMe";
 import { useRide } from "../hooks/useRide";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { ApiError, apiFetch } from "../lib/api";
+import { getTelegramWebApp } from "../lib/telegram";
 
 interface Props {
   id: string;
@@ -127,6 +128,17 @@ export function RideDetailScreen({ id }: Props) {
       setLikeStatus("liked");
     } catch {
       setLikeStatus("error");
+    }
+  }
+
+  function handleContactDriver() {
+    if (!ride) return;
+    const tg = getTelegramWebApp();
+    const url = `tg://user?id=${ride.driver.tg_id}`;
+    if (tg && (tg as unknown as { openLink?: (u: string) => void }).openLink) {
+      (tg as unknown as { openLink: (u: string) => void }).openLink(url);
+    } else {
+      window.open(url, "_blank");
     }
   }
 
@@ -640,69 +652,76 @@ export function RideDetailScreen({ id }: Props) {
         )}
       </div>
 
-      {/* Fixed bottom action bar */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          padding: "12px 16px",
-          paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
-          background: "var(--tab-bar-bg)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderTop: "1px solid var(--brand-border)",
-          display: "flex",
-          gap: 8,
-          zIndex: 30,
-        }}
-      >
-        <a
-          href={`tg://user?id=${ride.driver.tg_id}`}
-          data-testid="telegram-link"
+      {/* Fixed bottom action bar — скрыт пока me не загрузился (иначе кнопки мигают) */}
+      {me.status !== "loading" && (
+        <div
           style={{
-            flex: 1,
+            position: "fixed",
+            bottom: 0,
+            left: 0,
+            right: 0,
             padding: "12px 16px",
-            background: "var(--brand-surface-2)",
-            borderRadius: 12,
-            fontSize: 14,
-            fontWeight: 600,
-            color: "var(--brand-text)",
-            textAlign: "center",
-            textDecoration: "none",
+            paddingBottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+            background: "var(--tab-bar-bg)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderTop: "1px solid var(--brand-border)",
             display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             gap: 8,
+            zIndex: 30,
           }}
         >
-          <Icon name="tg" size={16} />
-          Связаться с водителем
-        </a>
-        {!isOwnRide && (
-          <button
-            type="button"
-            data-testid="respond-btn"
-            disabled={respondBtnDisabled}
-            onClick={handleRespond}
-            style={{
-              flex: 1.6,
-              padding: "12px 16px",
-              background: respondBtnBg,
-              border: "none",
-              borderRadius: 12,
-              fontSize: 14,
-              fontWeight: 600,
-              color: "var(--brand-primary-ink)",
-              cursor: respondBtnDisabled ? "not-allowed" : "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            {respondBtnLabel}
-          </button>
-        )}
-      </div>
+          {!isOwnRide && (
+            <button
+              type="button"
+              data-testid="telegram-link"
+              onClick={handleContactDriver}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-text)",
+                textAlign: "center",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                fontFamily: "inherit",
+              }}
+            >
+              <Icon name="tg" size={16} />
+              Связаться
+            </button>
+          )}
+          {!isOwnRide && (
+            <button
+              type="button"
+              data-testid="respond-btn"
+              disabled={respondBtnDisabled}
+              onClick={handleRespond}
+              style={{
+                flex: 1.6,
+                padding: "12px 16px",
+                background: respondBtnBg,
+                border: "none",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-primary-ink)",
+                cursor: respondBtnDisabled ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              {respondBtnLabel}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 FROM oven/bun:1 AS base
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+  && apt-get install -y --no-install-recommends \
     postgresql-client \
     zstd \
     gnupg \

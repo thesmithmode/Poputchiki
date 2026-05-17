@@ -141,7 +141,7 @@ export function createRideRequestsRouter(sql: postgres.Sql): Hono {
       const notifyTo = action === "cancel" ? result.request.driver_id : result.request.passenger_id;
       sql`
         SELECT pg_notify(
-          'ride_request',
+          'notify_user',
           ${JSON.stringify({
             ride_id: result.request.ride_id,
             request_id: result.request.id,

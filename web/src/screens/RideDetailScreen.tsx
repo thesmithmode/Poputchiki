@@ -37,7 +37,7 @@ function isNew(createdAt: string) {
 }
 
 type RequestStatus = "idle" | "loading" | "sent" | "full" | "duplicate" | "error";
-type LikeStatus = "idle" | "loading" | "liked" | "error";
+type LikeStatus = "idle" | "loading" | "liked" | "error" | "not_confirmed";
 type ActionStatus = "idle" | "loading" | "done" | "error";
 
 export function RideDetailScreen({ id }: Props) {
@@ -113,6 +113,11 @@ export function RideDetailScreen({ id }: Props) {
       await apiFetch(`/ride-requests/${reqId}/${action}`, { method: "POST" });
       setActionStatus((prev) => ({ ...prev, [reqId]: "done" }));
       queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      apiFetch("/notifications/read-all", { method: "POST" })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+        })
+        .catch(() => {});
     } catch {
       setActionStatus((prev) => ({ ...prev, [reqId]: "error" }));
     }
@@ -126,19 +131,37 @@ export function RideDetailScreen({ id }: Props) {
         body: JSON.stringify({ ride_id: id, target_user_id: ride?.driver.id }),
       });
       setLikeStatus("liked");
-    } catch {
-      setLikeStatus("error");
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        setLikeStatus("not_confirmed");
+      } else {
+        setLikeStatus("error");
+      }
     }
   }
 
   function handleContactDriver() {
     if (!ride) return;
     const tg = getTelegramWebApp();
-    const url = `tg://user?id=${ride.driver.tg_id}`;
-    if (tg && (tg as unknown as { openLink?: (u: string) => void }).openLink) {
-      (tg as unknown as { openLink: (u: string) => void }).openLink(url);
+    const wa = tg as unknown as {
+      openTelegramLink?: (u: string) => void;
+      openLink?: (u: string) => void;
+    };
+    const username = (ride.driver as { tg_username?: string }).tg_username;
+    if (username) {
+      const url = `https://t.me/${username}`;
+      if (wa.openTelegramLink) {
+        wa.openTelegramLink(url);
+      } else {
+        window.open(url, "_blank");
+      }
     } else {
-      window.open(url, "_blank");
+      const url = `tg://user?id=${ride.driver.tg_id}`;
+      if (wa.openLink) {
+        wa.openLink(url);
+      } else {
+        window.open(url, "_blank");
+      }
     }
   }
 
@@ -443,9 +466,11 @@ export function RideDetailScreen({ id }: Props) {
               ? "Лайк поставлен!"
               : likeStatus === "loading"
                 ? "..."
-                : likeStatus === "error"
-                  ? "Ошибка"
-                  : "Поставить лайк водителю"}
+                : likeStatus === "not_confirmed"
+                  ? "Лайк доступен после поездки"
+                  : likeStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Поставить лайк водителю"}
           </button>
         )}
 
@@ -593,17 +618,30 @@ export function RideDetailScreen({ id }: Props) {
                     >
                       <Icon name="user" size={18} style={{ color: "var(--brand-primary)" }} />
                     </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--brand-text)" }}>
+                    <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "var(--brand-text)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {pr.first_name}
                       </div>
                     </div>
                     {st === "done" ? (
-                      <div style={{ fontSize: 12, color: "var(--brand-sub)" }}>Готово</div>
+                      <div style={{ fontSize: 12, color: "var(--brand-sub)", flexShrink: 0 }}>
+                        Готово
+                      </div>
                     ) : st === "error" ? (
-                      <div style={{ fontSize: 12, color: "var(--brand-danger)" }}>Ошибка</div>
+                      <div style={{ fontSize: 12, color: "var(--brand-danger)", flexShrink: 0 }}>
+                        Ошибка
+                      </div>
                     ) : (
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         <button
                           type="button"
                           disabled={st === "loading"}
@@ -695,7 +733,7 @@ export function RideDetailScreen({ id }: Props) {
               }}
             >
               <Icon name="tg" size={16} />
-              Связаться
+              Связаться с водителем
             </button>
           )}
           {!isOwnRide && (

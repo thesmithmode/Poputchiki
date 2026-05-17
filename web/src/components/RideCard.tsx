@@ -9,6 +9,7 @@ interface RideCardProps {
   onClick?: (ride: Ride) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
+  isOwnRide?: boolean;
 }
 
 function relativeTime(departureAt: string): string {
@@ -27,6 +28,7 @@ export function RideCard({
   onClick,
   isFavorited,
   onToggleFavorite,
+  isOwnRide = false,
 }: RideCardProps) {
   const { selection } = useTelegramHaptic();
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
@@ -167,6 +169,10 @@ export function RideCard({
         display: "flex",
         flexDirection: "column",
         gap: 10,
+        ...(isOwnRide && {
+          borderLeft: "3px solid var(--brand-primary)",
+          paddingLeft: 11,
+        }),
       }}
       onMouseDown={(e) => {
         (e.currentTarget as HTMLElement).style.transform = "scale(0.98)";
@@ -178,7 +184,7 @@ export function RideCard({
         (e.currentTarget as HTMLElement).style.transform = "";
       }}
     >
-      {/* Top row: time + relative + price */}
+      {/* Top row: time + relative + [own badge] + price */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div
           style={{
@@ -193,6 +199,22 @@ export function RideCard({
           {time}
         </div>
         <div style={{ fontSize: 12, color: "var(--brand-sub)", lineHeight: 1 }}>{rel}</div>
+        {isOwnRide && (
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--brand-primary)",
+              background: "var(--brand-primary-soft)",
+              borderRadius: 6,
+              padding: "2px 7px",
+              lineHeight: 1.4,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Ваша поездка
+          </span>
+        )}
         <div style={{ flex: 1 }} />
         {onToggleFavorite && (
           <button

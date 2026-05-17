@@ -4,6 +4,12 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
   switch (category) {
     case "ride_request":
       return "У вас новая заявка на поездку";
+    case "ride_request_accepted":
+      return "Водитель принял вашу заявку на поездку!";
+    case "ride_request_rejected":
+      return "Водитель отклонил вашу заявку на поездку";
+    case "ride_request_cancelled":
+      return "Пассажир отменил заявку на поездку";
     case "ride_cancelled":
       return "Поездка была отменена";
     case "confirm_participation":

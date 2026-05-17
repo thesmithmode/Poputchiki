@@ -5,6 +5,9 @@ import type { Category, NotifierDb, NotifyPayload } from "./types.js";
 
 const CATEGORIES = new Set<string>([
   "ride_request",
+  "ride_request_accepted",
+  "ride_request_rejected",
+  "ride_request_cancelled",
   "ride_cancelled",
   "confirm_participation",
   "participation_request",

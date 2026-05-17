@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useRolePreference } from "../hooks/useRolePreference";
+import { useUnreadCount } from "../hooks/useUnreadCount";
 import { Icon } from "./Icon";
 
 interface TabItem {
@@ -32,6 +33,7 @@ export function BottomTabBar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { role } = useRolePreference();
+  const unreadCount = useUnreadCount();
 
   if (!SHOW_ON_PATHS.has(location.pathname)) return null;
 
@@ -121,7 +123,32 @@ export function BottomTabBar() {
               fontFamily: "inherit",
             }}
           >
-            <Icon name={tab.icon} size={22} stroke={active ? 2 : 1.7} />
+            <div style={{ position: "relative", display: "inline-flex" }}>
+              <Icon name={tab.icon} size={22} stroke={active ? 2 : 1.7} />
+              {tab.id === "notif" && unreadCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -4,
+                    right: -6,
+                    minWidth: 16,
+                    height: 16,
+                    borderRadius: 8,
+                    background: "var(--brand-danger, #e53e3e)",
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: "0 3px",
+                    lineHeight: 1,
+                  }}
+                >
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
             <span style={{ fontSize: 10, fontWeight: active ? 600 : 500, letterSpacing: 0.1 }}>
               {tab.label}
             </span>

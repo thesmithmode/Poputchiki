@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-16T13:48:03.212Z",
+  "timestamp": "2026-05-17T09:29:31.805Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,6 +18,10 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".claude/settings.local.json"
+    },
+    {
+      "status": "M",
       "path": ".memory/daily/2026-05-16.md"
     },
     {
@@ -31,8 +35,56 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/ride-requests/rideRequestsRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/rides/ridesRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/ride-requests/rideRequestsRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/rides/rideRequest.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/security/seats-race.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/ride-requests/rideRequestsRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/rides/rideRequest.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/hooks/useRide.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/RideDetailScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/types/ride.ts"
+    },
+    {
+      "status": "??",
+      "path": ".memory/daily/2026-05-17.md"
+    },
+    {
+      "status": "??",
+      "path": "reviews/"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\neb4cea6 FEAT: бустить ЖК Царёво наверх в автокомплите адреса\n0da7551 FIX: PBF Татарстана с openstreetmap.fr (Geofabrik блокирует Россию)\neda82b1 FEAT: переключить дефолт NOMINATIM_URL на self-hosted http://nominatim:8080\nf0834f7 CHORE: обновить memory-логи — 2026-05-16 nominatim selfhost\n61b8537 FEAT: self-hosted Nominatim — PBF Татарстана через CI/CD"
+  "context_notes": "Recent commits:\n8509e3c FIX: глобальная карта — убрать polylines, rich ride-карточки, починить PC Telegram\n628f5c2 FIX: тип ZodIssue и точка с запятой в formatZodIssues — typecheck+lint\nbe8906c FIX: централизовать Stripe-клиент, идемпотентность вебхуков, фикс subscription period\n41cd51e CHORE: обновить memory-логи — Nominatim self-hosted fix + boost\neb4cea6 FEAT: бустить ЖК Царёво наверх в автокомплите адреса"
 }

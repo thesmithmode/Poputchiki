@@ -20,7 +20,7 @@ const w = () => window as unknown as WindowWithTelegram;
 describe("App", () => {
   beforeEach(() => {
     document.documentElement.className = "";
-    localStorage.removeItem("themePreference");
+    localStorage.removeItem("pp_theme");
     w().Telegram = undefined;
   });
 
@@ -35,7 +35,7 @@ describe("App", () => {
   });
 
   it("подхватывает Telegram colorScheme=dark → класс dark на html (при system preference)", () => {
-    localStorage.setItem("themePreference", "system");
+    localStorage.setItem("pp_theme", "system");
     w().Telegram = {
       WebApp: {
         colorScheme: "dark",

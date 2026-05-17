@@ -148,7 +148,9 @@
       "PowerShell(git add *)",
       "PowerShell(git commit -m $msg)",
       "PowerShell($msg = \"FEAT: 9 ���䨪ᮢ UI - 㢥��������, ���������, 䨫����, lazy-����㧪�, ����न�� \\(BUG-1..9\\)\")",
-      "PowerShell(git checkout *)"
+      "PowerShell(git checkout *)",
+      "Bash(grep -v \"//.*pg_notify\")",
+      "Bash(npx @biomejs/biome format --write web/src/screens/RideDetailScreen.tsx)"
     ]
   },
   "hooks": {

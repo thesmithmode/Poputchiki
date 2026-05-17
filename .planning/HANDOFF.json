@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-17T11:28:26.812Z",
-  "source": "auto-postool",
+  "timestamp": "2026-05-17T12:03:40.009Z",
+  "source": "auto-compact",
   "partial": false,
   "phase": null,
   "phase_name": null,
@@ -22,23 +22,31 @@
     },
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-17.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/flush.log"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/last-flush.json"
-    },
-    {
-      "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
       "status": "M",
-      "path": "apps/api/src/auth/authRouter.ts"
+      "path": "apps/api/src/ride-requests/rideRequestsRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/rides/ridesRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/users/usersRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/src/format.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/src/process-event.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/src/types.ts"
     },
     {
       "status": "M",
@@ -46,25 +54,25 @@
     },
     {
       "status": "M",
-      "path": "web/src/App.tsx"
+      "path": "web/src/components/BottomTabBar.tsx"
     },
     {
       "status": "M",
-      "path": "web/src/hooks/useMe.ts"
+      "path": "web/src/components/RideCard.tsx"
+    },
+    {
+      "status": "A",
+      "path": "web/src/hooks/useUnreadCount.ts"
     },
     {
       "status": "M",
-      "path": "web/src/screens/MapScreen.tsx"
+      "path": "web/src/screens/FeedScreen.tsx"
     },
     {
-      "status": "??",
-      "path": "apps/api/tests/unit/auth/telegram-login.test.ts"
-    },
-    {
-      "status": "??",
-      "path": "web/tests/useMe.test.ts"
+      "status": "M",
+      "path": "web/src/screens/RideDetailScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nfba6380 TEST: исправить ключ localStorage pp_theme в тесте App dark-theme\n1faf3bc TEST: обновить тесты под новый UI — number input мест, button telegram, мок useMe, light-тема дефолт\n2daeb4e CHORE: обновить memory-логи — 2026-05-17 (9 багфиксов BUG-1..9)\nfef813a CHORE: обновить settings.local.json — разрешения после разрешения merge-конфликта\n85be50a FIX: фильтры цены — два поля вместо ползунка; лимит мест до 100; убрать фильтры возраст/лайки (BUG-8)"
+  "context_notes": "Recent commits:\n453c726 PERF: удалить блокирующий Google Fonts, lazy FeedScreen, vendor chunks\ne8e588d CHORE: обновить memory-логи и HANDOFF — 2026-05-17\n7e6926a PERF: ускорить старт и улучшить UX геолокации\nfba6380 TEST: исправить ключ localStorage pp_theme в тесте App dark-theme\n1faf3bc TEST: обновить тесты под новый UI — number input мест, button telegram, мок useMe, light-тема дефолт"
 }

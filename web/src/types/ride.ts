@@ -1,6 +1,7 @@
 export interface Ride {
   id: string;
   driver_id: string;
+  template_id?: string | null;
   from_label: string;
   from_lat: number;
   from_lng: number;

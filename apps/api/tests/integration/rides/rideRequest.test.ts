@@ -127,7 +127,8 @@ describe("POST /api/rides/:id/request — happy path", () => {
     expect(body.ride_id).toBe(rideId);
 
     const [ride] = await sql`SELECT seats_taken FROM rides WHERE id = ${rideId}`;
-    expect(Number(ride?.seats_taken)).toBe(1);
+    // Место НЕ бронируется при подаче заявки — только при подтверждении водителем
+    expect(Number(ride?.seats_taken)).toBe(0);
   });
 });
 
@@ -163,7 +164,7 @@ describe("POST /api/rides/:id/request — error cases", () => {
     expect(body.error).toBe("no_seats");
   });
 
-  it("несуществующий ride → 409 no_seats (book_seat вернёт 0 rows)", async () => {
+  it("несуществующий ride → 404 not_found", async () => {
     const app = makeApp();
     const token = await makeToken(PASSENGER);
     const fakeId = "00000000-0000-4000-d000-000000000999";
@@ -175,7 +176,26 @@ describe("POST /api/rides/:id/request — error cases", () => {
         "X-Forwarded-For": TEST_IP,
       },
     });
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not_found");
+  });
+
+  it("водитель не может записаться на свою поездку → 403 own_ride", async () => {
+    const rideId = await seedRide(2, 0);
+    const app = makeApp();
+    const token = await makeToken(DRIVER);
+    const res = await app.request(`/api/rides/${rideId}/request`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+    });
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("own_ride");
   });
 
   it("повторная заявка от того же passenger → 409 already_requested", async () => {

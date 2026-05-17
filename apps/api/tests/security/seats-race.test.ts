@@ -1,15 +1,16 @@
 import postgres from "postgres";
 /**
- * Sentinel: concurrency seat-booking race.
- * 10 пассажиров → 1 свободное место → ровно 1 успех, seats_taken=1, ride_requests=1.
- * Проверяет REPEATABLE READ изоляцию в withIdentity (TASK-069).
+ * Sentinel: concurrency seat-booking race at accept time.
+ * 10 пассажиров подают заявки (book_seat не вызывается при заявке).
+ * Водитель принимает все 10 одновременно → ровно 1 успех, seats_taken=1, accepted=1.
+ * Проверяет REPEATABLE READ + advisory lock в accept flow (TASK-069).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { withIdentity } from "../../src/db/with-identity";
+import { withIdentity, withSystem } from "../../src/db/with-identity";
 import type { AppUser } from "../../src/middleware/identity-guard";
 import { buildDsn, truncateAll, withTestUser } from "../integration/setup";
 
-describe("Sentinel: concurrency seat-booking race", () => {
+describe("Sentinel: concurrency seat-booking race at accept time", () => {
   let sql: postgres.Sql;
 
   beforeAll(async () => {
@@ -22,7 +23,7 @@ describe("Sentinel: concurrency seat-booking race", () => {
     await sql.end();
   });
 
-  it("10 concurrent requests for 1 seat → exactly 1 success, seats_taken=1, ride_requests=1", async () => {
+  it("10 concurrent accepts for 1 seat → exactly 1 success, seats_taken=1, accepted=1", async () => {
     const driver = await withTestUser(sql, 9000001);
 
     const [ride] = await sql<{ id: string }[]>`
@@ -37,28 +38,51 @@ describe("Sentinel: concurrency seat-booking race", () => {
       Array.from({ length: 10 }, (_, i) => withTestUser(sql, 9100001 + i)),
     );
 
+    // Все 10 подают заявки — место НЕ бронируется, просто INSERT ride_requests
+    const requestIds = await withSystem(sql, async (tx) => {
+      const rows = await tx<{ id: string; passenger_id: string }[]>`
+        INSERT INTO ride_requests (ride_id, passenger_id)
+        SELECT ${rideId}::uuid, unnest(${passengers.map((p) => p.id)}::uuid[])
+        RETURNING id, passenger_id
+      `;
+      return rows.map((r) => r.id);
+    });
+
+    expect(requestIds).toHaveLength(10);
+
+    // Водитель пытается принять все 10 одновременно
     const results = await Promise.all(
-      passengers.map((p) =>
+      requestIds.map((reqId) =>
         withIdentity(
           sql,
-          p as unknown as AppUser,
+          driver as unknown as AppUser,
           async (tx) => {
-            const [updated] = await tx`
-              SELECT * FROM app.book_seat(${rideId}::uuid)
-            `;
-            if (!updated) {
-              throw Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
-            }
-            const [rideRequest] = await tx`
-              INSERT INTO ride_requests (ride_id, passenger_id)
-              VALUES (${rideId}, ${p.id})
+            // Advisory lock на ride_id — сериализует конкурентный accept
+            await tx`SELECT pg_advisory_xact_lock(hashtext(${rideId}::text))`;
+
+            // Попытка перевести заявку в accepted (CAS через WHERE status='pending')
+            const updated = await tx<{ id: string }[]>`
+              UPDATE ride_requests SET status = 'accepted'
+              WHERE id = ${reqId}::uuid AND status = 'pending'
               RETURNING id
             `;
-            return { ok: true, rideRequest };
+            if (updated.length === 0) {
+              throw Object.assign(new Error("concurrent"), { code: "NO_SEATS" });
+            }
+
+            // book_seat — атомарный инкремент; вернёт 0 строк если мест нет
+            const booked = await tx<{ id: string }[]>`
+              SELECT * FROM app.book_seat(${rideId}::uuid)
+            `;
+            if (booked.length === 0) {
+              throw Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
+            }
+
+            return { ok: true };
           },
           "repeatable read",
         )
-          .then((r) => ({ ok: true, rideRequest: r.rideRequest }))
+          .then(() => ({ ok: true }))
           .catch((err: unknown) => ({
             ok: false,
             code: (err as { code?: string }).code ?? "UNKNOWN",
@@ -74,13 +98,11 @@ describe("Sentinel: concurrency seat-booking race", () => {
     >`SELECT seats_taken FROM rides WHERE id = ${rideId}`;
     expect(Number(rideState?.seats_taken ?? 0)).toBe(1);
 
-    const [countRow] = await sql<{ count: number | string }[]>`
-      SELECT COUNT(*) AS count FROM ride_requests WHERE ride_id = ${rideId}
+    const [acceptedCount] = await sql<{ count: number | string }[]>`
+      SELECT COUNT(*) AS count FROM ride_requests WHERE ride_id = ${rideId} AND status = 'accepted'
     `;
-    expect(Number(countRow?.count ?? 0)).toBe(1);
+    expect(Number(acceptedCount?.count ?? 0)).toBe(1);
 
-    // Cleanup: ride/ride_requests must die before users (FK rides_driver_id_fkey).
-    // truncateAll handles cascade safely.
     await truncateAll(sql);
   });
 });

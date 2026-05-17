@@ -224,7 +224,26 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
               ) ORDER BY rr.created_at
             ) FILTER (WHERE rr.id IS NOT NULL),
             '[]'::json
-          ) AS passengers
+          ) AS passengers,
+          COALESCE(
+            (
+              SELECT json_agg(json_build_object(
+                'id', pr.id,
+                'passenger_id', pr.passenger_id,
+                'first_name', pu2.display_name,
+                'tg_id', pu2.tg_id
+              ))
+              FROM ride_requests pr
+              JOIN users pu2 ON pu2.id = pr.passenger_id
+              WHERE pr.ride_id = r.id AND pr.status = 'pending'
+            ),
+            '[]'::json
+          ) AS pending_requests,
+          (
+            SELECT pr2.status FROM ride_requests pr2
+            WHERE pr2.ride_id = r.id AND pr2.passenger_id = ${user.id}::uuid
+            LIMIT 1
+          ) AS my_request_status
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         LEFT JOIN ride_requests rr ON rr.ride_id = r.id AND rr.status = 'accepted'
@@ -295,13 +314,30 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         sql,
         user,
         async (tx) => {
-          const [ride] = await tx<{ id: string; driver_id: string }[]>`
-            SELECT * FROM app.book_seat(${rideId}::uuid)
+          // Read-only check: место НЕ бронируется при заявке (только при подтверждении водителем)
+          const [ride] = await tx<
+            {
+              id: string;
+              driver_id: string;
+              seats_total: number;
+              seats_taken: number;
+            }[]
+          >`
+            SELECT id, driver_id, seats_total, seats_taken
+            FROM rides
+            WHERE id = ${rideId}::uuid AND status = 'active'
           `;
 
           if (!ride) {
-            const err = Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
-            throw err;
+            throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+          }
+
+          if (ride.driver_id === user.id) {
+            throw Object.assign(new Error("own_ride"), { code: "OWN_RIDE" });
+          }
+
+          if (Number(ride.seats_taken) >= Number(ride.seats_total)) {
+            throw Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
           }
 
           const [rideRequest] = await tx`
@@ -329,8 +365,11 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
       return c.json(result.rideRequest, 201);
     } catch (err) {
-      if (isNoSeatsError(err)) return c.json({ error: "no_seats" }, 409);
+      const e = err as { code?: string };
       /* c8 ignore next -- defensive: unknown error codes re-throw; all known codes return above */
+      if (e.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      if (e.code === "OWN_RIDE") return c.json({ error: "own_ride" }, 403);
+      if (isNoSeatsError(err)) return c.json({ error: "no_seats" }, 409);
       if (isUniqueViolation(err)) return c.json({ error: "already_requested" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;

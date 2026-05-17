@@ -97,11 +97,12 @@ describe("POST /ride-requests/:id/accept", () => {
     expect(res.status).toBe(409);
   });
 
-  it("200 — driver accepts pending → status=accepted, seat НЕ возвращается", async () => {
+  it("200 — driver accepts pending → status=accepted, seat забронирован (book_seat)", async () => {
     mockCallThrough();
     mockTx.mockResolvedValueOnce([PENDING_ROW]); // SELECT
     mockTx.mockResolvedValueOnce([]); // advisory lock
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]); // UPDATE
+    mockTx.mockResolvedValueOnce([{ id: RIDE_ID }]); // book_seat
     const res = await makeApp(DRIVER).request(`/ride-requests/${REQ_ID}/accept`, {
       method: "POST",
     });
@@ -110,22 +111,33 @@ describe("POST /ride-requests/:id/accept", () => {
     expect(body.status).toBe("accepted");
     expect(body.seat_refunded).toBe(false);
   });
-});
 
-describe("POST /ride-requests/:id/reject", () => {
-  it("200 — driver rejects pending → status=rejected + seat refunded", async () => {
+  it("409 — accept когда book_seat вернул 0 rows (нет мест)", async () => {
     mockCallThrough();
     mockTx.mockResolvedValueOnce([PENDING_ROW]); // SELECT
     mockTx.mockResolvedValueOnce([]); // advisory lock
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]); // UPDATE
-    mockTx.mockResolvedValueOnce([{ id: RIDE_ID }]); // unbook_seat
+    mockTx.mockResolvedValueOnce([]); // book_seat → 0 rows
+    const res = await makeApp(DRIVER).request(`/ride-requests/${REQ_ID}/accept`, {
+      method: "POST",
+    });
+    expect(res.status).toBe(409);
+  });
+});
+
+describe("POST /ride-requests/:id/reject", () => {
+  it("200 — driver rejects pending → status=rejected, место не возвращается (не было забронировано)", async () => {
+    mockCallThrough();
+    mockTx.mockResolvedValueOnce([PENDING_ROW]); // SELECT
+    mockTx.mockResolvedValueOnce([]); // advisory lock
+    mockTx.mockResolvedValueOnce([{ id: REQ_ID }]); // UPDATE
     const res = await makeApp(DRIVER).request(`/ride-requests/${REQ_ID}/reject`, {
       method: "POST",
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(body.status).toBe("rejected");
-    expect(body.seat_refunded).toBe(true);
+    expect(body.seat_refunded).toBe(false);
   });
 
   it("403 — passenger пытается reject", async () => {
@@ -145,36 +157,21 @@ describe("POST /ride-requests/:id/reject", () => {
     });
     expect(res.status).toBe(409);
   });
-
-  it("seat_refunded=false если unbook_seat вернул []", async () => {
-    mockCallThrough();
-    mockTx.mockResolvedValueOnce([PENDING_ROW]);
-    mockTx.mockResolvedValueOnce([]);
-    mockTx.mockResolvedValueOnce([{ id: REQ_ID }]);
-    mockTx.mockResolvedValueOnce([]); // unbook_seat 0 rows
-    const res = await makeApp(DRIVER).request(`/ride-requests/${REQ_ID}/reject`, {
-      method: "POST",
-    });
-    expect(res.status).toBe(200);
-    const body = await readJson(res);
-    expect(body.seat_refunded).toBe(false);
-  });
 });
 
 describe("POST /ride-requests/:id/cancel", () => {
-  it("200 — passenger cancels pending → cancelled + refund", async () => {
+  it("200 — passenger cancels pending → cancelled, место не возвращается (не было забронировано)", async () => {
     mockCallThrough();
     mockTx.mockResolvedValueOnce([PENDING_ROW]);
     mockTx.mockResolvedValueOnce([]);
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]);
-    mockTx.mockResolvedValueOnce([{ id: RIDE_ID }]);
     const res = await makeApp(PASSENGER).request(`/ride-requests/${REQ_ID}/cancel`, {
       method: "POST",
     });
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(body.status).toBe("cancelled");
-    expect(body.seat_refunded).toBe(true);
+    expect(body.seat_refunded).toBe(false);
   });
 
   it("200 — passenger cancels accepted → cancelled + refund", async () => {

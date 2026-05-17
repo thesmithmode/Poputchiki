@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
@@ -36,14 +37,17 @@ function isNew(createdAt: string) {
 
 type RequestStatus = "idle" | "loading" | "sent" | "full" | "duplicate" | "error";
 type LikeStatus = "idle" | "loading" | "liked" | "error";
+type ActionStatus = "idle" | "loading" | "done" | "error";
 
 export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   useTelegramBack(() => navigate(-1));
   const { data: ride, isLoading, isError, error } = useRide(id);
   const me = useMe();
   const [reqStatus, setReqStatus] = useState<RequestStatus>("idle");
   const [likeStatus, setLikeStatus] = useState<LikeStatus>("idle");
+  const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
 
   if (isLoading) {
     return (
@@ -91,13 +95,25 @@ export function RideDetailScreen({ id }: Props) {
     try {
       await apiFetch(`/rides/${id}/request`, { method: "POST" });
       setReqStatus("sent");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        const body = err.body as { code?: string } | undefined;
-        setReqStatus(body?.code === "no_seats" ? "full" : "duplicate");
+        const body = err.body as { error?: string } | undefined;
+        setReqStatus(body?.error === "no_seats" ? "full" : "duplicate");
       } else {
         setReqStatus("error");
       }
+    }
+  }
+
+  async function handleRequestAction(reqId: string, action: "accept" | "reject") {
+    setActionStatus((prev) => ({ ...prev, [reqId]: "loading" }));
+    try {
+      await apiFetch(`/ride-requests/${reqId}/${action}`, { method: "POST" });
+      setActionStatus((prev) => ({ ...prev, [reqId]: "done" }));
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setActionStatus((prev) => ({ ...prev, [reqId]: "error" }));
     }
   }
 
@@ -119,6 +135,37 @@ export function RideDetailScreen({ id }: Props) {
   const driverName = ride.driver.last_name
     ? `${ride.driver.first_name} ${ride.driver.last_name}`
     : ride.driver.first_name;
+
+  // Кнопка записи на поездку (для пассажира)
+  const serverRequestStatus = ride.my_request_status;
+  const requestIsActive = serverRequestStatus !== null && serverRequestStatus !== "cancelled";
+  const respondBtnDisabled = reqStatus === "loading" || requestIsActive;
+  const respondBtnBg =
+    serverRequestStatus === "accepted"
+      ? "var(--brand-primary)"
+      : requestIsActive || reqStatus === "sent"
+        ? "var(--brand-primary-soft)"
+        : "var(--brand-primary)";
+  const respondBtnLabel =
+    serverRequestStatus === "pending"
+      ? "Заявка на рассмотрении"
+      : serverRequestStatus === "accepted"
+        ? "Вы в поездке!"
+        : serverRequestStatus === "rejected"
+          ? "Заявка отклонена"
+          : serverRequestStatus === "cancelled"
+            ? "Заявка отменена"
+            : reqStatus === "sent"
+              ? "Заявка отправлена"
+              : reqStatus === "loading"
+                ? "Отправляем..."
+                : reqStatus === "full"
+                  ? "Мест нет"
+                  : reqStatus === "duplicate"
+                    ? "Уже отправлено"
+                    : reqStatus === "error"
+                      ? "Ошибка, повторите"
+                      : "Записаться";
 
   return (
     <div
@@ -223,7 +270,7 @@ export function RideDetailScreen({ id }: Props) {
               sub="мест"
               highlight={seatsLeft === 0}
             />
-            <StatBlock label="Тип" value="Разовая" />
+            <StatBlock label="Тип" value={ride.template_id ? "Регулярная" : "Разовая"} />
           </div>
         </div>
 
@@ -479,6 +526,118 @@ export function RideDetailScreen({ id }: Props) {
             </div>
           </>
         )}
+
+        {/* Pending requests — только для водителя */}
+        {isOwnRide && ride.pending_requests.length > 0 && (
+          <>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--brand-warn)",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+                padding: "12px 4px 8px",
+              }}
+            >
+              Заявки на поездку · {ride.pending_requests.length}
+            </div>
+            <div
+              style={{
+                background: "var(--brand-surface)",
+                borderRadius: 18,
+                overflow: "hidden",
+                marginBottom: 16,
+                boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
+              }}
+            >
+              {ride.pending_requests.map((pr, i) => {
+                const st = actionStatus[pr.id] ?? "idle";
+                return (
+                  <div
+                    key={pr.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "12px 16px",
+                      borderBottom:
+                        i === ride.pending_requests.length - 1
+                          ? "none"
+                          : "1px solid var(--brand-border)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: "50%",
+                        background: "var(--brand-primary-soft)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icon name="user" size={18} style={{ color: "var(--brand-primary)" }} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "var(--brand-text)" }}>
+                        {pr.first_name}
+                      </div>
+                    </div>
+                    {st === "done" ? (
+                      <div style={{ fontSize: 12, color: "var(--brand-sub)" }}>Готово</div>
+                    ) : st === "error" ? (
+                      <div style={{ fontSize: 12, color: "var(--brand-danger)" }}>Ошибка</div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          disabled={st === "loading"}
+                          onClick={() => handleRequestAction(pr.id, "accept")}
+                          style={{
+                            padding: "6px 12px",
+                            background: "var(--brand-primary)",
+                            color: "var(--brand-primary-ink)",
+                            border: "none",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: st === "loading" ? "not-allowed" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: st === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Принять
+                        </button>
+                        <button
+                          type="button"
+                          disabled={st === "loading"}
+                          onClick={() => handleRequestAction(pr.id, "reject")}
+                          style={{
+                            padding: "6px 12px",
+                            background: "var(--brand-surface-2, var(--brand-surface))",
+                            color: "var(--brand-danger)",
+                            border: "1px solid var(--brand-danger)",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: st === "loading" ? "not-allowed" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: st === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Отклонить
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Fixed bottom action bar */}
@@ -518,43 +677,29 @@ export function RideDetailScreen({ id }: Props) {
             gap: 8,
           }}
         >
-          <Icon name="tg" size={16} />В Telegram
+          <Icon name="tg" size={16} />
+          Связаться с водителем
         </a>
         {!isOwnRide && (
           <button
             type="button"
             data-testid="respond-btn"
-            disabled={reqStatus !== "idle"}
+            disabled={respondBtnDisabled}
             onClick={handleRespond}
             style={{
               flex: 1.6,
               padding: "12px 16px",
-              background:
-                reqStatus === "sent"
-                  ? "var(--brand-primary)"
-                  : reqStatus !== "idle"
-                    ? "var(--brand-primary-soft)"
-                    : "var(--brand-primary)",
+              background: respondBtnBg,
               border: "none",
               borderRadius: 12,
               fontSize: 14,
               fontWeight: 600,
               color: "var(--brand-primary-ink)",
-              cursor: reqStatus !== "idle" ? "not-allowed" : "pointer",
+              cursor: respondBtnDisabled ? "not-allowed" : "pointer",
               fontFamily: "inherit",
             }}
           >
-            {reqStatus === "sent"
-              ? "Заявка отправлена"
-              : reqStatus === "loading"
-                ? "Отправляем..."
-                : reqStatus === "full"
-                  ? "Мест нет"
-                  : reqStatus === "duplicate"
-                    ? "Уже отправлено"
-                    : reqStatus === "error"
-                      ? "Ошибка, повторите"
-                      : "Откликнуться"}
+            {respondBtnLabel}
           </button>
         )}
       </div>

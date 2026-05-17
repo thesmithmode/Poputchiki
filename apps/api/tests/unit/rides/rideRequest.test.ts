@@ -51,7 +51,7 @@ describe("POST /rides/:id/request", () => {
     expect(body.ride_id).toBe(RIDE_ID);
   });
 
-  it("no seats available → 409 with error='no_seats'", async () => {
+  it("no seats available (read-only check) → 409 with error='no_seats'", async () => {
     const noSeatsErr = Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
     vi.mocked(withIdentity).mockRejectedValueOnce(noSeatsErr);
 
@@ -61,6 +61,30 @@ describe("POST /rides/:id/request", () => {
     expect(res.status).toBe(409);
     const body = await readJson(res);
     expect(body.error).toBe("no_seats");
+  });
+
+  it("ride not found → 404 with error='not_found'", async () => {
+    const notFoundErr = Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+    vi.mocked(withIdentity).mockRejectedValueOnce(notFoundErr);
+
+    const app = makeApp();
+    const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not_found");
+  });
+
+  it("driver requests own ride → 403 with error='own_ride'", async () => {
+    const ownRideErr = Object.assign(new Error("own_ride"), { code: "OWN_RIDE" });
+    vi.mocked(withIdentity).mockRejectedValueOnce(ownRideErr);
+
+    const app = makeApp();
+    const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("own_ride");
   });
 
   it("already requested (unique violation 23505) → 409 with error='already_requested'", async () => {

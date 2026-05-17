@@ -7,6 +7,7 @@ export interface Filters {
   favoritesOnly: boolean;
   verifiedOnly: boolean;
   direction: string;
+  priceMin: number | null;
   priceMax: number | null;
   seatsMin: number;
 }
@@ -17,6 +18,7 @@ export const DEFAULT_FILTERS: Filters = {
   favoritesOnly: false,
   verifiedOnly: false,
   direction: "",
+  priceMin: null,
   priceMax: null,
   seatsMin: 0,
 };
@@ -67,6 +69,10 @@ export function applyFilters(rides: Ride[], filters: Filters, favoriteIds?: Set<
       const match =
         ride.from_label.toLowerCase().includes(q) || ride.to_label.toLowerCase().includes(q);
       if (!match) return false;
+    }
+
+    if (filters.priceMin !== null) {
+      if (ride.price_rub !== null && ride.price_rub < filters.priceMin) return false;
     }
 
     if (filters.priceMax !== null) {

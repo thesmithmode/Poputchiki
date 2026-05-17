@@ -88,7 +88,7 @@ export function CreateRideScreen() {
     if (!form.price_free && form.price_rub !== "" && Number(form.price_rub) <= 0) {
       return "Цена должна быть больше 0";
     }
-    if (form.seats_total < 1 || form.seats_total > 4) return "Мест: 1–4";
+    if (form.seats_total < 1 || form.seats_total > 100) return "Мест: 1–100";
     if (form.comment.length > 200) return "Комментарий: не более 200 символов";
     if (form.is_recurring && form.weekdays.length === 0) return "Выберите дни недели";
     return null;
@@ -444,35 +444,29 @@ export function CreateRideScreen() {
         {step === 3 && (
           <>
             <Section>
-              <Field label="Мест (1–4)">
-                <div style={{ display: "flex", gap: 8 }}>
-                  {([1, 2, 3, 4] as const).map((n) => {
-                    const active = form.seats_total === n;
-                    return (
-                      <button
-                        key={n}
-                        type="button"
-                        data-testid={`seats-${n}`}
-                        aria-pressed={active}
-                        onClick={() => setForm((f) => ({ ...f, seats_total: n }))}
-                        style={{
-                          flex: 1,
-                          padding: "10px 0",
-                          borderRadius: 8,
-                          border: "1px solid",
-                          borderColor: active ? "var(--brand-primary)" : "var(--brand-line)",
-                          background: active ? "var(--brand-primary-soft)" : "var(--brand-surface)",
-                          color: active ? "var(--brand-primary)" : "var(--brand-text)",
-                          fontWeight: 600,
-                          fontSize: 15,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {n}
-                      </button>
-                    );
-                  })}
-                </div>
+              <Field label="Количество мест (1–100)">
+                <input
+                  data-testid="seats-input"
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={form.seats_total}
+                  onChange={(e) => {
+                    const v = Math.max(1, Math.min(100, Number(e.target.value) || 1));
+                    setForm((f) => ({ ...f, seats_total: v }));
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px solid var(--brand-line)",
+                    background: "var(--brand-surface)",
+                    color: "var(--brand-text)",
+                    fontWeight: 600,
+                    fontSize: 15,
+                    fontFamily: "inherit",
+                  }}
+                />
               </Field>
 
               <Field label="Цена">

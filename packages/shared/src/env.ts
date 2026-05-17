@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { type ZodIssue, z } from "zod";
 
 const WebhookEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
@@ -11,8 +11,8 @@ const WebhookEnvSchema = z.object({
 
 export type WebhookEnv = z.infer<typeof WebhookEnvSchema>;
 
-function formatZodIssues(issues: { path: (string | number)[]; message: string }[]): string {
-  return issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n")
+function formatZodIssues(issues: ZodIssue[]): string {
+  return issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n");
 }
 
 export function parseWebhookEnv(raw: Record<string, string | undefined>): WebhookEnv {

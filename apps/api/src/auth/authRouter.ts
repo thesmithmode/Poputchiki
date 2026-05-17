@@ -44,7 +44,16 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     const { user: tgUser, hash } = verified;
 
-    let authUser: { id: string; role: string } | null = null;
+    type AuthUserFull = {
+      id: string;
+      role: string;
+      display_name: string;
+      onboarded: boolean;
+      is_banned: boolean;
+      ban_reason: string | null;
+      banned_at: string | null;
+    };
+    let authUser: AuthUserFull | null = null;
     try {
       // withSystem uses SET LOCAL ROLE poputchiki_service (BYPASSRLS) — required because
       // the connection pool connects as poputchiki_app which has RLS enabled. Auth bootstrap
@@ -71,12 +80,22 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
           ON CONFLICT (tg_id) DO UPDATE SET
             last_seen_at = NOW(),
             tg_username = EXCLUDED.tg_username
-          RETURNING id, role
+          RETURNING id, role, display_name, onboarded, is_banned, ban_reason, banned_at
         `;
         /* c8 ignore start -- defensive: INSERT RETURNING always gives id+role string */
         const upsertedId = upserted?.id;
         const upsertedRole = typeof upserted?.role === "string" ? upserted.role : "user";
-        return typeof upsertedId === "string" ? { id: upsertedId, role: upsertedRole } : null;
+        if (typeof upsertedId !== "string") return null;
+        return {
+          id: upsertedId,
+          role: upsertedRole,
+          display_name:
+            typeof upserted?.display_name === "string" ? upserted.display_name : displayName,
+          onboarded: Boolean(upserted?.onboarded),
+          is_banned: Boolean(upserted?.is_banned),
+          ban_reason: typeof upserted?.ban_reason === "string" ? upserted.ban_reason : null,
+          banned_at: typeof upserted?.banned_at === "string" ? upserted.banned_at : null,
+        };
         /* c8 ignore stop */
       });
     } catch {
@@ -110,7 +129,15 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     return c.json({
       access_token: accessToken,
       refresh_token: refreshToken,
-      user: { id: authUser.id, tg_id: tgUser.id },
+      user: {
+        id: authUser.id,
+        display_name: authUser.display_name,
+        onboarded: authUser.onboarded,
+        is_banned: authUser.is_banned,
+        ban_reason: authUser.ban_reason,
+        banned_at: authUser.banned_at,
+        role: authUser.role as "user" | "admin",
+      },
     });
   });
 

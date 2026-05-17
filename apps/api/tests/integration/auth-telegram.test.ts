@@ -68,7 +68,9 @@ describe("POST /auth/telegram — happy path", () => {
     const body = await readJson(res);
     expect(typeof body.access_token).toBe("string");
     expect(typeof body.refresh_token).toBe("string");
-    expect(body.user?.tg_id).toBe(TG_ID);
+    expect(typeof body.user?.id).toBe("string");
+    expect(body.user?.display_name).toBe("Integration");
+    expect(body.user?.is_banned).toBe(false);
   });
 
   it("sets sess_bind and csrf_token cookies", async () => {

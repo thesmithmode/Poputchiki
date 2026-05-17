@@ -9,9 +9,10 @@ import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
-// Критический путь — грузим синхронно
-import { FeedScreen } from "./screens/FeedScreen";
-// Тяжёлые / редко посещаемые — lazy
+// Все экраны lazy — skeleton показывается пока auth + chunk загружаются
+const FeedScreen = lazy(() =>
+  import("./screens/FeedScreen").then((m) => ({ default: m.FeedScreen })),
+);
 const AboutScreen = lazy(() =>
   import("./screens/AboutScreen").then((m) => ({ default: m.AboutScreen })),
 );

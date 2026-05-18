@@ -16,6 +16,7 @@ export interface NotifyPayload {
   ride_id?: string;
   passenger_id?: string;
   driver_id?: string;
+  request_id?: string;
   [key: string]: unknown;
 }
 

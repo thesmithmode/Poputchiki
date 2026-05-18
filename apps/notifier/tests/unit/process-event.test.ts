@@ -58,6 +58,64 @@ describe("processEvent", () => {
     expect(body.parse_mode).toBe("HTML");
   });
 
+  it("ride_request with request_id → sendMessage body includes reply_markup", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(200, true);
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({
+        user_id: "u1",
+        category: "ride_request",
+        request_id: "req-42",
+        ride_id: "ride-7",
+      }),
+      BOT_TOKEN,
+    );
+    expect(fetchFn).toHaveBeenCalledOnce();
+    const [, opts] = fetchFn.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string);
+    expect(body.reply_markup).toBeDefined();
+    expect(body.reply_markup.inline_keyboard[0][0].callback_data).toBe("req:accept:req-42");
+    expect(body.reply_markup.inline_keyboard[0][1].callback_data).toBe("req:reject:req-42");
+  });
+
+  it("ride_request without request_id → no reply_markup in body", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(200, true);
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({
+        user_id: "u1",
+        category: "ride_request",
+        ride_id: "ride-7",
+      }),
+      BOT_TOKEN,
+    );
+    expect(fetchFn).toHaveBeenCalledOnce();
+    const [, opts] = fetchFn.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string);
+    expect(body.reply_markup).toBeUndefined();
+  });
+
+  it("like_received → no reply_markup (только текст)", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(200, true);
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({ user_id: "u1", category: "like_received" }),
+      BOT_TOKEN,
+    );
+    const [, opts] = fetchFn.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string);
+    expect(body.reply_markup).toBeUndefined();
+  });
+
   it("skips when notify_disabled=true", async () => {
     const db = makeDb({
       getRecipient: vi.fn().mockResolvedValue({

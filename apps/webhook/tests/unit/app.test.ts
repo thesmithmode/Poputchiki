@@ -121,4 +121,26 @@ describe("webhook handlers", () => {
     const res = await post(app, update, SECRET);
     expect(res.status).toBe(200);
   });
+
+  it("callback_query WITH apiUrl+internalSecret routes to handleCallbackQuery (fetch invoked)", async () => {
+    const app = createApp(makeSql(), BOT_TOKEN, SECRET, undefined, {
+      apiUrl: "http://api",
+      internalSecret: "shh",
+    });
+    const update: TelegramUpdate = {
+      update_id: 501,
+      callback_query: {
+        id: "cq2",
+        from: { id: 11, is_bot: false, first_name: "Carol" },
+        data: "garbage",
+      },
+    };
+    const res = await post(app, update, SECRET);
+    expect(res.status).toBe(200);
+    // handleCallbackQuery on unknown data calls answerCallbackQuery via fetch
+    const answerCalls = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).includes("answerCallbackQuery"),
+    );
+    expect(answerCalls.length).toBeGreaterThan(0);
+  });
 });

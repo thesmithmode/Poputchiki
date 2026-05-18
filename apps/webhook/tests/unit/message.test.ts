@@ -90,6 +90,25 @@ describe("handleMessage", () => {
     expect(updateCalls).toHaveLength(0);
   });
 
+  it("message without text → no-op (covers ?? branch)", async () => {
+    const { sql, calls } = makeSql();
+    const msg = { message_id: 1, chat: { id: 5, type: "private" } } as TelegramMessage;
+    await handleMessage(sql, "tok", "d.com", msg);
+    expect(calls).toHaveLength(0);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("/start in non-private chat does NOT touch notify_disabled", async () => {
+    const { sql, calls } = makeSql();
+    const msg: TelegramMessage = {
+      message_id: 1,
+      chat: { id: -100, type: "group" },
+      text: "/start",
+    };
+    await handleMessage(sql, "tok", "d.com", msg);
+    expect(calls).toHaveLength(0);
+  });
+
   it("plain text does NOT touch notify_disabled", async () => {
     const { sql, calls } = makeSql();
     await handleMessage(sql, "tok", "d.com", makeMessage("hi", 4242));

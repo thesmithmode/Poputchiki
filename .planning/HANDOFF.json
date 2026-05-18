@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-18T11:36:37.443Z",
+  "timestamp": "2026-05-18T12:18:20.177Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,6 +18,10 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".memory/daily/2026-05-18.md"
+    },
+    {
+      "status": "M",
       "path": ".memory/scripts/flush.log"
     },
     {
@@ -30,21 +34,37 @@
     },
     {
       "status": "M",
-      "path": "web/src/hooks/useNotifications.ts"
+      "path": "apps/api/src/notifications/notificationsRouter.ts"
     },
     {
       "status": "M",
-      "path": "web/src/screens/EventsScreen.tsx"
+      "path": "apps/api/tests/unit/notifications/notificationsRouter.test.ts"
     },
     {
-      "status": "??",
-      "path": ".memory/daily/2026-05-18.md"
+      "status": "M",
+      "path": "apps/notifier/package.json"
     },
     {
-      "status": "??",
-      "path": "web/tests/EventsScreen.test.tsx"
+      "status": "M",
+      "path": "apps/notifier/src/format.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/src/process-event.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/src/types.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/tests/unit/process-event.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "bun.lock"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n4e3e1bf FIX: уведомления — single-mark endpoint + категория ride_request\n677d446 DOCS: убрать правило фича-веток — работаем только в dev, без PR\n2ddadcb Merge branch 'main' into dev\ne8d000a CHORE: обновить memory-логи — сессия 2026-05-18 аудит уведомлений\ncbacc88 FIX: уведомления notifier, бейдж, лайк, маркер своей поездки, кнопка связаться"
+  "context_notes": "Recent commits:\nfaf0fd0 FEAT: эмиссия like_received/review_received/favorite_new_ride в feed+TG\na1a3f5f REFACTOR: 9 pg_notify call-sites → enqueueNotification\n3e3587b FEAT: shared canonical CATEGORIES + enqueueNotification helper\n26efa57 CHORE: обновить memory-логи — сессия 2026-05-18 mark-on-click\ne34beed FIX: события — клик по уведомлению маркит его прочитанным"
 }

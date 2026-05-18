@@ -63,8 +63,12 @@ afterAll(async () => {
 
 const ALL_CATEGORIES = [
   "ride_request",
+  "ride_request_accepted",
+  "ride_request_rejected",
+  "ride_request_cancelled",
   "ride_cancelled",
   "confirm_participation",
+  "participation_request",
   "like_received",
   "review_received",
   "favorite_new_ride",
@@ -73,7 +77,7 @@ const ALL_CATEGORIES = [
 ];
 
 describe("GET /api/notifications/preferences", () => {
-  it("first call returns all 8 categories with enabled=true (defaults)", async () => {
+  it("first call returns all 12 categories with enabled=true (defaults)", async () => {
     const app = makeApp();
     const token = await makeToken(USER);
     const res = await app.request("/api/notifications/preferences", {

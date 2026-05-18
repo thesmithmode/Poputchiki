@@ -11,6 +11,37 @@ describe("formatMessage", () => {
     expect(formatMessage("ride_request", payload("ride_request"))).toContain("заявк");
   });
 
+  it("ride_request_accepted", () => {
+    expect(
+      formatMessage("ride_request_accepted", payload("ride_request_accepted")),
+    ).toContain("принял");
+  });
+
+  it("ride_request_rejected", () => {
+    expect(
+      formatMessage("ride_request_rejected", payload("ride_request_rejected")),
+    ).toContain("отклонил");
+  });
+
+  it("ride_request_cancelled", () => {
+    expect(
+      formatMessage("ride_request_cancelled", payload("ride_request_cancelled")),
+    ).toContain("отменил");
+  });
+
+  it("ride_changed", () => {
+    expect(formatMessage("ride_changed", payload("ride_changed"))).toContain("изменены");
+  });
+
+  it("admin_review_cancellation_abuse", () => {
+    expect(
+      formatMessage(
+        "admin_review_cancellation_abuse",
+        payload("admin_review_cancellation_abuse"),
+      ),
+    ).toContain("проверка");
+  });
+
   it("ride_cancelled", () => {
     expect(formatMessage("ride_cancelled", payload("ride_cancelled"))).toContain("отменена");
   });

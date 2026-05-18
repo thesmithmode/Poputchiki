@@ -12,21 +12,21 @@ describe("formatMessage", () => {
   });
 
   it("ride_request_accepted", () => {
-    expect(
-      formatMessage("ride_request_accepted", payload("ride_request_accepted")),
-    ).toContain("принял");
+    expect(formatMessage("ride_request_accepted", payload("ride_request_accepted"))).toContain(
+      "принял",
+    );
   });
 
   it("ride_request_rejected", () => {
-    expect(
-      formatMessage("ride_request_rejected", payload("ride_request_rejected")),
-    ).toContain("отклонил");
+    expect(formatMessage("ride_request_rejected", payload("ride_request_rejected"))).toContain(
+      "отклонил",
+    );
   });
 
   it("ride_request_cancelled", () => {
-    expect(
-      formatMessage("ride_request_cancelled", payload("ride_request_cancelled")),
-    ).toContain("отменил");
+    expect(formatMessage("ride_request_cancelled", payload("ride_request_cancelled"))).toContain(
+      "отменил",
+    );
   });
 
   it("ride_changed", () => {
@@ -35,10 +35,7 @@ describe("formatMessage", () => {
 
   it("admin_review_cancellation_abuse", () => {
     expect(
-      formatMessage(
-        "admin_review_cancellation_abuse",
-        payload("admin_review_cancellation_abuse"),
-      ),
+      formatMessage("admin_review_cancellation_abuse", payload("admin_review_cancellation_abuse")),
     ).toContain("проверка");
   });
 

@@ -26,6 +26,10 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
       return payload.message_id
         ? `Получен ответ на обращение #${payload.message_id}`
         : "Получен ответ от поддержки";
+    case "ride_changed":
+      return "Параметры поездки изменены";
+    case "admin_review_cancellation_abuse":
+      return "Пользователь отменил >3 поездок за сутки — требуется проверка";
     case "system":
       return "Системное уведомление";
     /* c8 ignore next 4 -- exhaustive guard, runtime unreachable with correct types */

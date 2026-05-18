@@ -106,6 +106,47 @@ describe("POST /reviews", () => {
     expect(body.text).toBe("Отлично");
   });
 
+  it("on success → emits review_received via enqueueNotification (INSERT user_notifications + pg_notify, stars in payload)", async () => {
+    const row = {
+      id: REVIEW_ID,
+      ride_id: RIDE_ID,
+      subject_id: USER.id,
+      target_id: TARGET_ID,
+      stars: 5,
+      text: null,
+      created_at: new Date(),
+    };
+    mockWithIdentityCallThrough();
+    mockTx
+      .mockResolvedValueOnce([{ ok: 1 }]) // confirmed check
+      .mockResolvedValueOnce([row]); // INSERT reviews
+    // enqueueNotification fire-and-forget: INSERT user_notifications + pg_notify
+    mockSql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const app = makeApp(USER);
+    const res = await app.request("/reviews", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ride_id: RIDE_ID, target_id: TARGET_ID, stars: 5 }),
+    });
+    expect(res.status).toBe(201);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockSql).toHaveBeenCalledTimes(2);
+    const insertCall = mockSql.mock.calls[0];
+    expect(insertCall[1]).toBe(TARGET_ID); // userId (reviewed user)
+    expect(insertCall[2]).toBe("review_received");
+    expect(insertCall[3]).toBe(RIDE_ID);
+    const notifyCall = mockSql.mock.calls[1];
+    const payload = JSON.parse(notifyCall[1] as string);
+    expect(payload.category).toBe("review_received");
+    expect(payload.user_id).toBe(TARGET_ID);
+    expect(payload.ride_id).toBe(RIDE_ID);
+    expect(payload.from_user_id).toBe(USER.id);
+    expect(payload.review_id).toBe(REVIEW_ID);
+    expect(payload.stars).toBe(5);
+  });
+
   it("not confirmed participation → 403", async () => {
     mockWithIdentityCallThrough();
     mockTx.mockResolvedValueOnce([]); // confirmed check returns empty

@@ -6,6 +6,8 @@ const WebhookEnvSchema = z.object({
   WEBHOOK_SECRET: z.string().min(16),
   DOMAIN: z.string().optional(),
   WEBHOOK_PORT: z.coerce.number().int().positive().optional().default(3001),
+  API_URL: z.string().optional(),
+  INTERNAL_API_SECRET: z.string().optional(),
   NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
 });
 
@@ -33,6 +35,7 @@ const ApiEnvSchema = z
     PGCRYPTO_KEY: z.string().optional(),
     TRUSTED_PROXIES: z.string().optional(),
     DOMAIN: z.string().optional(),
+    INTERNAL_API_SECRET: z.string().optional(),
     PORT: z.coerce.number().int().positive().optional().default(3000),
     NODE_ENV: z.enum(["development", "production", "test"]).optional().default("development"),
   })

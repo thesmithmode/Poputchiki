@@ -1,37 +1,33 @@
+import { USER_TOGGLEABLE_CATEGORIES, type UserToggleableCategory } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import type { AppUser } from "../middleware/identity-guard";
 
-const CATEGORIES = [
-  "ride_request",
-  "ride_cancelled",
-  "confirm_participation",
-  "like_received",
-  "review_received",
-  "favorite_new_ride",
-  "support_reply",
-  "system",
-] as const;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type Category = (typeof CATEGORIES)[number];
+/**
+ * Preference rows we upsert defaults for. system is included so it has an
+ * explicit `enabled=true` row, but it's not in USER_TOGGLEABLE_CATEGORIES —
+ * users cannot turn it off (refine guard below).
+ */
+const PREF_CATEGORIES = [...USER_TOGGLEABLE_CATEGORIES, "system"] as const;
+type Category = (typeof PREF_CATEGORIES)[number];
+
+const toggleFields = Object.fromEntries(
+  USER_TOGGLEABLE_CATEGORIES.map((c) => [c, z.boolean().optional()]),
+) as Record<UserToggleableCategory, z.ZodOptional<z.ZodBoolean>>;
 
 const PutPrefsInput = z
   .object({
-    ride_request: z.boolean().optional(),
-    ride_cancelled: z.boolean().optional(),
-    confirm_participation: z.boolean().optional(),
-    like_received: z.boolean().optional(),
-    review_received: z.boolean().optional(),
-    favorite_new_ride: z.boolean().optional(),
-    support_reply: z.boolean().optional(),
+    ...toggleFields,
     system: z.boolean().optional(),
   })
   .refine((d) => d.system !== false, { message: "system category cannot be disabled" });
 
 async function upsertDefaults(tx: postgres.TransactionSql, userId: string): Promise<void> {
-  for (const cat of CATEGORIES) {
+  for (const cat of PREF_CATEGORIES) {
     await tx`
       INSERT INTO notification_preferences (user_id, category, enabled)
       VALUES (${userId}, ${cat}, true)
@@ -88,6 +84,22 @@ export function createNotificationsRouter(sql: postgres.Sql): Hono {
         WHERE user_id = ${user.id}::uuid AND is_read = false
       `;
     });
+    return c.json({ ok: true });
+  });
+
+  app.post("/:id/read", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    const id = c.req.param("id");
+    if (!UUID_RE.test(id)) return c.json({ error: "invalid id" }, 400);
+
+    const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<{ id: string }[]>`
+        UPDATE user_notifications SET is_read = true
+        WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid
+        RETURNING id
+      `;
+    });
+    if (rows.length === 0) return c.json({ error: "not_found" }, 404);
     return c.json({ ok: true });
   });
 

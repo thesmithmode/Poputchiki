@@ -1,3 +1,4 @@
+import { enqueueNotification } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -58,6 +59,17 @@ export function createLikesRouter(sql: postgres.Sql): Hono {
       });
 
       if (result.kind === "forbidden") return c.json({ error: "not_confirmed" }, 403);
+
+      // Feed row + TG push to liked user
+      if (result.row) {
+        enqueueNotification(sql, {
+          userId: target_user_id,
+          category: "like_received",
+          rideId: ride_id,
+          data: { from_user_id: user.id, like_id: result.row.id },
+        }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
+      }
+
       return c.json(result.row, 201);
     } catch (err) {
       if (isUniqueViolation(err)) return c.json({ error: "already_liked" }, 409);

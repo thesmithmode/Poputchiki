@@ -81,6 +81,48 @@ describe("POST /likes", () => {
     expect(body.subject_id).toBe(USER.id);
   });
 
+  it("on success → emits like_received via enqueueNotification (INSERT user_notifications + pg_notify)", async () => {
+    const likeRow = {
+      id: LIKE_ID,
+      subject_id: USER.id,
+      target_id: TARGET_ID,
+      ride_id: RIDE_ID,
+      created_at: new Date(),
+    };
+    mockWithIdentityCallThrough();
+    mockTx
+      .mockResolvedValueOnce([{ ok: true }]) // confirmed check
+      .mockResolvedValueOnce([likeRow]); // INSERT likes
+    // enqueueNotification fire-and-forget: INSERT user_notifications + pg_notify
+    mockSql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const app = makeApp(USER);
+    const res = await app.request("/likes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ride_id: RIDE_ID, target_user_id: TARGET_ID }),
+    });
+    expect(res.status).toBe(201);
+    // Allow fire-and-forget enqueueNotification microtasks to flush
+    await new Promise((r) => setTimeout(r, 0));
+
+    // mockSql called twice: INSERT into user_notifications, then pg_notify
+    expect(mockSql).toHaveBeenCalledTimes(2);
+    // First call: INSERT user_notifications — userId, category, rideId, data
+    const insertCall = mockSql.mock.calls[0];
+    expect(insertCall[1]).toBe(TARGET_ID); // userId (liked user)
+    expect(insertCall[2]).toBe("like_received");
+    expect(insertCall[3]).toBe(RIDE_ID);
+    // Second call: pg_notify — payload JSON
+    const notifyCall = mockSql.mock.calls[1];
+    const payload = JSON.parse(notifyCall[1] as string);
+    expect(payload.category).toBe("like_received");
+    expect(payload.user_id).toBe(TARGET_ID);
+    expect(payload.ride_id).toBe(RIDE_ID);
+    expect(payload.from_user_id).toBe(USER.id);
+    expect(payload.like_id).toBe(LIKE_ID);
+  });
+
   it("not confirmed → 403", async () => {
     mockWithIdentityCallThrough();
     mockTx.mockResolvedValueOnce([]); // confirmed SELECT returns empty

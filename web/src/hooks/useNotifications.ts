@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 
 export interface UserNotification {
@@ -15,5 +15,53 @@ export function useNotifications() {
     queryKey: ["notifications"],
     queryFn: () => apiFetch<{ notifications: UserNotification[] }>("/notifications"),
     refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useMarkNotificationRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ ok: true }>(`/notifications/${id}/read`, { method: "POST" }),
+    // The badge derives from the same ["notifications"] cache entry, so a
+    // single invalidate refreshes both the EventsScreen list and the
+    // BottomTabBar dot. We intentionally do NOT touch a separate
+    // ["notifications", "unread-count"] key — it doesn't exist.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<{ ok: true }>("/notifications/read-all", { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+    },
+  });
+}
+
+/**
+ * Inline accept/reject from the notification card.
+ *
+ * After the driver's call, both the request status changes AND a feed row is
+ * enqueued for the passenger via the API. We invalidate `notifications` so
+ * the driver's own card flips to read state, and `ride` so any open detail
+ * view reflects the new request state.
+ */
+export function useRespondRideRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, action }: { requestId: string; action: "accept" | "reject" }) =>
+      apiFetch<{ id: string; status: string }>(`/ride-requests/${requestId}/${action}`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["ride"] });
+    },
   });
 }

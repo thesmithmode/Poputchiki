@@ -36,6 +36,7 @@
       "name": "@poputchiki/cron",
       "version": "0.1.0",
       "dependencies": {
+        "@poputchiki/shared": "workspace:*",
         "postgres": "^3.4.9",
       },
     },
@@ -43,6 +44,7 @@
       "name": "@poputchiki/notifier",
       "version": "0.1.0",
       "dependencies": {
+        "@poputchiki/shared": "workspace:*",
         "postgres": "^3.4.9",
       },
     },

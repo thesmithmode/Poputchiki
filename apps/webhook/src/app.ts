@@ -1,17 +1,24 @@
 import { Hono } from "hono";
 import type { Context } from "hono";
 import type postgres from "postgres";
+import { handleCallbackQuery } from "./handlers/callback-query";
 import { handleMessage } from "./handlers/message";
 import { handleMyChatMember } from "./handlers/my-chat-member";
 import { LruDedup } from "./lib/lru-dedup";
 import { webhookSecret } from "./middleware/webhook-secret";
 import type { TelegramUpdate } from "./types/telegram";
 
+export interface AppOptions {
+  apiUrl?: string;
+  internalSecret?: string;
+}
+
 export function createApp(
   sql: postgres.Sql,
   botToken: string,
   webhookSecretToken: string,
   domain?: string,
+  opts: AppOptions = {},
 ) {
   const app = new Hono();
   const dedup = new LruDedup();
@@ -25,10 +32,17 @@ export function createApp(
       await handleMyChatMember(sql, update.my_chat_member);
     }
     if (update.message) {
-      await handleMessage(botToken, domain, update.message);
+      await handleMessage(sql, botToken, domain, update.message);
     }
-    // callback_query пока не используется — bot UI без inline-кнопок. Возвращаем
-    // 200 чтобы Telegram не ретраил update.
+    if (update.callback_query) {
+      if (opts.apiUrl && opts.internalSecret) {
+        await handleCallbackQuery(
+          { botToken, apiUrl: opts.apiUrl, internalSecret: opts.internalSecret },
+          update.callback_query,
+        );
+      }
+      /* c8 ignore next 2 -- defensive: missing config silently ignored, webhook must return 200 */
+    }
     return c.json({ ok: true });
   }
 

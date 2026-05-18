@@ -1,7 +1,17 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { type UserNotification, useNotifications } from "../hooks/useNotifications";
-import { apiFetch } from "../lib/api";
+import {
+  type UserNotification,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotifications,
+  useRespondRideRequest,
+} from "../hooks/useNotifications";
+
+function getRequestId(n: UserNotification): string | null {
+  const id = n.data?.request_id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
 
 function categoryLabel(n: UserNotification): string {
   switch (n.category) {
@@ -38,18 +48,39 @@ function formatTime(iso: string): string {
 
 export function EventsScreen() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data, isLoading } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const respond = useRespondRideRequest();
+  const [respondState, setRespondState] = useState<Record<string, "loading" | "done" | "error">>(
+    {},
+  );
   const notifications = data?.notifications ?? [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  async function handleReadAll() {
-    await apiFetch("/notifications/read-all", { method: "POST" });
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  function handleReadAll() {
+    markAllRead.mutate();
   }
 
   function handleNotificationClick(n: UserNotification) {
+    if (!n.is_read) markRead.mutate(n.id);
     if (n.ride_id) navigate(`/rides/${n.ride_id}`);
+  }
+
+  function handleRespond(n: UserNotification, action: "accept" | "reject") {
+    const requestId = getRequestId(n);
+    if (!requestId) return;
+    setRespondState((p) => ({ ...p, [n.id]: "loading" }));
+    respond.mutate(
+      { requestId, action },
+      {
+        onSuccess: () => {
+          setRespondState((p) => ({ ...p, [n.id]: "done" }));
+          if (!n.is_read) markRead.mutate(n.id);
+        },
+        onError: () => setRespondState((p) => ({ ...p, [n.id]: "error" })),
+      },
+    );
   }
 
   return (
@@ -174,53 +205,138 @@ export function EventsScreen() {
         </div>
       ) : (
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {notifications.map((n) => (
-            <button
-              key={n.id}
-              type="button"
-              data-testid={`notification-${n.id}`}
-              onClick={() => handleNotificationClick(n)}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 12,
-                width: "100%",
-                textAlign: "left",
-                padding: "14px 16px",
-                background: n.is_read ? "var(--brand-bg)" : "var(--brand-surface)",
-                border: "none",
-                borderBottom: "1px solid var(--brand-line)",
-                cursor: n.ride_id ? "pointer" : "default",
-                fontFamily: "inherit",
-              }}
-            >
+          {notifications.map((n) => {
+            const requestId = getRequestId(n);
+            const showActions = n.category === "ride_request" && requestId !== null;
+            const state = respondState[n.id];
+            return (
               <div
+                key={n.id}
+                data-testid={`notification-${n.id}-row`}
                 style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: n.is_read ? "transparent" : "var(--brand-primary)",
-                  flexShrink: 0,
-                  marginTop: 5,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                  background: n.is_read ? "var(--brand-bg)" : "var(--brand-surface)",
+                  borderBottom: "1px solid var(--brand-line)",
+                  padding: "14px 16px",
                 }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
+              >
+                <button
+                  type="button"
+                  data-testid={`notification-${n.id}`}
+                  onClick={() => handleNotificationClick(n)}
                   style={{
-                    fontSize: 14,
-                    fontWeight: n.is_read ? 400 : 600,
-                    color: "var(--brand-text)",
-                    marginBottom: 4,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 12,
+                    width: "100%",
+                    textAlign: "left",
+                    padding: 0,
+                    background: "transparent",
+                    border: "none",
+                    cursor: n.ride_id ? "pointer" : "default",
+                    fontFamily: "inherit",
                   }}
                 >
-                  {categoryLabel(n)}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--brand-sub)" }}>
-                  {formatTime(n.created_at)}
-                </div>
+                  <div
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: n.is_read ? "transparent" : "var(--brand-primary)",
+                      flexShrink: 0,
+                      marginTop: 5,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: n.is_read ? 400 : 600,
+                        color: "var(--brand-text)",
+                        marginBottom: 4,
+                      }}
+                    >
+                      {categoryLabel(n)}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--brand-sub)" }}>
+                      {formatTime(n.created_at)}
+                    </div>
+                  </div>
+                </button>
+                {showActions && state !== "done" && (
+                  <div style={{ display: "flex", gap: 8, paddingLeft: 22 }}>
+                    <button
+                      type="button"
+                      data-testid={`notification-${n.id}-accept`}
+                      disabled={state === "loading"}
+                      onClick={() => handleRespond(n, "accept")}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        border: "none",
+                        borderRadius: 8,
+                        background: "var(--brand-primary)",
+                        color: "#fff",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: state === "loading" ? "wait" : "pointer",
+                        fontFamily: "inherit",
+                        opacity: state === "loading" ? 0.6 : 1,
+                      }}
+                    >
+                      Принять
+                    </button>
+                    <button
+                      type="button"
+                      data-testid={`notification-${n.id}-reject`}
+                      disabled={state === "loading"}
+                      onClick={() => handleRespond(n, "reject")}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        border: "1px solid var(--brand-line)",
+                        borderRadius: 8,
+                        background: "var(--brand-surface-2)",
+                        color: "var(--brand-text)",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: state === "loading" ? "wait" : "pointer",
+                        fontFamily: "inherit",
+                        opacity: state === "loading" ? 0.6 : 1,
+                      }}
+                    >
+                      Отклонить
+                    </button>
+                  </div>
+                )}
+                {state === "done" && (
+                  <div
+                    style={{
+                      paddingLeft: 22,
+                      fontSize: 12,
+                      color: "var(--brand-sub)",
+                      fontStyle: "italic",
+                    }}
+                  >
+                    Ответ отправлен
+                  </div>
+                )}
+                {state === "error" && (
+                  <div
+                    style={{
+                      paddingLeft: 22,
+                      fontSize: 12,
+                      color: "var(--brand-danger, #c0392b)",
+                    }}
+                  >
+                    Ошибка — попробуйте ещё раз
+                  </div>
+                )}
               </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

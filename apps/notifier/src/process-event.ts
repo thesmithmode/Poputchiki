@@ -1,26 +1,11 @@
+import { isNotificationCategory } from "@poputchiki/shared";
 import type { CircuitBreaker } from "./circuit-breaker.js";
 import { buildDedupKey, checkAndSet } from "./dedup.js";
 import { formatMessage } from "./format.js";
+import { buildReplyMarkup } from "./reply-markup.js";
 import type { Category, NotifierDb, NotifyPayload } from "./types.js";
 
-const CATEGORIES = new Set<string>([
-  "ride_request",
-  "ride_request_accepted",
-  "ride_request_rejected",
-  "ride_request_cancelled",
-  "ride_cancelled",
-  "confirm_participation",
-  "participation_request",
-  "like_received",
-  "review_received",
-  "favorite_new_ride",
-  "support_reply",
-  "system",
-]);
-
-function isValidCategory(val: unknown): val is Category {
-  return typeof val === "string" && CATEGORIES.has(val);
-}
+const isValidCategory = isNotificationCategory as (val: unknown) => val is Category;
 
 export function sanitizeErr(err: unknown, token: string): string {
   /* c8 ignore next -- non-Error branch is defensive; all real errors are Error instances */
@@ -102,8 +87,14 @@ export async function processEvent(
   }
 
   const text = formatMessage(category, payload);
+  const replyMarkup = buildReplyMarkup(category, payload);
   const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-  const body = JSON.stringify({ chat_id: recipient.tg_id, text, parse_mode: "HTML" });
+  const body = JSON.stringify({
+    chat_id: recipient.tg_id,
+    text,
+    parse_mode: "HTML",
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
 
   let resp: Response;
   try {

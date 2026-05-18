@@ -26,3 +26,16 @@ export type { ComplaintInput as ComplaintInputType } from "./schemas/complaint.j
 
 export { SupportMessageInput } from "./schemas/support-message.js";
 export type { SupportMessageInput as SupportMessageInputType } from "./schemas/support-message.js";
+
+export {
+  NOTIFICATION_CATEGORIES,
+  USER_TOGGLEABLE_CATEGORIES,
+  isNotificationCategory,
+  isUserToggleableCategory,
+} from "./notifications/categories.js";
+export type {
+  NotificationCategory,
+  UserToggleableCategory,
+} from "./notifications/categories.js";
+export { enqueueNotification } from "./notifications/enqueue.js";
+export type { EnqueueArgs } from "./notifications/enqueue.js";

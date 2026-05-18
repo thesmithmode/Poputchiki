@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-17T12:03:40.009Z",
-  "source": "auto-compact",
+  "timestamp": "2026-05-18T12:59:09.964Z",
+  "source": "auto-postool",
   "partial": false,
   "phase": null,
   "phase_name": null,
@@ -18,7 +18,15 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".claude/settings.local.json"
+      "path": ".memory/daily/2026-05-18.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/flush.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
     },
     {
       "status": "M",
@@ -26,53 +34,21 @@
     },
     {
       "status": "M",
-      "path": "apps/api/src/ride-requests/rideRequestsRouter.ts"
+      "path": "apps/api/tests/unit/notifications/notificationsRouter.test.ts"
     },
     {
       "status": "M",
-      "path": "apps/api/src/rides/ridesRouter.ts"
+      "path": "apps/webhook/src/app.ts"
     },
     {
       "status": "M",
-      "path": "apps/api/src/users/usersRouter.ts"
+      "path": "apps/webhook/src/handlers/message.ts"
     },
     {
       "status": "M",
-      "path": "apps/notifier/src/format.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/src/process-event.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/src/types.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/index.html"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/BottomTabBar.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/RideCard.tsx"
-    },
-    {
-      "status": "A",
-      "path": "web/src/hooks/useUnreadCount.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/FeedScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/RideDetailScreen.tsx"
+      "path": "apps/webhook/tests/unit/message.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n453c726 PERF: удалить блокирующий Google Fonts, lazy FeedScreen, vendor chunks\ne8e588d CHORE: обновить memory-логи и HANDOFF — 2026-05-17\n7e6926a PERF: ускорить старт и улучшить UX геолокации\nfba6380 TEST: исправить ключ localStorage pp_theme в тесте App dark-theme\n1faf3bc TEST: обновить тесты под новый UI — number input мест, button telegram, мок useMe, light-тема дефолт"
+  "context_notes": "Recent commits:\ne961a96 FEAT: webhook callback_query handler для accept/reject из чата (PR#4)\nb16e27c FEAT: TG inline keyboard для ride_request (PR#4 backend)\n1552342 FEAT: inline accept/reject в карточке уведомления ride_request\n4f5bb77 FIX: lint format apps/notifier/tests/unit/format.test.ts\ne1a7b4c CHORE: обновить memory-логи — 2026-05-18 CI fix session"
 }

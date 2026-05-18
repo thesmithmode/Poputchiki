@@ -10,6 +10,7 @@
     "build": "echo 'cron: no build step (bun runtime)'"
   },
   "dependencies": {
+    "@poputchiki/shared": "workspace:*",
     "postgres": "^3.4.9"
   }
 }

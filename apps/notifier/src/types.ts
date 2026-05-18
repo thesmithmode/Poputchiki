@@ -1,16 +1,12 @@
-export type Category =
-  | "ride_request"
-  | "ride_request_accepted"
-  | "ride_request_rejected"
-  | "ride_request_cancelled"
-  | "ride_cancelled"
-  | "confirm_participation"
-  | "participation_request"
-  | "like_received"
-  | "review_received"
-  | "favorite_new_ride"
-  | "support_reply"
-  | "system";
+import type { NotificationCategory } from "@poputchiki/shared";
+
+/**
+ * Notifier internal alias for the canonical shared category type.
+ * Single source of truth — adding a category in shared automatically
+ * widens this alias and forces a typecheck error anywhere the notifier
+ * format/whitelist hasn't been updated.
+ */
+export type Category = NotificationCategory;
 
 export interface NotifyPayload {
   user_id: string;
@@ -20,6 +16,7 @@ export interface NotifyPayload {
   ride_id?: string;
   passenger_id?: string;
   driver_id?: string;
+  request_id?: string;
   [key: string]: unknown;
 }
 

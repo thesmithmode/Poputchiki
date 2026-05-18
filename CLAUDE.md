@@ -26,7 +26,7 @@ RLS identity: НЕТ Supabase `auth.uid()`/`auth.jwt()`. GUC `app.current_user_i
 
 - TDD строго: тесты ПЕРЕД кодом, всегда
 - Одна задача за раз: никаких бонусных правок, занялся → закончи или верни в pending
-- `main` ТОЛЬКО через squash merge из `dev`. Прямые коммиты/push в `main` ЗАПРЕЩЕНЫ — никогда. Код пишется в `dev` (или фича-ветка → `dev`). CI зелёный в `dev` → squash `dev`→`main` можно автономно (без ожидания команды). CI красный → чинить в `dev`. Hook `PreToolUse(Bash:git push origin main)` блокирует несанкционированный push
+- Работаем ВСЕГДА в `dev`. Никаких фича-веток, никаких PR — только прямые коммиты в `dev` и merge `dev`→`main`. `main` ТОЛЬКО через merge из `dev`. Прямые коммиты/push в `main` ЗАПРЕЩЕНЫ — никогда. CI зелёный в `dev` → merge `dev`→`main` можно автономно (без ожидания команды). CI красный → чинить в `dev`. Hook `PreToolUse(Bash:git push origin main)` блокирует несанкционированный push
 - Не писать секреты в код/коммит/чат/логи: только `process.env.X` из `.env`
 - Phase порядок: сначала все `phase=mvp`, потом `phase=prod-deploy`. Внутри фазы — по dependencies + priority. Из `prod-deploy` бери только когда ВСЕ `mvp` зелёные
 - Production deploy в рамках `phase=prod-deploy` (TASK-115..125). Любой rollback / `docker compose down` на production — только через `scripts/rollback.sh` либо ручной command от Антона

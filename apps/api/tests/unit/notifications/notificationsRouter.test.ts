@@ -55,6 +55,51 @@ function mockWithIdentityCallThrough() {
   vi.mocked(withIdentity).mockImplementation(async (_sql, _user, fn) => fn(mockTx));
 }
 
+describe("POST /notifications/:id/read", () => {
+  const NOTIF_ID = "11111111-1111-4111-a111-111111111111";
+
+  it("valid uuid + own notification → 200 + invokes UPDATE", async () => {
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([{ id: NOTIF_ID }]); // UPDATE RETURNING
+
+    const app = makeApp(USER);
+    const res = await app.request(`/notifications/${NOTIF_ID}/read`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body).toEqual({ ok: true });
+  });
+
+  it("uuid not owned by user → 404", async () => {
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([]); // RLS hides row → 0 rows updated
+
+    const app = makeApp(USER);
+    const res = await app.request(`/notifications/${NOTIF_ID}/read`, { method: "POST" });
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not_found");
+  });
+
+  it("invalid uuid → 400", async () => {
+    const app = makeApp(USER);
+    const res = await app.request("/notifications/not-a-uuid/read", { method: "POST" });
+    expect(res.status).toBe(400);
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid id");
+  });
+
+  it("idempotent: already-read notification still → 200", async () => {
+    mockWithIdentityCallThrough();
+    // UPDATE ... WHERE id=:id AND user_id=:user RETURNING id — even when is_read was already true,
+    // RETURNING still yields the row → endpoint reports ok.
+    mockTx.mockResolvedValueOnce([{ id: NOTIF_ID }]);
+
+    const app = makeApp(USER);
+    const res = await app.request(`/notifications/${NOTIF_ID}/read`, { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("GET /notifications/preferences", () => {
   it("returns preferences → 200", async () => {
     mockWithIdentityCallThrough();

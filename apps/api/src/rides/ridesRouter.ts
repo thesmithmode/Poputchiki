@@ -377,7 +377,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         INSERT INTO user_notifications (user_id, category, ride_id, data)
         VALUES (
           ${result.driverId}::uuid,
-          'notify_user',
+          'ride_request',
           ${rideId}::uuid,
           ${JSON.stringify({ passenger_id: user.id, passenger_name: result.passengerName, request_id: result.rideRequest?.id })}::jsonb
         )

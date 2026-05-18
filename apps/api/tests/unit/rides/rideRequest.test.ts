@@ -115,6 +115,38 @@ describe("POST /rides/:id/request", () => {
     expect(res.status).toBe(401);
   });
 
+  it("driver in-app notification uses category 'ride_request', not channel name", async () => {
+    // Sentinel for regression: ridesRouter.ts previously inserted 'notify_user' (channel name)
+    // as category value, which caused EventsScreen fallback to render the raw string.
+    const mockRequest = {
+      id: "req-uuid",
+      ride_id: RIDE_ID,
+      passenger_id: USER.id,
+      status: "pending",
+    };
+    vi.mocked(withIdentity).mockResolvedValueOnce({
+      rideRequest: mockRequest,
+      driverId: DRIVER_ID,
+      // biome-ignore lint/suspicious/noExplicitAny: mock
+    } as any);
+    mockSql.mockResolvedValueOnce([]); // pg_notify
+    mockSql.mockResolvedValueOnce([]); // user_notifications INSERT
+
+    const app = makeApp();
+    await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
+
+    // Second sql call is the INSERT INTO user_notifications.
+    // postgres.js tagged template: first arg is strings[] with SQL fragments around interpolations.
+    const insertCall = mockSql.mock.calls[1];
+    expect(insertCall).toBeDefined();
+    const sqlStrings: string[] = insertCall[0];
+    const joined = sqlStrings.join("|");
+    expect(joined).toContain("INSERT INTO user_notifications");
+    expect(joined).toContain("'ride_request'");
+    // Must NOT contain "'notify_user'" as a literal category value
+    expect(joined).not.toContain("'notify_user'");
+  });
+
   it("withIdentity called with 'repeatable read' isolation", async () => {
     const mockRequest = {
       id: "req-uuid",

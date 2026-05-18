@@ -4,6 +4,8 @@ import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import type { AppUser } from "../middleware/identity-guard";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const CATEGORIES = [
   "ride_request",
   "ride_cancelled",
@@ -88,6 +90,22 @@ export function createNotificationsRouter(sql: postgres.Sql): Hono {
         WHERE user_id = ${user.id}::uuid AND is_read = false
       `;
     });
+    return c.json({ ok: true });
+  });
+
+  app.post("/:id/read", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    const id = c.req.param("id");
+    if (!UUID_RE.test(id)) return c.json({ error: "invalid id" }, 400);
+
+    const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<{ id: string }[]>`
+        UPDATE user_notifications SET is_read = true
+        WHERE id = ${id}::uuid AND user_id = ${user.id}::uuid
+        RETURNING id
+      `;
+    });
+    if (rows.length === 0) return c.json({ error: "not_found" }, 404);
     return c.json({ ok: true });
   });
 

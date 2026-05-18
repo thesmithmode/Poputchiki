@@ -61,6 +61,62 @@ function mockWithIdentityCallThrough() {
   vi.mocked(withIdentity).mockImplementation(async (_sql, _user, fn) => fn(mockTx));
 }
 
+describe("GET /notifications/", () => {
+  it("returns notifications array → 200", async () => {
+    mockWithIdentityCallThrough();
+    const rows = [
+      {
+        id: "11111111-1111-4111-a111-111111111111",
+        category: "ride_request",
+        ride_id: null,
+        data: { foo: "bar" },
+        is_read: false,
+        created_at: "2026-05-18T00:00:00Z",
+      },
+    ];
+    mockTx.mockResolvedValueOnce(rows);
+
+    const app = makeApp(USER);
+    const res = await app.request("/notifications");
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.notifications).toEqual(rows);
+  });
+
+  it("empty result → 200 + empty array", async () => {
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([]);
+
+    const app = makeApp(USER);
+    const res = await app.request("/notifications");
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.notifications).toEqual([]);
+  });
+});
+
+describe("POST /notifications/read-all", () => {
+  it("marks all unread → 200", async () => {
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([]);
+
+    const app = makeApp(USER);
+    const res = await app.request("/notifications/read-all", { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body).toEqual({ ok: true });
+  });
+
+  it("nothing unread → still 200 (idempotent)", async () => {
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([]);
+
+    const app = makeApp(USER);
+    const res = await app.request("/notifications/read-all", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+});
+
 describe("POST /notifications/:id/read", () => {
   const NOTIF_ID = "11111111-1111-4111-a111-111111111111";
 

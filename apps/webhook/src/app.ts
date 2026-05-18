@@ -32,7 +32,7 @@ export function createApp(
       await handleMyChatMember(sql, update.my_chat_member);
     }
     if (update.message) {
-      await handleMessage(botToken, domain, update.message);
+      await handleMessage(sql, botToken, domain, update.message);
     }
     if (update.callback_query) {
       if (opts.apiUrl && opts.internalSecret) {

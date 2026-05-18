@@ -24,9 +24,22 @@ export function useMarkNotificationRead() {
   return useMutation({
     mutationFn: (id: string) =>
       apiFetch<{ ok: true }>(`/notifications/${id}/read`, { method: "POST" }),
+    // The badge derives from the same ["notifications"] cache entry, so a
+    // single invalidate refreshes both the EventsScreen list and the
+    // BottomTabBar dot. We intentionally do NOT touch a separate
+    // ["notifications", "unread-count"] key — it doesn't exist.
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["notifications"] });
-      qc.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
+    },
+  });
+}
+
+export function useMarkAllNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<{ ok: true }>("/notifications/read-all", { method: "POST" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
     },
   });
 }

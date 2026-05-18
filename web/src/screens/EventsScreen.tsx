@@ -1,11 +1,10 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   type UserNotification,
+  useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
 } from "../hooks/useNotifications";
-import { apiFetch } from "../lib/api";
 
 function categoryLabel(n: UserNotification): string {
   switch (n.category) {
@@ -42,16 +41,14 @@ function formatTime(iso: string): string {
 
 export function EventsScreen() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const { data, isLoading } = useNotifications();
   const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
   const notifications = data?.notifications ?? [];
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  async function handleReadAll() {
-    await apiFetch("/notifications/read-all", { method: "POST" });
-    queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
+  function handleReadAll() {
+    markAllRead.mutate();
   }
 
   function handleNotificationClick(n: UserNotification) {

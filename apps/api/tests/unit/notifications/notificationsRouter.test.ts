@@ -33,10 +33,16 @@ function makeApp(user?: AppUser) {
   return app;
 }
 
+// Must mirror USER_TOGGLEABLE_CATEGORIES + system from shared (12 rows).
+// Drift here will surface as the upsert mock-call count being off by N.
 const PREFS_ROWS = [
   { category: "ride_request", enabled: true },
+  { category: "ride_request_accepted", enabled: true },
+  { category: "ride_request_rejected", enabled: true },
+  { category: "ride_request_cancelled", enabled: true },
   { category: "ride_cancelled", enabled: true },
   { category: "confirm_participation", enabled: true },
+  { category: "participation_request", enabled: true },
   { category: "like_received", enabled: true },
   { category: "review_received", enabled: true },
   { category: "favorite_new_ride", enabled: true },
@@ -103,20 +109,10 @@ describe("POST /notifications/:id/read", () => {
 describe("GET /notifications/preferences", () => {
   it("returns preferences → 200", async () => {
     mockWithIdentityCallThrough();
-    // upsertDefaults calls tx 8 times (one per category), then readPrefs calls tx once
-    // We need the last call (readPrefs SELECT) to return prefs rows
-    // mockTx resolves [] by default (INSERT ON CONFLICT DO NOTHING returns [])
-    // Last call is SELECT → return PREFS_ROWS
-    mockTx
-      .mockResolvedValueOnce([]) // category 1 upsert
-      .mockResolvedValueOnce([]) // category 2 upsert
-      .mockResolvedValueOnce([]) // category 3 upsert
-      .mockResolvedValueOnce([]) // category 4 upsert
-      .mockResolvedValueOnce([]) // category 5 upsert
-      .mockResolvedValueOnce([]) // category 6 upsert
-      .mockResolvedValueOnce([]) // category 7 upsert
-      .mockResolvedValueOnce([]) // category 8 upsert
-      .mockResolvedValueOnce(PREFS_ROWS); // readPrefs SELECT
+    // upsertDefaults calls tx 12 times (one per PREF_CATEGORIES entry),
+    // then readPrefs calls tx once. Last call is SELECT → return PREFS_ROWS.
+    for (let i = 0; i < 12; i++) mockTx.mockResolvedValueOnce([]);
+    mockTx.mockResolvedValueOnce(PREFS_ROWS);
 
     const app = makeApp(USER);
     const res = await app.request("/notifications/preferences");
@@ -142,20 +138,12 @@ describe("GET /notifications/preferences", () => {
 describe("PUT /notifications/preferences", () => {
   it("valid partial update → 200", async () => {
     mockWithIdentityCallThrough();
-    // upserts × 8, then UPDATE × 1, then readPrefs SELECT
-    mockTx
-      .mockResolvedValueOnce([]) // upsert ×8
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([]) // UPDATE for ride_request
-      .mockResolvedValueOnce([
-        ...PREFS_ROWS.map((r) => (r.category === "ride_request" ? { ...r, enabled: false } : r)),
-      ]); // readPrefs
+    // upserts × 12 (USER_TOGGLEABLE_CATEGORIES + system), then UPDATE × 1, then readPrefs SELECT
+    for (let i = 0; i < 12; i++) mockTx.mockResolvedValueOnce([]);
+    mockTx.mockResolvedValueOnce([]); // UPDATE for ride_request
+    mockTx.mockResolvedValueOnce([
+      ...PREFS_ROWS.map((r) => (r.category === "ride_request" ? { ...r, enabled: false } : r)),
+    ]); // readPrefs
 
     const app = makeApp(USER);
     const res = await app.request("/notifications/preferences", {
@@ -170,17 +158,9 @@ describe("PUT /notifications/preferences", () => {
 
   it("empty body (all optional) → 200", async () => {
     mockWithIdentityCallThrough();
-    // upserts × 8, no updates, readPrefs SELECT
-    mockTx
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(PREFS_ROWS);
+    // upserts × 12, no updates, readPrefs SELECT
+    for (let i = 0; i < 12; i++) mockTx.mockResolvedValueOnce([]);
+    mockTx.mockResolvedValueOnce(PREFS_ROWS);
 
     const app = makeApp(USER);
     const res = await app.request("/notifications/preferences", {
@@ -217,16 +197,8 @@ describe("PUT /notifications/preferences", () => {
 
   it("non-JSON body treated as empty object → 200", async () => {
     mockWithIdentityCallThrough();
-    mockTx
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(PREFS_ROWS);
+    for (let i = 0; i < 12; i++) mockTx.mockResolvedValueOnce([]);
+    mockTx.mockResolvedValueOnce(PREFS_ROWS);
 
     const app = makeApp(USER);
     const res = await app.request("/notifications/preferences", {
@@ -240,21 +212,18 @@ describe("PUT /notifications/preferences", () => {
 
   it("multiple fields updated → 200", async () => {
     mockWithIdentityCallThrough();
-    // upserts × 8 + UPDATE × 2 + readPrefs
+    // upserts × 12 + UPDATE × 2 = 14 tx calls before readPrefs
     mockTx.mockResolvedValue([]);
-    // override last call with prefs rows
     const updatedPrefs = PREFS_ROWS.map((r) =>
       r.category === "like_received" || r.category === "review_received"
         ? { ...r, enabled: false }
         : r,
     );
-    // We just return [] for all except we need readPrefs to return something
-    // Use a counter approach: resolve [] for first N, then updatedPrefs
     vi.mocked(withIdentity).mockImplementationOnce(async (_sql, _user, fn) => {
       let callCount = 0;
       const countingTx = vi.fn().mockImplementation(() => {
         callCount++;
-        if (callCount <= 10) return Promise.resolve([]);
+        if (callCount <= 14) return Promise.resolve([]);
         return Promise.resolve(updatedPrefs);
       });
       return fn(countingTx as never);

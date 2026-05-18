@@ -235,6 +235,40 @@ describe("processEvent", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it("accepts ride_changed (canonical NOTIFICATION_CATEGORIES) and sends message", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(200, true);
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({
+        user_id: "u1",
+        category: "ride_changed",
+        ride_id: "r1",
+      }),
+      BOT_TOKEN,
+    );
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
+
+  it("accepts admin_review_cancellation_abuse (admin category) and sends message", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(200, true);
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({
+        user_id: "admin",
+        category: "admin_review_cancellation_abuse",
+        ride_id: "r1",
+      }),
+      BOT_TOKEN,
+    );
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
+
   it("returns early when category invalid", async () => {
     const db = makeDb();
     const fetchFn = makeFetch();

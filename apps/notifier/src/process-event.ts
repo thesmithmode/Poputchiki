@@ -1,26 +1,10 @@
+import { isNotificationCategory } from "@poputchiki/shared";
 import type { CircuitBreaker } from "./circuit-breaker.js";
 import { buildDedupKey, checkAndSet } from "./dedup.js";
 import { formatMessage } from "./format.js";
 import type { Category, NotifierDb, NotifyPayload } from "./types.js";
 
-const CATEGORIES = new Set<string>([
-  "ride_request",
-  "ride_request_accepted",
-  "ride_request_rejected",
-  "ride_request_cancelled",
-  "ride_cancelled",
-  "confirm_participation",
-  "participation_request",
-  "like_received",
-  "review_received",
-  "favorite_new_ride",
-  "support_reply",
-  "system",
-]);
-
-function isValidCategory(val: unknown): val is Category {
-  return typeof val === "string" && CATEGORIES.has(val);
-}
+const isValidCategory = isNotificationCategory as (val: unknown) => val is Category;
 
 export function sanitizeErr(err: unknown, token: string): string {
   /* c8 ignore next -- non-Error branch is defensive; all real errors are Error instances */

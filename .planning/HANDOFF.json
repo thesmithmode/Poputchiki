@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-18T12:33:17.908Z",
+  "timestamp": "2026-05-18T12:59:09.964Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -34,21 +34,21 @@
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/notifications/notificationPreferences.test.ts"
+      "path": "apps/api/tests/unit/notifications/notificationsRouter.test.ts"
     },
     {
       "status": "M",
-      "path": "apps/notifier/tests/unit/format.test.ts"
+      "path": "apps/webhook/src/app.ts"
     },
     {
-      "status": "??",
-      "path": "db/migrations/026_notification_preferences_categories.down.sql"
+      "status": "M",
+      "path": "apps/webhook/src/handlers/message.ts"
     },
     {
-      "status": "??",
-      "path": "db/migrations/026_notification_preferences_categories.sql"
+      "status": "M",
+      "path": "apps/webhook/tests/unit/message.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n2351be3 FIX: синхронизация бейджа уведомлений через единый react-query cache\n1fa7055 CHORE: обновить memory-логи — сессия 2026-05-18\n4946242 REFACTOR: единый источник правды для категорий уведомлений (shared)\nfaf0fd0 FEAT: эмиссия like_received/review_received/favorite_new_ride в feed+TG\na1a3f5f REFACTOR: 9 pg_notify call-sites → enqueueNotification"
+  "context_notes": "Recent commits:\ne961a96 FEAT: webhook callback_query handler для accept/reject из чата (PR#4)\nb16e27c FEAT: TG inline keyboard для ride_request (PR#4 backend)\n1552342 FEAT: inline accept/reject в карточке уведомления ride_request\n4f5bb77 FIX: lint format apps/notifier/tests/unit/format.test.ts\ne1a7b4c CHORE: обновить memory-логи — 2026-05-18 CI fix session"
 }

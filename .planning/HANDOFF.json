@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-17T12:03:40.009Z",
-  "source": "auto-compact",
+  "timestamp": "2026-05-18T11:36:37.443Z",
+  "source": "auto-postool",
   "partial": false,
   "phase": null,
   "phase_name": null,
@@ -18,7 +18,11 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".claude/settings.local.json"
+      "path": ".memory/scripts/flush.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
     },
     {
       "status": "M",
@@ -26,53 +30,21 @@
     },
     {
       "status": "M",
-      "path": "apps/api/src/ride-requests/rideRequestsRouter.ts"
+      "path": "web/src/hooks/useNotifications.ts"
     },
     {
       "status": "M",
-      "path": "apps/api/src/rides/ridesRouter.ts"
+      "path": "web/src/screens/EventsScreen.tsx"
     },
     {
-      "status": "M",
-      "path": "apps/api/src/users/usersRouter.ts"
+      "status": "??",
+      "path": ".memory/daily/2026-05-18.md"
     },
     {
-      "status": "M",
-      "path": "apps/notifier/src/format.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/src/process-event.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/src/types.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/index.html"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/BottomTabBar.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/RideCard.tsx"
-    },
-    {
-      "status": "A",
-      "path": "web/src/hooks/useUnreadCount.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/FeedScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/RideDetailScreen.tsx"
+      "status": "??",
+      "path": "web/tests/EventsScreen.test.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n453c726 PERF: удалить блокирующий Google Fonts, lazy FeedScreen, vendor chunks\ne8e588d CHORE: обновить memory-логи и HANDOFF — 2026-05-17\n7e6926a PERF: ускорить старт и улучшить UX геолокации\nfba6380 TEST: исправить ключ localStorage pp_theme в тесте App dark-theme\n1faf3bc TEST: обновить тесты под новый UI — number input мест, button telegram, мок useMe, light-тема дефолт"
+  "context_notes": "Recent commits:\n4e3e1bf FIX: уведомления — single-mark endpoint + категория ride_request\n677d446 DOCS: убрать правило фича-веток — работаем только в dev, без PR\n2ddadcb Merge branch 'main' into dev\ne8d000a CHORE: обновить memory-логи — сессия 2026-05-18 аудит уведомлений\ncbacc88 FIX: уведомления notifier, бейдж, лайк, маркер своей поездки, кнопка связаться"
 }

@@ -299,6 +299,23 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: ride.id, type: "created" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );
+
+    // Notify users who favorited this driver with notify=true
+    (async () => {
+      const followers = await sql<{ user_id: string }[]>`
+        SELECT user_id FROM favorites
+        WHERE target_id = ${user.id}::uuid AND notify = true
+      `;
+      for (const f of followers) {
+        await enqueueNotification(sql, {
+          userId: f.user_id,
+          category: "favorite_new_ride",
+          rideId: String(ride.id),
+          data: { driver_id: user.id },
+        });
+      }
+    })().catch(/* c8 ignore next -- fire-and-forget */ () => {});
+
     return c.json(ride, 201);
   });
 

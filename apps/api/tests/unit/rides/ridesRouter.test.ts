@@ -47,6 +47,10 @@ function makeApp(user?: AppUser) {
 }
 
 describe("POST /rides — validation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it("valid body → 201", async () => {
     const mockRide = { id: "ride-uuid", driver_id: USER.id, ...VALID_BODY };
     // biome-ignore lint/suspicious/noExplicitAny: mock
@@ -62,6 +66,79 @@ describe("POST /rides — validation", () => {
     expect(res.status).toBe(201);
     const body = await readJson(res);
     expect(body.id).toBe("ride-uuid");
+  });
+
+  it("on create → emits favorite_new_ride to each follower (favorites SELECT → enqueueNotification per row)", async () => {
+    const FOLLOWER_A = "00000000-0000-4000-a000-0000000000aa";
+    const FOLLOWER_B = "00000000-0000-4000-a000-0000000000bb";
+    const RIDE_ID = "ride-uuid-fav";
+    const mockRide = { id: RIDE_ID, driver_id: USER.id, ...VALID_BODY };
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValueOnce(mockRide as any);
+    // mockSql call sequence on success:
+    //   [0] pg_notify('rides_changed', ...) — cache-bust broadcast
+    //   [1] SELECT user_id FROM favorites WHERE target_id = ... AND notify = true
+    //   [2] enqueueNotification A: INSERT user_notifications
+    //   [3] enqueueNotification A: pg_notify('notify_user', ...)
+    //   [4] enqueueNotification B: INSERT user_notifications
+    //   [5] enqueueNotification B: pg_notify('notify_user', ...)
+    mockSql
+      .mockResolvedValueOnce([]) // [0] rides_changed pg_notify
+      .mockResolvedValueOnce([{ user_id: FOLLOWER_A }, { user_id: FOLLOWER_B }]) // [1] favorites
+      .mockResolvedValueOnce([]) // [2]
+      .mockResolvedValueOnce([]) // [3]
+      .mockResolvedValueOnce([]) // [4]
+      .mockResolvedValueOnce([]); // [5]
+
+    const app = makeApp(USER);
+    const res = await app.request("/rides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(VALID_BODY),
+    });
+    expect(res.status).toBe(201);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockSql).toHaveBeenCalledTimes(6);
+    // [2] follower A INSERT
+    const insertA = mockSql.mock.calls[2];
+    expect(insertA[1]).toBe(FOLLOWER_A);
+    expect(insertA[2]).toBe("favorite_new_ride");
+    expect(insertA[3]).toBe(RIDE_ID);
+    // [3] follower A pg_notify payload
+    const notifyA = JSON.parse(mockSql.mock.calls[3][1] as string);
+    expect(notifyA.category).toBe("favorite_new_ride");
+    expect(notifyA.user_id).toBe(FOLLOWER_A);
+    expect(notifyA.ride_id).toBe(RIDE_ID);
+    expect(notifyA.driver_id).toBe(USER.id);
+    // [4] follower B INSERT
+    const insertB = mockSql.mock.calls[4];
+    expect(insertB[1]).toBe(FOLLOWER_B);
+    expect(insertB[2]).toBe("favorite_new_ride");
+    // [5] follower B pg_notify payload
+    const notifyB = JSON.parse(mockSql.mock.calls[5][1] as string);
+    expect(notifyB.user_id).toBe(FOLLOWER_B);
+  });
+
+  it("on create with no followers → no per-follower enqueueNotification calls (rides_changed + favorites SELECT only)", async () => {
+    const mockRide = { id: "ride-uuid", driver_id: USER.id, ...VALID_BODY };
+    // biome-ignore lint/suspicious/noExplicitAny: mock
+    vi.mocked(withIdentity).mockResolvedValueOnce(mockRide as any);
+    mockSql
+      .mockResolvedValueOnce([]) // [0] rides_changed pg_notify
+      .mockResolvedValueOnce([]); // [1] favorites SELECT empty
+
+    const app = makeApp(USER);
+    const res = await app.request("/rides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(VALID_BODY),
+    });
+    expect(res.status).toBe(201);
+    await new Promise((r) => setTimeout(r, 0));
+
+    // rides_changed pg_notify + favorites SELECT = 2; no enqueueNotification follow-ups
+    expect(mockSql).toHaveBeenCalledTimes(2);
   });
 
   it("missing from_label → 422", async () => {

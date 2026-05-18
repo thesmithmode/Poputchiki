@@ -1,4 +1,4 @@
-import { CreateReviewInput } from "@poputchiki/shared";
+import { CreateReviewInput, enqueueNotification } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { withIdentity } from "../db/with-identity";
@@ -60,6 +60,17 @@ export function createReviewsRouter(sql: postgres.Sql): Hono {
       });
 
       if (result.kind === "forbidden") return c.json({ error: "not_confirmed" }, 403);
+
+      // Feed row + TG push to reviewed user
+      if (result.row) {
+        enqueueNotification(sql, {
+          userId: target_id,
+          category: "review_received",
+          rideId: ride_id,
+          data: { from_user_id: user.id, review_id: result.row.id, stars },
+        }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
+      }
+
       return c.json(result.row, 201);
     } catch (err) {
       /* c8 ignore next -- unique violation is tested in integration; unit mock can't reproduce it */

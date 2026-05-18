@@ -43,3 +43,25 @@ export function useMarkAllNotificationsRead() {
     },
   });
 }
+
+/**
+ * Inline accept/reject from the notification card.
+ *
+ * After the driver's call, both the request status changes AND a feed row is
+ * enqueued for the passenger via the API. We invalidate `notifications` so
+ * the driver's own card flips to read state, and `ride` so any open detail
+ * view reflects the new request state.
+ */
+export function useRespondRideRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ requestId, action }: { requestId: string; action: "accept" | "reject" }) =>
+      apiFetch<{ id: string; status: string }>(`/ride-requests/${requestId}/${action}`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: ["ride"] });
+    },
+  });
+}

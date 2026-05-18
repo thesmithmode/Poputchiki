@@ -124,3 +124,113 @@ describe("EventsScreen — mark-on-click", () => {
     });
   });
 });
+
+describe("EventsScreen — inline accept/reject (ride_request)", () => {
+  const REQUEST_ID = "33333333-3333-4333-a333-333333333333";
+  const RIDE_REQUEST_NOTIF = {
+    ...UNREAD_NOTIFICATION,
+    data: { passenger_name: "Антон", request_id: REQUEST_ID },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("рисует кнопки Принять/Отклонить для ride_request с request_id", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [RIDE_REQUEST_NOTIF] });
+
+    renderScreen();
+
+    expect(await screen.findByTestId(`notification-${NOTIF_ID}-accept`)).toBeInTheDocument();
+    expect(screen.getByTestId(`notification-${NOTIF_ID}-reject`)).toBeInTheDocument();
+  });
+
+  it("клик Принять → POST /ride-requests/:id/accept + invalidate", async () => {
+    // Initial GET, accept POST, mark-read POST, refetch after invalidate (still
+    // returns the same notification but now is_read=true via cache update).
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [RIDE_REQUEST_NOTIF] });
+    mockedApiFetch.mockResolvedValueOnce({ id: REQUEST_ID, status: "accepted" });
+    mockedApiFetch.mockResolvedValueOnce({ ok: true });
+    mockedApiFetch.mockResolvedValue({
+      notifications: [{ ...RIDE_REQUEST_NOTIF, is_read: true }],
+    });
+
+    renderScreen();
+
+    const acceptBtn = await screen.findByTestId(`notification-${NOTIF_ID}-accept`);
+    fireEvent.click(acceptBtn);
+
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        `/ride-requests/${REQUEST_ID}/accept`,
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText("Ответ отправлен")).toBeInTheDocument();
+    });
+  });
+
+  it("клик Отклонить → POST /ride-requests/:id/reject", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [RIDE_REQUEST_NOTIF] });
+    mockedApiFetch.mockResolvedValueOnce({ id: REQUEST_ID, status: "rejected" });
+    mockedApiFetch.mockResolvedValueOnce({ ok: true });
+    mockedApiFetch.mockResolvedValue({
+      notifications: [{ ...RIDE_REQUEST_NOTIF, is_read: true }],
+    });
+
+    renderScreen();
+
+    const rejectBtn = await screen.findByTestId(`notification-${NOTIF_ID}-reject`);
+    fireEvent.click(rejectBtn);
+
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        `/ride-requests/${REQUEST_ID}/reject`,
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+  });
+
+  it("без request_id в data — кнопки не рисуются", async () => {
+    const notifWithoutReqId = {
+      ...UNREAD_NOTIFICATION,
+      data: { passenger_name: "Антон" }, // no request_id
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [notifWithoutReqId] });
+
+    renderScreen();
+
+    await screen.findByTestId(`notification-${NOTIF_ID}`);
+    expect(screen.queryByTestId(`notification-${NOTIF_ID}-accept`)).toBeNull();
+    expect(screen.queryByTestId(`notification-${NOTIF_ID}-reject`)).toBeNull();
+  });
+
+  it("кнопки рисуются только для category=ride_request", async () => {
+    const likeNotif = {
+      ...UNREAD_NOTIFICATION,
+      category: "like_received",
+      data: { request_id: REQUEST_ID }, // даже с request_id — не должно показывать
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [likeNotif] });
+
+    renderScreen();
+
+    await screen.findByTestId(`notification-${NOTIF_ID}`);
+    expect(screen.queryByTestId(`notification-${NOTIF_ID}-accept`)).toBeNull();
+  });
+
+  it("ошибка API → показывает сообщение об ошибке", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [RIDE_REQUEST_NOTIF] });
+    mockedApiFetch.mockRejectedValueOnce(new Error("boom"));
+
+    renderScreen();
+
+    const acceptBtn = await screen.findByTestId(`notification-${NOTIF_ID}-accept`);
+    fireEvent.click(acceptBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Ошибка/i)).toBeInTheDocument();
+    });
+  });
+});

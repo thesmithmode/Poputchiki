@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-18T12:59:09.964Z",
+  "timestamp": "2026-05-18T13:31:58.782Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -34,21 +34,9 @@
     },
     {
       "status": "M",
-      "path": "apps/api/tests/unit/notifications/notificationsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/webhook/src/app.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/webhook/src/handlers/message.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/webhook/tests/unit/message.test.ts"
+      "path": "web/src/screens/EventsScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\ne961a96 FEAT: webhook callback_query handler для accept/reject из чата (PR#4)\nb16e27c FEAT: TG inline keyboard для ride_request (PR#4 backend)\n1552342 FEAT: inline accept/reject в карточке уведомления ride_request\n4f5bb77 FIX: lint format apps/notifier/tests/unit/format.test.ts\ne1a7b4c CHORE: обновить memory-логи — 2026-05-18 CI fix session"
+  "context_notes": "Recent commits:\na09196c TEST: unit-тесты internalRideRequestsRouter + webhook coverage gaps\n2d9d958 CHORE: обновить memory-логи — 2026-05-18 PR#5 #26+#30\n6f10e65 FEAT: webhook /start auto-clears notify_disabled + CI fix branch cov\ne961a96 FEAT: webhook callback_query handler для accept/reject из чата (PR#4)\nb16e27c FEAT: TG inline keyboard для ride_request (PR#4 backend)"
 }

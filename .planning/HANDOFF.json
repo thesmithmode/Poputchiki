@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-18T12:18:20.177Z",
+  "timestamp": "2026-05-18T12:33:17.908Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -34,37 +34,21 @@
     },
     {
       "status": "M",
-      "path": "apps/api/src/notifications/notificationsRouter.ts"
+      "path": "apps/api/tests/integration/notifications/notificationPreferences.test.ts"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/unit/notifications/notificationsRouter.test.ts"
+      "path": "apps/notifier/tests/unit/format.test.ts"
     },
     {
-      "status": "M",
-      "path": "apps/notifier/package.json"
+      "status": "??",
+      "path": "db/migrations/026_notification_preferences_categories.down.sql"
     },
     {
-      "status": "M",
-      "path": "apps/notifier/src/format.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/src/process-event.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/src/types.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/tests/unit/process-event.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "bun.lock"
+      "status": "??",
+      "path": "db/migrations/026_notification_preferences_categories.sql"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nfaf0fd0 FEAT: эмиссия like_received/review_received/favorite_new_ride в feed+TG\na1a3f5f REFACTOR: 9 pg_notify call-sites → enqueueNotification\n3e3587b FEAT: shared canonical CATEGORIES + enqueueNotification helper\n26efa57 CHORE: обновить memory-логи — сессия 2026-05-18 mark-on-click\ne34beed FIX: события — клик по уведомлению маркит его прочитанным"
+  "context_notes": "Recent commits:\n2351be3 FIX: синхронизация бейджа уведомлений через единый react-query cache\n1fa7055 CHORE: обновить memory-логи — сессия 2026-05-18\n4946242 REFACTOR: единый источник правды для категорий уведомлений (shared)\nfaf0fd0 FEAT: эмиссия like_received/review_received/favorite_new_ride в feed+TG\na1a3f5f REFACTOR: 9 pg_notify call-sites → enqueueNotification"
 }

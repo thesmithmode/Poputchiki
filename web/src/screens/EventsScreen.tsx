@@ -95,7 +95,9 @@ const AVATAR_PALETTE = [
 function avatarColor(seed: string): { bg: string; fg: string } {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  return AVATAR_PALETTE[h % AVATAR_PALETTE.length] ?? AVATAR_PALETTE[0]!;
+  return (
+    AVATAR_PALETTE[h % AVATAR_PALETTE.length] ?? AVATAR_PALETTE[0] ?? { bg: "#888", fg: "#fff" }
+  );
 }
 
 function metaIcon(category: string): string {
@@ -314,7 +316,9 @@ export function EventsScreen() {
           </div>
         </div>
       ) : (
-        <div style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", gap: 16 }}>
+        <div
+          style={{ flex: 1, padding: "16px", display: "flex", flexDirection: "column", gap: 16 }}
+        >
           <div
             style={{
               display: "flex",

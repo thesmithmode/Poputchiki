@@ -1,4 +1,4 @@
-import { CreateRideInput, MarkParticipantsInput } from "@poputchiki/shared";
+import { CreateRideInput, MarkParticipantsInput, enqueueNotification } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -360,28 +360,18 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         "repeatable read",
       );
 
-      // Notify driver (fire-and-forget via LISTEN/NOTIFY)
+      // In-app feed row + TG push for driver (atomic INSERT + pg_notify)
       cache.clear();
-      sql`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({ ride_id: rideId, passenger_id: user.id, user_id: result.driverId, category: "ride_request" })}
-        )
-      `.catch(
-        /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
-        () => {},
-      );
-
-      // Persist in-app notification for driver
-      sql`
-        INSERT INTO user_notifications (user_id, category, ride_id, data)
-        VALUES (
-          ${result.driverId}::uuid,
-          'ride_request',
-          ${rideId}::uuid,
-          ${JSON.stringify({ passenger_id: user.id, passenger_name: result.passengerName, request_id: result.rideRequest?.id })}::jsonb
-        )
-      `.catch(/* c8 ignore next */ () => {});
+      enqueueNotification(sql, {
+        userId: result.driverId,
+        category: "ride_request",
+        rideId,
+        data: {
+          passenger_id: user.id,
+          passenger_name: result.passengerName,
+          request_id: result.rideRequest?.id,
+        },
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
       return c.json(result.rideRequest, 201);
     } catch (err) {
@@ -466,17 +456,13 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       throw err;
     }
 
-    // Notify passengers (fire-and-forget via LISTEN/NOTIFY)
+    // Notify passengers — feed row + TG push
     for (const passengerId of passenger_ids) {
-      sql`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({ ride_id: rideId, user_id: passengerId, category: "participation_request" })}
-        )
-      `.catch(
-        /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
-        () => {},
-      );
+      enqueueNotification(sql, {
+        userId: passengerId,
+        category: "participation_request",
+        rideId,
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
     return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);
@@ -702,16 +688,11 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     if (result.changedKeyFields) {
       for (const passengerId of result.affectedPassengers) {
-        sql`
-          SELECT pg_notify(
-            'notify_user',
-            ${JSON.stringify({
-              ride_id: rideId,
-              user_id: passengerId,
-              category: "ride_changed",
-            })}
-          )
-        `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+        enqueueNotification(sql, {
+          userId: passengerId,
+          category: "ride_changed",
+          rideId,
+        }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
       }
     }
 
@@ -808,33 +789,23 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
               ${sql.json({ daily_cancels: result.dailyCancels, passengers: result.cancelledCount })})
     `;
 
-    // Notify each affected passenger (fire-and-forget)
+    // Notify each affected passenger — feed row + TG push
     for (const passengerId of result.affectedPassengers) {
-      sql`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({
-            ride_id: rideId,
-            user_id: passengerId,
-            category: "ride_cancelled",
-          })}
-        )
-      `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+      enqueueNotification(sql, {
+        userId: passengerId,
+        category: "ride_cancelled",
+        rideId,
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
     // Admin alert if abuse threshold exceeded
     if (result.dailyCancels > 3) {
-      sql`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({
-            ride_id: rideId,
-            user_id: user.id,
-            category: "admin_review_cancellation_abuse",
-            daily_cancels: result.dailyCancels,
-          })}
-        )
-      `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+      enqueueNotification(sql, {
+        userId: user.id,
+        category: "admin_review_cancellation_abuse",
+        rideId,
+        data: { daily_cancels: result.dailyCancels },
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
     cache.clear();

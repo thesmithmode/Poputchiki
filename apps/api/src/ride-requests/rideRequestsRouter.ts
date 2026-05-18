@@ -1,3 +1,4 @@
+import { type NotificationCategory, enqueueNotification } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { withIdentity } from "../db/with-identity";
@@ -32,7 +33,7 @@ function isDomainError(err: unknown): err is DomainError {
   );
 }
 
-const NOTIFY_CATEGORY: Record<Action, string> = {
+const NOTIFY_CATEGORY: Record<Action, NotificationCategory> = {
   accept: "ride_request_accepted",
   reject: "ride_request_rejected",
   cancel: "ride_request_cancelled",
@@ -137,34 +138,14 @@ export function createRideRequestsRouter(sql: postgres.Sql): Hono {
         throw err;
       }
 
-      // Fire-and-forget notify
+      // Atomic feed row + TG push (accept/reject → passenger; cancel → driver)
       const notifyTo = action === "cancel" ? result.request.driver_id : result.request.passenger_id;
-      sql`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({
-            ride_id: result.request.ride_id,
-            request_id: result.request.id,
-            user_id: notifyTo,
-            category: NOTIFY_CATEGORY[action],
-          })}
-        )
-      `.catch(/* c8 ignore next -- fire-and-forget notify */ () => {});
-
-      // Persist in-app notification (accept/reject → passenger; cancel → driver)
-      if (action !== "cancel") {
-        const notifCategory =
-          action === "accept" ? "ride_request_accepted" : "ride_request_rejected";
-        sql`
-          INSERT INTO user_notifications (user_id, category, ride_id, data)
-          VALUES (
-            ${result.request.passenger_id}::uuid,
-            ${notifCategory},
-            ${result.request.ride_id}::uuid,
-            ${JSON.stringify({ request_id: result.request.id })}::jsonb
-          )
-        `.catch(/* c8 ignore next */ () => {});
-      }
+      enqueueNotification(sql, {
+        userId: notifyTo,
+        category: NOTIFY_CATEGORY[action],
+        rideId: result.request.ride_id,
+        data: { request_id: result.request.id },
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
       return c.json({
         id: result.request.id,

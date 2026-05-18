@@ -1,3 +1,4 @@
+import { enqueueNotification } from "@poputchiki/shared";
 import type postgres from "postgres";
 import { withLock } from "./lib/with-lock.js";
 
@@ -35,18 +36,13 @@ export async function finalizeRides(sql: postgres.Sql): Promise<FinalizeResult |
           AS r(id uuid, driver_id uuid)
       `;
 
-      // Notify each driver to mark participants
+      // Notify each driver to mark participants — feed row + TG push
       for (const ride of completedRides) {
-        await tx`
-          SELECT pg_notify(
-            'notify_user',
-            ${JSON.stringify({
-              user_id: ride.driver_id,
-              category: "confirm_participation",
-              ride_id: ride.id,
-            })}
-          )
-        `;
+        await enqueueNotification(tx, {
+          userId: ride.driver_id,
+          category: "confirm_participation",
+          rideId: ride.id,
+        });
       }
     }
 

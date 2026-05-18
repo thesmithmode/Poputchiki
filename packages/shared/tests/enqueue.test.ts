@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { enqueueNotification } from "../../../src/notifications/enqueue";
+import { enqueueNotification } from "../src/notifications/enqueue";
 
 // biome-ignore lint/suspicious/noExplicitAny: tagged-template sql mock
 const mockSql = vi.fn() as any;

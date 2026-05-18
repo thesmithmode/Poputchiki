@@ -1,3 +1,4 @@
+import { enqueueNotification } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -127,16 +128,14 @@ export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; admi
     });
     if (rows.length === 0) return c.json({ error: "not_found" }, 404);
 
-    // Fire-and-forget: notify user via pg_notify
-    sql`
-      SELECT pg_notify(
-        'notify_user',
-        ${JSON.stringify({ user_id: rows[0]?.user_id, category: "support_reply", message_id: msgId })}
-      )
-    `.catch(
-      /* c8 ignore next -- fire-and-forget notify; callback never invoked in tests */
-      () => {},
-    );
+    // Feed row + TG push (atomic)
+    if (rows[0]?.user_id) {
+      enqueueNotification(sql, {
+        userId: rows[0].user_id,
+        category: "support_reply",
+        data: { message_id: msgId },
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
+    }
 
     return c.json(rows[0], 200);
   });

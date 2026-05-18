@@ -40,8 +40,8 @@ describe("POST /rides/:id/request", () => {
       driverId: DRIVER_ID,
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
-    mockSql.mockResolvedValueOnce([]); // pg_notify fire-and-forget
     mockSql.mockResolvedValueOnce([]); // user_notifications INSERT fire-and-forget
+    mockSql.mockResolvedValueOnce([]); // pg_notify fire-and-forget
 
     const app = makeApp();
     const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
@@ -118,6 +118,8 @@ describe("POST /rides/:id/request", () => {
   it("driver in-app notification uses category 'ride_request', not channel name", async () => {
     // Sentinel for regression: ridesRouter.ts previously inserted 'notify_user' (channel name)
     // as category value, which caused EventsScreen fallback to render the raw string.
+    // After enqueueNotification migration, INSERT runs first, then pg_notify with
+    // category as JSON payload value (not as SQL literal).
     const mockRequest = {
       id: "req-uuid",
       ride_id: RIDE_ID,
@@ -129,22 +131,27 @@ describe("POST /rides/:id/request", () => {
       driverId: DRIVER_ID,
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
-    mockSql.mockResolvedValueOnce([]); // pg_notify
     mockSql.mockResolvedValueOnce([]); // user_notifications INSERT
+    mockSql.mockResolvedValueOnce([]); // pg_notify
 
     const app = makeApp();
     await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
 
-    // Second sql call is the INSERT INTO user_notifications.
-    // postgres.js tagged template: first arg is strings[] with SQL fragments around interpolations.
-    const insertCall = mockSql.mock.calls[1];
+    // First sql call is INSERT INTO user_notifications; category is an interpolated arg.
+    const insertCall = mockSql.mock.calls[0];
     expect(insertCall).toBeDefined();
-    const sqlStrings: string[] = insertCall[0];
-    const joined = sqlStrings.join("|");
-    expect(joined).toContain("INSERT INTO user_notifications");
-    expect(joined).toContain("'ride_request'");
-    // Must NOT contain "'notify_user'" as a literal category value
-    expect(joined).not.toContain("'notify_user'");
+    const insertStrings: string[] = insertCall[0];
+    const insertJoined = insertStrings.join("|");
+    expect(insertJoined).toContain("INSERT INTO user_notifications");
+    // category is the 2nd interpolation (after userId::uuid)
+    expect(insertCall[2]).toBe("ride_request");
+    expect(insertCall[2]).not.toBe("notify_user");
+
+    // Second call is pg_notify with payload JSON; category must be 'ride_request' inside payload
+    const notifyCall = mockSql.mock.calls[1];
+    const payload = JSON.parse(notifyCall[1] as string);
+    expect(payload.category).toBe("ride_request");
+    expect(payload.category).not.toBe("notify_user");
   });
 
   it("withIdentity called with 'repeatable read' isolation", async () => {

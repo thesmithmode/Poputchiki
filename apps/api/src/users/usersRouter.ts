@@ -1,3 +1,4 @@
+import { enqueueNotification } from "@poputchiki/shared";
 import { sanitizeText } from "@poputchiki/shared/sanitize";
 import { Hono } from "hono";
 import type postgres from "postgres";
@@ -310,14 +311,13 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       WHERE user_id = ${user.id} AND revoked_at IS NULL
     `;
 
-    // Notify affected passengers (fire-and-forget)
+    // Notify affected passengers — feed row + TG push
     for (const { passenger_id, ride_id } of affectedPassengers) {
-      sql`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({ ride_id, user_id: passenger_id, category: "ride_cancelled" })}
-        )
-      `.catch(() => {});
+      enqueueNotification(sql, {
+        userId: passenger_id,
+        category: "ride_cancelled",
+        rideId: ride_id,
+      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
     return c.json({ deleted: true });

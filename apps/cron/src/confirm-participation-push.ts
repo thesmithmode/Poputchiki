@@ -1,3 +1,4 @@
+import { enqueueNotification } from "@poputchiki/shared";
 import type postgres from "postgres";
 import { withLock } from "./lib/with-lock.js";
 
@@ -25,16 +26,11 @@ export async function confirmParticipationPush(
     `;
 
     for (const row of rows) {
-      await tx`
-        SELECT pg_notify(
-          'notify_user',
-          ${JSON.stringify({
-            user_id: row.passenger_id,
-            category: "confirm_participation",
-            ride_id: row.ride_id,
-          })}
-        )
-      `;
+      await enqueueNotification(tx, {
+        userId: row.passenger_id,
+        category: "confirm_participation",
+        rideId: row.ride_id,
+      });
       await tx`
         UPDATE ride_participation
         SET notified_at = now()

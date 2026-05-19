@@ -20,6 +20,8 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
         : "Пассажир отменил заявку на поездку";
     case "ride_cancelled":
       return "Поездка была отменена";
+    case "ride_completed":
+      return "Ваша поездка завершена";
     case "confirm_participation":
       return "Водитель подтвердил вашу поездку";
     case "participation_request":

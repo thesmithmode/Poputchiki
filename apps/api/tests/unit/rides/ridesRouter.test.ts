@@ -451,9 +451,7 @@ describe("POST /rides/:id/complete", () => {
     // минимум 4 sql вызова
     expect(mockSql.mock.calls.length).toBeGreaterThanOrEqual(4);
     // категория ride_completed в enqueueNotification INSERT
-    const insertCall = mockSql.mock.calls.find(
-      (call) => call[2] === "ride_completed",
-    );
+    const insertCall = mockSql.mock.calls.find((call: unknown[]) => call[2] === "ride_completed");
     expect(insertCall).toBeDefined();
     expect(insertCall?.[1]).toBe(PASSENGER_ID);
   });

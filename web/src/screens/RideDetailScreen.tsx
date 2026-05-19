@@ -232,9 +232,9 @@ export function RideDetailScreen({ id }: Props) {
   async function handleSaveEdit() {
     if (!ride) return;
     const patch: Record<string, unknown> = {};
-    const seats = parseInt(editSeats, 10);
+    const seats = Number.parseInt(editSeats, 10);
     if (!Number.isNaN(seats) && seats !== ride.seats_total) patch.seats_total = seats;
-    const price = editPrice === "" ? null : parseInt(editPrice, 10);
+    const price = editPrice === "" ? null : Number.parseInt(editPrice, 10);
     if (price !== ride.price_rub) patch.price_rub = price;
     const comment = editComment.trim() || null;
     if (comment !== (ride.comment ?? null)) patch.comment = comment;
@@ -857,14 +857,24 @@ export function RideDetailScreen({ id }: Props) {
               Принятые пассажиры получат уведомление об изменении поездки
             </div>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}
+          >
             <div>
               <label
-                style={{ fontSize: 11, color: "var(--brand-sub)", fontWeight: 600, display: "block", marginBottom: 4 }}
+                htmlFor="edit-seats-total"
+                style={{
+                  fontSize: 11,
+                  color: "var(--brand-sub)",
+                  fontWeight: 600,
+                  display: "block",
+                  marginBottom: 4,
+                }}
               >
                 Мест всего
               </label>
               <select
+                id="edit-seats-total"
                 data-testid="edit-seats-total"
                 value={editSeats}
                 onChange={(e) => setEditSeats(e.target.value)}
@@ -888,11 +898,19 @@ export function RideDetailScreen({ id }: Props) {
             </div>
             <div>
               <label
-                style={{ fontSize: 11, color: "var(--brand-sub)", fontWeight: 600, display: "block", marginBottom: 4 }}
+                htmlFor="edit-price-rub"
+                style={{
+                  fontSize: 11,
+                  color: "var(--brand-sub)",
+                  fontWeight: 600,
+                  display: "block",
+                  marginBottom: 4,
+                }}
               >
                 Цена (₽)
               </label>
               <input
+                id="edit-price-rub"
                 data-testid="edit-price-rub"
                 type="number"
                 min="0"
@@ -915,11 +933,19 @@ export function RideDetailScreen({ id }: Props) {
           </div>
           <div style={{ marginBottom: 12 }}>
             <label
-              style={{ fontSize: 11, color: "var(--brand-sub)", fontWeight: 600, display: "block", marginBottom: 4 }}
+              htmlFor="edit-comment"
+              style={{
+                fontSize: 11,
+                color: "var(--brand-sub)",
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 4,
+              }}
             >
               Комментарий
             </label>
             <textarea
+              id="edit-comment"
               data-testid="edit-comment"
               value={editComment}
               onChange={(e) => setEditComment(e.target.value)}
@@ -978,7 +1004,11 @@ export function RideDetailScreen({ id }: Props) {
                 opacity: editStatus === "loading" ? 0.6 : 1,
               }}
             >
-              {editStatus === "loading" ? "Сохраняем..." : editStatus === "error" ? "Ошибка, повторите" : "Сохранить"}
+              {editStatus === "loading"
+                ? "Сохраняем..."
+                : editStatus === "error"
+                  ? "Ошибка, повторите"
+                  : "Сохранить"}
             </button>
           </div>
         </div>

@@ -860,29 +860,25 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     let result: { rideId: string; affectedPassengers: string[] };
     try {
-      result = await withIdentity(
-        sql,
-        user,
-        async (tx) => {
-          const [ride] = await tx<{ id: string; driver_id: string; status: string }[]>`
+      result = await withIdentity(sql, user, async (tx) => {
+        const [ride] = await tx<{ id: string; driver_id: string; status: string }[]>`
             SELECT id, driver_id, status FROM rides WHERE id = ${rideId}::uuid
           `;
-          if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
-          if (ride.driver_id !== user.id)
-            throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
-          if (ride.status !== "active")
-            throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
+        if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+        if (ride.driver_id !== user.id)
+          throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+        if (ride.status !== "active")
+          throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
 
-          await tx`UPDATE rides SET status = 'completed' WHERE id = ${rideId}`;
+        await tx`UPDATE rides SET status = 'completed' WHERE id = ${rideId}`;
 
-          const accepted = await tx<{ passenger_id: string }[]>`
+        const accepted = await tx<{ passenger_id: string }[]>`
             SELECT passenger_id FROM ride_requests
             WHERE ride_id = ${rideId} AND status = 'accepted'
           `;
 
-          return { rideId: ride.id, affectedPassengers: accepted.map((r) => r.passenger_id) };
-        },
-      );
+        return { rideId: ride.id, affectedPassengers: accepted.map((r) => r.passenger_id) };
+      });
     } catch (err) {
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);

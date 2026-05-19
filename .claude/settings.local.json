@@ -150,7 +150,17 @@
       "PowerShell($msg = \"FEAT: 9 ���䨪ᮢ UI - 㢥��������, ���������, 䨫����, lazy-����㧪�, ����न�� \\(BUG-1..9\\)\")",
       "PowerShell(git checkout *)",
       "Bash(grep -v \"//.*pg_notify\")",
-      "Bash(npx @biomejs/biome format --write web/src/screens/RideDetailScreen.tsx)"
+      "Bash(npx @biomejs/biome format --write web/src/screens/RideDetailScreen.tsx)",
+      "Bash(Select-Object -First 50)",
+      "Bash(./node_modules/.bin/biome check *)",
+      "Bash(npx vitest *)",
+      "Bash(grep -v \"//.*2024\\\\|//.*2025\\\\|11111\\\\|22222\\\\|44444\")",
+      "Bash(sed -i 's/upsertDefaults calls tx 12 times/upsertDefaults calls tx 13 times/g' apps/api/tests/unit/notifications/notificationsRouter.test.ts)",
+      "Bash(sed -i 's/for \\(let i = 0; i < 12; i++\\)/for \\(let i = 0; i < 13; i++\\)/g' apps/api/tests/unit/notifications/notificationsRouter.test.ts)",
+      "Bash(sed -i 's/upserts × 12 \\(USER_TOGGLEABLE_CATEGORIES + system\\), then UPDATE × 1/upserts × 13 \\(USER_TOGGLEABLE_CATEGORIES + system\\), then UPDATE × 1/g' apps/api/tests/unit/notifications/notificationsRouter.test.ts)",
+      "Bash(sed -i 's/upserts × 12, no updates/upserts × 13, no updates/g' apps/api/tests/unit/notifications/notificationsRouter.test.ts)",
+      "Bash(sed -i 's/upserts × 12 + UPDATE × 2 = 14/upserts × 13 + UPDATE × 2 = 15/g' apps/api/tests/unit/notifications/notificationsRouter.test.ts)",
+      "Bash(grep -v \"//.*2024\\\\|//.*2025\\\\|111\\\\|222\\\\|444\\\\|00000\")"
     ]
   },
   "hooks": {

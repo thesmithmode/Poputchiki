@@ -30,6 +30,40 @@ describe("CreateRideInput", () => {
     const past = new Date(Date.now() - 1000).toISOString();
     expect(CreateRideInput.safeParse({ ...base, departure_at: past }).success).toBe(false);
   });
+
+  it("rejects same from/to coordinates", () => {
+    const r = CreateRideInput.safeParse({
+      ...base,
+      from_lat: 55.7558,
+      from_lng: 49.1,
+      to_lat: 55.7558,
+      to_lng: 49.1,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects from/to within 50m (same point in practice)", () => {
+    // ~10m apart — should still be rejected
+    const r = CreateRideInput.safeParse({
+      ...base,
+      from_lat: 55.7558,
+      from_lng: 49.1,
+      to_lat: 55.75581,
+      to_lng: 49.10001,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("accepts from/to further than 50m apart", () => {
+    const r = CreateRideInput.safeParse({
+      ...base,
+      from_lat: 55.7558,
+      from_lng: 49.1,
+      to_lat: 55.76,
+      to_lng: 49.105,
+    });
+    expect(r.success).toBe(true);
+  });
 });
 
 const validRide = {

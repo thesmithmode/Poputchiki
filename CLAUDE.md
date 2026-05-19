@@ -30,7 +30,7 @@ RLS identity: НЕТ Supabase `auth.uid()`/`auth.jwt()`. GUC `app.current_user_i
 - Не писать секреты в код/коммит/чат/логи: только `process.env.X` из `.env`
 - Phase порядок: сначала все `phase=mvp`, потом `phase=prod-deploy`. Внутри фазы — по dependencies + priority. Из `prod-deploy` бери только когда ВСЕ `mvp` зелёные
 - Production deploy в рамках `phase=prod-deploy` (TASK-115..125). Любой rollback / `docker compose down` на production — только через `scripts/rollback.sh` либо ручной command от Антона
-- АБСОЛЮТНЫЙ ЗАПРЕТ прямых действий на проде: никакого SSH, никакого docker exec, никаких psql/curl/wget на продовый сервер напрямую — НИКОГДА. Единственный путь изменений в проде: push в dev → зелёный CI → merge dev→main → GHA deploy workflow. Нарушение = критическая ошибка
+- ЗАПРЕТ ИЗМЕНЯЮЩИХ действий на проде: никаких mutating операций через прямой SSH (docker compose up/down/restart, docker exec с записью, psql UPDATE/INSERT/DELETE, ручные migrate, правки файлов на сервере, redeploy руками). Единственный путь изменений в проде: push в dev → зелёный CI → merge dev→main → GHA deploy workflow. Read-only через SSH РАЗРЕШЕН для диагностики: `docker logs`, `docker ps`, `docker inspect`, `psql SELECT`, `cat`/`tail` файлов конфигов, проверка health endpoints, `docker compose ps`. Нарушение mutating-правила = критическая ошибка
 - Никаких внешних managed: Supabase / Neon / Vercel / Cloudflare Pages / Fly.io / PostHog Cloud в коде запрещено. Задача требует external service → BLOCKED + согласование
 - Threat model: каждый юзер = потенциальный взломщик. Deny-by-default везде (RLS, auth, валидация)
 - Bun не Node: `bun run`, `bun test`, `bun add`, `bun install`

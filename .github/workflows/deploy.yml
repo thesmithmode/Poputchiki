@@ -148,6 +148,7 @@ jobs:
             echo "DOMAIN=${{ vars.DOMAIN }}"
             echo "BACKUP_KEY=${{ secrets.BACKUP_KEY }}"
             echo "WEBHOOK_SECRET=${{ secrets.WEBHOOK_SECRET }}"
+            echo "INTERNAL_API_SECRET=${{ secrets.INTERNAL_API_SECRET }}"
             echo "ACME_EMAIL=${{ secrets.ACME_EMAIL }}"
             echo "CF_DNS_API_TOKEN=${{ secrets.CF_DNS_API_TOKEN }}"
             echo "DATABASE_URL=postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/${{ secrets.POSTGRES_DB }}"

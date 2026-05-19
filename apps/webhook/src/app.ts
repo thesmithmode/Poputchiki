@@ -40,8 +40,13 @@ export function createApp(
           { botToken, apiUrl: opts.apiUrl, internalSecret: opts.internalSecret },
           update.callback_query,
         );
+      } else {
+        // Без API_URL/INTERNAL_API_SECRET inline-кнопки Принять/Отклонить
+        // ничего не делают. Логируем чтобы баг не повторился молча.
+        console.error(
+          "[webhook] callback_query dropped: missing API_URL or INTERNAL_API_SECRET env",
+        );
       }
-      /* c8 ignore next 2 -- defensive: missing config silently ignored, webhook must return 200 */
     }
     return c.json({ ok: true });
   }

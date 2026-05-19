@@ -39,6 +39,7 @@ function isNew(createdAt: string) {
 type RequestStatus = "idle" | "loading" | "sent" | "full" | "duplicate" | "error";
 type LikeStatus = "idle" | "loading" | "liked" | "error" | "not_confirmed";
 type ActionStatus = "idle" | "loading" | "done" | "error";
+type CancelStatus = "idle" | "loading" | "done" | "error";
 
 export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
@@ -49,6 +50,8 @@ export function RideDetailScreen({ id }: Props) {
   const [reqStatus, setReqStatus] = useState<RequestStatus>("idle");
   const [likeStatus, setLikeStatus] = useState<LikeStatus>("idle");
   const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
+  const [cancelReqStatus, setCancelReqStatus] = useState<CancelStatus>("idle");
+  const [cancelRideStatus, setCancelRideStatus] = useState<CancelStatus>("idle");
 
   if (isLoading) {
     return (
@@ -140,6 +143,49 @@ export function RideDetailScreen({ id }: Props) {
     }
   }
 
+  async function handleCancelRequest() {
+    if (!ride?.my_request_id) return;
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void } | undefined;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) {
+        wa.showConfirm("Отозвать заявку на поездку?", resolve);
+      } else {
+        resolve(window.confirm("Отозвать заявку на поездку?"));
+      }
+    });
+    if (!confirmed) return;
+    setCancelReqStatus("loading");
+    try {
+      await apiFetch(`/ride-requests/${ride.my_request_id}/cancel`, { method: "POST" });
+      setCancelReqStatus("done");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setCancelReqStatus("error");
+    }
+  }
+
+  async function handleCancelRide() {
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void } | undefined;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) {
+        wa.showConfirm("Отменить поездку? Все пассажиры получат уведомление.", resolve);
+      } else {
+        resolve(window.confirm("Отменить поездку? Все пассажиры получат уведомление."));
+      }
+    });
+    if (!confirmed) return;
+    setCancelRideStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}/cancel`, { method: "PATCH" });
+      setCancelRideStatus("done");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setCancelRideStatus("error");
+    }
+  }
+
   function handleContactDriver() {
     if (!ride) return;
     const tg = getTelegramWebApp();
@@ -173,8 +219,9 @@ export function RideDetailScreen({ id }: Props) {
 
   // Кнопка записи на поездку (для пассажира)
   const serverRequestStatus = ride.my_request_status;
-  const requestIsActive = serverRequestStatus !== null && serverRequestStatus !== "cancelled";
-  const respondBtnDisabled = reqStatus === "loading" || requestIsActive;
+  // cancelled — нельзя подать повторно (UNIQUE constraint), disabled
+  const requestIsActive = serverRequestStatus !== null && serverRequestStatus !== "cancelled" && serverRequestStatus !== "rejected";
+  const respondBtnDisabled = reqStatus === "loading" || requestIsActive || serverRequestStatus === "cancelled" || serverRequestStatus === "rejected";
   const respondBtnBg =
     serverRequestStatus === "accepted"
       ? "var(--brand-primary)"
@@ -182,25 +229,35 @@ export function RideDetailScreen({ id }: Props) {
         ? "var(--brand-primary-soft)"
         : "var(--brand-primary)";
   const respondBtnLabel =
-    serverRequestStatus === "pending"
-      ? "Заявка на рассмотрении"
-      : serverRequestStatus === "accepted"
-        ? "Вы в поездке!"
-        : serverRequestStatus === "rejected"
-          ? "Заявка отклонена"
-          : serverRequestStatus === "cancelled"
-            ? "Заявка отменена"
-            : reqStatus === "sent"
-              ? "Заявка отправлена"
-              : reqStatus === "loading"
-                ? "Отправляем..."
-                : reqStatus === "full"
-                  ? "Мест нет"
-                  : reqStatus === "duplicate"
-                    ? "Уже отправлено"
-                    : reqStatus === "error"
-                      ? "Ошибка, повторите"
-                      : "Записаться";
+    serverRequestStatus === "rejected"
+      ? "Заявка отклонена"
+      : serverRequestStatus === "cancelled"
+        ? "Заявка отменена"
+        : reqStatus === "sent"
+          ? "Заявка отправлена"
+          : reqStatus === "loading"
+            ? "Отправляем..."
+            : reqStatus === "full"
+              ? "Мест нет"
+              : reqStatus === "duplicate"
+                ? "Уже отправлено"
+                : reqStatus === "error"
+                  ? "Ошибка, повторите"
+                  : "Записаться";
+
+  // Пассажир может отозвать заявку (pending или accepted)
+  const canCancelRequest =
+    (serverRequestStatus === "pending" || serverRequestStatus === "accepted") &&
+    ride.my_request_id !== null &&
+    cancelReqStatus !== "done";
+  const cancelReqLabel =
+    cancelReqStatus === "loading"
+      ? "Отменяем..."
+      : cancelReqStatus === "error"
+        ? "Ошибка, повторите"
+        : serverRequestStatus === "accepted"
+          ? "Отменить участие"
+          : "Отозвать заявку";
 
   return (
     <div
@@ -709,6 +766,35 @@ export function RideDetailScreen({ id }: Props) {
             zIndex: 30,
           }}
         >
+          {isOwnRide && ride.status === "active" && (
+            <button
+              type="button"
+              data-testid="cancel-ride-btn"
+              disabled={cancelRideStatus === "loading" || cancelRideStatus === "done"}
+              onClick={handleCancelRide}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                border: "1px solid var(--brand-danger)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-danger)",
+                cursor: cancelRideStatus === "loading" || cancelRideStatus === "done" ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: cancelRideStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {cancelRideStatus === "loading"
+                ? "Отменяем..."
+                : cancelRideStatus === "done"
+                  ? "Поездка отменена"
+                  : cancelRideStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Отменить поездку"}
+            </button>
+          )}
           {!isOwnRide && (
             <button
               type="button"
@@ -736,7 +822,30 @@ export function RideDetailScreen({ id }: Props) {
               Связаться с водителем
             </button>
           )}
-          {!isOwnRide && (
+          {!isOwnRide && canCancelRequest && (
+            <button
+              type="button"
+              data-testid="cancel-request-btn"
+              disabled={cancelReqStatus === "loading"}
+              onClick={handleCancelRequest}
+              style={{
+                flex: 1.6,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                border: "1px solid var(--brand-danger)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-danger)",
+                cursor: cancelReqStatus === "loading" ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: cancelReqStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {cancelReqLabel}
+            </button>
+          )}
+          {!isOwnRide && !canCancelRequest && (
             <button
               type="button"
               data-testid="respond-btn"

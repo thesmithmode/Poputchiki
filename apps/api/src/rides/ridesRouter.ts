@@ -249,6 +249,11 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             '[]'::json
           ) AS pending_requests,
           (
+            SELECT pr2.id FROM ride_requests pr2
+            WHERE pr2.ride_id = r.id AND pr2.passenger_id = ${user.id}::uuid
+            LIMIT 1
+          ) AS my_request_id,
+          (
             SELECT pr2.status FROM ride_requests pr2
             WHERE pr2.ride_id = r.id AND pr2.passenger_id = ${user.id}::uuid
             LIMIT 1

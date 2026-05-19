@@ -365,3 +365,96 @@ describe("GET /rides/:id", () => {
     expect(body.passengers[0].tg_id).toBe(8888);
   });
 });
+
+const DRIVER: AppUser = { id: DRIVER_UUID, tgId: 2001, role: "user" };
+
+describe("POST /rides/:id/complete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("водитель, активная поездка → 200 { id, status: 'completed' }", async () => {
+    vi.mocked(withIdentity).mockResolvedValueOnce({
+      rideId: VALID_UUID,
+      affectedPassengers: [],
+    } as unknown as Awaited<ReturnType<typeof withIdentity>>);
+    // audit log + pg_notify (fire-and-forget)
+    mockSql.mockResolvedValue([]);
+
+    const app = makeApp(DRIVER);
+    const res = await app.request(`/rides/${VALID_UUID}/complete`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.id).toBe(VALID_UUID);
+    expect(body.status).toBe("completed");
+  });
+
+  it("нет аутентификации → 401", async () => {
+    const app = makeApp();
+    const res = await app.request(`/rides/${VALID_UUID}/complete`, { method: "POST" });
+    expect(res.status).toBe(401);
+  });
+
+  it("невалидный UUID → 400", async () => {
+    const app = makeApp(DRIVER);
+    const res = await app.request("/rides/not-a-uuid/complete", { method: "POST" });
+    expect(res.status).toBe(400);
+  });
+
+  it("поездка не найдена → 404", async () => {
+    vi.mocked(withIdentity).mockRejectedValueOnce(
+      Object.assign(new Error("not_found"), { code: "NOT_FOUND" }),
+    );
+    const app = makeApp(DRIVER);
+    const res = await app.request(`/rides/${VALID_UUID}/complete`, { method: "POST" });
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not_found");
+  });
+
+  it("не водитель → 403", async () => {
+    vi.mocked(withIdentity).mockRejectedValueOnce(
+      Object.assign(new Error("forbidden"), { code: "FORBIDDEN" }),
+    );
+    const app = makeApp(USER);
+    const res = await app.request(`/rides/${VALID_UUID}/complete`, { method: "POST" });
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("forbidden");
+  });
+
+  it("поездка не active → 409", async () => {
+    vi.mocked(withIdentity).mockRejectedValueOnce(
+      Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" }),
+    );
+    const app = makeApp(DRIVER);
+    const res = await app.request(`/rides/${VALID_UUID}/complete`, { method: "POST" });
+    expect(res.status).toBe(409);
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid_state");
+  });
+
+  it("уведомляет принятых пассажиров о завершении поездки", async () => {
+    const PASSENGER_ID = "550e8400-e29b-41d4-a716-446655440099";
+    vi.mocked(withIdentity).mockResolvedValueOnce({
+      rideId: VALID_UUID,
+      affectedPassengers: [PASSENGER_ID],
+    } as unknown as Awaited<ReturnType<typeof withIdentity>>);
+    mockSql.mockResolvedValue([]);
+
+    const app = makeApp(DRIVER);
+    const res = await app.request(`/rides/${VALID_UUID}/complete`, { method: "POST" });
+    expect(res.status).toBe(200);
+    await new Promise((r) => setTimeout(r, 0));
+
+    // audit_log INSERT + pg_notify + enqueueNotification (INSERT + pg_notify per passenger)
+    // минимум 4 sql вызова
+    expect(mockSql.mock.calls.length).toBeGreaterThanOrEqual(4);
+    // категория ride_completed в enqueueNotification INSERT
+    const insertCall = mockSql.mock.calls.find(
+      (call) => call[2] === "ride_completed",
+    );
+    expect(insertCall).toBeDefined();
+    expect(insertCall?.[1]).toBe(PASSENGER_ID);
+  });
+});

@@ -53,6 +53,7 @@ export function RideDetailScreen({ id }: Props) {
   const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
   const [cancelReqStatus, setCancelReqStatus] = useState<CancelStatus>("idle");
   const [cancelRideStatus, setCancelRideStatus] = useState<CancelStatus>("idle");
+  const [completeRideStatus, setCompleteRideStatus] = useState<CancelStatus>("idle");
   const [showEditForm, setShowEditForm] = useState(false);
   const [editStatus, setEditStatus] = useState<EditStatus>("idle");
   const [editSeats, setEditSeats] = useState<string>("");
@@ -193,6 +194,29 @@ export function RideDetailScreen({ id }: Props) {
       queryClient.invalidateQueries({ queryKey: ["ride", id] });
     } catch {
       setCancelRideStatus("error");
+    }
+  }
+
+  async function handleCompleteRide() {
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as
+      | { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void }
+      | undefined;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) {
+        wa.showConfirm("Завершить поездку? Пассажиры получат уведомление.", resolve);
+      } else {
+        resolve(window.confirm("Завершить поездку? Пассажиры получат уведомление."));
+      }
+    });
+    if (!confirmed) return;
+    setCompleteRideStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}/complete`, { method: "POST" });
+      setCompleteRideStatus("done");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setCompleteRideStatus("error");
     }
   }
 
@@ -998,6 +1022,38 @@ export function RideDetailScreen({ id }: Props) {
               }}
             >
               Изменить
+            </button>
+          )}
+          {isOwnRide && ride.status === "active" && (
+            <button
+              type="button"
+              data-testid="complete-ride-btn"
+              disabled={completeRideStatus === "loading" || completeRideStatus === "done"}
+              onClick={handleCompleteRide}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-primary)",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-primary-ink)",
+                cursor:
+                  completeRideStatus === "loading" || completeRideStatus === "done"
+                    ? "not-allowed"
+                    : "pointer",
+                fontFamily: "inherit",
+                opacity: completeRideStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {completeRideStatus === "loading"
+                ? "Завершаем..."
+                : completeRideStatus === "done"
+                  ? "Поездка завершена"
+                  : completeRideStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Завершить"}
             </button>
           )}
           {isOwnRide && ride.status === "active" && (

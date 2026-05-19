@@ -367,6 +367,84 @@ describe("RideDetailScreen — отмена поездки водителем (P
   });
 });
 
+describe("RideDetailScreen — завершение поездки водителем (P5)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: DRIVER_ID,
+        display_name: "Иван Иванов",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        role: "user",
+      },
+    });
+  });
+
+  afterEach(() => {
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: "passenger-user-id",
+        display_name: "Test User",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        role: "user",
+      },
+    });
+  });
+
+  it("показывает кнопку «Завершить поездку» водителю при active", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId("complete-ride-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("не показывает кнопку «Завершить» при status=cancelled", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "cancelled" });
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.queryByTestId("cancel-ride-btn")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("complete-ride-btn")).not.toBeInTheDocument();
+  });
+
+  it("вызывает POST /rides/:id/complete при подтверждении", async () => {
+    vi.stubGlobal("confirm", () => true);
+    mockedApiFetch
+      .mockResolvedValueOnce({ ...mockRide, status: "active" })
+      .mockResolvedValueOnce({ id: RIDE_ID, status: "completed" });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("complete-ride-btn"));
+    fireEvent.click(screen.getByTestId("complete-ride-btn"));
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith(`/rides/${RIDE_ID}/complete`, {
+        method: "POST",
+      });
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("не вызывает API если водитель отменил подтверждение", async () => {
+    vi.stubGlobal("confirm", () => false);
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("complete-ride-btn"));
+    fireEvent.click(screen.getByTestId("complete-ride-btn"));
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    });
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("RideDetailScreen — редактирование поездки водителем (P3)", () => {
   beforeEach(() => {
     vi.clearAllMocks();

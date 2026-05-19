@@ -108,6 +108,10 @@ services:
       DOMAIN: ${DOMAIN}
       NODE_ENV: production
       PORT: 3000
+      # Shared secret для internal endpoints (используется webhook callback_query
+      # handler для accept/reject заявок). Без него /internal/ride-requests не
+      # регистрируется и кнопки "Принять"/"Отклонить" молча ломаются.
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
       # Геокодер: self-hosted Nominatim в той же compose-сети. Дефолт переключён
       # на внутренний URL — после импорта PBF Татарстана (~15-30min при первом
       # старте) запросы пойдут локально. Override через .env при необходимости.
@@ -244,6 +248,12 @@ services:
       BOT_TOKEN: ${BOT_TOKEN}
       WEBHOOK_SECRET: ${WEBHOOK_SECRET}
       WEBHOOK_PORT: 3001
+      # Inline-кнопки Принять/Отклонить в боте делают POST на api-внутренний
+      # endpoint /internal/ride-requests. Без API_URL+INTERNAL_API_SECRET callback
+      # handler silently skipped (см. apps/webhook/src/app.ts:38).
+      API_URL: http://api:3000
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      DOMAIN: ${DOMAIN}
     depends_on:
       postgres:
         condition: service_healthy

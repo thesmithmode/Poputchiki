@@ -73,6 +73,10 @@ export function CreateRideScreen() {
     // приведёт к ложно-успешной поездке без точки на карте.
     if (!fromCoords) return "Выберите адрес «Откуда» из списка подсказок";
     if (!toCoords) return "Выберите адрес «Куда» из списка подсказок";
+    // Reject same/very-close points (~50m).
+    const dLat = (toCoords.lat - fromCoords.lat) * 111_000;
+    const dLng = (toCoords.lng - fromCoords.lng) * 64_000;
+    if (Math.hypot(dLat, dLng) <= 50) return "Точка отправления и прибытия совпадают";
     return null;
   }
 

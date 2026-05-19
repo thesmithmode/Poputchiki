@@ -39,7 +39,20 @@ export const CreateRideInput = z
   .refine((v) => new Date(v.departure_at) <= new Date(Date.now() + 30 * MS_PER_DAY), {
     message: "departure_at must be within 30 days",
     path: ["departure_at"],
-  });
+  })
+  .refine(
+    (v) => {
+      // Reject when from/to are the same point (within ~50m).
+      // Quick equirectangular approx — at ~55°N: 1° lat ≈ 111km, 1° lng ≈ 64km.
+      const dLat = (v.to_lat - v.from_lat) * 111_000;
+      const dLng = (v.to_lng - v.from_lng) * 64_000;
+      return Math.hypot(dLat, dLng) > 50;
+    },
+    {
+      message: "Точка отправления и прибытия совпадают",
+      path: ["to_label"],
+    },
+  );
 
 export type CreateRideInput = z.infer<typeof CreateRideInput>;
 

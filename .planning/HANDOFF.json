@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-19T11:12:22.944Z",
+  "timestamp": "2026-05-19T11:26:24.037Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,21 +18,49 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-19.md"
+      "path": ".env.example"
     },
     {
       "status": "M",
-      "path": ".memory/scripts/flush.log"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/last-flush.json"
+      "path": ".github/workflows/deploy.yml"
     },
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "CLAUDE.md"
+    },
+    {
+      "status": "M",
+      "path": "apps/web-server/Dockerfile"
+    },
+    {
+      "status": "M",
+      "path": "apps/webhook/src/app.ts"
+    },
+    {
+      "status": "M",
+      "path": "infra/docker-compose.prod.yml"
+    },
+    {
+      "status": "M",
+      "path": "packages/shared/src/schemas/ride.ts"
+    },
+    {
+      "status": "M",
+      "path": "packages/shared/tests/schemas/ride.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/CreateRideScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/MapScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\na695aec FIX: rideComplete integration — user_notifications + ride?.status\n260dedc FIX: интеграционные тесты POST /complete + c8 ignore для fire-and-forget loop\na620da1 FIX: миграция 028 — ride_completed в CHECK notification_preferences + интеграционный тест\n894024e CHORE: обновить memory-логи — 2026-05-19\n6af16ae FIX: CI — notifier format ride_completed + preferences 12→13 + lint a11y + typecheck"
+  "context_notes": "Recent commits:\nebc0ffc CHORE: обновить memory-логи — 2026-05-19 squash dev->main\na695aec FIX: rideComplete integration — user_notifications + ride?.status\n260dedc FIX: интеграционные тесты POST /complete + c8 ignore для fire-and-forget loop\na620da1 FIX: миграция 028 — ride_completed в CHECK notification_preferences + интеграционный тест\n894024e CHORE: обновить memory-логи — 2026-05-19"
 }

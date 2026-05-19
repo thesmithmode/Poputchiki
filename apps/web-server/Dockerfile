@@ -13,8 +13,11 @@ COPY docs docs
 COPY web web
 
 ARG VITE_API_BASE
+ARG VITE_BUILD_SHA
 ENV VITE_API_BASE=${VITE_API_BASE}
+ENV VITE_BUILD_SHA=${VITE_BUILD_SHA}
 RUN cd web && bun run build
+RUN printf '{"sha":"%s","built_at":"%s"}\n' "${VITE_BUILD_SHA:-unknown}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /app/web/dist/version.json
 
 FROM caddy:2-alpine
 RUN apk add --no-cache wget

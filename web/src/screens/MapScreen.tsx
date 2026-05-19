@@ -37,7 +37,11 @@ function makeRideMarkerHtml(ride: Ride): string {
   const avatarColor = getAvatarColor(ride.driver_id);
   const time = formatTime(ride.departure_at);
   const price = ride.price_rub !== null ? `${ride.price_rub}₽` : "Догов.";
-  return `<div style="position:relative;background:#fff;border-radius:10px;padding:5px 8px;display:flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;border:1px solid rgba(0,0,0,.08);white-space:nowrap"><div style="width:26px;height:26px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div><div style="font-size:12px;font-weight:700;color:#0e1410;line-height:1.2">${time}</div><div style="font-size:11px;color:#6b716e;line-height:1.2">${price}</div></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff"></div></div>`;
+  const firstName = ride.driver_display_name?.trim().split(/\s+/)[0] ?? "";
+  const subLine = firstName
+    ? `<div style="font-size:10px;color:#6b716e;line-height:1.3;margin-top:1px">${firstName}</div>`
+    : "";
+  return `<div style="position:relative;background:#fff;border-radius:10px;padding:5px 8px;display:flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;border:1px solid rgba(0,0,0,.08);white-space:nowrap"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div><div style="font-size:12px;font-weight:700;color:#0e1410;line-height:1.2">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff"></div></div>`;
 }
 
 function useDarkMode() {
@@ -360,8 +364,8 @@ export function MapScreen() {
           const icon = L.divIcon({
             className: "",
             html: makeRideMarkerHtml(ride),
-            iconSize: [112, 41],
-            iconAnchor: [56, 41],
+            iconSize: [134, 46],
+            iconAnchor: [67, 51],
           });
           const marker = L.marker([ride.from_lat, ride.from_lng], { icon }).addTo(lMap);
           marker.on("click", () => setSelected(ride));
@@ -375,8 +379,8 @@ export function MapScreen() {
         const icon = L.divIcon({
           className: "",
           html: makeRideMarkerHtml(ride),
-          iconSize: [112, 41],
-          iconAnchor: [56, 41],
+          iconSize: [134, 46],
+          iconAnchor: [67, 51],
         });
         const marker = L.marker([ride.from_lat, ride.from_lng], { icon }).addTo(lMap);
         marker.on("click", () => setSelected(ride));

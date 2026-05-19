@@ -40,6 +40,7 @@ type RequestStatus = "idle" | "loading" | "sent" | "full" | "duplicate" | "error
 type LikeStatus = "idle" | "loading" | "liked" | "error" | "not_confirmed";
 type ActionStatus = "idle" | "loading" | "done" | "error";
 type CancelStatus = "idle" | "loading" | "done" | "error";
+type EditStatus = "idle" | "loading" | "done" | "error";
 
 export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
@@ -52,6 +53,11 @@ export function RideDetailScreen({ id }: Props) {
   const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
   const [cancelReqStatus, setCancelReqStatus] = useState<CancelStatus>("idle");
   const [cancelRideStatus, setCancelRideStatus] = useState<CancelStatus>("idle");
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editStatus, setEditStatus] = useState<EditStatus>("idle");
+  const [editSeats, setEditSeats] = useState<string>("");
+  const [editPrice, setEditPrice] = useState<string>("");
+  const [editComment, setEditComment] = useState<string>("");
 
   if (isLoading) {
     return (
@@ -187,6 +193,42 @@ export function RideDetailScreen({ id }: Props) {
       queryClient.invalidateQueries({ queryKey: ["ride", id] });
     } catch {
       setCancelRideStatus("error");
+    }
+  }
+
+  function handleOpenEdit() {
+    if (!ride) return;
+    setEditSeats(String(ride.seats_total));
+    setEditPrice(ride.price_rub !== null ? String(ride.price_rub) : "");
+    setEditComment(ride.comment ?? "");
+    setEditStatus("idle");
+    setShowEditForm(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!ride) return;
+    const patch: Record<string, unknown> = {};
+    const seats = parseInt(editSeats, 10);
+    if (!Number.isNaN(seats) && seats !== ride.seats_total) patch.seats_total = seats;
+    const price = editPrice === "" ? null : parseInt(editPrice, 10);
+    if (price !== ride.price_rub) patch.price_rub = price;
+    const comment = editComment.trim() || null;
+    if (comment !== (ride.comment ?? null)) patch.comment = comment;
+    if (Object.keys(patch).length === 0) {
+      setShowEditForm(false);
+      return;
+    }
+    setEditStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      setEditStatus("done");
+      setShowEditForm(false);
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setEditStatus("error");
     }
   }
 
@@ -758,6 +800,166 @@ export function RideDetailScreen({ id }: Props) {
         )}
       </div>
 
+      {/* Edit form — inline, shown above action bar */}
+      {showEditForm && (
+        <div
+          data-testid="edit-ride-form"
+          style={{
+            position: "fixed",
+            bottom: 68,
+            left: 0,
+            right: 0,
+            background: "var(--brand-surface)",
+            borderTop: "1px solid var(--brand-border)",
+            borderBottom: "1px solid var(--brand-border)",
+            padding: "16px 16px 12px",
+            zIndex: 29,
+            boxShadow: "0 -4px 16px rgba(0,0,0,0.08)",
+          }}
+        >
+          {ride.passengers.length > 0 && (
+            <div
+              data-testid="edit-passenger-warning"
+              style={{
+                fontSize: 12,
+                color: "var(--brand-warn)",
+                background: "rgba(200,120,0,0.08)",
+                borderRadius: 8,
+                padding: "8px 10px",
+                marginBottom: 12,
+                lineHeight: 1.4,
+              }}
+            >
+              Принятые пассажиры получат уведомление об изменении поездки
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <div>
+              <label
+                style={{ fontSize: 11, color: "var(--brand-sub)", fontWeight: 600, display: "block", marginBottom: 4 }}
+              >
+                Мест всего
+              </label>
+              <select
+                data-testid="edit-seats-total"
+                value={editSeats}
+                onChange={(e) => setEditSeats(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--brand-border)",
+                  background: "var(--brand-bg)",
+                  color: "var(--brand-text)",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                }}
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                style={{ fontSize: 11, color: "var(--brand-sub)", fontWeight: 600, display: "block", marginBottom: 4 }}
+              >
+                Цена (₽)
+              </label>
+              <input
+                data-testid="edit-price-rub"
+                type="number"
+                min="0"
+                placeholder="Бесплатно"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--brand-border)",
+                  background: "var(--brand-bg)",
+                  color: "var(--brand-text)",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label
+              style={{ fontSize: 11, color: "var(--brand-sub)", fontWeight: 600, display: "block", marginBottom: 4 }}
+            >
+              Комментарий
+            </label>
+            <textarea
+              data-testid="edit-comment"
+              value={editComment}
+              onChange={(e) => setEditComment(e.target.value)}
+              maxLength={200}
+              rows={2}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid var(--brand-border)",
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
+                fontSize: 14,
+                fontFamily: "inherit",
+                resize: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              data-testid="edit-cancel-btn"
+              onClick={() => setShowEditForm(false)}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: 10,
+                border: "1px solid var(--brand-border)",
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              data-testid="edit-save-btn"
+              disabled={editStatus === "loading"}
+              onClick={handleSaveEdit}
+              style={{
+                flex: 2,
+                padding: "10px",
+                borderRadius: 10,
+                border: "none",
+                background: "var(--brand-primary)",
+                color: "var(--brand-primary-ink)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: editStatus === "loading" ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: editStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {editStatus === "loading" ? "Сохраняем..." : editStatus === "error" ? "Ошибка, повторите" : "Сохранить"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Fixed bottom action bar — скрыт пока me не загрузился (иначе кнопки мигают) */}
       {me.status !== "loading" && (
         <div
@@ -777,6 +979,27 @@ export function RideDetailScreen({ id }: Props) {
             zIndex: 30,
           }}
         >
+          {isOwnRide && ride.status === "active" && (
+            <button
+              type="button"
+              data-testid="edit-ride-btn"
+              onClick={handleOpenEdit}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                border: "1px solid var(--brand-border)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-text)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Изменить
+            </button>
+          )}
           {isOwnRide && ride.status === "active" && (
             <button
               type="button"

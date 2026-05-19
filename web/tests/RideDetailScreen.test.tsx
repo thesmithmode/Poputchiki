@@ -366,3 +366,167 @@ describe("RideDetailScreen — отмена поездки водителем (P
     vi.unstubAllGlobals();
   });
 });
+
+describe("RideDetailScreen — редактирование поездки водителем (P3)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: DRIVER_ID,
+        display_name: "Иван Иванов",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        role: "user",
+      },
+    });
+  });
+
+  afterEach(() => {
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: "passenger-user-id",
+        display_name: "Test User",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        role: "user",
+      },
+    });
+  });
+
+  it("показывает кнопку «Изменить» водителю при активной поездке", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-ride-btn")).toBeInTheDocument();
+    });
+  });
+
+  it("не показывает кнопку «Изменить» пассажиру", async () => {
+    mockedUseMe.mockReturnValue({
+      status: "ok",
+      user: {
+        id: "passenger-user-id",
+        display_name: "Test User",
+        onboarded: true,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        role: "user",
+      },
+    });
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.getByTestId("cancel-ride-btn")).not.toBeInTheDocument();
+    }).catch(() => {}); // cancel-ride-btn тоже не будет, просто ждём рендер
+    await waitFor(() => screen.getByTestId("respond-btn"));
+    expect(screen.queryByTestId("edit-ride-btn")).not.toBeInTheDocument();
+  });
+
+  it("не показывает кнопку «Изменить» при status=cancelled", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "cancelled" });
+    renderScreen();
+    await waitFor(() => {
+      expect(screen.queryByTestId("cancel-ride-btn")).not.toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("edit-ride-btn")).not.toBeInTheDocument();
+  });
+
+  it("клик на «Изменить» показывает форму редактирования", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("edit-ride-btn"));
+    fireEvent.click(screen.getByTestId("edit-ride-btn"));
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-ride-form")).toBeInTheDocument();
+    });
+  });
+
+  it("форма редактирования содержит поля seats_total, price_rub, comment", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("edit-ride-btn"));
+    fireEvent.click(screen.getByTestId("edit-ride-btn"));
+    await waitFor(() => screen.getByTestId("edit-ride-form"));
+    expect(screen.getByTestId("edit-seats-total")).toBeInTheDocument();
+    expect(screen.getByTestId("edit-price-rub")).toBeInTheDocument();
+    expect(screen.getByTestId("edit-comment")).toBeInTheDocument();
+  });
+
+  it("показывает предупреждение об уведомлении при наличии пассажиров", async () => {
+    const passengers = [
+      {
+        id: "550e8400-e29b-41d4-a716-446655440002",
+        first_name: "Мария",
+        last_name: "Петрова",
+        tg_id: 8888,
+        likes_received_count: 2,
+      },
+    ];
+    mockedApiFetch.mockResolvedValueOnce({
+      ...mockRide,
+      status: "active",
+      passengers,
+      seats_taken: 1,
+    });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("edit-ride-btn"));
+    fireEvent.click(screen.getByTestId("edit-ride-btn"));
+    await waitFor(() => {
+      expect(screen.getByTestId("edit-passenger-warning")).toBeInTheDocument();
+    });
+  });
+
+  it("не показывает предупреждение при отсутствии пассажиров", async () => {
+    mockedApiFetch.mockResolvedValueOnce({
+      ...mockRide,
+      status: "active",
+      passengers: [],
+      seats_taken: 0,
+    });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("edit-ride-btn"));
+    fireEvent.click(screen.getByTestId("edit-ride-btn"));
+    await waitFor(() => screen.getByTestId("edit-ride-form"));
+    expect(screen.queryByTestId("edit-passenger-warning")).not.toBeInTheDocument();
+  });
+
+  it("отправляет PATCH /rides/:id при сохранении", async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ ...mockRide, status: "active" })
+      .mockResolvedValueOnce({ ...mockRide, price_rub: 200 });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("edit-ride-btn"));
+    fireEvent.click(screen.getByTestId("edit-ride-btn"));
+    await waitFor(() => screen.getByTestId("edit-ride-form"));
+
+    const priceInput = screen.getByTestId("edit-price-rub");
+    fireEvent.change(priceInput, { target: { value: "200" } });
+
+    fireEvent.click(screen.getByTestId("edit-save-btn"));
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith(
+        `/rides/${RIDE_ID}`,
+        expect.objectContaining({ method: "PATCH" }),
+      );
+    });
+  });
+
+  it("закрывает форму при нажатии «Отмена»", async () => {
+    mockedApiFetch.mockResolvedValueOnce({ ...mockRide, status: "active" });
+    renderScreen();
+    await waitFor(() => screen.getByTestId("edit-ride-btn"));
+    fireEvent.click(screen.getByTestId("edit-ride-btn"));
+    await waitFor(() => screen.getByTestId("edit-ride-form"));
+    fireEvent.click(screen.getByTestId("edit-cancel-btn"));
+    await waitFor(() => {
+      expect(screen.queryByTestId("edit-ride-form")).not.toBeInTheDocument();
+    });
+  });
+});

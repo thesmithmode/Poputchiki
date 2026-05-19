@@ -6,6 +6,7 @@ export interface Filters {
   trustMinLikes: number;
   favoritesOnly: boolean;
   verifiedOnly: boolean;
+  hideMyRides: boolean;
   direction: string;
   priceMin: number | null;
   priceMax: number | null;
@@ -17,6 +18,7 @@ export const DEFAULT_FILTERS: Filters = {
   trustMinLikes: 0,
   favoritesOnly: false,
   verifiedOnly: false,
+  hideMyRides: false,
   direction: "",
   priceMin: null,
   priceMax: null,
@@ -58,8 +60,15 @@ export function useFilters() {
   return { filters, setFilters, resetFilters };
 }
 
-export function applyFilters(rides: Ride[], filters: Filters, favoriteIds?: Set<string>): Ride[] {
+export function applyFilters(
+  rides: Ride[],
+  filters: Filters,
+  favoriteIds?: Set<string>,
+  myUserId?: string | null,
+): Ride[] {
   return rides.filter((ride) => {
+    if (filters.hideMyRides && myUserId && ride.driver_id === myUserId) return false;
+
     if (filters.favoritesOnly && favoriteIds !== undefined) {
       if (!favoriteIds.has(ride.driver_id)) return false;
     }

@@ -48,12 +48,14 @@ export function RideCard({
         style={{
           width: "100%",
           textAlign: "left",
-          background: "var(--brand-surface)",
+          background: isOwnRide ? "var(--brand-primary-soft)" : "var(--brand-surface)",
           borderRadius: 8,
           padding: "7px 12px",
           cursor: "pointer",
           border: "none",
-          boxShadow: "var(--shadow-sm)",
+          boxShadow: isOwnRide
+            ? "inset 0 0 0 1.5px var(--brand-primary-line), var(--shadow-sm)"
+            : "var(--shadow-sm)",
           fontFamily: "inherit",
           transition: "transform 0.08s",
           display: "grid",
@@ -159,7 +161,7 @@ export function RideCard({
       style={{
         width: "100%",
         textAlign: "left",
-        background: "var(--brand-surface)",
+        background: isOwnRide ? "var(--brand-primary-soft)" : "var(--brand-surface)",
         borderRadius: 18,
         padding: 14,
         cursor: onClick ? "pointer" : "default",

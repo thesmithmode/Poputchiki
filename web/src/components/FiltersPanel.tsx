@@ -14,7 +14,8 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
     filters.priceMax !== DEFAULT_FILTERS.priceMax ||
     filters.seatsMin !== DEFAULT_FILTERS.seatsMin ||
     filters.verifiedOnly !== DEFAULT_FILTERS.verifiedOnly ||
-    filters.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly;
+    filters.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly ||
+    filters.hideMyRides !== DEFAULT_FILTERS.hideMyRides;
 
   return (
     <div
@@ -112,6 +113,16 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             onChange={(e) => onChange({ favoritesOnly: e.target.checked })}
           />
           Только избранные ♥
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            data-testid="filter-hide-my-rides"
+            type="checkbox"
+            checked={filters.hideMyRides}
+            onChange={(e) => onChange({ hideMyRides: e.target.checked })}
+          />
+          Скрыть мои поездки
         </label>
 
         {hasActive && (

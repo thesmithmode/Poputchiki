@@ -38,8 +38,8 @@ export function FeedScreen() {
     localStorage.setItem("pp_density", next);
   };
   const filteredRides = useMemo(
-    () => applyFilters(data?.rides ?? [], filters, favoriteIds),
-    [data, filters, favoriteIds],
+    () => applyFilters(data?.rides ?? [], filters, favoriteIds, myUserId),
+    [data, filters, favoriteIds, myUserId],
   );
 
   function pluralRides(n: number): string {

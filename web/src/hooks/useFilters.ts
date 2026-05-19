@@ -6,6 +6,7 @@ export interface Filters {
   trustMinLikes: number;
   favoritesOnly: boolean;
   verifiedOnly: boolean;
+  hideMyRides: boolean;
   direction: string;
   priceMin: number | null;
   priceMax: number | null;
@@ -17,6 +18,7 @@ export const DEFAULT_FILTERS: Filters = {
   trustMinLikes: 0,
   favoritesOnly: false,
   verifiedOnly: false,
+  hideMyRides: false,
   direction: "",
   priceMin: null,
   priceMax: null,
@@ -24,19 +26,28 @@ export const DEFAULT_FILTERS: Filters = {
 };
 
 const STORAGE_KEY = "poputchiki:filters";
+const SESSION_DIRECTION_KEY = "poputchiki:filters:direction";
 
 function loadFilters(): Filters {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_FILTERS;
-    return { ...DEFAULT_FILTERS, ...JSON.parse(raw) };
+    const persisted = raw ? { ...DEFAULT_FILTERS, ...JSON.parse(raw) } : DEFAULT_FILTERS;
+    // direction lives in sessionStorage — cleared when app closes, persists while open
+    const direction = sessionStorage.getItem(SESSION_DIRECTION_KEY) ?? DEFAULT_FILTERS.direction;
+    return { ...persisted, direction };
   } catch {
     return DEFAULT_FILTERS;
   }
 }
 
 function saveFilters(f: Filters): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(f));
+  const { direction, ...rest } = f;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  if (direction) {
+    sessionStorage.setItem(SESSION_DIRECTION_KEY, direction);
+  } else {
+    sessionStorage.removeItem(SESSION_DIRECTION_KEY);
+  }
 }
 
 export function useFilters() {
@@ -52,14 +63,22 @@ export function useFilters() {
 
   function resetFilters() {
     localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.removeItem(SESSION_DIRECTION_KEY);
     setFiltersState(DEFAULT_FILTERS);
   }
 
   return { filters, setFilters, resetFilters };
 }
 
-export function applyFilters(rides: Ride[], filters: Filters, favoriteIds?: Set<string>): Ride[] {
+export function applyFilters(
+  rides: Ride[],
+  filters: Filters,
+  favoriteIds?: Set<string>,
+  myUserId?: string | null,
+): Ride[] {
   return rides.filter((ride) => {
+    if (filters.hideMyRides && myUserId && ride.driver_id === myUserId) return false;
+
     if (filters.favoritesOnly && favoriteIds !== undefined) {
       if (!favoriteIds.has(ride.driver_id)) return false;
     }

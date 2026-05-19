@@ -45,6 +45,7 @@ const TARGET_STATUS: Record<Action, string> = {
 export interface RespondResult {
   request: RequestRow;
   refunded: boolean;
+  actorName: string;
 }
 
 /**
@@ -121,17 +122,23 @@ export async function respondToRideRequest(
         refunded = refundRows.length > 0;
       }
 
-      return { request: { ...row, status: newStatus }, refunded };
+      const [actorRow] = await tx<{ display_name: string }[]>`
+        SELECT display_name FROM users WHERE id = ${user.id}::uuid
+      `;
+      const actorName = actorRow?.display_name ?? "";
+
+      return { request: { ...row, status: newStatus }, refunded, actorName };
     },
     "repeatable read",
   );
 
   const notifyTo = action === "cancel" ? result.request.driver_id : result.request.passenger_id;
+  const nameKey = action === "cancel" ? "passenger_name" : "driver_name";
   enqueueNotification(sql, {
     userId: notifyTo,
     category: NOTIFY_CATEGORY[action],
     rideId: result.request.ride_id,
-    data: { request_id: result.request.id },
+    data: { request_id: result.request.id, [nameKey]: result.actorName },
   }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
   return result;

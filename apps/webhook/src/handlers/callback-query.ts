@@ -56,14 +56,15 @@ export async function handleCallbackQuery(
   let userText: string;
   if (resp.ok) {
     userText = action === "accept" ? "✅ Заявка принята" : "❌ Заявка отклонена";
-    // Кнопки убираем только при успешном применении — пользователь видит
-    // финальный статус и не может перейти повторно.
     if (query.message) {
-      await editReplyMarkup(
+      const statusLine = action === "accept" ? "\n\n✅ Принято" : "\n\n❌ Отклонено";
+      const newText = (query.message.text ?? "") + statusLine;
+      await editMessageText(
         fetchFn,
         deps.botToken,
         query.message.chat.id,
         query.message.message_id,
+        newText,
       );
     }
   } else if (resp.status === 403) {
@@ -102,19 +103,21 @@ async function answer(
   }
 }
 
-async function editReplyMarkup(
+async function editMessageText(
   fetchFn: typeof fetch,
   botToken: string,
   chatId: number,
   messageId: number,
+  text: string,
 ): Promise<void> {
   try {
-    await fetchFn(`https://api.telegram.org/bot${botToken}/editMessageReplyMarkup`, {
+    await fetchFn(`https://api.telegram.org/bot${botToken}/editMessageText`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: chatId,
         message_id: messageId,
+        text,
         reply_markup: { inline_keyboard: [] },
       }),
     });

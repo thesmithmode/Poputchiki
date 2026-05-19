@@ -39,6 +39,8 @@ function isNew(createdAt: string) {
 type RequestStatus = "idle" | "loading" | "sent" | "full" | "duplicate" | "error";
 type LikeStatus = "idle" | "loading" | "liked" | "error" | "not_confirmed";
 type ActionStatus = "idle" | "loading" | "done" | "error";
+type CancelStatus = "idle" | "loading" | "done" | "error";
+type EditStatus = "idle" | "loading" | "done" | "error";
 
 export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
@@ -49,6 +51,14 @@ export function RideDetailScreen({ id }: Props) {
   const [reqStatus, setReqStatus] = useState<RequestStatus>("idle");
   const [likeStatus, setLikeStatus] = useState<LikeStatus>("idle");
   const [actionStatus, setActionStatus] = useState<Record<string, ActionStatus>>({});
+  const [cancelReqStatus, setCancelReqStatus] = useState<CancelStatus>("idle");
+  const [cancelRideStatus, setCancelRideStatus] = useState<CancelStatus>("idle");
+  const [completeRideStatus, setCompleteRideStatus] = useState<CancelStatus>("idle");
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [editStatus, setEditStatus] = useState<EditStatus>("idle");
+  const [editSeats, setEditSeats] = useState<string>("");
+  const [editPrice, setEditPrice] = useState<string>("");
+  const [editComment, setEditComment] = useState<string>("");
 
   if (isLoading) {
     return (
@@ -140,6 +150,112 @@ export function RideDetailScreen({ id }: Props) {
     }
   }
 
+  async function handleCancelRequest() {
+    if (!ride?.my_request_id) return;
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as
+      | { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void }
+      | undefined;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) {
+        wa.showConfirm("Отозвать заявку на поездку?", resolve);
+      } else {
+        resolve(window.confirm("Отозвать заявку на поездку?"));
+      }
+    });
+    if (!confirmed) return;
+    setCancelReqStatus("loading");
+    try {
+      await apiFetch(`/ride-requests/${ride.my_request_id}/cancel`, { method: "POST" });
+      setCancelReqStatus("done");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setCancelReqStatus("error");
+    }
+  }
+
+  async function handleCancelRide() {
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as
+      | { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void }
+      | undefined;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) {
+        wa.showConfirm("Отменить поездку? Все пассажиры получат уведомление.", resolve);
+      } else {
+        resolve(window.confirm("Отменить поездку? Все пассажиры получат уведомление."));
+      }
+    });
+    if (!confirmed) return;
+    setCancelRideStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}/cancel`, { method: "PATCH" });
+      setCancelRideStatus("done");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setCancelRideStatus("error");
+    }
+  }
+
+  async function handleCompleteRide() {
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as
+      | { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void }
+      | undefined;
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) {
+        wa.showConfirm("Завершить поездку? Пассажиры получат уведомление.", resolve);
+      } else {
+        resolve(window.confirm("Завершить поездку? Пассажиры получат уведомление."));
+      }
+    });
+    if (!confirmed) return;
+    setCompleteRideStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}/complete`, { method: "POST" });
+      setCompleteRideStatus("done");
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setCompleteRideStatus("error");
+    }
+  }
+
+  function handleOpenEdit() {
+    if (!ride) return;
+    setEditSeats(String(ride.seats_total));
+    setEditPrice(ride.price_rub !== null ? String(ride.price_rub) : "");
+    setEditComment(ride.comment ?? "");
+    setEditStatus("idle");
+    setShowEditForm(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!ride) return;
+    const patch: Record<string, unknown> = {};
+    const seats = Number.parseInt(editSeats, 10);
+    if (!Number.isNaN(seats) && seats !== ride.seats_total) patch.seats_total = seats;
+    const price = editPrice === "" ? null : Number.parseInt(editPrice, 10);
+    if (price !== ride.price_rub) patch.price_rub = price;
+    const comment = editComment.trim() || null;
+    if (comment !== (ride.comment ?? null)) patch.comment = comment;
+    if (Object.keys(patch).length === 0) {
+      setShowEditForm(false);
+      return;
+    }
+    setEditStatus("loading");
+    try {
+      await apiFetch(`/rides/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      });
+      setEditStatus("done");
+      setShowEditForm(false);
+      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+    } catch {
+      setEditStatus("error");
+    }
+  }
+
   function handleContactDriver() {
     if (!ride) return;
     const tg = getTelegramWebApp();
@@ -173,8 +289,16 @@ export function RideDetailScreen({ id }: Props) {
 
   // Кнопка записи на поездку (для пассажира)
   const serverRequestStatus = ride.my_request_status;
-  const requestIsActive = serverRequestStatus !== null && serverRequestStatus !== "cancelled";
-  const respondBtnDisabled = reqStatus === "loading" || requestIsActive;
+  // cancelled — нельзя подать повторно (UNIQUE constraint), disabled
+  const requestIsActive =
+    serverRequestStatus !== null &&
+    serverRequestStatus !== "cancelled" &&
+    serverRequestStatus !== "rejected";
+  const respondBtnDisabled =
+    reqStatus === "loading" ||
+    requestIsActive ||
+    serverRequestStatus === "cancelled" ||
+    serverRequestStatus === "rejected";
   const respondBtnBg =
     serverRequestStatus === "accepted"
       ? "var(--brand-primary)"
@@ -182,25 +306,35 @@ export function RideDetailScreen({ id }: Props) {
         ? "var(--brand-primary-soft)"
         : "var(--brand-primary)";
   const respondBtnLabel =
-    serverRequestStatus === "pending"
-      ? "Заявка на рассмотрении"
-      : serverRequestStatus === "accepted"
-        ? "Вы в поездке!"
-        : serverRequestStatus === "rejected"
-          ? "Заявка отклонена"
-          : serverRequestStatus === "cancelled"
-            ? "Заявка отменена"
-            : reqStatus === "sent"
-              ? "Заявка отправлена"
-              : reqStatus === "loading"
-                ? "Отправляем..."
-                : reqStatus === "full"
-                  ? "Мест нет"
-                  : reqStatus === "duplicate"
-                    ? "Уже отправлено"
-                    : reqStatus === "error"
-                      ? "Ошибка, повторите"
-                      : "Записаться";
+    serverRequestStatus === "rejected"
+      ? "Заявка отклонена"
+      : serverRequestStatus === "cancelled"
+        ? "Заявка отменена"
+        : reqStatus === "sent"
+          ? "Заявка отправлена"
+          : reqStatus === "loading"
+            ? "Отправляем..."
+            : reqStatus === "full"
+              ? "Мест нет"
+              : reqStatus === "duplicate"
+                ? "Уже отправлено"
+                : reqStatus === "error"
+                  ? "Ошибка, повторите"
+                  : "Записаться";
+
+  // Пассажир может отозвать заявку (pending или accepted)
+  const canCancelRequest =
+    (serverRequestStatus === "pending" || serverRequestStatus === "accepted") &&
+    ride.my_request_id !== null &&
+    cancelReqStatus !== "done";
+  const cancelReqLabel =
+    cancelReqStatus === "loading"
+      ? "Отменяем..."
+      : cancelReqStatus === "error"
+        ? "Ошибка, повторите"
+        : serverRequestStatus === "accepted"
+          ? "Отменить участие"
+          : "Отозвать заявку";
 
   return (
     <div
@@ -690,6 +824,196 @@ export function RideDetailScreen({ id }: Props) {
         )}
       </div>
 
+      {/* Edit form — inline, shown above action bar */}
+      {showEditForm && (
+        <div
+          data-testid="edit-ride-form"
+          style={{
+            position: "fixed",
+            bottom: 68,
+            left: 0,
+            right: 0,
+            background: "var(--brand-surface)",
+            borderTop: "1px solid var(--brand-border)",
+            borderBottom: "1px solid var(--brand-border)",
+            padding: "16px 16px 12px",
+            zIndex: 29,
+            boxShadow: "0 -4px 16px rgba(0,0,0,0.08)",
+          }}
+        >
+          {ride.passengers.length > 0 && (
+            <div
+              data-testid="edit-passenger-warning"
+              style={{
+                fontSize: 12,
+                color: "var(--brand-warn)",
+                background: "rgba(200,120,0,0.08)",
+                borderRadius: 8,
+                padding: "8px 10px",
+                marginBottom: 12,
+                lineHeight: 1.4,
+              }}
+            >
+              Принятые пассажиры получат уведомление об изменении поездки
+            </div>
+          )}
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}
+          >
+            <div>
+              <label
+                htmlFor="edit-seats-total"
+                style={{
+                  fontSize: 11,
+                  color: "var(--brand-sub)",
+                  fontWeight: 600,
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Мест всего
+              </label>
+              <select
+                id="edit-seats-total"
+                data-testid="edit-seats-total"
+                value={editSeats}
+                onChange={(e) => setEditSeats(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--brand-border)",
+                  background: "var(--brand-bg)",
+                  color: "var(--brand-text)",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                }}
+              >
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="edit-price-rub"
+                style={{
+                  fontSize: 11,
+                  color: "var(--brand-sub)",
+                  fontWeight: 600,
+                  display: "block",
+                  marginBottom: 4,
+                }}
+              >
+                Цена (₽)
+              </label>
+              <input
+                id="edit-price-rub"
+                data-testid="edit-price-rub"
+                type="number"
+                min="0"
+                placeholder="Бесплатно"
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  border: "1px solid var(--brand-border)",
+                  background: "var(--brand-bg)",
+                  color: "var(--brand-text)",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <label
+              htmlFor="edit-comment"
+              style={{
+                fontSize: 11,
+                color: "var(--brand-sub)",
+                fontWeight: 600,
+                display: "block",
+                marginBottom: 4,
+              }}
+            >
+              Комментарий
+            </label>
+            <textarea
+              id="edit-comment"
+              data-testid="edit-comment"
+              value={editComment}
+              onChange={(e) => setEditComment(e.target.value)}
+              maxLength={200}
+              rows={2}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: 8,
+                border: "1px solid var(--brand-border)",
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
+                fontSize: 14,
+                fontFamily: "inherit",
+                resize: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              data-testid="edit-cancel-btn"
+              onClick={() => setShowEditForm(false)}
+              style={{
+                flex: 1,
+                padding: "10px",
+                borderRadius: 10,
+                border: "1px solid var(--brand-border)",
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              data-testid="edit-save-btn"
+              disabled={editStatus === "loading"}
+              onClick={handleSaveEdit}
+              style={{
+                flex: 2,
+                padding: "10px",
+                borderRadius: 10,
+                border: "none",
+                background: "var(--brand-primary)",
+                color: "var(--brand-primary-ink)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: editStatus === "loading" ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: editStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {editStatus === "loading"
+                ? "Сохраняем..."
+                : editStatus === "error"
+                  ? "Ошибка, повторите"
+                  : "Сохранить"}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Fixed bottom action bar — скрыт пока me не загрузился (иначе кнопки мигают) */}
       {me.status !== "loading" && (
         <div
@@ -709,6 +1033,91 @@ export function RideDetailScreen({ id }: Props) {
             zIndex: 30,
           }}
         >
+          {isOwnRide && ride.status === "active" && (
+            <button
+              type="button"
+              data-testid="edit-ride-btn"
+              onClick={handleOpenEdit}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                border: "1px solid var(--brand-border)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-text)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              Изменить
+            </button>
+          )}
+          {isOwnRide && ride.status === "active" && (
+            <button
+              type="button"
+              data-testid="complete-ride-btn"
+              disabled={completeRideStatus === "loading" || completeRideStatus === "done"}
+              onClick={handleCompleteRide}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-primary)",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-primary-ink)",
+                cursor:
+                  completeRideStatus === "loading" || completeRideStatus === "done"
+                    ? "not-allowed"
+                    : "pointer",
+                fontFamily: "inherit",
+                opacity: completeRideStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {completeRideStatus === "loading"
+                ? "Завершаем..."
+                : completeRideStatus === "done"
+                  ? "Поездка завершена"
+                  : completeRideStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Завершить"}
+            </button>
+          )}
+          {isOwnRide && ride.status === "active" && (
+            <button
+              type="button"
+              data-testid="cancel-ride-btn"
+              disabled={cancelRideStatus === "loading" || cancelRideStatus === "done"}
+              onClick={handleCancelRide}
+              style={{
+                flex: 1,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                border: "1px solid var(--brand-danger)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-danger)",
+                cursor:
+                  cancelRideStatus === "loading" || cancelRideStatus === "done"
+                    ? "not-allowed"
+                    : "pointer",
+                fontFamily: "inherit",
+                opacity: cancelRideStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {cancelRideStatus === "loading"
+                ? "Отменяем..."
+                : cancelRideStatus === "done"
+                  ? "Поездка отменена"
+                  : cancelRideStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Отменить поездку"}
+            </button>
+          )}
           {!isOwnRide && (
             <button
               type="button"
@@ -736,7 +1145,30 @@ export function RideDetailScreen({ id }: Props) {
               Связаться с водителем
             </button>
           )}
-          {!isOwnRide && (
+          {!isOwnRide && canCancelRequest && (
+            <button
+              type="button"
+              data-testid="cancel-request-btn"
+              disabled={cancelReqStatus === "loading"}
+              onClick={handleCancelRequest}
+              style={{
+                flex: 1.6,
+                padding: "12px 16px",
+                background: "var(--brand-surface-2)",
+                border: "1px solid var(--brand-danger)",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "var(--brand-danger)",
+                cursor: cancelReqStatus === "loading" ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: cancelReqStatus === "loading" ? 0.6 : 1,
+              }}
+            >
+              {cancelReqLabel}
+            </button>
+          )}
+          {!isOwnRide && !canCancelRequest && (
             <button
               type="button"
               data-testid="respond-btn"

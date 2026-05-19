@@ -23,6 +23,7 @@ export function useRealtime() {
 
     function invalidate() {
       queryClient.invalidateQueries({ queryKey: ["rides"] });
+      queryClient.invalidateQueries({ queryKey: ["ride"] });
     }
 
     function clearRetryTimer() {

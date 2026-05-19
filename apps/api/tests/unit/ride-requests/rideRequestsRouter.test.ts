@@ -103,6 +103,7 @@ describe("POST /ride-requests/:id/accept", () => {
     mockTx.mockResolvedValueOnce([]); // advisory lock
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]); // UPDATE
     mockTx.mockResolvedValueOnce([{ id: RIDE_ID }]); // book_seat
+    mockTx.mockResolvedValueOnce([{ display_name: "Иван" }]); // SELECT display_name
     const res = await makeApp(DRIVER).request(`/ride-requests/${REQ_ID}/accept`, {
       method: "POST",
     });
@@ -131,6 +132,7 @@ describe("POST /ride-requests/:id/reject", () => {
     mockTx.mockResolvedValueOnce([PENDING_ROW]); // SELECT
     mockTx.mockResolvedValueOnce([]); // advisory lock
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]); // UPDATE
+    mockTx.mockResolvedValueOnce([{ display_name: "Иван" }]); // SELECT display_name
     const res = await makeApp(DRIVER).request(`/ride-requests/${REQ_ID}/reject`, {
       method: "POST",
     });
@@ -165,6 +167,7 @@ describe("POST /ride-requests/:id/cancel", () => {
     mockTx.mockResolvedValueOnce([PENDING_ROW]);
     mockTx.mockResolvedValueOnce([]);
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]);
+    mockTx.mockResolvedValueOnce([{ display_name: "Мария" }]); // SELECT display_name
     const res = await makeApp(PASSENGER).request(`/ride-requests/${REQ_ID}/cancel`, {
       method: "POST",
     });
@@ -179,7 +182,8 @@ describe("POST /ride-requests/:id/cancel", () => {
     mockTx.mockResolvedValueOnce([{ ...PENDING_ROW, status: "accepted" }]);
     mockTx.mockResolvedValueOnce([]);
     mockTx.mockResolvedValueOnce([{ id: REQ_ID }]);
-    mockTx.mockResolvedValueOnce([{ id: RIDE_ID }]);
+    mockTx.mockResolvedValueOnce([{ id: RIDE_ID }]); // unbook_seat
+    mockTx.mockResolvedValueOnce([{ display_name: "Мария" }]); // SELECT display_name
     const res = await makeApp(PASSENGER).request(`/ride-requests/${REQ_ID}/cancel`, {
       method: "POST",
     });

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-18T13:37:41.795Z",
+  "timestamp": "2026-05-19T10:40:31.854Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,9 +18,25 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".claude/settings.local.json"
+    },
+    {
+      "status": "M",
+      "path": ".memory/daily/2026-05-19.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/flush.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
+    },
+    {
+      "status": "M",
       "path": ".planning/HANDOFF.json"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n6b136fd FIX: убрать non-null assertion в EventsScreen для прохождения Biome lint\n8cbc660 CHORE: обновить memory-логи — редизайн EventsScreen 2026-05-18\n4091f1b FEAT: редизайн раздела События — карточки с аватарами, заголовок и кнопка 'Прочитать все' по референсу v2\na09196c TEST: unit-тесты internalRideRequestsRouter + webhook coverage gaps\n2d9d958 CHORE: обновить memory-логи — 2026-05-18 PR#5 #26+#30"
+  "context_notes": "Recent commits:\n6af16ae FIX: CI — notifier format ride_completed + preferences 12→13 + lint a11y + typecheck\ne37b5f0 FEAT: завершение поездки — endpoint + UI (P5)\n293ff42 FEAT: UI редактирования поездки водителем (P3)\n57f8d7e FIX: biome lint — форматирование RideDetailScreen и useRealtime\n869d5ed CHORE: обновить memory-логи — 2026-05-19"
 }

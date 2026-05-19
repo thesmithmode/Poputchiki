@@ -27,34 +27,58 @@ function makeRide(overrides: Partial<Ride> = {}): Ride {
 describe("useFilters", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
   afterEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it("возвращает дефолтные фильтры при отсутствии localStorage", () => {
+  it("возвращает дефолтные фильтры при отсутствии хранилищ", () => {
     const { result } = renderHook(() => useFilters());
     expect(result.current.filters).toEqual(DEFAULT_FILTERS);
   });
 
-  it("загружает фильтры из localStorage при монтировании", () => {
-    const saved = { ...DEFAULT_FILTERS, direction: "Центр", seatsMin: 2 };
+  it("загружает direction из sessionStorage, остальное из localStorage", () => {
+    const saved = { ...DEFAULT_FILTERS, seatsMin: 2 };
     localStorage.setItem("poputchiki:filters", JSON.stringify(saved));
+    sessionStorage.setItem("poputchiki:filters:direction", "Центр");
     const { result } = renderHook(() => useFilters());
     expect(result.current.filters.direction).toBe("Центр");
     expect(result.current.filters.seatsMin).toBe(2);
   });
 
-  it("сохраняет фильтры в localStorage при обновлении", () => {
+  it("direction пустой при отсутствии sessionStorage (новая сессия = закрытое приложение)", () => {
+    const saved = { ...DEFAULT_FILTERS, direction: "Аэропорт", seatsMin: 2 };
+    localStorage.setItem("poputchiki:filters", JSON.stringify(saved));
+    // sessionStorage пуст — имитирует закрытие приложения
+    const { result } = renderHook(() => useFilters());
+    expect(result.current.filters.direction).toBe("");
+    expect(result.current.filters.seatsMin).toBe(2);
+  });
+
+  it("сохраняет direction в sessionStorage, остальное в localStorage", () => {
     const { result } = renderHook(() => useFilters());
     act(() => {
       result.current.setFilters({ direction: "Баумана" });
     });
+    expect(sessionStorage.getItem("poputchiki:filters:direction")).toBe("Баумана");
     const stored = JSON.parse(localStorage.getItem("poputchiki:filters") ?? "{}");
-    expect(stored.direction).toBe("Баумана");
+    expect(stored.direction).toBeUndefined();
   });
 
-  it("сбрасывает фильтры к дефолтным", () => {
+  it("очищает sessionStorage direction при setFilters({ direction: '' })", () => {
+    const { result } = renderHook(() => useFilters());
+    act(() => {
+      result.current.setFilters({ direction: "Баумана" });
+    });
+    act(() => {
+      result.current.setFilters({ direction: "" });
+    });
+    expect(sessionStorage.getItem("poputchiki:filters:direction")).toBeNull();
+  });
+
+  it("сбрасывает фильтры к дефолтным и очищает оба хранилища", () => {
     const { result } = renderHook(() => useFilters());
     act(() => {
       result.current.setFilters({ direction: "test", seatsMin: 3 });
@@ -64,6 +88,7 @@ describe("useFilters", () => {
     });
     expect(result.current.filters).toEqual(DEFAULT_FILTERS);
     expect(localStorage.getItem("poputchiki:filters")).toBeNull();
+    expect(sessionStorage.getItem("poputchiki:filters:direction")).toBeNull();
   });
 
   it("игнорирует невалидный JSON в localStorage", () => {

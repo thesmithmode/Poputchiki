@@ -536,55 +536,114 @@ export function EventsScreen() {
 
           {read.length > 0 && (
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {read.map((n) => (
-                <button
-                  type="button"
-                  key={n.id}
-                  data-testid={`notification-${n.id}`}
-                  onClick={() => handleNotificationClick(n)}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 12,
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "10px 4px",
-                    background: "transparent",
-                    border: "none",
-                    cursor: n.ride_id ? "pointer" : "default",
-                    fontFamily: "inherit",
-                  }}
-                >
-                  {renderAvatar(n, 36)}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ marginBottom: 3 }}>{renderMessage(n, { bold: false })}</div>
-                    <div
+              {read.map((n) => {
+                const requestId = getRequestId(n);
+                const showActions = n.category === "ride_request" && requestId !== null;
+                const state = respondState[n.id];
+                return (
+                  <div
+                    key={n.id}
+                    data-testid={`notification-${n.id}-row`}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 8,
+                      padding: "10px 4px",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      data-testid={`notification-${n.id}`}
+                      onClick={() => handleNotificationClick(n)}
                       style={{
-                        fontSize: 12,
-                        color: "var(--brand-sub)",
                         display: "flex",
-                        alignItems: "center",
-                        gap: 6,
+                        alignItems: "flex-start",
+                        gap: 12,
+                        width: "100%",
+                        textAlign: "left",
+                        padding: 0,
+                        background: "transparent",
+                        border: "none",
+                        cursor: n.ride_id ? "pointer" : "default",
+                        fontFamily: "inherit",
                       }}
                     >
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          width: 12,
-                          height: 12,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: "var(--brand-faint)",
-                          fontSize: 11,
-                        }}
-                      >
-                        {metaIcon(n.category)}
-                      </span>
-                      {formatTime(n.created_at)}
-                    </div>
+                      {renderAvatar(n, 36)}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ marginBottom: 3 }}>{renderMessage(n, { bold: false })}</div>
+                        <div
+                          style={{
+                            fontSize: 12,
+                            color: "var(--brand-sub)",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              width: 12,
+                              height: 12,
+                              alignItems: "center",
+                              justifyContent: "center",
+                              color: "var(--brand-faint)",
+                              fontSize: 11,
+                            }}
+                          >
+                            {metaIcon(n.category)}
+                          </span>
+                          {formatTime(n.created_at)}
+                        </div>
+                      </div>
+                    </button>
+                    {showActions && state !== "done" && (
+                      <div style={{ display: "flex", gap: 8, paddingLeft: 48 }}>
+                        <button
+                          type="button"
+                          data-testid={`notification-${n.id}-accept`}
+                          disabled={state === "loading"}
+                          onClick={() => handleRespond(n, "accept")}
+                          style={{
+                            padding: "6px 14px",
+                            border: "none",
+                            borderRadius: 8,
+                            background: "var(--brand-primary)",
+                            color: "#fff",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: state === "loading" ? "wait" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: state === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Принять
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`notification-${n.id}-reject`}
+                          disabled={state === "loading"}
+                          onClick={() => handleRespond(n, "reject")}
+                          style={{
+                            padding: "6px 14px",
+                            border: "1px solid var(--brand-line)",
+                            borderRadius: 8,
+                            background: "transparent",
+                            color: "var(--brand-text)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: state === "loading" ? "wait" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: state === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Отклонить
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

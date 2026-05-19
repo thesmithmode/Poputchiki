@@ -67,6 +67,7 @@ const ALL_CATEGORIES = [
   "ride_request_rejected",
   "ride_request_cancelled",
   "ride_cancelled",
+  "ride_completed",
   "confirm_participation",
   "participation_request",
   "like_received",
@@ -77,7 +78,7 @@ const ALL_CATEGORIES = [
 ];
 
 describe("GET /api/notifications/preferences", () => {
-  it("first call returns all 12 categories with enabled=true (defaults)", async () => {
+  it("first call returns all 13 categories with enabled=true (defaults)", async () => {
     const app = makeApp();
     const token = await makeToken(USER);
     const res = await app.request("/api/notifications/preferences", {

@@ -5,25 +5,32 @@ import type { Category, NotifStatus, NotifierDb, Recipient } from "./types.js";
 export function createDb(sql: postgres.Sql): NotifierDb {
   return {
     async getRecipient(userId: string, category: Category): Promise<Recipient | null> {
-      const rows = await sql<
-        { tg_id: string | number; notify_disabled: boolean; pref_enabled: boolean }[]
-      >`
-        SELECT
-          u.tg_id,
-          u.notify_disabled,
-          COALESCE(np.enabled, true) AS pref_enabled
-        FROM users u
-        LEFT JOIN notification_preferences np
-          ON np.user_id = u.id AND np.category = ${category}
-        WHERE u.id = ${userId}
-        LIMIT 1
-      `;
+      // Notifier has no GUC — escalate to poputchiki_service so RLS policies
+      // users_service_select and notification_prefs_service_select allow the read.
+      const rows = await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_service`;
+        return tx<{ tg_id: string | number; notify_disabled: boolean; pref_enabled: boolean }[]>`
+          SELECT
+            u.tg_id,
+            u.notify_disabled,
+            COALESCE(np.enabled, true) AS pref_enabled
+          FROM users u
+          LEFT JOIN notification_preferences np
+            ON np.user_id = u.id AND np.category = ${category}
+          WHERE u.id = ${userId}
+          LIMIT 1
+        `;
+      });
       const r = rows[0];
       return r ? { ...r, tg_id: Number(r.tg_id) } : null;
     },
 
     async markNotifyDisabled(userId: string): Promise<void> {
-      await sql`UPDATE users SET notify_disabled = true WHERE id = ${userId}`;
+      // Notifier has no GUC — escalate to poputchiki_service (users_service_update policy).
+      await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_service`;
+        await tx`UPDATE users SET notify_disabled = true WHERE id = ${userId}`;
+      });
     },
 
     async tryLogNotification(

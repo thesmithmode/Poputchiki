@@ -30,6 +30,7 @@ export interface RideDetail extends Ride {
   driver: RideDriver;
   passengers: RidePassenger[];
   pending_requests: PendingRequest[];
+  my_request_id: string | null;
   my_request_status: "pending" | "accepted" | "rejected" | "cancelled" | null;
 }
 

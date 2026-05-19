@@ -105,6 +105,7 @@ describe("internalRideRequestsRouter — success", () => {
       // biome-ignore lint/suspicious/noExplicitAny: minimal mock shape
       request: { id: REQ_ID, status: "accepted" } as any,
       refunded: false,
+      actorName: "Иван",
     });
     const res = await post(`/${REQ_ID}/accept`, { tg_id: TG_ID });
     expect(res.status).toBe(200);
@@ -117,6 +118,7 @@ describe("internalRideRequestsRouter — success", () => {
       // biome-ignore lint/suspicious/noExplicitAny: minimal mock shape
       request: { id: REQ_ID, status: "rejected" } as any,
       refunded: true,
+      actorName: "Иван",
     });
     const res = await post(`/${REQ_ID}/reject`, { tg_id: TG_ID });
     expect(res.status).toBe(200);
@@ -129,6 +131,7 @@ describe("internalRideRequestsRouter — success", () => {
       // biome-ignore lint/suspicious/noExplicitAny: minimal mock shape
       request: { id: REQ_ID, status: "cancelled" } as any,
       refunded: true,
+      actorName: "Мария",
     });
     const res = await post(`/${REQ_ID}/cancel`, { tg_id: TG_ID });
     expect(res.status).toBe(200);

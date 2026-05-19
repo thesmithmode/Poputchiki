@@ -11,10 +11,27 @@ describe("formatMessage", () => {
     expect(formatMessage("ride_request", payload("ride_request"))).toContain("заявк");
   });
 
+  it("ride_request с passenger_name → включает имя", () => {
+    const msg = formatMessage(
+      "ride_request",
+      payload("ride_request", { passenger_name: "Иван Иванов" }),
+    );
+    expect(msg).toContain("Иван Иванов");
+  });
+
   it("ride_request_accepted", () => {
     expect(formatMessage("ride_request_accepted", payload("ride_request_accepted"))).toContain(
       "принял",
     );
+  });
+
+  it("ride_request_accepted с driver_name → включает имя и принял", () => {
+    const msg = formatMessage(
+      "ride_request_accepted",
+      payload("ride_request_accepted", { driver_name: "Алексей Петров" }),
+    );
+    expect(msg).toContain("Алексей Петров");
+    expect(msg).toContain("принял");
   });
 
   it("ride_request_rejected", () => {
@@ -23,10 +40,27 @@ describe("formatMessage", () => {
     );
   });
 
+  it("ride_request_rejected с driver_name → включает имя и отклонил", () => {
+    const msg = formatMessage(
+      "ride_request_rejected",
+      payload("ride_request_rejected", { driver_name: "Алексей Петров" }),
+    );
+    expect(msg).toContain("Алексей Петров");
+    expect(msg).toContain("отклонил");
+  });
+
   it("ride_request_cancelled", () => {
     expect(formatMessage("ride_request_cancelled", payload("ride_request_cancelled"))).toContain(
       "отменил",
     );
+  });
+
+  it("ride_request_cancelled с passenger_name → включает имя", () => {
+    const msg = formatMessage(
+      "ride_request_cancelled",
+      payload("ride_request_cancelled", { passenger_name: "Мария Сидорова" }),
+    );
+    expect(msg).toContain("Мария Сидорова");
   });
 
   it("ride_changed", () => {

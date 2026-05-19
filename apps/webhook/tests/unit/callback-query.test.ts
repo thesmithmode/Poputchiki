@@ -4,7 +4,11 @@ import type { TelegramCallbackQuery } from "../../src/types/telegram";
 
 const REQUEST_ID = "11111111-1111-4111-a111-111111111111";
 
-function makeQuery(data: string, fromId = 999): TelegramCallbackQuery {
+function makeQuery(
+  data: string,
+  fromId = 999,
+  text = "У вас новая заявка на поездку",
+): TelegramCallbackQuery {
   return {
     id: "cb-1",
     from: { id: fromId, is_bot: false, first_name: "Driver" },
@@ -12,6 +16,7 @@ function makeQuery(data: string, fromId = 999): TelegramCallbackQuery {
     message: {
       message_id: 42,
       chat: { id: 555, type: "private" },
+      text,
     },
   };
 }
@@ -41,11 +46,11 @@ describe("handleCallbackQuery", () => {
     expect(body.text).toContain("Неизвестная");
   });
 
-  it("успешный accept → POST internal endpoint + answerCallbackQuery + editMessageReplyMarkup", async () => {
+  it("успешный accept → POST internal endpoint + editMessageText (со статусом) + answerCallbackQuery", async () => {
     fetchMock = vi
       .fn()
       .mockResolvedValueOnce(new Response("{}", { status: 200 })) // internal API
-      .mockResolvedValueOnce(new Response("{}", { status: 200 })) // editReplyMarkup
+      .mockResolvedValueOnce(new Response("{}", { status: 200 })) // editMessageText
       .mockResolvedValueOnce(new Response("{}", { status: 200 })); // answer
 
     await handleCallbackQuery(deps(fetchMock), makeQuery(`req:accept:${REQUEST_ID}`));
@@ -57,8 +62,11 @@ describe("handleCallbackQuery", () => {
     const apiBody = JSON.parse(apiInit.body as string);
     expect(apiBody.tg_id).toBe(999);
 
-    const [editUrl] = fetchMock.mock.calls[1] as [string, RequestInit];
-    expect(editUrl).toContain("editMessageReplyMarkup");
+    const [editUrl, editInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(editUrl).toContain("editMessageText");
+    const editBody = JSON.parse(editInit.body as string);
+    expect(editBody.text).toContain("✅");
+    expect(editBody.reply_markup).toEqual({ inline_keyboard: [] });
 
     const [answerUrl, answerInit] = fetchMock.mock.calls[2] as [string, RequestInit];
     expect(answerUrl).toContain("answerCallbackQuery");
@@ -66,11 +74,15 @@ describe("handleCallbackQuery", () => {
     expect(answerBody.text).toContain("принята");
   });
 
-  it("успешный reject → внутренний endpoint c action=reject", async () => {
+  it("успешный reject → внутренний endpoint c action=reject + editMessageText с ❌", async () => {
     fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
     await handleCallbackQuery(deps(fetchMock), makeQuery(`req:reject:${REQUEST_ID}`));
     const [apiUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(apiUrl).toContain(`/${REQUEST_ID}/reject`);
+    const [editUrl, editInit] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(editUrl).toContain("editMessageText");
+    const editBody = JSON.parse(editInit.body as string);
+    expect(editBody.text).toContain("❌");
     const [, lastInit] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as [
       string,
       RequestInit,
@@ -151,6 +163,6 @@ describe("handleCallbackQuery", () => {
     await handleCallbackQuery(deps(fetchMock), rest as TelegramCallbackQuery);
     // 2 calls: internal API + answer (no edit)
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("editMessage"))).toBe(false);
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("editMessageText"))).toBe(false);
   });
 });

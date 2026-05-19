@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-19T10:40:31.854Z",
+  "timestamp": "2026-05-19T11:12:22.944Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -16,10 +16,6 @@
   "human_actions_pending": [],
   "decisions": [],
   "uncommitted_files": [
-    {
-      "status": "M",
-      "path": ".claude/settings.local.json"
-    },
     {
       "status": "M",
       "path": ".memory/daily/2026-05-19.md"
@@ -38,5 +34,5 @@
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n6af16ae FIX: CI — notifier format ride_completed + preferences 12→13 + lint a11y + typecheck\ne37b5f0 FEAT: завершение поездки — endpoint + UI (P5)\n293ff42 FEAT: UI редактирования поездки водителем (P3)\n57f8d7e FIX: biome lint — форматирование RideDetailScreen и useRealtime\n869d5ed CHORE: обновить memory-логи — 2026-05-19"
+  "context_notes": "Recent commits:\na695aec FIX: rideComplete integration — user_notifications + ride?.status\n260dedc FIX: интеграционные тесты POST /complete + c8 ignore для fire-and-forget loop\na620da1 FIX: миграция 028 — ride_completed в CHECK notification_preferences + интеграционный тест\n894024e CHORE: обновить memory-логи — 2026-05-19\n6af16ae FIX: CI — notifier format ride_completed + preferences 12→13 + lint a11y + typecheck"
 }

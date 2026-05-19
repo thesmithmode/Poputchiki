@@ -25,8 +25,8 @@ vi.mock("../src/hooks/useMe", () => ({
   })),
 }));
 
-import { ApiError, apiFetch } from "../src/lib/api";
 import { useMe } from "../src/hooks/useMe";
+import { ApiError, apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
 const mockedUseMe = vi.mocked(useMe);
@@ -272,10 +272,9 @@ describe("RideDetailScreen — отмена заявки пассажиром (P
     await waitFor(() => screen.getByTestId("cancel-request-btn"));
     fireEvent.click(screen.getByTestId("cancel-request-btn"));
     await waitFor(() => {
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        `/ride-requests/${REQUEST_ID}/cancel`,
-        { method: "POST" },
-      );
+      expect(mockedApiFetch).toHaveBeenCalledWith(`/ride-requests/${REQUEST_ID}/cancel`, {
+        method: "POST",
+      });
     });
     vi.unstubAllGlobals();
   });
@@ -350,10 +349,7 @@ describe("RideDetailScreen — отмена поездки водителем (P
     await waitFor(() => screen.getByTestId("cancel-ride-btn"));
     fireEvent.click(screen.getByTestId("cancel-ride-btn"));
     await waitFor(() => {
-      expect(mockedApiFetch).toHaveBeenCalledWith(
-        `/rides/${RIDE_ID}/cancel`,
-        { method: "PATCH" },
-      );
+      expect(mockedApiFetch).toHaveBeenCalledWith(`/rides/${RIDE_ID}/cancel`, { method: "PATCH" });
     });
     vi.unstubAllGlobals();
   });

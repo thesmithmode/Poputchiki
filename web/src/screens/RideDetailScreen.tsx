@@ -146,7 +146,9 @@ export function RideDetailScreen({ id }: Props) {
   async function handleCancelRequest() {
     if (!ride?.my_request_id) return;
     const tg = getTelegramWebApp();
-    const wa = tg as unknown as { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void } | undefined;
+    const wa = tg as unknown as
+      | { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void }
+      | undefined;
     const confirmed = await new Promise<boolean>((resolve) => {
       if (wa?.showConfirm) {
         wa.showConfirm("Отозвать заявку на поездку?", resolve);
@@ -167,7 +169,9 @@ export function RideDetailScreen({ id }: Props) {
 
   async function handleCancelRide() {
     const tg = getTelegramWebApp();
-    const wa = tg as unknown as { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void } | undefined;
+    const wa = tg as unknown as
+      | { showConfirm?: (msg: string, cb: (ok: boolean) => void) => void }
+      | undefined;
     const confirmed = await new Promise<boolean>((resolve) => {
       if (wa?.showConfirm) {
         wa.showConfirm("Отменить поездку? Все пассажиры получат уведомление.", resolve);
@@ -220,8 +224,15 @@ export function RideDetailScreen({ id }: Props) {
   // Кнопка записи на поездку (для пассажира)
   const serverRequestStatus = ride.my_request_status;
   // cancelled — нельзя подать повторно (UNIQUE constraint), disabled
-  const requestIsActive = serverRequestStatus !== null && serverRequestStatus !== "cancelled" && serverRequestStatus !== "rejected";
-  const respondBtnDisabled = reqStatus === "loading" || requestIsActive || serverRequestStatus === "cancelled" || serverRequestStatus === "rejected";
+  const requestIsActive =
+    serverRequestStatus !== null &&
+    serverRequestStatus !== "cancelled" &&
+    serverRequestStatus !== "rejected";
+  const respondBtnDisabled =
+    reqStatus === "loading" ||
+    requestIsActive ||
+    serverRequestStatus === "cancelled" ||
+    serverRequestStatus === "rejected";
   const respondBtnBg =
     serverRequestStatus === "accepted"
       ? "var(--brand-primary)"
@@ -781,7 +792,10 @@ export function RideDetailScreen({ id }: Props) {
                 fontSize: 14,
                 fontWeight: 600,
                 color: "var(--brand-danger)",
-                cursor: cancelRideStatus === "loading" || cancelRideStatus === "done" ? "not-allowed" : "pointer",
+                cursor:
+                  cancelRideStatus === "loading" || cancelRideStatus === "done"
+                    ? "not-allowed"
+                    : "pointer",
                 fontFamily: "inherit",
                 opacity: cancelRideStatus === "loading" ? 0.6 : 1,
               }}

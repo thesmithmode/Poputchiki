@@ -58,7 +58,7 @@ describe("useRealtime", () => {
     expect(es?.withCredentials).toBe(true);
   });
 
-  it("инвалидирует кэш rides при событии ride_changed", async () => {
+  it("инвалидирует кэш rides и ride при событии ride_changed", async () => {
     const invalidate = vi.spyOn(client, "invalidateQueries");
     renderHook(() => useRealtime(), { wrapper: makeWrapper(client) });
 
@@ -67,6 +67,7 @@ describe("useRealtime", () => {
     });
 
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["rides"] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["ride"] });
   });
 
   it("при ошибке SSE запускает fallback polling через 30s", async () => {

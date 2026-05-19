@@ -38,8 +38,10 @@ function makeRideMarkerHtml(ride: Ride): string {
   const time = formatTime(ride.departure_at);
   const price = ride.price_rub !== null ? `${ride.price_rub}₽` : "Догов.";
   const firstName = ride.driver_display_name?.trim().split(/\s+/)[0] ?? "";
+  const hasRating = ride.driver_reviews_count != null && ride.driver_reviews_count > 0;
+  const ratingStr = hasRating ? `★ ${Number(ride.driver_avg_stars).toFixed(1)}` : "новый";
   const subLine = firstName
-    ? `<div style="font-size:10px;color:#6b716e;line-height:1.3;margin-top:1px">${firstName}</div>`
+    ? `<div style="font-size:10px;color:#6b716e;line-height:1.3;margin-top:1px">${ratingStr} · ${firstName}</div>`
     : "";
   return `<div style="position:relative;background:#fff;border-radius:10px;padding:5px 8px;display:flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;border:1px solid rgba(0,0,0,.08);white-space:nowrap"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div><div style="font-size:12px;font-weight:700;color:#0e1410;line-height:1.2">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff"></div></div>`;
 }

@@ -18,4 +18,6 @@ export interface Ride {
   driver_display_name?: string | null;
   driver_photo_url?: string | null;
   driver_tg_id?: number | null;
+  driver_avg_stars?: number | null;
+  driver_reviews_count?: number | null;
 }

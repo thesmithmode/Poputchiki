@@ -96,7 +96,7 @@ beforeAll(async () => {
 afterAll(async () => {
   const ids = [DRIVER.id, PASSENGER.id, STRANGER.id];
   await sql`DELETE FROM ride_requests WHERE passenger_id = ANY(${ids})`;
-  await sql`DELETE FROM notification_queue WHERE user_id = ANY(${ids})`;
+  await sql`DELETE FROM user_notifications WHERE user_id = ANY(${ids})`;
   await sql`DELETE FROM rides WHERE driver_id = ${DRIVER.id}`;
   await sql`DELETE FROM audit_log WHERE user_id = ${DRIVER.id}`;
   await sql`DELETE FROM users WHERE id = ANY(${ids})`;
@@ -105,7 +105,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await sql`DELETE FROM ride_requests WHERE passenger_id = ANY(${[DRIVER.id, PASSENGER.id, STRANGER.id]})`;
-  await sql`DELETE FROM notification_queue WHERE user_id = ANY(${[DRIVER.id, PASSENGER.id, STRANGER.id]})`;
+  await sql`DELETE FROM user_notifications WHERE user_id = ANY(${[DRIVER.id, PASSENGER.id, STRANGER.id]})`;
   await sql`DELETE FROM rides WHERE driver_id = ${DRIVER.id}`;
   await sql`DELETE FROM audit_log WHERE user_id = ${DRIVER.id}`;
 });
@@ -124,7 +124,7 @@ describe("POST /api/rides/:id/complete", () => {
     expect(body.status).toBe("completed");
 
     const [ride] = await sql<{ status: string }[]>`SELECT status FROM rides WHERE id = ${rideId}`;
-    expect(ride.status).toBe("completed");
+    expect(ride?.status).toBe("completed");
   });
 
   it("audit_log записывается", async () => {
@@ -160,7 +160,7 @@ describe("POST /api/rides/:id/complete", () => {
 
     await new Promise((r) => setTimeout(r, 50));
     const [notif] = await sql<{ category: string }[]>`
-      SELECT category FROM notification_queue
+      SELECT category FROM user_notifications
       WHERE user_id = ${PASSENGER.id} AND ride_id = ${rideId}::uuid
     `;
     expect(notif?.category).toBe("ride_completed");

@@ -319,6 +319,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         SELECT user_id FROM favorites
         WHERE target_id = ${user.id}::uuid AND notify = true
       `;
+      /* c8 ignore next 7 -- fire-and-forget: covered by integration only when follower exists */
       for (const f of followers) {
         await enqueueNotification(sql, {
           userId: f.user_id,

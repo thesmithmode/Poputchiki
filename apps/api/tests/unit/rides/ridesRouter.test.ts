@@ -447,9 +447,10 @@ describe("POST /rides/:id/complete", () => {
     expect(res.status).toBe(200);
     await new Promise((r) => setTimeout(r, 0));
 
-    // audit_log INSERT + pg_notify + enqueueNotification (INSERT + pg_notify per passenger)
-    // минимум 4 sql вызова
-    expect(mockSql.mock.calls.length).toBeGreaterThanOrEqual(4);
+    // H4: audit_log INSERT теперь внутри withIdentity tx — не через внешний sql.
+    // Внешний sql: pg_notify + enqueueNotification (INSERT + pg_notify per passenger)
+    // минимум 3 sql вызова
+    expect(mockSql.mock.calls.length).toBeGreaterThanOrEqual(3);
     // категория ride_completed в enqueueNotification INSERT
     const insertCall = mockSql.mock.calls.find((call: unknown[]) => call[2] === "ride_completed");
     expect(insertCall).toBeDefined();

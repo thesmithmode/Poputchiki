@@ -49,4 +49,12 @@ describe("LruDedup", () => {
     expect(dedup.has(10)).toBe(true);
     expect(dedup.has(20)).toBe(true);
   });
+
+  // maxSize=0: на add() map.size >= 0 = true, но map пустая → oldest undefined.
+  // Покрывает branch `if (oldest !== undefined)` на line 20 (false-path).
+  it("maxSize=0 — add() не падает на пустой карте (oldest undefined)", () => {
+    const dedup = new LruDedup(0);
+    expect(() => dedup.add(1)).not.toThrow();
+    expect(dedup.has(1)).toBe(true);
+  });
 });

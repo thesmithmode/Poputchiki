@@ -4,8 +4,9 @@ aliases: [useme-hook, useme-auth, telegram-miniapp-auth-hook, initdata-auth-flow
 tags: [frontend, telegram, authentication, react, pattern]
 sources:
   - "daily/2026-05-14.md"
+  - "daily/2026-05-16.md"
 created: 2026-05-14
-updated: 2026-05-14
+updated: 2026-05-16
 ---
 
 # useMe Hook — Full Telegram MiniApp Auth Flow
@@ -18,6 +19,7 @@ updated: 2026-05-14
 - On 401 from any API call: try `/auth/refresh` first — do NOT re-trigger `telegramAuth()` because Telegram `initData` expires in minutes
 - `logout()` sends both `accessToken` and `refreshToken` in the body (not just clears localStorage) AND calls `clearTokens()` after — server revokes JTI
 - `apiFetch` inside `useMe` automatically prefixes non-auth paths with `/api`; auth paths (`/auth/*`) go to root directly
+- On mount: compare `JWT.sub` (decoded access token) with `Telegram.initDataUnsafe.user.id` — mismatch means stale token from another user → `clearTokens()` → re-auth immediately
 
 ## Details
 

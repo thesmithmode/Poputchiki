@@ -1,12 +1,13 @@
 ---
 title: "Auth Security Vulnerabilities Found in Code Review"
-aliases: [auth-security-bugs, xff-spoofing, idempotency-race, refresh-token-leaks, client-errors-dos, rate-limit-buckets]
-tags: [security, authentication, code-review, rate-limiting]
+aliases: [auth-security-bugs, xff-spoofing, idempotency-race, refresh-token-leaks, client-errors-dos, rate-limit-buckets, hmac-timing-attack, logout-jti-atomicity]
+tags: [security, authentication, code-review, rate-limiting, timing-attack]
 sources:
   - "daily/2026-05-03.md"
   - "daily/2026-05-08.md"
+  - "daily/2026-05-20.md"
 created: 2026-05-03
-updated: 2026-05-08
+updated: 2026-05-20
 ---
 
 # Auth Security Vulnerabilities Found in Code Review
@@ -43,6 +44,25 @@ These vulnerabilities are consistent with code written autonomously by subagents
 
 **`bannedUser` middleware scope too broad**: The middleware was registered to block the entire `/me` route group, including `GET /me` (profile read) and `PATCH /me` (profile update). A banned user should still be able to read their profile and understand why they're banned, but not perform sensitive operations (create rides, send messages, etc.). Fix: apply `bannedUser` only at specific action endpoints, not the entire profile group.
 
+### 2026-05-20 Additional Findings (Parallel Code Review)
+
+**HMAC timing attack — `initData` validation uses `===`**: Telegram `initData` HMAC verification compares computed hash with provided hash using string `===`. At 50k RPM an attacker can measure response time differences to determine partial hash matches — classic timing side-channel. Fix: replace with `crypto.timingSafeEqual(Buffer.from(computed), Buffer.from(provided))`.
+
+```ts
+// Проблема
+if (computedHash !== providedHash) throw new Error('Invalid');
+
+// Исправление
+import { timingSafeEqual } from 'crypto';
+if (!timingSafeEqual(Buffer.from(computedHash, 'hex'), Buffer.from(providedHash, 'hex'))) {
+  throw new Error('Invalid');
+}
+```
+
+**Logout JTI revocation без транзакции**: Logout endpoint ревокирует refresh token и должен добавить access token JTI в `revoked_tokens`, но эти два INSERT выполняются отдельными запросами. DB blip между ними = access token продолжает работать до естественного истечения (15 мин). Fix: обернуть обе операции в `sql.begin()`.
+
+Эта проблема была частично зафиксирована ещё в 2026-05-03 (logout не ревокирует JTI совсем), а в 2026-05-20 выявлена вторая грань: даже после добавления ревокации — отсутствие транзакции создаёт gap атомарности.
+
 ## Related Concepts
 
 - [[concepts/subagent-git-author]] - Same code review session that caught author identity violations; security bugs co-occur with process violations in subagent-written code
@@ -55,3 +75,4 @@ These vulnerabilities are consistent with code written autonomously by subagents
 
 - [[daily/2026-05-03.md]] - Session 11:54: code review of feat/auto-dev; 2 critical (XFF rate-limit bypass, idempotency race) + 2 important (soft-delete refresh bypass, logout JTI not revoked) found via superpowers:code-reviewer subagent; branch squash-merged only after issues noted and attributed to correct author
 - [[daily/2026-05-08.md]] - Session 09:28 and 12:33: pre-release code review found client-errors DoS (public before auth), rate_limit_buckets no cleanup (72M rows/day at 50k DAU), bannedUser blocking PATCH /me (overly broad scope); all fixed in `fix` branch before merge to dev
+- [[daily/2026-05-20.md]] - Parallel 5-subagent code review: HMAC timing attack (initData === vs timingSafeEqual), logout JTI atomicity gap (two INSERTs without transaction). Severity: Critical.

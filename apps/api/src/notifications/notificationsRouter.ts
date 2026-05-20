@@ -3,9 +3,8 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
+import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Preference rows we upsert defaults for. system is included so it has an
@@ -26,14 +25,15 @@ const PutPrefsInput = z
   })
   .refine((d) => d.system !== false, { message: "system category cannot be disabled" });
 
+// M3: один INSERT со всеми категориями через unnest вместо 13 round-trip'ов.
+// При 50k DAU частые polling /preferences создавали ~650k INSERT/s в пике.
 async function upsertDefaults(tx: postgres.TransactionSql, userId: string): Promise<void> {
-  for (const cat of PREF_CATEGORIES) {
-    await tx`
-      INSERT INTO notification_preferences (user_id, category, enabled)
-      VALUES (${userId}, ${cat}, true)
-      ON CONFLICT DO NOTHING
-    `;
-  }
+  const cats = [...PREF_CATEGORIES] as string[];
+  await tx`
+    INSERT INTO notification_preferences (user_id, category, enabled)
+    SELECT ${userId}, c, true FROM unnest(${cats}::text[]) AS c
+    ON CONFLICT DO NOTHING
+  `;
 }
 
 async function readPrefs(

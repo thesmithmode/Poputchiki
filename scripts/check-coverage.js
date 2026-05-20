@@ -3,7 +3,7 @@
 // Run after: bun run coverage:check (vitest --coverage generates the file).
 import { readFileSync } from "fs";
 
-const THRESHOLDS = { lines: 95, branches: 90, functions: 95, statements: 95 };
+const THRESHOLDS = { lines: 95, branches: 95, functions: 95, statements: 95 };
 const summaryPath = new URL("../coverage/coverage-summary.json", import.meta.url);
 
 let summary;

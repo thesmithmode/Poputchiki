@@ -5,11 +5,11 @@ import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import type { GeoCache } from "../geocode/geoCache";
 import { isUniqueViolation } from "../lib/db-errors";
+import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
 import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isNoSeatsError(err: unknown): boolean {
   return err instanceof Error && (err as Error & { code?: string }).code === "NO_SEATS";
@@ -41,6 +41,23 @@ function decodeCursor(cursor: string): CursorData | null {
     return null;
   }
 }
+
+// M5: schema на module level — re-allocation на каждый PATCH /:id запрос
+// при 50k DAU = ~1500 объектов/мин в hot path.
+const PatchInput = z
+  .object({
+    from_label: z.string().min(1).max(120).optional(),
+    from_lat: z.number().gte(-90).lte(90).optional(),
+    from_lng: z.number().gte(-180).lte(180).optional(),
+    to_label: z.string().min(1).max(120).optional(),
+    to_lat: z.number().gte(-90).lte(90).optional(),
+    to_lng: z.number().gte(-180).lte(180).optional(),
+    departure_at: z.string().datetime().optional(),
+    price_rub: z.number().int().positive().nullable().optional(),
+    seats_total: z.number().int().gte(1).lte(4).optional(),
+    comment: z.string().max(200).nullable().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: "empty body" });
 
 const GetRidesQuery = z.object({
   fromLat: z.coerce.number().min(-90).max(90).optional(),
@@ -160,6 +177,10 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const user = c.get("user" as never) as AppUser;
     const role = c.req.query("role") === "passenger" ? "passenger" : "driver";
     const when = c.req.query("when") === "past" ? "past" : "future";
+    // L3: configurable limit с защитой от DoS — было захардкожено 100.
+    // Default 100 сохраняет совместимость со старым фронтом.
+    const rawLimit = Number(c.req.query("limit"));
+    const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 100;
 
     const rows = await withIdentity(sql, user, async (tx) => {
       if (role === "driver") {
@@ -175,7 +196,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           WHERE r.driver_id = app.current_user_id()
             ${when === "future" ? tx`AND r.departure_at >= NOW()` : tx`AND r.departure_at < NOW()`}
           ORDER BY r.departure_at ${when === "future" ? tx`ASC` : tx`DESC`}
-          LIMIT 100
+          LIMIT ${limit}
         `;
       }
       return tx<Record<string, unknown>[]>`
@@ -193,7 +214,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         )
           ${when === "future" ? tx`AND r.departure_at >= NOW()` : tx`AND r.departure_at < NOW()`}
         ORDER BY r.departure_at ${when === "future" ? tx`ASC` : tx`DESC`}
-        LIMIT 100
+        LIMIT ${limit}
       `;
     });
 
@@ -268,7 +289,13 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     });
 
     if (!rows.length) return c.json({ error: "not found" }, 404);
-    return c.json(rows[0]);
+    // M2: pending_requests видны только водителю — пассажиры не должны видеть других претендентов.
+    // Фильтрация на ответе вместо SQL subquery упрощает поддержку (один query на всех ролей).
+    const row = rows[0] as Record<string, unknown>;
+    if (row.driver && (row.driver as { id?: string }).id !== user.id) {
+      row.pending_requests = [];
+    }
+    return c.json(row);
   });
 
   app.post("/", antiBot(sql), async (c) => {
@@ -588,20 +615,6 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       /* c8 ignore next -- defensive: integration tests always send valid JSON */
       body = {};
     }
-    const PatchInput = z
-      .object({
-        from_label: z.string().min(1).max(120).optional(),
-        from_lat: z.number().gte(-90).lte(90).optional(),
-        from_lng: z.number().gte(-180).lte(180).optional(),
-        to_label: z.string().min(1).max(120).optional(),
-        to_lat: z.number().gte(-90).lte(90).optional(),
-        to_lng: z.number().gte(-180).lte(180).optional(),
-        departure_at: z.string().datetime().optional(),
-        price_rub: z.number().int().positive().nullable().optional(),
-        seats_total: z.number().int().gte(1).lte(4).optional(),
-        comment: z.string().max(200).nullable().optional(),
-      })
-      .refine((v) => Object.keys(v).length > 0, { message: "empty body" });
     const parsed = PatchInput.safeParse(body);
     if (!parsed.success) return c.json({ error: "invalid input" }, 422);
     const p = parsed.data;
@@ -687,6 +700,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             SELECT * FROM rides WHERE id = ${rideId}
           `;
 
+          // H4: audit_log INSERT внутри той же tx — атомарно с UPDATE.
+          // FORCE RLS audit_log → эскалация service.
+          await tx`SET LOCAL ROLE poputchiki_service`;
+          await tx`
+            INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+            VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
+                    ${tx.json({ fields: Object.keys(p), key_fields_changed: changedKeyFields })})
+          `;
+
           return {
             /* c8 ignore next -- defensive ?? {}; SELECT after UPDATE always returns row */
             row: updated ?? {},
@@ -710,12 +732,6 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
     }
-
-    await sql`
-      INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-      VALUES (${user.id}, 'ride_update', 'rides', ${rideId}::uuid,
-              ${sql.json({ fields: result.patchedFields, key_fields_changed: result.changedKeyFields })})
-    `;
 
     if (result.changedKeyFields) {
       for (const passengerId of result.affectedPassengers) {
@@ -795,6 +811,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           /* c8 ignore next -- defensive ?? 0 */
           const dailyCancels = dailyResult[0]?.count ?? 0;
 
+          // H4: audit_log INSERT внутри той же tx — атомарно с UPDATE rides.
+          // FORCE RLS на audit_log → эскалация до service (BYPASSRLS).
+          await tx`SET LOCAL ROLE poputchiki_service`;
+          await tx`
+            INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+            VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
+                    ${tx.json({ daily_cancels: dailyCancels, passengers: cancelledRequests.length })})
+          `;
+
           return {
             ride: { id: ride.id, driver_id: ride.driver_id },
             affectedPassengers: cancelledRequests.map((r) => r.passenger_id),
@@ -813,12 +838,6 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
     }
-
-    await sql`
-      INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-      VALUES (${user.id}, 'ride_cancel', 'rides', ${rideId}::uuid,
-              ${sql.json({ daily_cancels: result.dailyCancels, passengers: result.cancelledCount })})
-    `;
 
     // Notify each affected passenger — feed row + TG push
     for (const passengerId of result.affectedPassengers) {
@@ -878,6 +897,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             WHERE ride_id = ${rideId} AND status = 'accepted'
           `;
 
+        // H4: audit_log INSERT внутри той же tx — атомарно с UPDATE.
+        // FORCE RLS на audit_log запрещает INSERT под poputchiki_app, эскалируем
+        // до service. SET LOCAL ROLE действует до конца tx — после этого SELECT'ов нет.
+        await tx`SET LOCAL ROLE poputchiki_service`;
+        await tx`
+          INSERT INTO audit_log (user_id, action, entity, entity_id)
+          VALUES (${user.id}, 'ride_complete', 'rides', ${rideId}::uuid)
+        `;
+
         return { rideId: ride.id, affectedPassengers: accepted.map((r) => r.passenger_id) };
       });
     } catch (err) {
@@ -889,11 +917,6 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       /* c8 ignore next -- defensive */
       throw err;
     }
-
-    await sql`
-      INSERT INTO audit_log (user_id, action, entity, entity_id)
-      VALUES (${user.id}, 'ride_complete', 'rides', ${rideId}::uuid)
-    `;
 
     for (const passengerId of result.affectedPassengers) {
       enqueueNotification(sql, {

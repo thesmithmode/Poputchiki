@@ -72,6 +72,26 @@ describe("encryptPii / decryptUserPii — round-trip", () => {
     expect(encStr).not.toContain("+7 999 123 45 67");
   });
 
+  it("два encrypt одного plaintext в одном statement дают разные ciphertext (IND-CPA)", async () => {
+    // VOLATILE-контракт: pgp_sym_encrypt генерирует новый IV каждый вызов.
+    // STABLE позволяет planner-у кешировать результат → IV переиспользуется → IND-CPA сломан.
+    // Migration 029 переводит encrypt_pii / decrypt_user_pii в VOLATILE.
+    const rows = await sql.begin(async (tx) => {
+      await tx`SELECT set_config('pgcrypto.key', ${PII_KEY}, true)`;
+      return await tx<{ a: Buffer; b: Buffer }[]>`
+        SELECT
+          app.encrypt_pii('same-plaintext-for-iv-check') AS a,
+          app.encrypt_pii('same-plaintext-for-iv-check') AS b
+      `;
+    });
+    expect(rows[0]).toBeDefined();
+    const a = rows[0]?.a;
+    const b = rows[0]?.b;
+    expect(a).toBeDefined();
+    expect(b).toBeDefined();
+    expect(Buffer.compare(a as Buffer, b as Buffer)).not.toBe(0);
+  });
+
   it("decrypt for wrong user → 0 rows (returns null fields)", async () => {
     // USER_B tries to decrypt USER_A's PII → should get null (not owner)
     const userB = { id: USER_B.id, tgId: USER_B.tgId, role: "user" };

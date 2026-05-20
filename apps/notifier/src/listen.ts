@@ -8,6 +8,9 @@ export interface ListenWithBackoffOptions {
   onConnected?: () => void;
   onError?: (err: unknown, attempt: number, delayMs: number) => void;
   _sleep?: (ms: number) => Promise<void>;
+  // Позволяет остановить infinite loop (нужно для тестов и graceful shutdown).
+  // В prod передаётся AbortSignal от SIGTERM handler.
+  abortSignal?: AbortSignal;
 }
 
 export async function listenWithBackoff(
@@ -19,16 +22,22 @@ export async function listenWithBackoff(
     onConnected,
     onError,
     _sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+    abortSignal,
   } = options;
   /* c8 ignore stop */
 
   let attempt = 0;
   for (;;) {
+    if (abortSignal?.aborted) return;
     try {
       await listenFn();
+      if (abortSignal?.aborted) return;
+      // listenFn() resolved без ошибки = LISTEN-соединение закрылось (disconnect).
+      // Не возвращаемся — переподключаемся сразу (attempt сбрасывается).
       onConnected?.();
-      return;
+      attempt = 0;
     } catch (err) {
+      if (abortSignal?.aborted) return;
       const delay = backoffDelayMs(attempt);
       onError?.(err, attempt, delay);
       attempt++;

@@ -278,7 +278,10 @@ describe("PATCH /ride-templates/:id", () => {
   it("update all fields → 200", async () => {
     mockCallThrough();
     mockTx.mockResolvedValueOnce([{ id: TMPL_ID }]); // exists
-    for (let i = 0; i < 13; i++) mockTx.mockResolvedValueOnce([]);
+    mockTx.mockResolvedValueOnce("HELPER_FRAGMENT"); // tx(updatable, ...keys) helper-call
+    mockTx.mockResolvedValueOnce([]); // combined UPDATE
+    mockTx.mockResolvedValueOnce([]); // departure_time UPDATE
+    mockTx.mockResolvedValueOnce([]); // active_to UPDATE
     mockTx.mockResolvedValueOnce([ROW]); // final SELECT
 
     const app = makeApp(USER);
@@ -307,8 +310,8 @@ describe("PATCH /ride-templates/:id", () => {
   it("partial update (comment+price) → 200", async () => {
     mockCallThrough();
     mockTx.mockResolvedValueOnce([{ id: TMPL_ID }]); // exists
-    mockTx.mockResolvedValueOnce([]); // comment update
-    mockTx.mockResolvedValueOnce([]); // price update
+    mockTx.mockResolvedValueOnce("HELPER_FRAGMENT"); // tx(updatable, ...keys) helper-call
+    mockTx.mockResolvedValueOnce([]); // combined UPDATE (comment+price_rub)
     mockTx.mockResolvedValueOnce([ROW]); // final SELECT
 
     const app = makeApp(USER);
@@ -322,9 +325,10 @@ describe("PATCH /ride-templates/:id", () => {
 
   it("set comment to null → 200", async () => {
     mockCallThrough();
-    mockTx.mockResolvedValueOnce([{ id: TMPL_ID }]);
-    mockTx.mockResolvedValueOnce([]);
-    mockTx.mockResolvedValueOnce([ROW]);
+    mockTx.mockResolvedValueOnce([{ id: TMPL_ID }]); // exists
+    mockTx.mockResolvedValueOnce("HELPER_FRAGMENT"); // tx(updatable, "comment") helper
+    mockTx.mockResolvedValueOnce([]); // combined UPDATE (comment=null)
+    mockTx.mockResolvedValueOnce([ROW]); // final SELECT
 
     const app = makeApp(USER);
     const res = await app.request(`/ride-templates/${TMPL_ID}`, {

@@ -166,10 +166,10 @@ describe("POST /notifications/:id/read", () => {
 describe("GET /notifications/preferences", () => {
   it("returns preferences → 200", async () => {
     mockWithIdentityCallThrough();
-    // upsertDefaults calls tx 13 times (one per PREF_CATEGORIES entry),
-    // then readPrefs calls tx once. Last call is SELECT → return PREFS_ROWS.
-    for (let i = 0; i < 13; i++) mockTx.mockResolvedValueOnce([]);
-    mockTx.mockResolvedValueOnce(PREFS_ROWS);
+    // M3: upsertDefaults — один INSERT через unnest() вместо 13 round-trip'ов.
+    // tx вызывается 2 раза: один upsert + один readPrefs SELECT.
+    mockTx.mockResolvedValueOnce([]); // upsertDefaults batch INSERT
+    mockTx.mockResolvedValueOnce(PREFS_ROWS); // readPrefs SELECT
 
     const app = makeApp(USER);
     const res = await app.request("/notifications/preferences");
@@ -195,8 +195,8 @@ describe("GET /notifications/preferences", () => {
 describe("PUT /notifications/preferences", () => {
   it("valid partial update → 200", async () => {
     mockWithIdentityCallThrough();
-    // upserts × 13 (USER_TOGGLEABLE_CATEGORIES + system), then UPDATE × 1, then readPrefs SELECT
-    for (let i = 0; i < 13; i++) mockTx.mockResolvedValueOnce([]);
+    // M3: один upsert + 1 UPDATE + readPrefs SELECT
+    mockTx.mockResolvedValueOnce([]); // upsertDefaults batch INSERT
     mockTx.mockResolvedValueOnce([]); // UPDATE for ride_request
     mockTx.mockResolvedValueOnce([
       ...PREFS_ROWS.map((r) => (r.category === "ride_request" ? { ...r, enabled: false } : r)),
@@ -215,8 +215,8 @@ describe("PUT /notifications/preferences", () => {
 
   it("empty body (all optional) → 200", async () => {
     mockWithIdentityCallThrough();
-    // upserts × 13, no updates, readPrefs SELECT
-    for (let i = 0; i < 13; i++) mockTx.mockResolvedValueOnce([]);
+    // M3: один upsert + no updates + readPrefs SELECT
+    mockTx.mockResolvedValueOnce([]); // upsertDefaults batch INSERT
     mockTx.mockResolvedValueOnce(PREFS_ROWS);
 
     const app = makeApp(USER);
@@ -254,7 +254,8 @@ describe("PUT /notifications/preferences", () => {
 
   it("non-JSON body treated as empty object → 200", async () => {
     mockWithIdentityCallThrough();
-    for (let i = 0; i < 13; i++) mockTx.mockResolvedValueOnce([]);
+    // M3: один upsert + readPrefs SELECT
+    mockTx.mockResolvedValueOnce([]); // upsertDefaults batch INSERT
     mockTx.mockResolvedValueOnce(PREFS_ROWS);
 
     const app = makeApp(USER);
@@ -269,7 +270,7 @@ describe("PUT /notifications/preferences", () => {
 
   it("multiple fields updated → 200", async () => {
     mockWithIdentityCallThrough();
-    // upserts × 13 + UPDATE × 2 = 15 tx calls before readPrefs
+    // M3: один upsert + UPDATE × 2 = 3 tx calls before readPrefs
     mockTx.mockResolvedValue([]);
     const updatedPrefs = PREFS_ROWS.map((r) =>
       r.category === "like_received" || r.category === "review_received"
@@ -280,7 +281,7 @@ describe("PUT /notifications/preferences", () => {
       let callCount = 0;
       const countingTx = vi.fn().mockImplementation(() => {
         callCount++;
-        if (callCount <= 15) return Promise.resolve([]);
+        if (callCount <= 3) return Promise.resolve([]);
         return Promise.resolve(updatedPrefs);
       });
       return fn(countingTx as never);

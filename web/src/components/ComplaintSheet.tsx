@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 type ReasonCode = "spam" | "fraud" | "offense" | "other";
@@ -21,6 +21,19 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
   const [reason, setReason] = useState<ReasonCode | null>(null);
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // WCAG 2.1 §2.1.2: Escape должен работать вне зависимости от focus.
+  // div onKeyDown срабатывает только когда div в фокусе — глобальный listener надёжнее.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    dialogRef.current?.focus();
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -45,8 +58,15 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: keyboard handling делает глобальный document keydown listener (useEffect выше) для Escape; onClick тут — backdrop dismiss по mouse
     <div
       data-testid="complaint-sheet"
+      ref={dialogRef}
+      // biome-ignore lint/a11y/useSemanticElements: native <dialog> требует showModal()/close() API — заменим в отдельном рефакторе; sufficient для WCAG 2.1 §2.1.2
+      role="dialog"
+      aria-modal="true"
+      aria-label="Пожаловаться"
+      tabIndex={-1}
       style={{
         position: "fixed",
         inset: 0,
@@ -54,14 +74,13 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
         display: "flex",
         alignItems: "flex-end",
         background: "rgba(0,0,0,0.5)",
+        outline: "none",
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      onKeyDown={(e) => {
-        if (e.key === "Escape") onClose();
-      }}
     >
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stopPropagation нужен только для mouse, keyboard обрабатывается глобально */}
       <div
         style={{
           width: "100%",
@@ -71,7 +90,6 @@ export function ComplaintSheet({ open, targetUserId, targetRideId, onClose }: Co
           padding: "20px 16px 32px",
         }}
         onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => e.stopPropagation()}
       >
         <div
           style={{

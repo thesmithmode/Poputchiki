@@ -53,14 +53,16 @@ describe("POST /auth/logout — revoke effect", () => {
       body: JSON.stringify({ initData }),
     });
     expect(loginRes.status).toBe(200);
-    const { refresh_token } = await readJson(loginRes);
+    const loginBody = await readJson(loginRes);
+    const { refresh_token, access_token } = loginBody;
+    const loginCookie = loginRes.headers.get("set-cookie") ?? "";
 
     await sql`DELETE FROM rate_limit_buckets WHERE key LIKE 'auth:%'`.catch(() => null);
 
     const logoutRes = await app.request("/auth/logout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token }),
+      headers: { "Content-Type": "application/json", Cookie: loginCookie },
+      body: JSON.stringify({ refresh_token, access_token }),
     });
     expect(logoutRes.status).toBe(200);
 
@@ -89,14 +91,16 @@ describe("POST /auth/logout — revoke effect", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ initData }),
     });
-    const { refresh_token } = await readJson(loginRes);
+    const loginBody = await readJson(loginRes);
+    const { refresh_token, access_token } = loginBody;
+    const loginCookie = loginRes.headers.get("set-cookie") ?? "";
 
     await sql`DELETE FROM rate_limit_buckets WHERE key LIKE 'auth:%'`.catch(() => null);
 
     const r1 = await app.request("/auth/logout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token }),
+      headers: { "Content-Type": "application/json", Cookie: loginCookie },
+      body: JSON.stringify({ refresh_token, access_token }),
     });
     expect(r1.status).toBe(200);
 
@@ -104,8 +108,8 @@ describe("POST /auth/logout — revoke effect", () => {
 
     const r2 = await app.request("/auth/logout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token }),
+      headers: { "Content-Type": "application/json", Cookie: loginCookie },
+      body: JSON.stringify({ refresh_token, access_token }),
     });
     expect(r2.status).toBe(401);
 

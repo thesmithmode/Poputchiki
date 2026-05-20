@@ -33,6 +33,18 @@ const handler = async (raw: string) => {
 log("notifier_started");
 // Dedicated connection so disconnect doesn't kill main pool
 const listenSql = postgres(dsn, { max: 1, onnotice: () => {} });
+
+// H1: graceful shutdown. Docker stop посылает SIGTERM с 10s grace.
+// Закрываем пулы → in-flight queries дренируются, новые блокируются.
+const shutdown = async (signal: string) => {
+  log("notifier_shutdown_start", { signal });
+  await Promise.allSettled([sql.end({ timeout: 5 }), listenSql.end({ timeout: 5 })]);
+  log("notifier_shutdown_done");
+  process.exit(0);
+};
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));
+
 await listenWithBackoff(() => listenSql.listen("notify_user", handler).then(() => {}), {
   onConnected: () => log("notifier_listening"),
   onError: (err, attempt, delayMs) => {

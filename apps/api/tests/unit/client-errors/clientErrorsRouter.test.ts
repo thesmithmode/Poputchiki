@@ -75,6 +75,26 @@ describe("POST /api/client-errors", () => {
     expect(res.status).toBe(422);
   });
 
+  // Branch line 23: NODE_ENV === "production" → sampleRate 0.05.
+  // С Math.random() = 0 sampleRate=0.05 → 0 > 0.05 false → продолжаем (INSERT вызывается).
+  it("NODE_ENV=production → sampleRate 0.05, INSERT всё равно вызывается при Math.random=0", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const randomSpy = vi.spyOn(Math, "random").mockReturnValue(0);
+    try {
+      const { app, sql } = makeApp();
+      const res = await app.request("/api/client-errors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "Error: x" }),
+      });
+      expect(res.status).toBe(200);
+      expect(sql).toHaveBeenCalledTimes(1);
+    } finally {
+      randomSpy.mockRestore();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("sql INSERT throws → catch поглощает ошибку, всё равно 200", async () => {
     const sql = vi.fn().mockRejectedValue(new Error("db down")) as ReturnType<typeof makeSql>;
     const { app } = makeApp(sql);

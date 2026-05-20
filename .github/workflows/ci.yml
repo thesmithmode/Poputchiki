@@ -45,7 +45,10 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun run coverage:check
+      - name: Vitest coverage with heap diagnostics
+        # --logHeapUsage печатает RSS после каждого тест-файла → видно какой
+        # файл копит память (поиск корня OOM, а не симптомный heap bump).
+        run: bunx vitest run --coverage --logHeapUsage
       - run: node scripts/check-coverage.js
       - uses: actions/upload-artifact@v7
         if: always()

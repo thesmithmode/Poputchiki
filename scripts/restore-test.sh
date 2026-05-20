@@ -42,10 +42,25 @@ trap 'rm -f "$TMPFILE"; cleanup' EXIT
 gpg --decrypt --batch --passphrase "$BACKUP_KEY" --no-symkey-cache -q "$BACKUP_FILE" \
   | zstd -d -q -o "$TMPFILE"
 
-pg_restore -d "$RESTORE_URL" --no-owner --no-privileges -j 2 "$TMPFILE" 2>/dev/null || true
+# M7: pg_restore раньше использовал || true — ошибки скрывались, restore-test давал false positive.
+# Теперь: логируем stderr, проверяем exit code явно.
+RESTORE_LOG=$(mktemp /tmp/restore-log-XXXXXX.txt)
+pg_restore -d "$RESTORE_URL" --no-owner --no-privileges -j 2 "$TMPFILE" 2>"$RESTORE_LOG" || {
+  RC=$?
+  echo "RESTORE_TEST_FAIL: pg_restore exited $RC" >&2
+  cat "$RESTORE_LOG" >&2
+  rm -f "$RESTORE_LOG"
+  exit 1
+}
+rm -f "$RESTORE_LOG"
 
 # Smoke: verify key tables exist and have rows
-USERS=$(psql "$RESTORE_URL" -At -c "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "0")
-RIDES=$(psql "$RESTORE_URL" -At -c "SELECT COUNT(*) FROM rides;" 2>/dev/null || echo "0")
+USERS=$(psql "$RESTORE_URL" -At -c "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "ERROR")
+RIDES=$(psql "$RESTORE_URL" -At -c "SELECT COUNT(*) FROM rides;" 2>/dev/null || echo "ERROR")
+
+if [[ "$USERS" == "ERROR" || "$RIDES" == "ERROR" ]]; then
+  echo "RESTORE_TEST_FAIL: could not query restored tables" >&2
+  exit 1
+fi
 
 echo "RESTORE_TEST_OK users=${USERS} rides=${RIDES}"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Rollback на попередній тег або вказаний
-# Usage: rollback.sh [tag]  (якщо немає — читає /opt/poputchiki/last-good-tag)
+# Rollback: переключение на предыдущий тег или указанный
+# Usage: rollback.sh [tag]  (если не указан — читает /opt/poputchiki/last-good-tag)
 set -euo pipefail
 
 STATE_DIR="/opt/poputchiki"
@@ -38,6 +38,9 @@ while true; do
   sleep 3
 done
 
+# H8: после rollback обновляем оба файла — rollback-тег сам становится "last-good".
+# Иначе следующий deploy сохранит неудачный тег в last-good-tag.
 echo "$TARGET_TAG" > "$STATE_DIR/current-tag"
+echo "$TARGET_TAG" > "$STATE_DIR/last-good-tag"
 echo "=== rollback $TARGET_TAG SUCCESS ==="
 bash "$STATE_DIR/scripts/notify-admin.sh" "rollback to ${TARGET_TAG} success" || true

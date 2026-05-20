@@ -11,7 +11,9 @@ export function authRateLimit(sql: postgres.Sql, opts?: AuthRateLimitOptions): M
 
   return async (c, next) => {
     const ip = getClientIp(c);
-    const retryAfter = String(60 - new Date().getSeconds());
+    // L2: Math.max(1, ...) — на границе окна (seconds === 60 в редкой race) значение
+    // могло быть 0; клиент должен ждать хотя бы 1 секунду. Симметрично с rate-limit.ts.
+    const retryAfter = String(Math.max(1, 60 - new Date().getSeconds()));
     const ipKey = `auth:ip:${ip}`;
 
     const [ipRow] = await sql`

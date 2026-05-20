@@ -1,6 +1,30 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import type { AppUser } from "../middleware/identity-guard";
 import { GeoCache } from "./geoCache";
+
+// M6: runtime-валидация Nominatim ответов. Без неё внешний сервис мог вернуть
+// {error: "..."} или null или массив с произвольной структурой — клиент получал
+// нефильтрованный raw. Schema режет лишние поля + проверяет тип lat/lon.
+const NominatimSearchItem = z
+  .object({
+    place_id: z.union([z.number(), z.string()]).optional(),
+    display_name: z.string().optional(),
+    lat: z.string(),
+    lon: z.string(),
+    type: z.string().optional(),
+    address: z.record(z.string(), z.unknown()).optional(),
+  })
+  .passthrough();
+const NominatimSearchResponse = z.array(NominatimSearchItem);
+
+const NominatimReverseResponse = z
+  .object({
+    display_name: z.string().optional(),
+    lat: z.string().optional(),
+    lon: z.string().optional(),
+  })
+  .passthrough();
 
 // Public Nominatim by default — self-hosted профиль в compose отключён.
 // Policy public Nominatim: 1 req/sec per IP + обязательный User-Agent (ставим ниже).
@@ -82,6 +106,18 @@ interface GeocodeRouterOptions {
   _nominatimUrl?: string | undefined;
 }
 
+// H1 (review 2026-05-20 apps-api): чистка Map выше этого порога чтобы предотвратить
+// неограниченный рост памяти при 50k DAU. amortized O(1) на запрос.
+const RATE_LIMIT_MAP_EVICT_THRESHOLD = 1000;
+
+function evictExpiredRateLimits(map: Map<string, number>, now: number, rateMs: number): void {
+  if (map.size <= RATE_LIMIT_MAP_EVICT_THRESHOLD) return;
+  const ttl = Math.max(rateMs * 10, 60_000);
+  for (const [k, t] of map) {
+    if (now - t > ttl) map.delete(k);
+  }
+}
+
 export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
   const cache = options.cache ?? new GeoCache();
   const fetchFn = options._fetch ?? fetch;
@@ -99,6 +135,7 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
     const rateMs = rateLimitIntervalMs(nominatimUrl);
     const now = Date.now();
+    evictExpiredRateLimits(lastRequestAt, now, rateMs);
     const lastAt = lastRequestAt.get(user.id) ?? 0;
     if (now - lastAt < rateMs) {
       c.header("Retry-After", "1");
@@ -120,14 +157,15 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
         signal: AbortSignal.timeout(5000),
       });
 
+      if (!resp.ok) throw new Error(`nominatim_status_${resp.status}`);
       const raw = await resp.json();
-      const results = Array.isArray(raw)
-        ? raw.filter((r: { lat?: string; lon?: string }) => {
-            const lat = Number(r.lat);
-            const lon = Number(r.lon);
-            return !Number.isNaN(lat) && !Number.isNaN(lon) && inKazanArea(lat, lon);
-          })
-        : raw;
+      const parsed = NominatimSearchResponse.safeParse(raw);
+      if (!parsed.success) throw new Error("nominatim_bad_shape");
+      const results = parsed.data.filter((r) => {
+        const lat = Number(r.lat);
+        const lon = Number(r.lon);
+        return !Number.isNaN(lat) && !Number.isNaN(lon) && inKazanArea(lat, lon);
+      });
       cache.set(cacheKey, results);
       return c.json(results);
     } catch {
@@ -155,6 +193,7 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
     const rateMs = rateLimitIntervalMs(nominatimUrl);
     const now = Date.now();
+    evictExpiredRateLimits(lastRequestAt, now, rateMs);
     const lastAt = lastRequestAt.get(user.id) ?? 0;
     if (now - lastAt < rateMs) {
       c.header("Retry-After", "1");
@@ -178,11 +217,14 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
         headers: { "Accept-Language": "ru", "User-Agent": "Poputchiki/1.0" },
         signal: AbortSignal.timeout(5000),
       });
-      const raw = (await resp.json()) as { display_name?: string; lat?: string; lon?: string };
+      if (!resp.ok) throw new Error(`nominatim_status_${resp.status}`);
+      const raw = await resp.json();
+      const parsed = NominatimReverseResponse.safeParse(raw);
+      if (!parsed.success) throw new Error("nominatim_bad_shape");
       const result = {
-        display_name: raw.display_name ?? `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
-        lat: raw.lat ?? String(lat),
-        lon: raw.lon ?? String(lon),
+        display_name: parsed.data.display_name ?? `${lat.toFixed(5)}, ${lon.toFixed(5)}`,
+        lat: parsed.data.lat ?? String(lat),
+        lon: parsed.data.lon ?? String(lon),
       };
       cache.set(cacheKey, result);
       return c.json(result);

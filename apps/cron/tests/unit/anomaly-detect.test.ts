@@ -53,4 +53,12 @@ describe("detectAnomalies", () => {
     const mockFetch = vi.fn().mockRejectedValue(new Error("network"));
     await expect(detectAnomalies(makeSql(100), mockFetch)).resolves.not.toThrow();
   });
+
+  // Branch line 27: `row?.count ?? 0` — пустой результат → row undefined.
+  it("пустой результат SQL (row undefined) → newUsers=0, без алерта", async () => {
+    const sqlEmpty = vi.fn().mockResolvedValue([]) as unknown as Sql;
+    const mockFetch = vi.fn();
+    await detectAnomalies(sqlEmpty, mockFetch);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
 });

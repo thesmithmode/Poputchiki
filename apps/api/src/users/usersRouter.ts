@@ -5,6 +5,7 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { encryptPii } from "../db/crypto";
 import { withIdentity } from "../db/with-identity";
+import { UUID_RE } from "../lib/uuid";
 import { invalidateUserState } from "../middleware/banned-user";
 import type { AppUser } from "../middleware/identity-guard";
 
@@ -19,8 +20,6 @@ const PatchMeInput = z.object({
   apt_number: z.string().min(1).max(20).optional(),
   onboarded: z.boolean().optional(),
 });
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface MeRow {
   id: string;
@@ -143,7 +142,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
                s.driver_avg_stars, s.passenger_avg_stars,
                s.driver_reviews_count, s.passenger_reviews_count
         FROM users u
-        LEFT JOIN user_stats s ON s.user_id = u.id
+        LEFT JOIN user_stats_view s ON s.user_id = u.id
         WHERE u.id = ${user.id} AND u.deleted_at IS NULL
       `;
     });
@@ -165,19 +164,24 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     if (!parsed.success) return c.json({ error: "invalid input" }, 422);
 
     const data = parsed.data;
-    /* c8 ignore next -- PGCRYPTO_KEY guaranteed in production */
-    const pgcryptoKey = process.env.PGCRYPTO_KEY ?? "";
+    const pgcryptoKey = process.env.PGCRYPTO_KEY;
+    if (
+      (data.phone !== undefined || data.apt_number !== undefined) &&
+      (!pgcryptoKey || pgcryptoKey.length === 0)
+    ) {
+      return c.json({ error: "server_misconfigured" }, 500);
+    }
 
     const rows = await withIdentity(sql, user, async (tx) => {
       if (data.display_name !== undefined) {
         await tx`UPDATE users SET display_name = ${data.display_name} WHERE id = ${user.id}`;
       }
       if (data.phone !== undefined) {
-        const enc = await encryptPii(tx, data.phone, pgcryptoKey);
+        const enc = await encryptPii(tx, data.phone, pgcryptoKey as string);
         await tx`UPDATE users SET phone_enc = ${new Uint8Array(enc)} WHERE id = ${user.id}`;
       }
       if (data.apt_number !== undefined) {
-        const enc = await encryptPii(tx, data.apt_number, pgcryptoKey);
+        const enc = await encryptPii(tx, data.apt_number, pgcryptoKey as string);
         await tx`UPDATE users SET apt_number_enc = ${new Uint8Array(enc)} WHERE id = ${user.id}`;
       }
       if (data.onboarded !== undefined) {
@@ -192,7 +196,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
                s.driver_avg_stars, s.passenger_avg_stars,
                s.driver_reviews_count, s.passenger_reviews_count
         FROM users u
-        LEFT JOIN user_stats s ON s.user_id = u.id
+        LEFT JOIN user_stats_view s ON s.user_id = u.id
         WHERE u.id = ${user.id} AND u.deleted_at IS NULL
       `;
     });
@@ -248,7 +252,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
                s.driver_avg_stars, s.passenger_avg_stars,
                s.driver_reviews_count, s.passenger_reviews_count
         FROM users u
-        LEFT JOIN user_stats s ON s.user_id = u.id
+        LEFT JOIN user_stats_view s ON s.user_id = u.id
         WHERE u.id = ${id} AND u.deleted_at IS NULL AND u.is_banned = false
       `;
     });
@@ -262,7 +266,9 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     /* c8 ignore next -- identityGuard returns 401 before handler runs */
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
-    // Audit first — if subsequent steps fail, the erasure intent is recorded
+    // Audit first (отдельный коммит) — фиксируем намерение даже если основная
+    // транзакция упадёт. User видит ошибку и retry-ит, при этом операторы
+    // имеют запись "пользователь запросил удаление".
     await sql`
       INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
       SELECT ${user.id}, 'user_self_delete', 'users', ${user.id}::uuid, '{}'::jsonb
@@ -271,8 +277,14 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       )
     `;
 
-    // Collect affected passengers before cancelling rides (for notifications)
-    const affectedPassengers = await withIdentity(sql, user, async (tx) => {
+    // Атомарно: cancel rides + favorites + anonymize PII + revoke tokens.
+    // ATOM-02: раньше были 3 отдельные транзакции — DB blip между ними оставлял
+    // rides=cancelled но PII не анонимизированной (review 2026-05-20 apps-api C4).
+    // Единая sql.begin → либо всё, либо ничего. poputchiki_service BYPASSRLS
+    // нужно для UPDATE revoked_tokens (RLS deny-all для poputchiki_app).
+    const affectedPassengers = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_service`;
+
       const rows = await tx<{ passenger_id: string; ride_id: string }[]>`
         SELECT rr.passenger_id, rr.ride_id
         FROM ride_requests rr
@@ -294,22 +306,20 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
       `;
       // Remove favorites
       await tx`DELETE FROM favorites WHERE user_id = ${user.id}`;
+      // Anonymize PII (SECURITY DEFINER function bypasses RLS independently)
+      await tx`SELECT app.anonymize_user(${user.id}::uuid)`;
+      // Revoke all refresh tokens
+      await tx`
+        UPDATE revoked_tokens SET revoked_at = now()
+        WHERE user_id = ${user.id} AND revoked_at IS NULL
+      `;
       return rows;
     });
-
-    // Anonymize (SECURITY DEFINER function bypasses RLS)
-    await sql`SELECT app.anonymize_user(${user.id}::uuid)`;
 
     // Сбросить in-memory кэш состояния — anonymize выставил deleted_at, кэш TTL 30s
     // продолжал бы пропускать юзера. После invalidate следующий запрос с этим access
     // токеном попадёт в SELECT и вернёт 401.
     invalidateUserState(user.id);
-
-    // Revoke all refresh tokens (revoked_tokens deny-all for app role — bare sql ok)
-    await sql`
-      UPDATE revoked_tokens SET revoked_at = now()
-      WHERE user_id = ${user.id} AND revoked_at IS NULL
-    `;
 
     // Notify affected passengers — feed row + TG push
     for (const { passenger_id, ride_id } of affectedPassengers) {

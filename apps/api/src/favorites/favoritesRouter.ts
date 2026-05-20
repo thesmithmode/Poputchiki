@@ -3,9 +3,8 @@ import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import { isUniqueViolation } from "../lib/db-errors";
+import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PostFavoriteInput = z.object({
   target_id: z.string().regex(UUID_RE, "invalid uuid"),

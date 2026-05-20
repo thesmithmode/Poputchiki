@@ -2,10 +2,10 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
+import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 const Lat = z.number().gte(-90).lte(90);
@@ -66,7 +66,11 @@ type Row = {
   updated_at: Date;
 };
 
-const COLS = `id, driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
+// M11: статический список колонок для SELECT/RETURNING. Передаётся через
+// `tx.unsafe(...)` потому что postgres.js sql-tag параметризует только values,
+// не identifier'ы. Никогда не интерполировать пользовательский ввод в эту
+// константу — это бы открыло SQL injection через unsafe.
+const COLS_STATIC = `id, driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
   to_char(departure_time, 'HH24:MI') AS departure_time, weekdays,
   price_rub, seats_total, comment, active_from, active_to, is_active, created_at, updated_at`;
 
@@ -98,7 +102,7 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
           ${d.price_rub ?? null}, ${d.seats_total}, ${d.comment ?? null},
           COALESCE(${d.active_from ?? null}::date, current_date), ${d.active_to ?? null}::date
         )
-        RETURNING ${tx.unsafe(COLS)}
+        RETURNING ${tx.unsafe(COLS_STATIC)}
       `;
     });
     return c.json(rows[0], 201);
@@ -108,7 +112,7 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
     const user = c.get("user" as never) as AppUser;
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<Row[]>`
-        SELECT ${tx.unsafe(COLS)}
+        SELECT ${tx.unsafe(COLS_STATIC)}
         FROM ride_templates
         WHERE driver_id = ${user.id} AND is_active = true
         ORDER BY created_at DESC
@@ -138,35 +142,33 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
       `;
       if (exists.length === 0) return [] as Row[];
 
-      if (p.from_label !== undefined)
-        await tx`UPDATE ride_templates SET from_label = ${p.from_label} WHERE id = ${id}`;
-      if (p.from_lat !== undefined)
-        await tx`UPDATE ride_templates SET from_lat = ${p.from_lat} WHERE id = ${id}`;
-      if (p.from_lng !== undefined)
-        await tx`UPDATE ride_templates SET from_lng = ${p.from_lng} WHERE id = ${id}`;
-      if (p.to_label !== undefined)
-        await tx`UPDATE ride_templates SET to_label = ${p.to_label} WHERE id = ${id}`;
-      if (p.to_lat !== undefined)
-        await tx`UPDATE ride_templates SET to_lat = ${p.to_lat} WHERE id = ${id}`;
-      if (p.to_lng !== undefined)
-        await tx`UPDATE ride_templates SET to_lng = ${p.to_lng} WHERE id = ${id}`;
+      // H8: собираем простые поля в один UPDATE (вместо до 13 round-trip'ов).
+      // Поля с явными cast'ами (departure_time::time, active_to::date) идут отдельно.
+      // biome-ignore lint/suspicious/noExplicitAny: postgres.js tx(obj, ...keys) принимает Record<string, any>
+      const updatable: Record<string, any> = {};
+      if (p.from_label !== undefined) updatable.from_label = p.from_label;
+      if (p.from_lat !== undefined) updatable.from_lat = p.from_lat;
+      if (p.from_lng !== undefined) updatable.from_lng = p.from_lng;
+      if (p.to_label !== undefined) updatable.to_label = p.to_label;
+      if (p.to_lat !== undefined) updatable.to_lat = p.to_lat;
+      if (p.to_lng !== undefined) updatable.to_lng = p.to_lng;
+      if (p.weekdays !== undefined) updatable.weekdays = p.weekdays as unknown as number[];
+      if (p.price_rub !== undefined) updatable.price_rub = p.price_rub;
+      if (p.seats_total !== undefined) updatable.seats_total = p.seats_total;
+      if (p.comment !== undefined) updatable.comment = p.comment;
+      if (p.is_active !== undefined) updatable.is_active = p.is_active;
+
+      const keys = Object.keys(updatable);
+      if (keys.length > 0) {
+        await tx`UPDATE ride_templates SET ${tx(updatable, ...keys)} WHERE id = ${id}`;
+      }
       if (p.departure_time !== undefined)
         await tx`UPDATE ride_templates SET departure_time = ${p.departure_time}::time WHERE id = ${id}`;
-      if (p.weekdays !== undefined)
-        await tx`UPDATE ride_templates SET weekdays = ${p.weekdays as unknown as number[]} WHERE id = ${id}`;
-      if (p.price_rub !== undefined)
-        await tx`UPDATE ride_templates SET price_rub = ${p.price_rub} WHERE id = ${id}`;
-      if (p.seats_total !== undefined)
-        await tx`UPDATE ride_templates SET seats_total = ${p.seats_total} WHERE id = ${id}`;
-      if (p.comment !== undefined)
-        await tx`UPDATE ride_templates SET comment = ${p.comment} WHERE id = ${id}`;
       if (p.active_to !== undefined)
         await tx`UPDATE ride_templates SET active_to = ${p.active_to as string | null}::date WHERE id = ${id}`;
-      if (p.is_active !== undefined)
-        await tx`UPDATE ride_templates SET is_active = ${p.is_active} WHERE id = ${id}`;
 
       return tx<Row[]>`
-        SELECT ${tx.unsafe(COLS)} FROM ride_templates WHERE id = ${id}
+        SELECT ${tx.unsafe(COLS_STATIC)} FROM ride_templates WHERE id = ${id}
       `;
     });
     if (rows.length === 0) return c.json({ error: "not_found" }, 404);

@@ -293,6 +293,32 @@ describe("CreateRideScreen", () => {
     });
   });
 
+  it("регулярная поездка: ошибка /rides → удаляет orphan-шаблон (rollback)", async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ id: "tmpl-orphan" }) // POST /ride-templates — успех
+      .mockRejectedValueOnce(new Error("rides fail")) // POST /rides — ошибка
+      .mockResolvedValueOnce(undefined); // DELETE /ride-templates/tmpl-orphan
+
+    renderScreen();
+    goToStep3();
+    fireEvent.click(screen.getByTestId("recurring-checkbox"));
+    fireEvent.click(screen.getByTestId("weekday-2")); // Ср
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("form-error")).toHaveTextContent("Не удалось создать поездку");
+    });
+    // DELETE /ride-templates/tmpl-orphan должен быть вызван
+    const deleteCalls = mockedApiFetch.mock.calls.filter(
+      ([path]) => path === "/ride-templates/tmpl-orphan",
+    );
+    expect(deleteCalls).toHaveLength(1);
+    expect((deleteCalls[0]?.[1] as RequestInit | undefined)?.method).toBe("DELETE");
+  });
+
   it("регулярная поездка: ошибка template → ошибка показана, /rides не вызывается", async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error("template fail"));
 

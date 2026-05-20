@@ -1,12 +1,7 @@
-FROM oven/bun:1 AS base
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
-  && apt-get install -y --no-install-recommends \
-    postgresql-client \
-    zstd \
-    gnupg \
-    curl \
-    tini \
-  && rm -rf /var/lib/apt/lists/*
+FROM oven/bun:1-alpine AS base
+# M10: заменён базовый образ oven/bun:1 (Debian ~800MB) на alpine (~150MB).
+# apk: postgresql16-client совместим с pg_dump против Postgres 16.
+RUN apk add --no-cache postgresql16-client zstd gnupg curl tini
 WORKDIR /app
 
 COPY --chown=bun:bun package.json bun.lockb* ./

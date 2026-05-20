@@ -43,4 +43,10 @@ describe("cleanupAuditLog", () => {
     const sql = makeSql(true, [new Error("DB error")]);
     await expect(cleanupAuditLog(sql)).rejects.toThrow("DB error");
   });
+
+  // Branch line 17: `countRows[0]?.count ?? 0` — empty result → undefined → 0.
+  it("deleted=0 при пустом результате (countRows[]) — optional chain + ?? 0", async () => {
+    const sql = makeSql(true, [[]]);
+    expect(await cleanupAuditLog(sql)).toEqual({ deleted: 0 });
+  });
 });

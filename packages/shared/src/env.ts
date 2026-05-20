@@ -45,6 +45,16 @@ const ApiEnvSchema = z
       message: "DOMAIN is required when NODE_ENV=production (CORS + CSP would silently fail)",
       path: ["DOMAIN"],
     },
+  )
+  .refine(
+    (v) =>
+      v.NODE_ENV !== "production" ||
+      (typeof v.PGCRYPTO_KEY === "string" && v.PGCRYPTO_KEY.length >= 32),
+    {
+      message:
+        "PGCRYPTO_KEY is required when NODE_ENV=production (min 32 chars; PII encryption would silently fail with empty key)",
+      path: ["PGCRYPTO_KEY"],
+    },
   );
 
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;

@@ -56,6 +56,38 @@ describe("parseApiEnv", () => {
     const env = parseApiEnv(VALID_ENV);
     expect(env.PORT).toBe(3000);
   });
+
+  it("PGCRYPTO_KEY отсутствует в production → бросает ZodError", () => {
+    expect(() =>
+      parseApiEnv({ ...VALID_ENV, NODE_ENV: "production", DOMAIN: "example.com" }),
+    ).toThrow(/PGCRYPTO_KEY/);
+  });
+
+  it("PGCRYPTO_KEY короче 32 символов в production → бросает ZodError", () => {
+    expect(() =>
+      parseApiEnv({
+        ...VALID_ENV,
+        NODE_ENV: "production",
+        DOMAIN: "example.com",
+        PGCRYPTO_KEY: "short-key",
+      }),
+    ).toThrow(/PGCRYPTO_KEY/);
+  });
+
+  it("PGCRYPTO_KEY валидный в production → проходит", () => {
+    const env = parseApiEnv({
+      ...VALID_ENV,
+      NODE_ENV: "production",
+      DOMAIN: "example.com",
+      PGCRYPTO_KEY: "valid-32-char-pgcrypto-key-here!!",
+    });
+    expect(env.PGCRYPTO_KEY).toBe("valid-32-char-pgcrypto-key-here!!");
+  });
+
+  it("PGCRYPTO_KEY опциональный в dev/test", () => {
+    const env = parseApiEnv({ ...VALID_ENV, NODE_ENV: "development" });
+    expect(env.PGCRYPTO_KEY).toBeUndefined();
+  });
 });
 
 const VALID_WEBHOOK_ENV = {

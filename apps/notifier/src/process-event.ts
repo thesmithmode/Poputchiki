@@ -14,8 +14,12 @@ export function sanitizeErr(err: unknown, token: string): string {
   return token ? s.split(token).join("***") : s;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+// REL-02: счётчик in-flight 429-retries для observability + защиты от leak
+let rateLimitRetriesInFlight = 0;
+const MAX_RETRIES_IN_FLIGHT = 100;
+
+export function getRateLimitRetriesInFlight(): number {
+  return rateLimitRetriesInFlight;
 }
 
 export type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
@@ -114,30 +118,53 @@ export async function processEvent(
     // biome-ignore lint/suspicious/noConsoleLog: structured worker log
     console.log(JSON.stringify({ msg: "notifier_bot_blocked", user_id }));
     await db.markNotifyDisabled(user_id);
+    // REL-02 (C3): без updateNotificationStatus запись остаётся 'sent' — ложная статистика.
+    await db.updateNotificationStatus(key, "failed");
     return;
   }
 
   if (resp.status === 429) {
     // biome-ignore lint/suspicious/noConsoleLog: structured worker log
     console.log(JSON.stringify({ msg: "notifier_rate_limited", user_id }));
-    await sleep(60_000);
-    // Retry once
-    try {
-      const retry = await fetchFn(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-      if (!retry.ok) {
-        console.error(
-          JSON.stringify({ msg: "notifier_retry_failed", user_id, status: retry.status }),
-        );
-      }
-    } catch (err) {
+    // REL-02: НЕ блокируем основную очередь sleep(60s). Раньше per-user rate-limit
+    // останавливал обработку всех уведомлений — все события за 60s терялись из NOTIFY-payload.
+    // Решение: статус 'failed' + fire-and-forget retry через setTimeout без await.
+    await db.updateNotificationStatus(key, "failed");
+    if (rateLimitRetriesInFlight >= MAX_RETRIES_IN_FLIGHT) {
       console.error(
-        JSON.stringify({ msg: "notifier_retry_error", user_id, error: sanitizeErr(err, botToken) }),
+        JSON.stringify({
+          msg: "notifier_retry_skipped_overflow",
+          user_id,
+          in_flight: rateLimitRetriesInFlight,
+        }),
       );
+      return;
     }
+    rateLimitRetriesInFlight++;
+    setTimeout(() => {
+      // c8 ignore start -- async retry not deterministically covered by unit tests
+      fetchFn(url, { method: "POST", headers: { "Content-Type": "application/json" }, body })
+        .then((retry) => {
+          if (!retry.ok) {
+            console.error(
+              JSON.stringify({ msg: "notifier_retry_failed", user_id, status: retry.status }),
+            );
+          }
+        })
+        .catch((err: unknown) => {
+          console.error(
+            JSON.stringify({
+              msg: "notifier_retry_error",
+              user_id,
+              error: sanitizeErr(err, botToken),
+            }),
+          );
+        })
+        .finally(() => {
+          rateLimitRetriesInFlight = Math.max(0, rateLimitRetriesInFlight - 1);
+        });
+      // c8 ignore stop
+    }, 60_000);
     return;
   }
 

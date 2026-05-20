@@ -327,6 +327,39 @@ describe("GET /api/geocode/search", () => {
     expect(r2.status).toBe(200);
   });
 
+  it("H1: lastRequestAt — TTL eviction expired записей при превышении порога", async () => {
+    // 1001 устаревших записей (>5min) + порог 1000 → eviction срабатывает.
+    // После запроса все expired удалены, остаётся только current user.
+    const map = new Map<string, number>();
+    const stale = Date.now() - 10 * 60_000; // 10 минут назад
+    for (let i = 0; i < 1001; i++) map.set(`stale-${i}`, stale);
+    expect(map.size).toBe(1001);
+
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(NOMINATIM_RESULT)));
+    const app = makeApp(mockFetch as unknown as typeof fetch, undefined, map);
+    const token = await makeToken();
+    const res = await app.request("/api/geocode/search?q=test", { headers: authH(token) });
+    expect(res.status).toBe(200);
+    // 1001 stale удалены, добавлен USER.id → size = 1
+    expect(map.size).toBe(1);
+    expect(map.has(USER.id)).toBe(true);
+  });
+
+  it("H1: lastRequestAt — без eviction если ниже порога (амортизация)", async () => {
+    // 5 свежих записей < 1000 порог → eviction не срабатывает (хоть и stale).
+    const map = new Map<string, number>();
+    const stale = Date.now() - 10 * 60_000;
+    for (let i = 0; i < 5; i++) map.set(`stale-${i}`, stale);
+
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(NOMINATIM_RESULT)));
+    const app = makeApp(mockFetch as unknown as typeof fetch, undefined, map);
+    const token = await makeToken();
+    const res = await app.request("/api/geocode/search?q=test", { headers: authH(token) });
+    expect(res.status).toBe(200);
+    // 5 stale остались + USER.id = 6 (eviction не сработал)
+    expect(map.size).toBe(6);
+  });
+
   it("SENTINEL: дефолт NOMINATIM_URL — публичный nominatim.openstreetmap.org", async () => {
     // Self-hosted Nominatim профиль в compose выключен. Если кто-то вернёт дефолт
     // на 'http://nominatim:8080' — этот тест упадёт и поймает регрессию prod-инфры.

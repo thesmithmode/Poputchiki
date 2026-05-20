@@ -66,3 +66,21 @@ BEGIN
 END
 $$;
 -- DEPRECATED: роль 'app' не используется кодом приложения (используется poputchiki_app)
+
+-- -----------------------------------------------------------------------
+-- poputchiki_migrator: роль для миграций (DDL без SUPERUSER)
+-- ОГРАНИЧЕНИЕ: CREATE EXTENSION (pgcrypto) требует SUPERUSER — пока
+-- DATABASE_MIGRATOR_URL указывает на postgres superuser (см. docker-compose.prod.yml).
+-- При переходе к managed extensions можно дать migrator NOSUPERUSER + CREATEDB.
+-- -----------------------------------------------------------------------
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'poputchiki_migrator') THEN
+    CREATE ROLE poputchiki_migrator WITH LOGIN NOSUPERUSER CREATEDB NOCREATEROLE NOREPLICATION;
+  END IF;
+END
+$$;
+DO $$ BEGIN EXECUTE format('GRANT CONNECT ON DATABASE %I TO poputchiki_migrator', current_database()); END $$;
+GRANT CREATE ON SCHEMA public TO poputchiki_migrator;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO poputchiki_migrator;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO poputchiki_migrator;

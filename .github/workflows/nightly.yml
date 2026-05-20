@@ -31,7 +31,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Trivy scan ${{ matrix.service }}
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@18f2135b0d79a89f782a5a5ab4b6c5c75f3d4c85  # v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.REPO }}-${{ matrix.service }}:latest
           format: sarif

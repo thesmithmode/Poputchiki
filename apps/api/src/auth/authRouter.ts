@@ -1,9 +1,14 @@
 import { Hono } from "hono";
-import { setCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import { sign, verify } from "hono/jwt";
 import type postgres from "postgres";
 import { withSystem } from "../db/with-identity";
-import { AUTH_COOKIE_DEFAULTS, CSRF_COOKIE_DEFAULTS, signSessionBinding } from "../lib/cookie";
+import {
+  AUTH_COOKIE_DEFAULTS,
+  CSRF_COOKIE_DEFAULTS,
+  signSessionBinding,
+  verifySessionBinding,
+} from "../lib/cookie";
 import { logger } from "../lib/logger";
 import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 
@@ -176,11 +181,18 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     /* c8 ignore next -- uid always present in signed tokens */
     if (!userId) return c.json({ error: "invalid token" }, 401);
 
+    // H7: сверяем tg_id из payload.sub с БД — токены со сменённым tg_id не валидны.
+    // Без AND tg_id=... злоумышленник с украденным refresh-токеном получает новые
+    // токены даже после смены tg_id (admin migration / handover scenario).
+    const subTgId = Number(payload.sub);
+    if (!Number.isFinite(subTgId)) return c.json({ error: "invalid token" }, 401);
+
     // Verify user still exists, is not soft-deleted AND not banned.
     // banned/deleted users must not be able to refresh tokens indefinitely.
     const [userRow] = await sql<{ id: string; tg_id: string | number; role: string }[]>`
       SELECT id, tg_id, role FROM users
-      WHERE id = ${userId} AND deleted_at IS NULL AND is_banned = false
+      WHERE id = ${userId} AND tg_id = ${subTgId}
+        AND deleted_at IS NULL AND is_banned = false
       LIMIT 1
     `;
     if (!userRow) {
@@ -268,7 +280,9 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       if (already) return c.json({ error: "token already revoked" }, 401);
     }
 
-    // Optionally revoke the access-token jti so it dies immediately, not at exp.
+    // H6: logout требует sess_bind cookie матч access_token JTI — закрывает DoS
+    // через перехваченный refresh_token (атакующий без cookie не может force-logout).
+    // Access_token обязателен: только из него знаем JTI для проверки sess_bind.
     let accessJti: string | null = null;
     const accessToken = body.access_token;
     if (typeof accessToken === "string" && accessToken.length > 0) {
@@ -287,16 +301,37 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       }
     }
 
+    // H6 session-binding guard: refresh-only logout без cookie запрещён.
+    // Если accessJti есть — сверяем с sess_bind. Без cookie / mismatch → 401.
+    if (!accessJti) {
+      return c.json({ error: "missing access_token" }, 400);
+    }
+    const sessBindCookie = getCookie(c, "sess_bind");
+    if (!sessBindCookie || !verifySessionBinding(jwtSecret, accessJti, sessBindCookie)) {
+      return c.json({ error: "session mismatch" }, 401);
+    }
+
     const jtiList = [refreshJti, accessJti].filter((j): j is string => Boolean(j));
-    for (const jti of jtiList) {
+    if (jtiList.length > 0) {
       try {
-        await sql`
-          INSERT INTO revoked_tokens (jti, user_id)
-          VALUES (${jti}, ${userId})
-          ON CONFLICT (jti) DO NOTHING
-        `;
-      } catch {
-        // best-effort revocation — logout proceeds even if DB insert fails
+        await sql.begin(async (tx) => {
+          for (const jti of jtiList) {
+            await tx`
+              INSERT INTO revoked_tokens (jti, user_id)
+              VALUES (${jti}, ${userId})
+              ON CONFLICT (jti) DO NOTHING
+            `;
+          }
+        });
+      } catch (err) {
+        // Транзакция фейлится атомарно — ни refresh, ни access не отозваны.
+        // Возвращаем 500 чтобы клиент повторил logout, иначе была бы дыра:
+        // часть JTI отозвана, часть нет, токены продолжают работать.
+        logger.error(
+          { event: "auth.logout.revoke_failed", uid: userId, err: String(err) },
+          "logout revoke transaction failed",
+        );
+        return c.json({ error: "revocation failed, retry" }, 500);
       }
     }
 

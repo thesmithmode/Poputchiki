@@ -12,7 +12,8 @@ const CLIENT_ERRORS_IP_LIMIT = 5;
 export function clientErrorsRateLimit(sql: postgres.Sql): MiddlewareHandler {
   return async (c, next) => {
     const ip = getClientIp(c);
-    const retryAfter = String(60 - new Date().getSeconds());
+    // L2: симметрия с rate-limit.ts — на границе окна значение могло быть 0.
+    const retryAfter = String(Math.max(1, 60 - new Date().getSeconds()));
     const ipKey = `clienterr:ip:${ip}`;
 
     const [ipRow] = await sql`

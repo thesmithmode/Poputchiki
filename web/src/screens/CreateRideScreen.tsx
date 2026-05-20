@@ -24,13 +24,25 @@ interface FormState {
 
 const WEEKDAY_LABELS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+function formatLocalDate(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function nowTimePlus(minutes: number) {
+function todayStr() {
+  return formatLocalDate(new Date());
+}
+
+// Возвращает date+time как local-time компоненты от now+minutes.
+// Раньше todayStr использовал toISOString (UTC), а nowTimePlus — getHours (local),
+// что в TZ=UTC при late-night рендере давало date=сегодня + time=завтрашнее → past departure.
+function futureLocalDateTime(minutes: number): { date: string; time: string } {
   const d = new Date(Date.now() + minutes * 60000);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const min = String(d.getMinutes()).padStart(2, "0");
+  return { date: formatLocalDate(d), time: `${hh}:${min}` };
 }
 
 type Step = 1 | 2 | 3;
@@ -40,19 +52,22 @@ export function CreateRideScreen() {
   useTelegramBack(() => navigate(-1));
   const { notification } = useTelegramHaptic();
   const [step, setStep] = useState<Step>(1);
-  const [form, setForm] = useState<FormState>({
-    from_label: "",
-    to_label: "",
-    date: todayStr(),
-    time: nowTimePlus(60),
-    price_free: false,
-    price_rub: "",
-    seats_total: 3,
-    comment: "",
-    is_recurring: false,
-    weekdays: [],
-    active_from: todayStr(),
-    active_to: "",
+  const [form, setForm] = useState<FormState>(() => {
+    const def = futureLocalDateTime(60);
+    return {
+      from_label: "",
+      to_label: "",
+      date: def.date,
+      time: def.time,
+      price_free: false,
+      price_rub: "",
+      seats_total: 3,
+      comment: "",
+      is_recurring: false,
+      weekdays: [],
+      active_from: todayStr(),
+      active_to: "",
+    };
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,22 +195,34 @@ export function CreateRideScreen() {
         template_id = tmpl.id;
       }
 
-      await apiFetch("/rides", {
-        method: "POST",
-        body: JSON.stringify({
-          from_label: form.from_label.trim(),
-          from_lat: resolvedFrom.lat,
-          from_lng: resolvedFrom.lng,
-          to_label: form.to_label.trim(),
-          to_lat: resolvedTo.lat,
-          to_lng: resolvedTo.lng,
-          departure_at,
-          price_rub,
-          seats_total: form.seats_total,
-          comment: form.comment.trim() || null,
-          template_id,
-        }),
-      });
+      try {
+        await apiFetch("/rides", {
+          method: "POST",
+          body: JSON.stringify({
+            from_label: form.from_label.trim(),
+            from_lat: resolvedFrom.lat,
+            from_lng: resolvedFrom.lng,
+            to_label: form.to_label.trim(),
+            to_lat: resolvedTo.lat,
+            to_lng: resolvedTo.lng,
+            departure_at,
+            price_rub,
+            seats_total: form.seats_total,
+            comment: form.comment.trim() || null,
+            template_id,
+          }),
+        });
+      } catch (ridesErr) {
+        // Откат orphan-шаблона: если POST /rides упал, удаляем ранее созданный шаблон
+        if (template_id !== null) {
+          try {
+            await apiFetch(`/ride-templates/${template_id}`, { method: "DELETE" });
+          } catch {
+            // Rollback best-effort — игнорируем ошибку удаления
+          }
+        }
+        throw ridesErr;
+      }
       notification("success");
       navigate("/");
     } catch {

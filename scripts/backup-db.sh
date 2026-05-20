@@ -18,7 +18,9 @@ pg_dump "$DATABASE_URL" --format=custom --no-password \
 
 echo "BACKUP_OK $OUT"
 
-# Retention: хранить только 3 последних файла
+# CICD-03: retention 14 daily backups (было 3 — недостаточно для RPO/RTO).
+# Pre-deploy backup может встретиться с cron backup в одном дне — буфер нужен.
+BACKUP_KEEP="${BACKUP_KEEP:-14}"
 ls -t "$BACKUP_DIR"/poputchiki-*.dump.zst.gpg 2>/dev/null \
-  | tail -n +4 \
+  | tail -n +$((BACKUP_KEEP + 1)) \
   | xargs --no-run-if-empty rm -f

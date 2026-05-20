@@ -73,4 +73,26 @@ describe("CORS middleware", () => {
     });
     expect(res.headers.get("access-control-allow-origin")).toBeNull();
   });
+
+  it("production: missing DOMAIN returns 500 (fail-fast)", async () => {
+    const savedDomain = process.env.DOMAIN;
+    const savedNodeEnv = process.env.NODE_ENV;
+    // biome-ignore lint/performance/noDelete: env vars нужно фактически удалить чтобы fail-fast guard сработал; присваивание undefined оставит ключ в process.env
+    delete process.env.DOMAIN;
+    process.env.NODE_ENV = "production";
+    try {
+      const res = await makeApp().request("/test", {
+        method: "GET",
+        headers: { origin: "https://app.somehost.com" },
+      });
+      expect(res.status).toBe(500);
+    } finally {
+      // biome-ignore lint/performance/noDelete: восстановление test-env state требует фактического удаления ключа
+      if (savedDomain === undefined) delete process.env.DOMAIN;
+      else process.env.DOMAIN = savedDomain;
+      // biome-ignore lint/performance/noDelete: восстановление test-env state требует фактического удаления ключа
+      if (savedNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = savedNodeEnv;
+    }
+  });
 });

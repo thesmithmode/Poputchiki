@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-20T16:05:11.434Z",
+  "timestamp": "2026-05-20T23:26:09.809Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,7 +18,7 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-19.md"
+      "path": ".memory/daily/2026-05-21.md"
     },
     {
       "status": "M",
@@ -31,12 +31,8 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "??",
-      "path": ".memory/daily/2026-05-20.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n674afac CHORE: biome — отсортировать импорты в NotificationPreferences.optimistic.test\n6f16679 FEAT: optimistic UI для RideDetail handleRespond + handleRequestAction\nd29a2d2 FEAT: optimistic UI для NotificationPreferences (toggle/muteAll/unmuteAll)\n76af34e FEAT: optimistic UI для useMarkNotificationRead и useMarkAllNotificationsRead\n07636df FEAT: optimistic UI для useFavorites (toggle + setNotify)"
+  "context_notes": "Recent commits:\nc142d93 TEST: добивка branch coverage — listen line 40 + cleanup-audit empty + clientErrors prod env + anomaly empty row\nc1247a1 TEST: добивка branch coverage до 95% — sanitize/listen/format/lru-dedup/callback-query\n89afa6a FIX: realtimeRouter — extract createSSEErrorHandler для покрытия branches\n6a3c872 CHORE: обновить HANDOFF — web TZ-bug fix\nef2fdca FIX: web CreateRideScreen — согласованный local-time default date+time"
 }

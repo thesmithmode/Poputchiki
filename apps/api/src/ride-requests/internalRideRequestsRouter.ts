@@ -1,9 +1,8 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
+import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
 import { type Action, isDomainError, respondToRideRequest } from "./respond";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Internal endpoint используется только webhook-сервисом для применения

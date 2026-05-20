@@ -153,6 +153,32 @@ describe("handleCallbackQuery", () => {
     expect(JSON.parse(answerInit.body as string).text).toContain("недоступен");
   });
 
+  // Branch line 32: `query.data ?? ""` — data undefined → пустая строка → не матчит regex.
+  it("query без data → 'Неизвестная команда'", async () => {
+    const q = makeQuery("foo");
+    const { data: _omit, ...rest } = q;
+    await handleCallbackQuery(deps(fetchMock), rest as TelegramCallbackQuery);
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).text).toContain("Неизвестная");
+  });
+
+  // Branch line 61: `query.message.text ?? ""` — message без text → editMessageText
+  // получает только statusLine (без префикса).
+  it("query.message без text → editMessageText со статусом без префикса", async () => {
+    fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    const q = makeQuery(`req:accept:${REQUEST_ID}`);
+    if (q.message) {
+      const { text: _omit, ...rest } = q.message;
+      q.message = rest as typeof q.message;
+    }
+    await handleCallbackQuery(deps(fetchMock), q);
+    const editCall = fetchMock.mock.calls.find((c) => String(c[0]).includes("editMessageText"));
+    expect(editCall).toBeDefined();
+    const editBody = JSON.parse((editCall?.[1] as RequestInit).body as string);
+    expect(editBody.text).toBe("\n\n✅ Принято");
+  });
+
   it("query без message → success path не вызывает editMessage", async () => {
     fetchMock = vi
       .fn()

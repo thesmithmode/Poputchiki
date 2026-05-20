@@ -310,9 +310,11 @@ describe("POST /auth/logout — logout endpoint", () => {
       body: JSON.stringify({ initData }),
     });
     const loginBody = await readJson(loginRes);
+    // H6: logout требует sess_bind cookie из login response
+    const loginCookie = loginRes.headers.get("set-cookie") ?? "";
     const logoutRes = await app.request("/auth/logout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: loginCookie },
       body: JSON.stringify({
         refresh_token: loginBody.refresh_token,
         access_token: loginBody.access_token,
@@ -373,7 +375,8 @@ describe("POST /auth/logout — logout endpoint", () => {
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 201}`.catch(() => null);
   });
 
-  it("logout without access_token (only refresh)", async () => {
+  // H6: logout без access_token + sess_bind cookie запрещён (anti-DoS)
+  it("logout without access_token → 400 (H6 session-binding guard)", async () => {
     const now = Math.floor(Date.now() / 1000);
     const initData = makeInitData(TG_ID + 202, now, BOT_TOKEN);
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 202}`.catch(() => null);
@@ -388,7 +391,29 @@ describe("POST /auth/logout — logout endpoint", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: loginBody.refresh_token }),
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
     await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 202}`.catch(() => null);
+  });
+
+  it("logout with access_token but без sess_bind cookie → 401 (H6)", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initData = makeInitData(TG_ID + 203, now, BOT_TOKEN);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 203}`.catch(() => null);
+    const loginRes = await app.request("/auth/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData }),
+    });
+    const loginBody = await readJson(loginRes);
+    const res = await app.request("/auth/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        refresh_token: loginBody.refresh_token,
+        access_token: loginBody.access_token,
+      }),
+    });
+    expect(res.status).toBe(401);
+    await sql`DELETE FROM users WHERE tg_id = ${TG_ID + 203}`.catch(() => null);
   });
 });

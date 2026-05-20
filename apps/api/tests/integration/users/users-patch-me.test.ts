@@ -168,6 +168,50 @@ describe("PATCH /api/users/me", () => {
     expect(res.status).toBe(401);
   });
 
+  it("500 при PATCH phone без PGCRYPTO_KEY — fail-fast вместо тихого шифрования пустым ключом", async () => {
+    const app = makeApp();
+    const token = await makeToken(ME);
+    const saved = process.env.PGCRYPTO_KEY;
+    process.env.PGCRYPTO_KEY = "";
+    try {
+      const res = await app.request("/api/users/me", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ phone: "+79991112233" }),
+      });
+      expect(res.status).toBe(500);
+      const body = await readJson(res);
+      expect(body.error).toBe("server_misconfigured");
+    } finally {
+      process.env.PGCRYPTO_KEY = saved;
+    }
+  });
+
+  it("200 при PATCH display_name без PGCRYPTO_KEY — не-PII поле не блокируется", async () => {
+    const app = makeApp();
+    const token = await makeToken(ME);
+    const saved = process.env.PGCRYPTO_KEY;
+    process.env.PGCRYPTO_KEY = "";
+    try {
+      const res = await app.request("/api/users/me", {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ display_name: "No PII Update" }),
+      });
+      expect(res.status).toBe(200);
+    } finally {
+      process.env.PGCRYPTO_KEY = saved;
+    }
+  });
+
   it("sets onboarded=true → 200 and onboarded field in response", async () => {
     const app = makeApp();
     const token = await makeToken(ME);

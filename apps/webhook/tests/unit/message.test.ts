@@ -10,10 +10,15 @@ type SqlCall = { strings: readonly string[]; values: unknown[] };
 
 function makeSql() {
   const calls: SqlCall[] = [];
-  const sql = ((strings: readonly string[], ...values: unknown[]) => {
+  const tagged = (strings: readonly string[], ...values: unknown[]) => {
     calls.push({ strings, values });
     return Promise.resolve([]);
-  }) as unknown as import("postgres").Sql;
+  };
+  // .begin(fn) → fn(tagged) для REL-03 RLS escalation pattern
+  (
+    tagged as unknown as { begin: (fn: (tx: unknown) => Promise<unknown>) => Promise<unknown> }
+  ).begin = (fn) => fn(tagged);
+  const sql = tagged as unknown as import("postgres").Sql;
   return { sql, calls };
 }
 

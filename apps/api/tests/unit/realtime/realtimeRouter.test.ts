@@ -3,7 +3,7 @@ import { sign } from "hono/jwt";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import type { Dispatcher } from "../../../src/realtime/dispatcher";
-import { createRealtimeRouter } from "../../../src/realtime/realtimeRouter";
+import { createRealtimeRouter, createSSEErrorHandler } from "../../../src/realtime/realtimeRouter";
 /**
  * Unit tests for realtimeRouter — covers finally block (clearInterval + unsubscribe).
  * Uses a mock Dispatcher so no DB needed.
@@ -153,6 +153,42 @@ describe("realtimeRouter unit", () => {
 
     expect(dispatcher.subscribe).toHaveBeenCalledOnce();
   }, 5000);
+});
+
+describe("createSSEErrorHandler", () => {
+  it("вызывает stream.abort() при ошибке writeSSE если поток ещё открыт", () => {
+    const stream = { aborted: false, closed: false, abort: vi.fn() };
+    const endResolve = vi.fn();
+    const handler = createSSEErrorHandler(stream, endResolve);
+    handler(new Error("broken pipe"));
+    expect(stream.abort).toHaveBeenCalledOnce();
+    expect(endResolve).toHaveBeenCalledOnce();
+  });
+
+  it("не вызывает abort если stream уже aborted", () => {
+    const stream = { aborted: true, closed: false, abort: vi.fn() };
+    const endResolve = vi.fn();
+    const handler = createSSEErrorHandler(stream, endResolve);
+    handler(new Error("err"));
+    expect(stream.abort).not.toHaveBeenCalled();
+    expect(endResolve).toHaveBeenCalledOnce();
+  });
+
+  it("не вызывает abort если stream закрыт", () => {
+    const stream = { aborted: false, closed: true, abort: vi.fn() };
+    const endResolve = vi.fn();
+    const handler = createSSEErrorHandler(stream, endResolve);
+    handler(new Error("err"));
+    expect(stream.abort).not.toHaveBeenCalled();
+    expect(endResolve).toHaveBeenCalledOnce();
+  });
+
+  it("работает без endResolve (undefined)", () => {
+    const stream = { aborted: false, closed: false, abort: vi.fn() };
+    const handler = createSSEErrorHandler(stream);
+    expect(() => handler(new Error("err"))).not.toThrow();
+    expect(stream.abort).toHaveBeenCalledOnce();
+  });
 });
 
 describe("realtimeRouter unit — dispatcher multiplex", () => {

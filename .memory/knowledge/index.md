@@ -71,3 +71,39 @@
 | [[concepts/useme-auth-flow]] | `useMe` hook: full Telegram MiniApp auth sequence — initData → tokens → /users/me; 401 → refresh (not re-auth); logout sends tokens in body | daily/2026-05-14.md | 2026-05-15 |
 | [[concepts/apifetch-centralized-401-refresh]] | 401 refresh centralized in `apiFetch` utility — all hooks get automatic retry without duplicating logic | daily/2026-05-15.md | 2026-05-15 |
 | [[concepts/banned-user-cache-invalidation]] | 30s in-memory cache for banned user status keyed by userId; invalidated immediately on DELETE /me | daily/2026-05-15.md | 2026-05-15 |
+| [[concepts/cors-startup-failsafe]] | CORS throws at startup if DOMAIN env var is empty — fail-fast prevents silent CORS misconfiguration | daily/2026-05-15.md | 2026-05-15 |
+| [[concepts/frontend-api-error-graceful-fallback]] | Catch ApiError → return null → show "адрес не найден"; re-throw non-ApiError for crash reporting | daily/2026-05-15.md | 2026-05-15 |
+| [[concepts/sess-bind-jwt-session-fixation]] | `sess_bind=HMAC(jwtSecret, jti)` cookie ties session to specific JWT — prevents cross-user session leakage | daily/2026-05-16.md | 2026-05-16 |
+| [[concepts/theme-css-semantic-tokens]] | Hardcoded hex breaks theme switching; semantic `--brand-*` CSS tokens + ThemeProvider + lint gate fix it | daily/2026-05-16.md | 2026-05-16 |
+| [[concepts/docker-compose-profiles-silent-skip]] | Service with `profiles:` key not started by `docker compose up` — silently absent, no error or warning | daily/2026-05-16.md | 2026-05-16 |
+| [[concepts/nominatim-pbf-region-sizing]] | Use `tatarstan-latest.osm.pbf` (~80MB) not volga-fed-district; `service_started` not `service_healthy` for API dep | daily/2026-05-16.md | 2026-05-16 |
+| [[concepts/book-seat-on-accept-not-request]] | `book_seat()` must fire on driver accept, not on passenger request — otherwise `seats_taken` reflects pending not confirmed | daily/2026-05-17.md | 2026-05-17 |
+| [[concepts/fire-and-forget-sql-mock]] | Every fire-and-forget INSERT in a handler requires an additional `mockResolvedValueOnce([])` in tests — add immediately, not after CI fails | daily/2026-05-17.md | 2026-05-17 |
+| [[concepts/pg-notify-single-channel]] | Single `notify_user` channel with `user_id` in payload replaces per-event channel chaos; notifier listens once, dispatches by user_id | daily/2026-05-17.md | 2026-05-17 |
+| [[concepts/localstorage-key-constants-in-tests]] | Tests must import the same localStorage key constant as the app — hardcoded string literals drift silently when key is renamed | daily/2026-05-17.md | 2026-05-17 |
+| [[concepts/react-lazy-screen-splitting]] | `React.lazy` for heavy screens (Leaflet, EventsScreen) reduces initial bundle parse time in Telegram MiniApp WebView | daily/2026-05-17.md | 2026-05-17 |
+| [[concepts/enqueue-notification-helper]] | Centralised `enqueueNotification` helper in packages/shared — atomically INSERTs user_notifications and fires pg_notify | daily/2026-05-18.md | 2026-05-18 |
+| [[concepts/pg-notify-missing-user-notifications]] | 8 of 11 pg_notify call sites skipped INSERT into user_notifications — in-app feed showed no history | daily/2026-05-18.md | 2026-05-18 |
+| [[concepts/notification-category-drift]] | 4 independent category lists across api/notifier/frontend/tests; notifier silently drops events with unrecognized type string | daily/2026-05-18.md | 2026-05-18 |
+| [[concepts/telegram-bot-403-notify-disabled]] | Bot 403 on first message sets notify_disabled=true permanently; /start webhook must reset the flag | daily/2026-05-18.md | 2026-05-18 |
+| [[concepts/notifier-service-role-rls]] | Service processes (notifier/cron) get silent 0 rows from RLS without `SET LOCAL ROLE poputchiki_service` | daily/2026-05-19.md | 2026-05-19 |
+| [[concepts/telegram-webview-in-memory-cache]] | TG WebView caches JS bundle in-memory until process kill — distinct from BotFather URL cache | daily/2026-05-19.md | 2026-05-19 |
+| [[concepts/from-to-coordinate-validation]] | 50m minimum ride distance via Zod refine(); equidistant approximation at 55°N (111000×64000) | daily/2026-05-19.md | 2026-05-19 |
+| [[concepts/telegram-webhook-internal-api]] | TG callback buttons need `/internal/*` API route + `API_URL`/`INTERNAL_API_SECRET` in webhook service | daily/2026-05-19.md | 2026-05-19 |
+| [[concepts/leaflet-divicon-xss]] | L.divIcon html option requires escapeHtml() on user data — innerHTML = XSS risk | daily/2026-05-19.md | 2026-05-19 |
+| [[concepts/cache-bust-version-json]] | VITE_BUILD_SHA + version.json + visibilitychange hook forces bundle reload after deploy in Telegram WebView | daily/2026-05-19.md | 2026-05-19 |
+| [[concepts/encryptpii-static-iv]] | Static IV in AES/pgcrypto PII encryption = ECB-like vulnerability; fix: `crypto.randomBytes(16)` prepended to ciphertext | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/location-history-partitioning]] | location_history without partitioning → 864M rows/day at 50k users; fix: range partition by created_at + pg_partman | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/deploy-sh-set-e]] | deploy.sh without `set -euo pipefail` allows failed migrations to continue; add flock for concurrent deploy safety | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/atomic-update-race-condition]] | Two-step check+increment for seat counts races; fix: atomic `UPDATE ... WHERE count < max RETURNING id` | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/pg-listen-reconnect-loop]] | PG LISTEN connection does not auto-reconnect on drop; implement exponential backoff reconnect loop | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/userpublic-userinternal-pii]] | Single User type leaks PII via API responses; split into UserPublic (API) and UserInternal (service layer) | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/jwt-refresh-race-condition]] | Concurrent 401 handlers all call /auth/refresh simultaneously → multiple valid refresh tokens, rotation broken | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/sse-broadcast-backpressure]] | Sequential for-await SSE broadcast: one slow client blocks all others — event loop saturation at 50k users | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/postgres-stable-volatile-encryption]] | STABLE on encrypt_pii lets planner cache ciphertexts — identical plaintexts produce identical ciphertexts (ECB at SQL layer) | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/force-row-level-security]] | Tables without FORCE ROW LEVEL SECURITY allow table owner/superuser to bypass all RLS policies | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/n-plus-one-sse-invalidation]] | useRealtime triggers full fetchRides() on every SSE event without debounce — 50k users × 1 event = 50k simultaneous GETs | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/usefilters-trust-filter-noop]] | verifiedOnly/trustMin* declared in state, shown as green badge in UI, but applyFilters() never checks them — silent no-op | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/react-useeffect-memory-leak]] | map.on('moveend') in useEffect without cleanup → handler accumulates on remount, multiple API calls per map move | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/optimistic-update-without-rollback]] | TripCard join optimistic update sets joined=true immediately, no rollback in catch → UI desync if server rejects | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/createride-toctou-saga]] | POST /rides creates template then ride in two separate INSERTs without transaction — crash between them = orphan template | daily/2026-05-20.md | 2026-05-20 |

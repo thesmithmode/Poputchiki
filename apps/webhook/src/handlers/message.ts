@@ -26,7 +26,13 @@ export async function handleMessage(
 
   if (isStart && message.chat.type === "private") {
     try {
-      await sql`UPDATE users SET notify_disabled = false WHERE tg_id = ${message.chat.id}`;
+      // REL-03: webhook не имеет GUC — эскалируем до poputchiki_service чтобы
+      // RLS-policy users_service_update разрешила UPDATE. Без SET LOCAL ROLE
+      // тихий 0-row update — notify_disabled никогда не снимался при /start unblock.
+      await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_service`;
+        await tx`UPDATE users SET notify_disabled = false WHERE tg_id = ${message.chat.id}`;
+      });
     } catch {
       // DB failure must not break webhook ACK; my_chat_member fallback still covers re-block
     }

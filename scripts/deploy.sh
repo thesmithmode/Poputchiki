@@ -49,16 +49,35 @@ if [[ -n "$NOMINATIM_CID" ]]; then
 fi
 $COMPOSE up -d nominatim
 
-# Шаг 1: бэкап делает cron в 4:00 ежедневно — здесь пропускаем
-echo "--- [1/7] backup skipped (cron handles daily at 04:00) ---"
+# Шаг 1: pre-deploy backup
+# CICD-03: между двумя daily-backup'ами (cron: 01:00 UTC = 04:00 MSK) может пройти
+# ~24h транзакций. Migration rollback не восстанавливает данные — только схему.
+# Pre-deploy backup даёт точку восстановления непосредственно перед миграцией.
+echo "--- [1/7] pre-deploy backup ---"
+if ! bash "$STATE_DIR/scripts/backup-db.sh"; then
+  echo "ERROR: pre-deploy backup failed — aborting deploy" >&2
+  bash "$STATE_DIR/scripts/notify-admin.sh" "deploy ${SHA:0:8} ABORTED: backup failed" || true
+  exit 1
+fi
 
 # Шаг 2: pull images
+# CICD-02: после 3 неудачных pull скрипт ранее продолжал выполнение с устаревшими
+# образами → silent partial deploy. Теперь: явный exit 1 + notify-admin.
 echo "--- [2/7] docker pull ---"
+pulled=false
 for i in 1 2 3; do
-  IMAGE_TAG="$SHA" $COMPOSE pull && break
+  if IMAGE_TAG="$SHA" $COMPOSE pull; then
+    pulled=true
+    break
+  fi
   echo "Pull attempt $i failed, retrying in 30s..."
   sleep 30
 done
+if [[ "$pulled" != "true" ]]; then
+  echo "ERROR: docker pull failed after 3 attempts — aborting deploy" >&2
+  bash "$STATE_DIR/scripts/notify-admin.sh" "deploy ${SHA:0:8} ABORTED: pull failed" || true
+  exit 1
+fi
 
 # Шаг 3: migrate (одноразовый контейнер с superuser-подключением)
 echo "--- [3/7] migrate ---"
@@ -71,11 +90,16 @@ echo "--- [4/7] up services ---"
 PREVIOUS_TAG=$(cat "$TAGS_DIR/current-tag" 2>/dev/null || echo "")
 IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps api notifier cron webhook web
 
-# Шаг 5: ждать healthcheck
-echo "--- [5/7] healthcheck (120s) ---"
+# Шаг 5: ждать healthcheck (per-service таймауты)
+# H1: единый 120s-дедлайн для всех сервисов создавал ложный rollback —
+# если api занял 110s, notifier получал <10s. Теперь каждый сервис имеет свой таймаут.
+echo "--- [5/7] healthcheck (per-service timeouts) ---"
 SERVICES=(api notifier cron webhook web)
-DEADLINE=$((SECONDS + 120))
+declare -A SVC_TIMEOUT=([api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
 for SVC in "${SERVICES[@]}"; do
+  TIMEOUT="${SVC_TIMEOUT[$SVC]}"
+  DEADLINE=$((SECONDS + TIMEOUT))
+  echo "Waiting for $SVC (max ${TIMEOUT}s)..."
   while true; do
     STATUS=$(IMAGE_TAG="$SHA" $COMPOSE ps --format json "$SVC" 2>/dev/null \
       | grep -oE '"Health":"[^"]*"' | cut -d'"' -f4 || echo "")
@@ -84,7 +108,7 @@ for SVC in "${SERVICES[@]}"; do
       break
     fi
     if [[ $SECONDS -ge $DEADLINE ]]; then
-      echo "ERROR: $SVC not healthy after 120s" >&2
+      echo "ERROR: $SVC not healthy after ${TIMEOUT}s" >&2
       if [[ -n "$PREVIOUS_TAG" ]]; then
         bash "$STATE_DIR/scripts/rollback.sh" "$PREVIOUS_TAG" || true
       else
@@ -108,7 +132,7 @@ KEEP_TAG=$(cat "$TAGS_DIR/last-good-tag" 2>/dev/null || echo "")
 for IMAGE in poputchiki-api poputchiki-notifier poputchiki-cron poputchiki-webhook poputchiki-web; do
   docker images "ghcr.io/thesmithmode/${IMAGE}" --format "{{.ID}} {{.Tag}}" \
     | sort -k2 \
-    | awk -v keep="$KEEP_TAG" '$2 != keep' \
+    | awk -v keep="$KEEP_TAG" -v cur="$SHA" '$2 != keep && $2 != cur && $2 != "latest"' \
     | head -n -5 \
     | awk '{print $1}' \
     | xargs --no-run-if-empty docker rmi -f 2>/dev/null || true

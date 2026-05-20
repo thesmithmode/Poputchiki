@@ -4,8 +4,9 @@ aliases: [rls-identity, guc-identity, app-current-user]
 tags: [security, database, rls, authentication]
 sources:
   - "daily/2026-05-01.md"
+  - "daily/2026-05-20.md"
 created: 2026-05-01
-updated: 2026-05-01
+updated: 2026-05-20
 ---
 
 # RLS Identity via PostgreSQL GUC Variables
@@ -28,12 +29,30 @@ The API layer calls `set_config('app.current_user_id', userId, true)` (and simil
 
 RLS policies are then written as `USING (user_id = current_setting('app.current_user_id')::bigint)` or similar casts. The threat model treats every user as a potential attacker, so deny-by-default RLS is applied to all tables, with explicit GRANT rules per role.
 
+## Critical: set_config Third Argument Must Be `true`
+
+`set_config('app.current_user_id', uid, false)` — with `false` — does NOT reset the GUC at transaction end. The setting persists for the lifetime of the connection. With connection pooling (PgBouncer, postgres.js pool), the next request on the same connection inherits the previous request's identity, granting it access to another user's data.
+
+Always use `true` (transaction-local):
+
+```sql
+-- WRONG: persists for the entire connection session
+SELECT set_config('app.current_user_id', $1, false);
+
+-- CORRECT: reset automatically when the transaction ends
+SELECT set_config('app.current_user_id', $1, true);
+```
+
+If an error path skips the transaction commit/rollback (e.g., an exception caught before `sql.begin()` exits), add an explicit `RESET app.current_user_id` in the error handler as defense-in-depth.
+
 ## Related Concepts
 
 - [[concepts/self-hosted-postgres]] - Why Supabase auth functions are unavailable
 - [[concepts/poputchiki-stack]] - Overall architecture context
 - [[connections/rls-and-self-hosted-postgres]] - How the migration forced this pattern
+- [[concepts/notifier-service-role-rls]] - Service processes (notifier/cron) cannot use GUC identity — must use SET LOCAL ROLE poputchiki_service instead
 
 ## Sources
 
 - [[daily/2026-05-01.md]] - RLS pattern migrated from `auth.uid()`/`auth.jwt()` to `app.current_user_id` GUC; `withIdentity()` helper introduced; all docs updated
+- [[daily/2026-05-20.md]] - sector-db-review: `set_config(..., false)` found in codebase — GUC not reset at transaction end; with connection pooling, next request inherits previous user's identity; fix: always use `true` (transaction-local)

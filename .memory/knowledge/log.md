@@ -1,5 +1,66 @@
 # Build Log
 
+## [2026-05-20T23:30:00+03:00] compile | 2026-05-20.md (session 19:54 pass 3 — frontend + api deep)
+- Source: daily/2026-05-20.md
+- Articles created: [[concepts/usefilters-trust-filter-noop]], [[concepts/react-useeffect-memory-leak]], [[concepts/optimistic-update-without-rollback]], [[concepts/createride-toctou-saga]]
+- Articles updated: [[concepts/auth-security-vulnerabilities]] (HMAC timing attack via === instead of timingSafeEqual; logout JTI atomicity gap without transaction)
+- Notes: Third pass of same log. Uncompiled findings from web/api sectors: trust filter fields silent no-op (useFilters applyFilters() ignores verifiedOnly/trustMin*), Leaflet event handler accumulation (map.on without cleanup), optimistic update without rollback (TripCard join), createRide two-step INSERT without transaction (orphan template on crash). Plus two security findings added to auth-security-vulnerabilities: HMAC timing side-channel (50k RPM exploitable), logout JTI revocation atomicity gap.
+
+## [2026-05-20T22:15:00+03:00] compile | 2026-05-20.md (session 19:54 detailed review)
+- Source: daily/2026-05-20.md
+- Articles created: [[concepts/jwt-refresh-race-condition]], [[concepts/sse-broadcast-backpressure]], [[concepts/postgres-stable-volatile-encryption]], [[concepts/force-row-level-security]], [[concepts/n-plus-one-sse-invalidation]]
+- Articles updated: (none)
+- Notes: Session 19:54 — full agent reports from 5 sectors (api-C1..C6, web-C1..C5, infra-C1..C5, shared-db-C1..C5, shared-pkg-C1..C3). 24C/46H/59M/23L total findings. New concepts: JWT refresh race condition (concurrent 401 → multiple valid tokens), SSE broadcast backpressure (sequential for-await blocks event loop at 50k), STABLE volatility on encrypt_pii (planner caches ciphertexts = ECB at SQL layer; distinct from app-layer static IV already compiled), FORCE ROW LEVEL SECURITY missing on revoked_tokens/users/rides (owner bypass hole), N+1 SSE invalidation (useRealtime triggers full fetchRides on every event without debounce)
+
+## [2026-05-20T21:30:00+03:00] compile | 2026-05-20.md (session 19:45 update)
+- Source: daily/2026-05-20.md
+- Articles created: [[concepts/encryptpii-static-iv]], [[concepts/location-history-partitioning]], [[concepts/deploy-sh-set-e]], [[concepts/atomic-update-race-condition]], [[concepts/pg-listen-reconnect-loop]], [[concepts/userpublic-userinternal-pii]]
+- Articles updated: [[concepts/rls-guc-identity]] (set_config false vs true — GUC leaks identity across pooled connections)
+- Notes: Session 19:45 — 5 parallel sector code reviews (API/WEB/INFRA/DB/SHARED). Key findings: static IV в encryptPII (ECB-like attack), joinTrip atomic update race → overbooking, PG LISTEN нет reconnect → SSE падает навсегда, location_history 864M rows/day без партиционирования, deploy.sh без set -e → silent migration fail, UserPublic/UserInternal split для предотвращения PII leak через API response, GUC set_config(false) не сбрасывается после транзакции → утечка identity через connection pool
+
+## [2026-05-20T19:44:00+03:00] compile | 2026-05-20.md
+- Source: daily/2026-05-20.md
+- Articles created: (none)
+- Articles updated: (none)
+- Notes: Log содержит только FLUSH_OK×2 («Nothing worth saving») и FLUSH_ERROR×1. Новых концептов нет.
+
+## [2026-05-20T20:30:00+03:00] compile | 2026-05-19.md
+- Source: daily/2026-05-19.md
+- Articles created: [[concepts/notifier-service-role-rls]], [[concepts/telegram-webview-in-memory-cache]], [[concepts/from-to-coordinate-validation]], [[concepts/telegram-webhook-internal-api]], [[concepts/leaflet-divicon-xss]], [[concepts/cache-bust-version-json]]
+- Articles updated: [[concepts/notification-category-drift]] (CHECK constraint requirement for new categories)
+- Orphan duplicates created (pre-collision detection): [[concepts/tg-webview-inprocess-cache]] (dup of telegram-webview-in-memory-cache), [[concepts/coordinate-same-location-validation]] (dup of from-to-coordinate-validation)
+- Notes: Key sessions: 12:45 (notifier RLS trap — getRecipient silent 0 rows, migration 027 service-role policies), 14:05 (ride_completed category + migration 028 CHECK constraint), 14:44 (TG WebView in-memory cache diagnosis, from/to 50m validation, TG callback internal API double root cause, divIcon XSS, cache-bust version.json mechanism)
+
+## [2026-05-20T20:10:00+03:00] compile | 2026-05-18.md
+- Source: daily/2026-05-18.md
+- Articles created: [[concepts/enqueue-notification-helper]], [[concepts/pg-notify-missing-user-notifications]], [[concepts/telegram-bot-403-notify-disabled]], [[concepts/notification-category-drift]]
+- Articles updated: [[concepts/fire-and-forget-sql-mock]] (enqueueNotification mock-order note)
+- Notes: Key sessions: 14:33 (Phase 1 notification audit — 11 root causes, TG bot 403, category drift), 15:01 (enqueueNotification helper in packages/shared, 11 call sites replaced), 16:26 (SSH prod psql check), 16:42 (EventsScreen redesign)
+
+## [2026-05-20T19:45:00+03:00] compile | 2026-05-17.md (second pass)
+- Source: daily/2026-05-17.md
+- Articles created: [[concepts/react-lazy-screen-splitting]]
+- Articles updated: (none)
+- Notes: First pass (19:40) captured 4 concepts. This pass extracts the missed performance pattern from session 13:38: React.lazy for MapScreen (Leaflet), EventsScreen, and other heavy screens to reduce initial bundle parse time in Telegram MiniApp WebView.
+
+## [2026-05-20T19:40:00+03:00] compile | 2026-05-17.md
+- Source: daily/2026-05-17.md
+- Articles created: [[concepts/book-seat-on-accept-not-request]], [[concepts/fire-and-forget-sql-mock]], [[concepts/pg-notify-single-channel]], [[concepts/localstorage-key-constants-in-tests]]
+- Articles updated: (none)
+- Notes: All 4 articles already existed on disk (untracked git files from prior compilation). Key sessions: 12:12 (book_seat placement bug + missing PATCH endpoint), 14:04 (fire-and-forget mock discipline + localStorage key constant drift), 15:04 (pg_notify channel standardisation to notify_user)
+
+## [2026-05-20T19:35:00+03:00] compile | 2026-05-16.md
+- Source: daily/2026-05-16.md
+- Articles created: [[concepts/sess-bind-jwt-session-fixation]], [[concepts/theme-css-semantic-tokens]], [[concepts/docker-compose-profiles-silent-skip]], [[concepts/nominatim-pbf-region-sizing]]
+- Articles updated: [[concepts/useme-auth-flow]] (added JWT.sub vs Telegram.initDataUnsafe.user.id mount check from session 12:31)
+- Notes: All 4 new articles existed on disk (untracked git files) — index and log were the only missing pieces. Key sessions: 12:31 (sess_bind auth refactor), 14:50–15:12 (theme CSS token architecture), 15:43 (Nominatim profiles trap + PBF sizing)
+
+## [2026-05-20T19:28:00+03:00] compile | 2026-05-15.md (second pass — full article creation)
+- Source: daily/2026-05-15.md
+- Articles created: [[concepts/apifetch-centralized-401-refresh]], [[concepts/banned-user-cache-invalidation]], [[concepts/cors-startup-failsafe]], [[concepts/frontend-api-error-graceful-fallback]]
+- Articles updated: (none — new articles only)
+- Notes: apifetch and banned-user articles existed in index but had no file; created full content; 2 new concepts added for CORS fail-fast and geocode error fallback
+
 ## [2026-05-20T19:05:54+03:00] compile | 2026-05-15.md
 - Source: daily/2026-05-15.md
 - Articles created: [[concepts/apifetch-centralized-401-refresh]], [[concepts/banned-user-cache-invalidation]]

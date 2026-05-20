@@ -2,10 +2,10 @@ import { createHash } from "node:crypto";
 import type { MiddlewareHandler } from "hono";
 import type postgres from "postgres";
 import { getClientIp } from "../lib/client-ip";
+import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "./identity-guard";
 
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function sha256hex(input: string): string {
   return createHash("sha256").update(input).digest("hex");

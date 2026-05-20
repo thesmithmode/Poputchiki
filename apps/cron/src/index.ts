@@ -12,6 +12,7 @@ import { cleanupNonces } from "./cleanup-nonces";
 import { confirmParticipationPush } from "./confirm-participation-push";
 import { expandTemplates } from "./expand-templates";
 import { finalizeRides } from "./finalize-rides";
+import { oncePer } from "./lib/once-per";
 import { refreshUserStats } from "./refresh-user-stats";
 
 const DATABASE_URL = process.env.DATABASE_URL;
@@ -21,6 +22,11 @@ const sql = postgres(DATABASE_URL);
 const FIVE_MIN = 5 * 60 * 1000;
 const TEN_MIN = 10 * 60 * 1000;
 const ONE_HOUR = 60 * 60 * 1000;
+// REL-04: окна dedup для задач с UTCHour-гейтом. Чуть меньше "ожидаемого периода"
+// чтобы плановый запуск через 24h/7d не заблокировался.
+const DAY_MS = 23 * ONE_HOUR;
+const WEEK_MS = 6 * 24 * ONE_HOUR;
+const MONTH_MS = 28 * 24 * ONE_HOUR;
 
 async function runCleanup() {
   await cleanupNonces(sql).catch((err: unknown) =>
@@ -43,16 +49,18 @@ async function runIdempotencyKeysCleanup() {
 async function runNotificationLogCleanup() {
   // 04:00 UTC daily
   if (new Date().getUTCHours() !== 4) return;
-  await cleanupNotificationLog(sql).catch((err: unknown) =>
-    console.error(JSON.stringify({ msg: "notification_log_cleanup_error", error: String(err) })),
+  await oncePer(sql, "notification_log_cleanup", DAY_MS, () => cleanupNotificationLog(sql)).catch(
+    (err: unknown) =>
+      console.error(JSON.stringify({ msg: "notification_log_cleanup_error", error: String(err) })),
   );
 }
 
 async function runErrorLogCleanup() {
   // 04:00 UTC daily
   if (new Date().getUTCHours() !== 4) return;
-  await cleanupErrorLog(sql).catch((err: unknown) =>
-    console.error(JSON.stringify({ msg: "error_log_cleanup_error", error: String(err) })),
+  await oncePer(sql, "error_log_cleanup", DAY_MS, () => cleanupErrorLog(sql)).catch(
+    (err: unknown) =>
+      console.error(JSON.stringify({ msg: "error_log_cleanup_error", error: String(err) })),
   );
 }
 
@@ -66,15 +74,16 @@ async function runAuditLogCleanup() {
   // Monthly cleanup — only fire if UTC day === 1 and hour === 2
   const now = new Date();
   if (now.getUTCDate() !== 1 || now.getUTCHours() !== 2) return;
-  await cleanupAuditLog(sql).catch((err: unknown) =>
-    console.error(JSON.stringify({ msg: "audit_log_cleanup_error", error: String(err) })),
+  await oncePer(sql, "audit_log_cleanup", MONTH_MS, () => cleanupAuditLog(sql)).catch(
+    (err: unknown) =>
+      console.error(JSON.stringify({ msg: "audit_log_cleanup_error", error: String(err) })),
   );
 }
 
 async function runExpandTemplates() {
   // Cron-style guard: only fire if current UTC hour === 3.
   if (new Date().getUTCHours() !== 3) return;
-  await expandTemplates(sql).catch((err: unknown) =>
+  await oncePer(sql, "expand_templates", DAY_MS, () => expandTemplates(sql)).catch((err: unknown) =>
     console.error(JSON.stringify({ msg: "expand_templates_error", error: String(err) })),
   );
 }
@@ -82,7 +91,7 @@ async function runExpandTemplates() {
 async function runDailyBackup() {
   // 03:00 UTC daily
   if (new Date().getUTCHours() !== 3) return;
-  await runBackup(sql).catch((err: unknown) =>
+  await oncePer(sql, "daily_backup", DAY_MS, () => runBackup(sql)).catch((err: unknown) =>
     console.error(JSON.stringify({ msg: "backup_error", error: String(err) })),
   );
 }
@@ -91,8 +100,9 @@ async function runWeeklyBaseBackup() {
   // 04:00 UTC Sunday (getUTCDay() === 0)
   const now = new Date();
   if (now.getUTCHours() !== 4 || now.getUTCDay() !== 0) return;
-  await runBaseBackup(sql).catch((err: unknown) =>
-    console.error(JSON.stringify({ msg: "base_backup_error", error: String(err) })),
+  await oncePer(sql, "weekly_base_backup", WEEK_MS, () => runBaseBackup(sql)).catch(
+    (err: unknown) =>
+      console.error(JSON.stringify({ msg: "base_backup_error", error: String(err) })),
   );
 }
 
@@ -100,8 +110,9 @@ async function runWeeklyRestoreTest() {
   // 05:00 UTC Sunday
   const now = new Date();
   if (now.getUTCHours() !== 5 || now.getUTCDay() !== 0) return;
-  await runRestoreTest(sql).catch((err: unknown) =>
-    console.error(JSON.stringify({ msg: "restore_test_error", error: String(err) })),
+  await oncePer(sql, "weekly_restore_test", WEEK_MS, () => runRestoreTest(sql)).catch(
+    (err: unknown) =>
+      console.error(JSON.stringify({ msg: "restore_test_error", error: String(err) })),
   );
 }
 
@@ -153,3 +164,15 @@ setInterval(
     ),
   ONE_HOUR,
 );
+
+// H1: graceful shutdown. Sql.end дренирует pending queries в течение grace.
+const shutdown = async (signal: string) => {
+  // biome-ignore lint/suspicious/noConsoleLog: structured log
+  console.log(JSON.stringify({ msg: "cron_shutdown_start", signal }));
+  await sql.end({ timeout: 5 });
+  // biome-ignore lint/suspicious/noConsoleLog: structured log
+  console.log(JSON.stringify({ msg: "cron_shutdown_done" }));
+  process.exit(0);
+};
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

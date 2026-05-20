@@ -157,4 +157,53 @@ describe("GET /api/rides/:id", () => {
     const body = await readJson(res);
     expect(body.price_rub).toBe(150);
   });
+
+  it("M2: pending_requests видны только водителю, не пассажирам", async () => {
+    // Создаём pending ride_request от третьего юзера — должен показаться driver'у, не PASSENGER'у
+    const THIRD_TG = 4404;
+    const thirdId = "00000000-0000-4000-d000-000000000099";
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO users (id, tg_id, display_name, created_at)
+        VALUES (${thirdId}, ${THIRD_TG}, 'Third Passenger', NOW())
+        ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
+      `;
+    });
+    await sql`
+      INSERT INTO ride_requests (ride_id, passenger_id, status)
+      VALUES (${rideId}, ${thirdId}, 'pending')
+    `;
+    try {
+      const app = makeApp();
+      // Driver видит pending_requests
+      const driverToken = await makeToken(DRIVER);
+      const driverRes = await app.request(`/api/rides/${rideId}`, {
+        headers: {
+          Authorization: `Bearer ${driverToken}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, driverToken)}`,
+          "X-Forwarded-For": TEST_IP,
+        },
+      });
+      expect(driverRes.status).toBe(200);
+      const driverBody = await readJson(driverRes);
+      expect(Array.isArray(driverBody.pending_requests)).toBe(true);
+      expect(driverBody.pending_requests.length).toBeGreaterThanOrEqual(1);
+
+      // Пассажир НЕ видит pending_requests (privacy: чужие претенденты не его дело)
+      const passengerToken = await makeToken(PASSENGER);
+      const passengerRes = await app.request(`/api/rides/${rideId}`, {
+        headers: {
+          Authorization: `Bearer ${passengerToken}`,
+          Cookie: `sess_bind=${sessBind(JWT_SECRET, passengerToken)}`,
+          "X-Forwarded-For": TEST_IP,
+        },
+      });
+      expect(passengerRes.status).toBe(200);
+      const passengerBody = await readJson(passengerRes);
+      expect(passengerBody.pending_requests).toEqual([]);
+    } finally {
+      await sql`DELETE FROM ride_requests WHERE passenger_id = ${thirdId}`;
+      await sql`DELETE FROM users WHERE id = ${thirdId}`;
+    }
+  });
 });

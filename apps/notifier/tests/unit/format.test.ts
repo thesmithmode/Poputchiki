@@ -77,6 +77,10 @@ describe("formatMessage", () => {
     expect(formatMessage("ride_cancelled", payload("ride_cancelled"))).toContain("отменена");
   });
 
+  it("ride_completed", () => {
+    expect(formatMessage("ride_completed", payload("ride_completed"))).toContain("завершена");
+  });
+
   it("confirm_participation", () => {
     expect(formatMessage("confirm_participation", payload("confirm_participation"))).toContain(
       "подтвердил",

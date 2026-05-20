@@ -85,6 +85,10 @@ services:
     command: ["bun", "run", "db:migrate"]
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # H6: DATABASE_MIGRATOR_URL использует superuser т.к. некоторые миграции
+      # требуют CREATE EXTENSION (pgcrypto) — невозможно без SUPERUSER.
+      # poputchiki_migrator создан в 01-app-role.sql для будущего перехода
+      # при отказе от CREATE EXTENSION в пользу preloaded extensions.
       DATABASE_MIGRATOR_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres:
@@ -214,6 +218,9 @@ services:
       DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       BOT_TOKEN: ${BOT_TOKEN}
       ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
+      # H3-TODO: BACKUP_KEY в cron нарушает least privilege (cron имеет DATABASE_URL + ключ шифрования).
+      # Переход: выделить отдельный backup-сервис без DATABASE_URL, cron без BACKUP_KEY.
+      # Пока cron единственный агент с backup.ts — переход при рефакторинге apps/cron.
       BACKUP_KEY: ${BACKUP_KEY}
       BACKUP_DIR: /backups
     depends_on:
@@ -313,4 +320,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 2g
+          # M2: во время первого PBF-импорта (~30 мин) Nominatim потребляет >2GB.
+          # 4g — безопасный предел; после импорта потребление падает до ~400MB.
+          # При OOM: wipe nominatim-data volume → fresh import при следующем up.
+          memory: 4g

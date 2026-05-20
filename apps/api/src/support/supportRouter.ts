@@ -3,9 +3,8 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
+import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PostMessageInput = z.object({
   text: z.string().min(1).max(2000),
@@ -18,6 +17,16 @@ const ReplyInput = z.object({
 export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; adminRouter: Hono } {
   const userRouter = new Hono();
   const adminRouter = new Hono();
+
+  // H5 (review 2026-05-20 apps-api): централизованный admin gate.
+  // Раньше каждый admin-handler делал `if (user.role !== "admin") return 403` —
+  // забыли в одном → security gap. Middleware на adminRouter гарантирует проверку
+  // для всех endpoints (текущих и будущих).
+  adminRouter.use("*", async (c, next) => {
+    const user = c.get("user" as never) as AppUser | undefined;
+    if (!user || user.role !== "admin") return c.json({ error: "forbidden" }, 403);
+    return next();
+  });
 
   // POST /messages — user creates ticket
   userRouter.post("/messages", async (c) => {
@@ -66,9 +75,9 @@ export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; admi
   });
 
   // GET /messages — admin-only list with optional status filter
+  // Admin-gate в middleware выше.
   adminRouter.get("/messages", async (c) => {
     const user = c.get("user" as never) as AppUser;
-    if (user.role !== "admin") return c.json({ error: "forbidden" }, 403);
 
     const status = c.req.query("status");
     const rows = await withIdentity(sql, user, async (tx) => {
@@ -93,9 +102,9 @@ export function createSupportRouter(sql: postgres.Sql): { userRouter: Hono; admi
   });
 
   // POST /messages/:id/reply — admin reply
+  // Admin-gate в middleware выше.
   adminRouter.post("/messages/:id/reply", async (c) => {
     const user = c.get("user" as never) as AppUser;
-    if (user.role !== "admin") return c.json({ error: "forbidden" }, 403);
 
     const msgId = c.req.param("id");
     if (!UUID_RE.test(msgId)) return c.json({ error: "invalid id" }, 400);

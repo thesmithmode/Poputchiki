@@ -35,6 +35,7 @@ describe("GET /metrics — METRICS_TOKEN auth", () => {
   it("no token + production → 401 (fail-closed)", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("METRICS_TOKEN", "");
+    vi.stubEnv("DOMAIN", "example.com");
     const app = createApp();
     const res = await app.request("/metrics");
     expect(res.status).toBe(401);

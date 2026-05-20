@@ -18,7 +18,42 @@ env:
   REPO: thesmithmode/poputchiki
 
 jobs:
+  # CICD-01: гейт перед деплоем — проверяем что для этого SHA был зелёный CI.
+  # CI триггерится на dev (branches-ignore: [main]); squash merge dev→main создаёт
+  # новый SHA, но parent-коммит (dev tip) гарантированно проходил CI зелёным.
+  # Проверяем CI conclusion для merge-commit SHA ИЛИ его first-parent.
+  verify-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 2
+      - name: Verify CI green for this or parent SHA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          SHA="${{ github.sha }}"
+          PARENT_SHA=$(git rev-parse "${SHA}^" 2>/dev/null || echo "")
+          check_sha() {
+            local sha="$1"
+            local conc
+            conc=$(gh run list --workflow ci.yml --commit "$sha" --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "")
+            [[ "$conc" == "success" ]]
+          }
+          if check_sha "$SHA"; then
+            echo "CI success for $SHA"
+            exit 0
+          fi
+          if [[ -n "$PARENT_SHA" ]] && check_sha "$PARENT_SHA"; then
+            echo "CI success for parent $PARENT_SHA (squash-merge SHA changed)"
+            exit 0
+          fi
+          echo "ERROR: no successful CI run for $SHA or parent $PARENT_SHA — refusing to deploy" >&2
+          exit 1
+
   build-and-push:
+    needs: verify-ci
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -131,6 +166,9 @@ jobs:
              touch /opt/poputchiki/letsencrypt/acme.json && \
              chmod 600 /opt/poputchiki/letsencrypt/acme.json"
 
+      # H5-NOTE: значения secrets передаются через pipe в SSH (GitHub маскирует их в логах).
+      # Альтернатива: base64-кодированный PROD_ENV_FILE secret → scp без pipe.
+      # Текущий подход безопасен при отсутствии SSH debug output (ssh -v не используется).
       - name: Generate .env on server
         run: |
           {
@@ -170,7 +208,7 @@ jobs:
         run: |
           scp -r infra scripts ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/poputchiki/
 
-      - name: Setup daily backup cron (04:00 UTC)
+      - name: Setup daily backup cron (01:00 UTC = 04:00 MSK)
         run: |
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
             CRON_JOB='0 1 * * * cd /opt/poputchiki && bash scripts/backup-db.sh >> /opt/poputchiki/logs/backup.log 2>&1'

@@ -112,4 +112,25 @@ describe("ComplaintSheet", () => {
     fireEvent.click(screen.getByTestId("complaint-close"));
     expect(onClose).toHaveBeenCalled();
   });
+
+  it("Escape закрывает модал (WCAG 2.1 §2.1.2, web-frontend C2)", () => {
+    const onClose = vi.fn();
+    wrap(<ComplaintSheet open={true} targetUserId={TARGET_USER_ID} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("Escape игнорируется когда open=false (нет утечки listener'а)", () => {
+    const onClose = vi.fn();
+    wrap(<ComplaintSheet open={false} targetUserId={TARGET_USER_ID} onClose={onClose} />);
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("имеет role=dialog + aria-modal для screen readers", () => {
+    wrap(<ComplaintSheet open={true} targetUserId={TARGET_USER_ID} onClose={vi.fn()} />);
+    const dialog = screen.getByTestId("complaint-sheet");
+    expect(dialog).toHaveAttribute("role", "dialog");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+  });
 });

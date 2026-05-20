@@ -6,7 +6,10 @@ const SECRET = "super-secret-token-xyz";
 const BOT_TOKEN = "bot123token";
 
 function makeSql() {
-  return vi.fn(() => Promise.resolve([])) as unknown as import("postgres").Sql;
+  // biome-ignore lint/suspicious/noExplicitAny: postgres.Sql типизирован как пересечение overload'ов — невозможно типобезопасно собрать через vi.fn
+  const fn = vi.fn(() => Promise.resolve([])) as any;
+  fn.begin = vi.fn(async (cb: (tx: unknown) => Promise<unknown>) => cb(fn));
+  return fn as unknown as import("postgres").Sql;
 }
 
 function post(
@@ -77,6 +80,40 @@ describe("webhook handlers", () => {
     const res = await post(app, update, SECRET);
     expect(res.status).toBe(200);
     expect((sql as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("H2: my_chat_member unblock (kicked → member) выставляет notify_disabled=false", async () => {
+    const sql = makeSql();
+    const app = createApp(sql, BOT_TOKEN, SECRET);
+    const update: TelegramUpdate = {
+      update_id: 201,
+      my_chat_member: {
+        chat: { id: -101, type: "private" },
+        from: { id: 555, is_bot: false, first_name: "Alice" },
+        old_chat_member: { status: "kicked", user: { id: 1, is_bot: true, first_name: "Bot" } },
+        new_chat_member: { status: "member", user: { id: 1, is_bot: true, first_name: "Bot" } },
+      },
+    };
+    const res = await post(app, update, SECRET);
+    expect(res.status).toBe(200);
+    expect((sql as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+  });
+
+  it("H2: my_chat_member non-private chat игнорируется", async () => {
+    const sql = makeSql();
+    const app = createApp(sql, BOT_TOKEN, SECRET);
+    const update: TelegramUpdate = {
+      update_id: 202,
+      my_chat_member: {
+        chat: { id: -200, type: "group" },
+        from: { id: 555, is_bot: false, first_name: "Alice" },
+        old_chat_member: { status: "member", user: { id: 1, is_bot: true, first_name: "Bot" } },
+        new_chat_member: { status: "kicked", user: { id: 1, is_bot: true, first_name: "Bot" } },
+      },
+    };
+    const res = await post(app, update, SECRET);
+    expect(res.status).toBe(200);
+    expect((sql as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
   });
 
   it("handles message /start and returns 200", async () => {

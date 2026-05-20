@@ -1,5 +1,10 @@
 # Build Log
 
+## [2026-05-20T19:05:54+03:00] compile | 2026-05-15.md
+- Source: daily/2026-05-15.md
+- Articles created: [[concepts/apifetch-centralized-401-refresh]], [[concepts/banned-user-cache-invalidation]]
+- Articles updated: [[concepts/useme-auth-flow]] (added architecture update note: 401 refresh moved to apiFetch; added related concept link and source), [[concepts/memory-flush-system]] (added 2026-05-15 flush error at 11:22)
+
 ## [2026-05-20T19:02:45+03:00] compile | 2026-05-14.md (seventh pass — index repair)
 - Source: daily/2026-05-14.md
 - Articles created: (none)

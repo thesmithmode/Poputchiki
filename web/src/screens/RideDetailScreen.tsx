@@ -1,10 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RouteBlock } from "../components/RouteBlock";
 import { RouteMapLeaflet } from "../components/RouteMapLeaflet";
 import { useMe } from "../hooks/useMe";
+import type { RideDetail } from "../hooks/useRide";
 import { useRide } from "../hooks/useRide";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { ApiError, apiFetch } from "../lib/api";
@@ -61,6 +62,106 @@ export function RideDetailScreen({ id }: Props) {
   const [editPrice, setEditPrice] = useState<string>("");
   const [editComment, setEditComment] = useState<string>("");
 
+  /*
+   * Optimistic UI для двух самых частых действий на экране:
+   * - respondMutation (пассажир «откликнуться»): сразу красит карточку
+   *   как «заявка отправлена», на ошибку откатывает.
+   * - requestActionMutation (driver accept/reject): мгновенно убирает
+   *   запрос из pending_requests, на accept добавляет в passengers
+   *   placeholder из данных pending_requests.
+   *
+   * Остальные действия (cancel/complete/edit/like/cancelRequest) пока
+   * остаются с invalidate-only — у них меньше частота кликов и
+   * destructive-confirm-диалог уже маскирует задержку сети.
+   *
+   * useMutation вызовы ОБЯЗАТЕЛЬНО до early-return по isLoading/isError —
+   * Rules of Hooks: число хуков должно быть стабильным между рендерами.
+   */
+  const rideKey = queryKeys.ride.detail(id);
+
+  const respondMutation = useMutation({
+    mutationFn: () => apiFetch(`/rides/${id}/request`, { method: "POST" }),
+    onMutate: async () => {
+      setReqStatus("loading");
+      await queryClient.cancelQueries({ queryKey: rideKey });
+      const previous = queryClient.getQueryData<RideDetail>(rideKey);
+      if (previous) {
+        queryClient.setQueryData<RideDetail>(rideKey, {
+          ...previous,
+          my_request_status: "pending",
+        });
+      }
+      return { previous };
+    },
+    onSuccess: () => {
+      setReqStatus("sent");
+    },
+    onError: (err, _vars, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(rideKey, ctx.previous);
+      if (err instanceof ApiError && err.status === 409) {
+        const body = err.body as { error?: string } | undefined;
+        setReqStatus(body?.error === "no_seats" ? "full" : "duplicate");
+      } else {
+        setReqStatus("error");
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rideKey });
+    },
+  });
+
+  const requestActionMutation = useMutation({
+    mutationFn: ({ reqId, action }: { reqId: string; action: "accept" | "reject" }) =>
+      apiFetch(`/ride-requests/${reqId}/${action}`, { method: "POST" }),
+    onMutate: async ({ reqId, action }) => {
+      setActionStatus((prev) => ({ ...prev, [reqId]: "loading" }));
+      await queryClient.cancelQueries({ queryKey: rideKey });
+      const previous = queryClient.getQueryData<RideDetail>(rideKey);
+      if (previous) {
+        const pending = previous.pending_requests.find((r) => r.id === reqId);
+        const nextRequests = previous.pending_requests.filter((r) => r.id !== reqId);
+        const next: RideDetail = {
+          ...previous,
+          pending_requests: nextRequests,
+          // accept — добавляем placeholder-пассажира из данных pending request
+          // (поля likes_received_count/last_name отсутствуют в pending_requests,
+          // ставим дефолты — invalidate подтянет реальные).
+          passengers:
+            action === "accept" && pending
+              ? [
+                  ...previous.passengers,
+                  {
+                    id: pending.passenger_id,
+                    first_name: pending.first_name,
+                    last_name: null,
+                    tg_id: pending.tg_id,
+                    likes_received_count: 0,
+                  },
+                ]
+              : previous.passengers,
+        };
+        queryClient.setQueryData<RideDetail>(rideKey, next);
+      }
+      return { previous };
+    },
+    onSuccess: (_data, { reqId }) => {
+      setActionStatus((prev) => ({ ...prev, [reqId]: "done" }));
+      // Драйверская карточка уведомления становится прочитанной целиком.
+      apiFetch("/notifications/read-all", { method: "POST" })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
+        })
+        .catch(() => {});
+    },
+    onError: (_err, { reqId }, ctx) => {
+      if (ctx?.previous) queryClient.setQueryData(rideKey, ctx.previous);
+      setActionStatus((prev) => ({ ...prev, [reqId]: "error" }));
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: rideKey });
+    },
+  });
+
   if (isLoading) {
     return (
       <div
@@ -102,36 +203,12 @@ export function RideDetailScreen({ id }: Props) {
 
   const isOwnRide = me.status === "ok" && me.user.id === ride.driver.id;
 
-  async function handleRespond() {
-    setReqStatus("loading");
-    try {
-      await apiFetch(`/rides/${id}/request`, { method: "POST" });
-      setReqStatus("sent");
-      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
-        const body = err.body as { error?: string } | undefined;
-        setReqStatus(body?.error === "no_seats" ? "full" : "duplicate");
-      } else {
-        setReqStatus("error");
-      }
-    }
+  function handleRespond() {
+    respondMutation.mutate();
   }
 
-  async function handleRequestAction(reqId: string, action: "accept" | "reject") {
-    setActionStatus((prev) => ({ ...prev, [reqId]: "loading" }));
-    try {
-      await apiFetch(`/ride-requests/${reqId}/${action}`, { method: "POST" });
-      setActionStatus((prev) => ({ ...prev, [reqId]: "done" }));
-      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
-      apiFetch("/notifications/read-all", { method: "POST" })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
-        })
-        .catch(() => {});
-    } catch {
-      setActionStatus((prev) => ({ ...prev, [reqId]: "error" }));
-    }
+  function handleRequestAction(reqId: string, action: "accept" | "reject") {
+    requestActionMutation.mutate({ reqId, action });
   }
 
   async function handleLike() {
@@ -779,6 +856,7 @@ export function RideDetailScreen({ id }: Props) {
                       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                         <button
                           type="button"
+                          data-testid={`accept-${pr.id}`}
                           disabled={st === "loading"}
                           onClick={() => handleRequestAction(pr.id, "accept")}
                           style={{
@@ -798,6 +876,7 @@ export function RideDetailScreen({ id }: Props) {
                         </button>
                         <button
                           type="button"
+                          data-testid={`reject-${pr.id}`}
                           disabled={st === "loading"}
                           onClick={() => handleRequestAction(pr.id, "reject")}
                           style={{

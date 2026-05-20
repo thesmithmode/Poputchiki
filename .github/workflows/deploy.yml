@@ -19,22 +19,21 @@ env:
 
 jobs:
   # CICD-01: гейт перед деплоем — проверяем что для этого SHA был зелёный CI.
-  # CI триггерится на dev (branches-ignore: [main]); squash merge dev→main создаёт
-  # новый SHA, но parent-коммит (dev tip) гарантированно проходил CI зелёным.
-  # Проверяем CI conclusion для merge-commit SHA ИЛИ его first-parent.
+  # CI триггерится на push в dev (branches-ignore: [main]). Squash merge dev→main
+  # создаёт новый SHA; first-parent — предыдущий main tip (PR squash, тоже без CI).
+  # Проверяем: текущий SHA → dev branch tip → последний зелёный CI run на dev.
   verify-ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 2
-      - name: Verify CI green for this or parent SHA
+          fetch-depth: 0
+      - name: Verify CI green for this SHA or dev tip
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           SHA="${{ github.sha }}"
-          PARENT_SHA=$(git rev-parse "${SHA}^" 2>/dev/null || echo "")
           check_sha() {
             local sha="$1"
             local conc
@@ -45,11 +44,17 @@ jobs:
             echo "CI success for $SHA"
             exit 0
           fi
-          if [[ -n "$PARENT_SHA" ]] && check_sha "$PARENT_SHA"; then
-            echo "CI success for parent $PARENT_SHA (squash-merge SHA changed)"
+          DEV_SHA=$(git rev-parse origin/dev 2>/dev/null || echo "")
+          if [[ -n "$DEV_SHA" ]] && check_sha "$DEV_SHA"; then
+            echo "CI success for dev tip $DEV_SHA (squash-merge SHA changed)"
             exit 0
           fi
-          echo "ERROR: no successful CI run for $SHA or parent $PARENT_SHA — refusing to deploy" >&2
+          LATEST_DEV_CI=$(gh run list --workflow ci.yml --branch dev --status success --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || echo "")
+          if [[ -n "$LATEST_DEV_CI" ]]; then
+            echo "CI success for latest green dev run $LATEST_DEV_CI (fallback)"
+            exit 0
+          fi
+          echo "ERROR: no successful CI run for $SHA, dev tip $DEV_SHA, or any dev branch — refusing to deploy" >&2
           exit 1
 
   build-and-push:

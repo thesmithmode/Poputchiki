@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-19T11:26:24.037Z",
+  "timestamp": "2026-05-20T16:05:11.434Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,49 +18,25 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".env.example"
+      "path": ".memory/daily/2026-05-19.md"
     },
     {
       "status": "M",
-      "path": ".github/workflows/deploy.yml"
+      "path": ".memory/scripts/flush.log"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
     },
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "M",
-      "path": "CLAUDE.md"
-    },
-    {
-      "status": "M",
-      "path": "apps/web-server/Dockerfile"
-    },
-    {
-      "status": "M",
-      "path": "apps/webhook/src/app.ts"
-    },
-    {
-      "status": "M",
-      "path": "infra/docker-compose.prod.yml"
-    },
-    {
-      "status": "M",
-      "path": "packages/shared/src/schemas/ride.ts"
-    },
-    {
-      "status": "M",
-      "path": "packages/shared/tests/schemas/ride.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/CreateRideScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/MapScreen.tsx"
+      "status": "??",
+      "path": ".memory/daily/2026-05-20.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nebc0ffc CHORE: обновить memory-логи — 2026-05-19 squash dev->main\na695aec FIX: rideComplete integration — user_notifications + ride?.status\n260dedc FIX: интеграционные тесты POST /complete + c8 ignore для fire-and-forget loop\na620da1 FIX: миграция 028 — ride_completed в CHECK notification_preferences + интеграционный тест\n894024e CHORE: обновить memory-логи — 2026-05-19"
+  "context_notes": "Recent commits:\n674afac CHORE: biome — отсортировать импорты в NotificationPreferences.optimistic.test\n6f16679 FEAT: optimistic UI для RideDetail handleRespond + handleRequestAction\nd29a2d2 FEAT: optimistic UI для NotificationPreferences (toggle/muteAll/unmuteAll)\n76af34e FEAT: optimistic UI для useMarkNotificationRead и useMarkAllNotificationsRead\n07636df FEAT: optimistic UI для useFavorites (toggle + setNotify)"
 }

@@ -68,3 +68,4 @@
 | [[concepts/leaflet-async-init-test-timing]] | mapRef.current = null in tests — Leaflet init is async; wait for init before dispatching click events | daily/2026-05-14.md | 2026-05-14 |
 | [[concepts/telegram-disable-vertical-swipes]] | Telegram intercepts vertical swipes for swipe-to-close; call `disableVerticalSwipes()` to allow map panning | daily/2026-05-14.md | 2026-05-14 |
 | [[connections/telegram-webapp-invisible-constraints]] | 6 undocumented Telegram WebApp constraints: CSP, URL cache, hash injection, MainButton, X-Frame-Options, swipe intercept | daily/2026-05-08.md, daily/2026-05-13.md, daily/2026-05-14.md | 2026-05-14 |
+| [[concepts/useme-auth-flow]] | `useMe` hook: full Telegram MiniApp auth sequence — initData → tokens → /users/me; 401 → refresh (not re-auth); logout sends tokens in body | daily/2026-05-14.md | 2026-05-14 |

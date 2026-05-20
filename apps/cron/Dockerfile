@@ -15,5 +15,5 @@ COPY --chown=bun:bun apps/cron apps/cron
 COPY --chown=bun:bun scripts scripts
 
 USER bun
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["bun", "run", "apps/cron/src/index.ts"]

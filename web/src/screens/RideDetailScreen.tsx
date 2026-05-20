@@ -8,6 +8,7 @@ import { useMe } from "../hooks/useMe";
 import { useRide } from "../hooks/useRide";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { ApiError, apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 import { getTelegramWebApp } from "../lib/telegram";
 
 interface Props {
@@ -106,7 +107,7 @@ export function RideDetailScreen({ id }: Props) {
     try {
       await apiFetch(`/rides/${id}/request`, { method: "POST" });
       setReqStatus("sent");
-      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         const body = err.body as { error?: string } | undefined;
@@ -122,10 +123,10 @@ export function RideDetailScreen({ id }: Props) {
     try {
       await apiFetch(`/ride-requests/${reqId}/${action}`, { method: "POST" });
       setActionStatus((prev) => ({ ...prev, [reqId]: "done" }));
-      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
       apiFetch("/notifications/read-all", { method: "POST" })
         .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all });
         })
         .catch(() => {});
     } catch {
@@ -168,7 +169,7 @@ export function RideDetailScreen({ id }: Props) {
     try {
       await apiFetch(`/ride-requests/${ride.my_request_id}/cancel`, { method: "POST" });
       setCancelReqStatus("done");
-      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
     } catch {
       setCancelReqStatus("error");
     }
@@ -191,7 +192,7 @@ export function RideDetailScreen({ id }: Props) {
     try {
       await apiFetch(`/rides/${id}/cancel`, { method: "PATCH" });
       setCancelRideStatus("done");
-      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
     } catch {
       setCancelRideStatus("error");
     }
@@ -214,7 +215,7 @@ export function RideDetailScreen({ id }: Props) {
     try {
       await apiFetch(`/rides/${id}/complete`, { method: "POST" });
       setCompleteRideStatus("done");
-      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
     } catch {
       setCompleteRideStatus("error");
     }
@@ -250,7 +251,7 @@ export function RideDetailScreen({ id }: Props) {
       });
       setEditStatus("done");
       setShowEditForm(false);
-      queryClient.invalidateQueries({ queryKey: ["ride", id] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.detail(id) });
     } catch {
       setEditStatus("error");
     }

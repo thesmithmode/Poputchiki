@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 export interface UserStats {
   rides_as_driver_completed: number;
@@ -24,7 +25,7 @@ export interface PublicUser {
 
 export function useUser(id: string) {
   return useQuery({
-    queryKey: ["user", id],
+    queryKey: queryKeys.user.detail(id),
     queryFn: () => apiFetch<PublicUser>(`/users/${id}`),
     enabled: !!id,
   });

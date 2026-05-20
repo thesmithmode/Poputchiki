@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 export interface UserNotification {
   id: string;
@@ -12,7 +13,7 @@ export interface UserNotification {
 
 export function useNotifications() {
   return useQuery({
-    queryKey: ["notifications"],
+    queryKey: queryKeys.notifications.all,
     queryFn: () => apiFetch<{ notifications: UserNotification[] }>("/notifications"),
     refetchInterval: 30_000,
     refetchOnWindowFocus: true,
@@ -29,7 +30,7 @@ export function useMarkNotificationRead() {
     // BottomTabBar dot. We intentionally do NOT touch a separate
     // ["notifications", "unread-count"] key — it doesn't exist.
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 }
@@ -39,7 +40,7 @@ export function useMarkAllNotificationsRead() {
   return useMutation({
     mutationFn: () => apiFetch<{ ok: true }>("/notifications/read-all", { method: "POST" }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications"] });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 }
@@ -60,8 +61,8 @@ export function useRespondRideRequest() {
         method: "POST",
       }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["notifications"] });
-      qc.invalidateQueries({ queryKey: ["ride"] });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
+      qc.invalidateQueries({ queryKey: queryKeys.ride.all });
     },
   });
 }

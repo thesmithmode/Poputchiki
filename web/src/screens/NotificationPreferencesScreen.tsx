@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 type CategoryKey =
   | "ride_request"
@@ -102,12 +103,15 @@ function Toggle({
 export function NotificationPreferencesScreen() {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { data: prefs, isLoading } = useQuery({ queryKey: ["notif-prefs"], queryFn: fetchPrefs });
+  const { data: prefs, isLoading } = useQuery({
+    queryKey: queryKeys.notifPrefs.all,
+    queryFn: fetchPrefs,
+  });
 
   async function toggle(key: CategoryKey) {
     if (!prefs) return;
     const next = await putPrefs({ [key]: !prefs[key] });
-    qc.setQueryData(["notif-prefs"], next);
+    qc.setQueryData(queryKeys.notifPrefs.all, next);
   }
 
   async function muteAll() {
@@ -115,7 +119,7 @@ export function NotificationPreferencesScreen() {
     const patch: Partial<Prefs> = {};
     for (const key of MUTABLE_CATEGORIES) patch[key] = false;
     const next = await putPrefs(patch);
-    qc.setQueryData(["notif-prefs"], next);
+    qc.setQueryData(queryKeys.notifPrefs.all, next);
   }
 
   async function unmuteAll() {
@@ -123,7 +127,7 @@ export function NotificationPreferencesScreen() {
     const patch: Partial<Prefs> = {};
     for (const key of MUTABLE_CATEGORIES) patch[key] = true;
     const next = await putPrefs(patch);
-    qc.setQueryData(["notif-prefs"], next);
+    qc.setQueryData(queryKeys.notifPrefs.all, next);
   }
 
   const isGlobalMuted = prefs ? MUTABLE_CATEGORIES.every((k) => !prefs[k]) : false;

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 export interface FavoriteEntry {
   target_id: string;
@@ -14,7 +15,7 @@ export interface FavoriteEntry {
 export function useFavorites() {
   const qc = useQueryClient();
   const { data = [], isLoading } = useQuery({
-    queryKey: ["favorites"],
+    queryKey: queryKeys.favorites.all,
     queryFn: () => apiFetch<FavoriteEntry[]>("/favorites/me"),
     staleTime: 60_000,
   });
@@ -35,7 +36,7 @@ export function useFavorites() {
         body: JSON.stringify({ target_id: targetId }),
       });
     }
-    await qc.invalidateQueries({ queryKey: ["favorites"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.favorites.all });
   }
 
   async function setNotify(targetId: string, notify: boolean) {
@@ -44,7 +45,7 @@ export function useFavorites() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ notify }),
     });
-    await qc.invalidateQueries({ queryKey: ["favorites"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.favorites.all });
   }
 
   return { favorites: data, isLoading, isFavorite, toggle, setNotify, favoriteIds };

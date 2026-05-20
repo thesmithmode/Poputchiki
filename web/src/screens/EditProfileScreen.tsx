@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 interface MeBasic {
   id: string;
@@ -58,7 +59,7 @@ export function EditProfileScreen() {
           apt_number: aptNumber.trim() || undefined,
         }),
       });
-      await queryClient.invalidateQueries({ queryKey: ["me"] });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.me.all });
       setOk(true);
     } catch {
       setError("Не удалось сохранить");

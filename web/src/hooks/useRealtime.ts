@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { queryKeys } from "../lib/queryKeys";
 
 const SSE_URL = "/api/realtime/rides";
 const FALLBACK_INTERVAL_MS = 30_000;
@@ -22,8 +23,8 @@ export function useRealtime() {
     let destroyed = false;
 
     function invalidate() {
-      queryClient.invalidateQueries({ queryKey: ["rides"] });
-      queryClient.invalidateQueries({ queryKey: ["ride"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.rides.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.ride.all });
     }
 
     function clearRetryTimer() {

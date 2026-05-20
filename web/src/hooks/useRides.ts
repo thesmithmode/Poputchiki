@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 import type { Ride } from "../types/ride";
 
 export interface RidesResponse {
@@ -9,7 +10,7 @@ export interface RidesResponse {
 
 export function useRides() {
   return useQuery({
-    queryKey: ["rides"],
+    queryKey: queryKeys.rides.all,
     queryFn: () => apiFetch<RidesResponse>("/rides"),
   });
 }

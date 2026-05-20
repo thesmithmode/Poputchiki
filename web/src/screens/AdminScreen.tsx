@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMe } from "../hooks/useMe";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 interface SupportTicket {
   id: string;
@@ -36,13 +37,13 @@ export function AdminScreen() {
   const isAdmin = me.status === "ok" && me.user.role === "admin";
 
   const { data: tickets, isLoading: ticketsLoading } = useQuery({
-    queryKey: ["admin-tickets"],
+    queryKey: queryKeys.admin.tickets,
     queryFn: () => apiFetch<SupportTicket[]>("/admin/support/messages?status=open"),
     enabled: isAdmin,
   });
 
   const { data: complaints, isLoading: complaintsLoading } = useQuery({
-    queryKey: ["admin-complaints"],
+    queryKey: queryKeys.admin.complaints,
     queryFn: () => apiFetch<Complaint[]>("/admin/complaints?status=open"),
     enabled: isAdmin,
   });
@@ -106,7 +107,7 @@ export function AdminScreen() {
       });
       setReplyingTo(null);
       setReplyText("");
-      await qc.invalidateQueries({ queryKey: ["admin-tickets"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.admin.tickets });
     } finally {
       setSubmitting(false);
     }
@@ -118,7 +119,7 @@ export function AdminScreen() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: "resolved" }),
     });
-    await qc.invalidateQueries({ queryKey: ["admin-complaints"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.admin.complaints });
   }
 
   return (

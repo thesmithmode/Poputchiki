@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 
 interface SupportTicket {
   id: string;
@@ -20,7 +21,7 @@ export function SupportScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   const { data: tickets, isLoading } = useQuery({
-    queryKey: ["support-tickets"],
+    queryKey: queryKeys.support.tickets,
     queryFn: () => apiFetch<SupportTicket[]>("/support/messages/me"),
     staleTime: 30_000,
   });
@@ -36,7 +37,7 @@ export function SupportScreen() {
       });
       setNewText("");
       setShowForm(false);
-      await qc.invalidateQueries({ queryKey: ["support-tickets"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.support.tickets });
     } finally {
       setSubmitting(false);
     }

@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -103,31 +103,48 @@ function Toggle({
 export function NotificationPreferencesScreen() {
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const prefsKey = queryKeys.notifPrefs.all;
   const { data: prefs, isLoading } = useQuery({
-    queryKey: queryKeys.notifPrefs.all,
+    queryKey: prefsKey,
     queryFn: fetchPrefs,
   });
 
-  async function toggle(key: CategoryKey) {
+  // Единая мутация для toggle / muteAll / unmuteAll: принимает Partial<Prefs>,
+  // оптимистично мерджит в cache, на ошибку откатывает к snapshot, на settle
+  // делает invalidate чтобы подобрать актуальные с сервера.
+  const updatePrefs = useMutation({
+    mutationFn: (patch: Partial<Prefs>) => putPrefs(patch),
+    onMutate: async (patch) => {
+      await qc.cancelQueries({ queryKey: prefsKey });
+      const previous = qc.getQueryData<Prefs>(prefsKey);
+      if (previous) {
+        qc.setQueryData<Prefs>(prefsKey, { ...previous, ...patch });
+      }
+      return { previous };
+    },
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.previous) qc.setQueryData(prefsKey, ctx.previous);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: prefsKey });
+    },
+  });
+
+  function toggle(key: CategoryKey) {
     if (!prefs) return;
-    const next = await putPrefs({ [key]: !prefs[key] });
-    qc.setQueryData(queryKeys.notifPrefs.all, next);
+    updatePrefs.mutate({ [key]: !prefs[key] } as Partial<Prefs>);
   }
 
-  async function muteAll() {
-    if (!prefs) return;
+  function muteAll() {
     const patch: Partial<Prefs> = {};
     for (const key of MUTABLE_CATEGORIES) patch[key] = false;
-    const next = await putPrefs(patch);
-    qc.setQueryData(queryKeys.notifPrefs.all, next);
+    updatePrefs.mutate(patch);
   }
 
-  async function unmuteAll() {
-    if (!prefs) return;
+  function unmuteAll() {
     const patch: Partial<Prefs> = {};
     for (const key of MUTABLE_CATEGORIES) patch[key] = true;
-    const next = await putPrefs(patch);
-    qc.setQueryData(queryKeys.notifPrefs.all, next);
+    updatePrefs.mutate(patch);
   }
 
   const isGlobalMuted = prefs ? MUTABLE_CATEGORIES.every((k) => !prefs[k]) : false;

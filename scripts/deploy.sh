@@ -19,10 +19,14 @@ set +o allexport
 # IMAGE_TAG всегда из аргумента — перекрывает любое значение из .env
 IMAGE_TAG="$SHA"
 
-# Установить pg_dump если отсутствует (нужен для backup-db.sh)
-if ! command -v pg_dump &>/dev/null; then
-  apt-get update -qq && apt-get install -y -qq postgresql-client-16
-fi
+# backup-db.sh выполняет pg_dump внутри postgres-контейнера через docker exec.
+# zstd и gpg нужны на хосте для pipe-обработки stdout.
+for pkg in zstd gpg; do
+  if ! command -v "$pkg" &>/dev/null; then
+    apt-get update -qq && apt-get install -y -qq zstd gnupg
+    break
+  fi
+done
 
 echo "=== deploy $SHA ==="
 

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-20T23:26:09.809Z",
+  "timestamp": "2026-05-20T23:48:13.883Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -34,5 +34,5 @@
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nc142d93 TEST: добивка branch coverage — listen line 40 + cleanup-audit empty + clientErrors prod env + anomaly empty row\nc1247a1 TEST: добивка branch coverage до 95% — sanitize/listen/format/lru-dedup/callback-query\n89afa6a FIX: realtimeRouter — extract createSSEErrorHandler для покрытия branches\n6a3c872 CHORE: обновить HANDOFF — web TZ-bug fix\nef2fdca FIX: web CreateRideScreen — согласованный local-time default date+time"
+  "context_notes": "Recent commits:\n490116c FIX: backup-db.sh — pg_dump через docker exec из хоста (hostname postgres недоступен на хосте), детект host/cron режима\nc6762ec FIX: deploy verify-ci — проверять dev tip вместо first-parent (PR squash в main не имеет CI)\nb7be4ac CHORE: обновить memory-логи — сессия 2026-05-21\n457df24 CHORE: обновить memory + HANDOFF — branch coverage 95% достигнут (c142d93)\nc142d93 TEST: добивка branch coverage — listen line 40 + cleanup-audit empty + clientErrors prod env + anomaly empty row"
 }

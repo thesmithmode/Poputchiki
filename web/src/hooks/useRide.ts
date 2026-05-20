@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 import type { Ride } from "../types/ride";
 
 export interface RideDriver {
@@ -36,7 +37,7 @@ export interface RideDetail extends Ride {
 
 export function useRide(id: string) {
   return useQuery({
-    queryKey: ["ride", id],
+    queryKey: queryKeys.ride.detail(id),
     queryFn: () => apiFetch<RideDetail>(`/rides/${id}`),
     enabled: !!id,
   });

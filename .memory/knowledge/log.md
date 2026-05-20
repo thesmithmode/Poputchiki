@@ -1,5 +1,16 @@
 # Build Log
 
+## [2026-05-20T19:05:54+03:00] compile | 2026-05-15.md
+- Source: daily/2026-05-15.md
+- Articles created: [[concepts/apifetch-centralized-401-refresh]], [[concepts/banned-user-cache-invalidation]]
+- Articles updated: [[concepts/useme-auth-flow]] (added architecture update note: 401 refresh moved to apiFetch; added related concept link and source), [[concepts/memory-flush-system]] (added 2026-05-15 flush error at 11:22)
+
+## [2026-05-20T19:02:45+03:00] compile | 2026-05-14.md (seventh pass — index repair)
+- Source: daily/2026-05-14.md
+- Articles created: (none)
+- Articles updated: (none)
+- Index updated: added missing `[[concepts/useme-auth-flow]]` entry — file existed on disk from session 12:58 compilation but was never added to index.md in any of the six prior passes
+
 ## [2026-05-14T21:30:00+03:00] compile | 2026-05-14.md (sixth pass — corrections)
 - Source: daily/2026-05-14.md
 - Articles created: [[concepts/leaflet-async-init-test-timing]] (canonical rename from `leaflet-test-async-init`), [[concepts/telegram-swipe-leaflet-conflict]] (duplicate of `telegram-disable-vertical-swipes` — orphan, will be caught by lint)

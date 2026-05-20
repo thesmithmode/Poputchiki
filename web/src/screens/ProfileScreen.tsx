@@ -133,7 +133,13 @@ export function ProfileScreen({ id }: Props) {
           <button
             type="button"
             data-testid="fav-btn"
-            onClick={() => toggleFavorite(id)}
+            onClick={() =>
+              toggleFavorite(id, {
+                display_name: user.display_name,
+                tg_username: user.tg_username,
+                avatar_url: user.avatar_url,
+              })
+            }
             style={{
               background: "none",
               border: "1px solid var(--brand-line)",

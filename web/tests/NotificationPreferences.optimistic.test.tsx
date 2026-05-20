@@ -3,8 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NotificationPreferencesScreen } from "../src/screens/NotificationPreferencesScreen";
 import { queryKeys } from "../src/lib/queryKeys";
+import { NotificationPreferencesScreen } from "../src/screens/NotificationPreferencesScreen";
 
 vi.mock("../src/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/lib/api")>();

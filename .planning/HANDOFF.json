@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-20T23:48:13.883Z",
+  "timestamp": "2026-05-21T09:50:29.226Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -31,8 +31,12 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "??",
+      "path": ".planning/debug/"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n490116c FIX: backup-db.sh — pg_dump через docker exec из хоста (hostname postgres недоступен на хосте), детект host/cron режима\nc6762ec FIX: deploy verify-ci — проверять dev tip вместо first-parent (PR squash в main не имеет CI)\nb7be4ac CHORE: обновить memory-логи — сессия 2026-05-21\n457df24 CHORE: обновить memory + HANDOFF — branch coverage 95% достигнут (c142d93)\nc142d93 TEST: добивка branch coverage — listen line 40 + cleanup-audit empty + clientErrors prod env + anomaly empty row"
+  "context_notes": "Recent commits:\nfcfada5 FIX: notifier listen.ts — return после успешного subscribe, не tight loop\n5682715 CHORE: обновить memory-логи — сессия optimistic insert + i18n events squash\nded7c4c FIX: optimistic insert своей поездки + i18n events (actor name + ride_request_cancelled)\n63f69a3 FIX: cron Dockerfile — tini в /sbin/tini (alpine), не /usr/bin/tini (debian-наследие после M10)\ndc04d68 CHORE: обновить memory-логи — сессия 2026-05-21 deploy fix"
 }

@@ -228,6 +228,10 @@ export function CreateRideScreen() {
         }
         throw ridesErr;
       }
+      // Оптимистично инжектим свежесозданную поездку в кеши,
+      // чтобы автор увидел её мгновенно без доп. сетевых запросов.
+      // POST /rides RETURNING * возвращает базовый ride row без driver_* join-полей;
+      // RideCard/FeedScreen работают с optional driver_display_name — отсутствие безопасно.
       if (createdRide) {
         const newRide = createdRide;
         qc.setQueryData<{ rides: Ride[]; nextCursor: string | null }>(

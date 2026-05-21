@@ -32,10 +32,13 @@ export async function listenWithBackoff(
     try {
       await listenFn();
       if (abortSignal?.aborted) return;
-      // listenFn() resolved без ошибки = LISTEN-соединение закрылось (disconnect).
-      // Не возвращаемся — переподключаемся сразу (attempt сбрасывается).
+      // postgres.js sql.listen() резолвится один раз после ACK LISTEN-команды.
+      // Reconnect после disconnect библиотека делает сама через onclose-хук
+      // (см. node_modules/postgres/src/index.js функция listen). Поэтому возвращаемся —
+      // иначе tight infinite loop: .listen() возвращает Promise немедленно,
+      // for(;;) сразу следующий вызов → CPU 100% → OOM → crash-loop.
       onConnected?.();
-      attempt = 0;
+      return;
     } catch (err) {
       if (abortSignal?.aborted) return;
       const delay = backoffDelayMs(attempt);

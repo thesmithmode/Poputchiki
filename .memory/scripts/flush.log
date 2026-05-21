@@ -2124,3 +2124,24 @@ Error output: Check stderr output for details
 2026-05-21 02:46:10 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-21 02:46:52 INFO Result: saved to daily log (1890 chars)
 2026-05-21 02:46:52 INFO Flush complete for session 2312b23c-033e-40b9-9b1c-77e23e40d168
+2026-05-21 02:59:10 INFO [pre-compact] PreCompact fired: session=2312b23c-033e-40b9-9b1c-77e23e40d168
+2026-05-21 02:59:10 INFO [pre-compact] Spawned flush.py for session 2312b23c-033e-40b9-9b1c-77e23e40d168 (30 turns, 4242 chars)
+2026-05-21 02:59:10 INFO flush.py started for session 2312b23c-033e-40b9-9b1c-77e23e40d168, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-2312b23c-033e-40b9-9b1c-77e23e40d168-20260521-025910.md
+2026-05-21 02:59:10 INFO Flushing session 2312b23c-033e-40b9-9b1c-77e23e40d168: 4241 chars
+2026-05-21 02:59:12 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-21 02:59:39 INFO Result: FLUSH_OK
+2026-05-21 02:59:39 INFO Flush complete for session 2312b23c-033e-40b9-9b1c-77e23e40d168
+2026-05-21 03:16:26 INFO [pre-compact] PreCompact fired: session=2312b23c-033e-40b9-9b1c-77e23e40d168
+2026-05-21 03:16:26 INFO [pre-compact] Spawned flush.py for session 2312b23c-033e-40b9-9b1c-77e23e40d168 (30 turns, 14842 chars)
+2026-05-21 03:16:27 INFO flush.py started for session 2312b23c-033e-40b9-9b1c-77e23e40d168, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-2312b23c-033e-40b9-9b1c-77e23e40d168-20260521-031626.md
+2026-05-21 03:16:27 INFO Flushing session 2312b23c-033e-40b9-9b1c-77e23e40d168: 14841 chars
+2026-05-21 03:16:28 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-21 03:16:55 INFO Result: saved to daily log (1283 chars)
+2026-05-21 03:16:55 INFO Flush complete for session 2312b23c-033e-40b9-9b1c-77e23e40d168
+2026-05-21 03:27:27 INFO [hook] SessionEnd fired: session=2312b23c-033e-40b9-9b1c-77e23e40d168 source=unknown
+2026-05-21 03:27:27 INFO [hook] Spawned flush.py for session 2312b23c-033e-40b9-9b1c-77e23e40d168 (30 turns, 5725 chars)
+2026-05-21 03:27:28 INFO flush.py started for session 2312b23c-033e-40b9-9b1c-77e23e40d168, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-2312b23c-033e-40b9-9b1c-77e23e40d168-20260521-032727.md
+2026-05-21 03:27:28 INFO Flushing session 2312b23c-033e-40b9-9b1c-77e23e40d168: 5724 chars
+2026-05-21 03:27:29 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-21 03:27:48 INFO Result: saved to daily log (716 chars)
+2026-05-21 03:27:48 INFO Flush complete for session 2312b23c-033e-40b9-9b1c-77e23e40d168

@@ -66,7 +66,11 @@ export function createLikesRouter(sql: postgres.Sql): Hono {
           userId: target_user_id,
           category: "like_received",
           rideId: ride_id,
-          data: { from_user_id: user.id, like_id: result.row.id },
+          data: {
+            from_user_id: user.id,
+            like_id: result.row.id,
+            liker_name: user.displayName ?? "",
+          },
         }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
       }
 

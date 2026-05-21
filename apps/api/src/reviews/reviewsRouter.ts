@@ -66,7 +66,12 @@ export function createReviewsRouter(sql: postgres.Sql): Hono {
           userId: target_id,
           category: "review_received",
           rideId: ride_id,
-          data: { from_user_id: user.id, review_id: result.row.id, stars },
+          data: {
+            from_user_id: user.id,
+            review_id: result.row.id,
+            stars,
+            reviewer_name: user.displayName ?? "",
+          },
         }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
       }
 

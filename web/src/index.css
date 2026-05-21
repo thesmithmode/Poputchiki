@@ -245,3 +245,8 @@ textarea:disabled {
 .leaflet-tile-dark {
   filter: brightness(0.62) contrast(1.05) saturate(0.75);
 }
+
+/* Container-level dark filter: toggle .leaflet-dark on the map div instead of swapping tile layers */
+.leaflet-dark .leaflet-tile-pane {
+  filter: brightness(0.62) contrast(1.05) saturate(0.75);
+}

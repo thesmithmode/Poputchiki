@@ -9,6 +9,7 @@ interface RequestRow {
   passenger_id: string;
   driver_id: string;
   status: string;
+  to_label: string;
 }
 
 export type Action = "accept" | "reject" | "cancel";
@@ -67,7 +68,7 @@ export async function respondToRideRequest(
     user,
     async (tx) => {
       const [row] = await tx<RequestRow[]>`
-        SELECT rr.id, rr.ride_id, rr.passenger_id, rr.status, r.driver_id
+        SELECT rr.id, rr.ride_id, rr.passenger_id, rr.status, r.driver_id, r.to_label
         FROM ride_requests rr
         JOIN rides r ON r.id = rr.ride_id
         WHERE rr.id = ${requestId}
@@ -138,7 +139,11 @@ export async function respondToRideRequest(
     userId: notifyTo,
     category: NOTIFY_CATEGORY[action],
     rideId: result.request.ride_id,
-    data: { request_id: result.request.id, [nameKey]: result.actorName },
+    data: {
+      request_id: result.request.id,
+      [nameKey]: result.actorName,
+      destination: result.request.to_label,
+    },
   }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
   return result;

@@ -36,11 +36,11 @@ function actionText(n: UserNotification): string {
     case "ride_request":
       return dest ? `откликнулась на твою поездку в ${dest}` : "откликнулась на твою поездку";
     case "ride_request_accepted":
-      return "приняла твою заявку";
+      return dest ? `принял твою заявку на поездку в ${dest}` : "принял твою заявку";
     case "ride_request_rejected":
-      return "отклонила твою заявку";
+      return dest ? `отклонил твою заявку на поездку в ${dest}` : "отклонил твою заявку";
     case "ride_request_cancelled":
-      return "отменил заявку на поездку";
+      return dest ? `отменил заявку на поездку в ${dest}` : "отменил заявку на поездку";
     case "ride_cancelled":
       return "отменил поездку";
     case "ride_completed":

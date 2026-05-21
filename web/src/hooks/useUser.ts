@@ -28,5 +28,6 @@ export function useUser(id: string) {
     queryKey: queryKeys.user.detail(id),
     queryFn: () => apiFetch<PublicUser>(`/users/${id}`),
     enabled: !!id,
+    staleTime: 5 * 60_000,
   });
 }

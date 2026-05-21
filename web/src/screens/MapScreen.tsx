@@ -93,28 +93,10 @@ export function MapScreen() {
     return () => clearTimeout(t);
   }, [locateError]);
 
-  // Swap tile layer when theme changes
+  // Toggle dark filter via CSS class on the map container — no tile layer swap, no flicker
   useEffect(() => {
-    const map = mapRef.current as {
-      addLayer: (l: unknown) => void;
-      removeLayer: (l: unknown) => void;
-    } | null;
-    if (!map || !tileLayerRef.current) return;
-
-    import("leaflet").then((L) => {
-      if (tileLayerRef.current) {
-        map.removeLayer(tileLayerRef.current);
-      }
-      const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-      const tile = L.tileLayer(tileUrl, {
-        maxZoom: 19,
-        subdomains: "abc",
-        attribution: "© OpenStreetMap contributors",
-        className: isDark ? "leaflet-tile-dark" : "",
-      });
-      tile.addTo(map as ReturnType<typeof L.map>);
-      tileLayerRef.current = tile;
-    });
+    if (!mapContainerRef.current) return;
+    mapContainerRef.current.classList.toggle("leaflet-dark", isDark);
   }, [isDark]);
 
   useEffect(() => {
@@ -144,6 +126,7 @@ export function MapScreen() {
       const map = L.map(mapContainerRef.current, {
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
+        minZoom: 7,
         zoomControl: false,
         preferCanvas: true,
       });
@@ -162,10 +145,10 @@ export function MapScreen() {
       const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
       const tile = L.tileLayer(tileUrl, {
+        minZoom: 7,
         maxZoom: 19,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
-        className: document.documentElement.classList.contains("dark") ? "leaflet-tile-dark" : "",
       });
       tile.addTo(map);
       tileLayerRef.current = tile;

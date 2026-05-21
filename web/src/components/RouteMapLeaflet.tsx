@@ -25,6 +25,12 @@ export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }
   const mapRef = useRef<unknown>(null);
   const isDark = useDarkMode();
 
+  // Toggle dark filter via CSS class — no tile layer swap, no flicker
+  useEffect(() => {
+    if (!containerRef.current) return;
+    containerRef.current.classList.toggle("leaflet-dark", isDark);
+  }, [isDark]);
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     let destroyed = false;
@@ -42,7 +48,6 @@ export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         subdomains: "abc",
-        className: isDark ? "leaflet-tile-dark" : "",
       }).addTo(map);
 
       const iconFrom = L.divIcon({
@@ -87,7 +92,7 @@ export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }
         mapRef.current = null;
       }
     };
-  }, [fromLat, fromLng, toLat, toLng, isDark]);
+  }, [fromLat, fromLng, toLat, toLng]);
 
   return (
     <div

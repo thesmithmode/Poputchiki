@@ -508,6 +508,8 @@ function ThemeToggle({
   );
 }
 
+const EMOJI_RE = /^(\p{Extended_Pictographic}️?|\p{Emoji_Presentation})\s+/u;
+
 function RowLink({
   label,
   onClick,
@@ -517,6 +519,9 @@ function RowLink({
   onClick: () => void;
   testId?: string;
 }) {
+  const m = label.match(EMOJI_RE);
+  const icon = m ? m[1] : null;
+  const text = m ? label.slice(m[0].length) : label;
   return (
     <button
       type="button"
@@ -537,7 +542,10 @@ function RowLink({
         textAlign: "left",
       }}
     >
-      {label}
+      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {icon && <span style={{ lineHeight: 1, flexShrink: 0 }}>{icon}</span>}
+        <span>{text}</span>
+      </span>
       <span style={{ color: "var(--brand-sub)" }}>→</span>
     </button>
   );

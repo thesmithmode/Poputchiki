@@ -80,7 +80,7 @@ describe("SettingsScreen", () => {
     renderSettings();
     expect(screen.getByText("Настройки")).toBeInTheDocument();
     expect(screen.getByText(/Уведомления/)).toBeInTheDocument();
-    expect(screen.getByText(/ℹ️ О приложении/)).toBeInTheDocument();
+    expect(screen.getByTestId("link-about")).toBeInTheDocument();
     expect(screen.getByTestId("logout-btn")).toBeInTheDocument();
     expect(screen.getByTestId("delete-account-btn")).toBeInTheDocument();
     expect(screen.getByTestId("app-version")).toBeInTheDocument();
@@ -159,7 +159,7 @@ describe("SettingsScreen", () => {
 
   it("навигация к О приложении", () => {
     renderSettings();
-    fireEvent.click(screen.getByText(/ℹ️ О приложении/));
+    fireEvent.click(screen.getByTestId("link-about"));
     expect(mockNavigate).toHaveBeenCalledWith("/about");
   });
 });

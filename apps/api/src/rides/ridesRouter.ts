@@ -352,7 +352,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           userId: f.user_id,
           category: "favorite_new_ride",
           rideId: String(ride.id),
-          data: { driver_id: user.id },
+          data: { driver_id: user.id, driver_name: user.displayName ?? "" },
         });
       }
     })().catch(/* c8 ignore next -- fire-and-forget */ () => {});
@@ -380,9 +380,10 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
               driver_id: string;
               seats_total: number;
               seats_taken: number;
+              to_label: string;
             }[]
           >`
-            SELECT id, driver_id, seats_total, seats_taken
+            SELECT id, driver_id, seats_total, seats_taken, to_label
             FROM rides
             WHERE id = ${rideId}::uuid AND status = 'active'
           `;
@@ -413,6 +414,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             rideRequest,
             driverId: String(ride.driver_id),
             passengerName: passengerUser?.display_name ?? "",
+            toLabel: ride.to_label,
           };
         },
         "repeatable read",
@@ -428,6 +430,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           passenger_id: user.id,
           passenger_name: result.passengerName,
           request_id: result.rideRequest?.id,
+          destination: result.toLabel,
         },
       }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
@@ -520,6 +523,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         userId: passengerId,
         category: "participation_request",
         rideId,
+        data: { driver_name: user.displayName ?? "" },
       }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
@@ -739,6 +743,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           userId: passengerId,
           category: "ride_changed",
           rideId,
+          data: { driver_name: user.displayName ?? "" },
         }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
       }
     }
@@ -845,6 +850,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         userId: passengerId,
         category: "ride_cancelled",
         rideId,
+        data: { driver_name: user.displayName ?? "" },
       }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
@@ -923,6 +929,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         userId: passengerId,
         category: "ride_completed",
         rideId,
+        data: { driver_name: user.displayName ?? "" },
       }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 

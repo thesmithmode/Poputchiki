@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AddressAutocomplete, type Coords } from "../components/AddressAutocomplete";
@@ -5,7 +6,9 @@ import { MapPicker } from "../components/MapPicker";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import { apiFetch } from "../lib/api";
+import { queryKeys } from "../lib/queryKeys";
 import { getTelegramWebApp } from "../lib/telegram";
+import type { Ride } from "../types/ride";
 
 interface FormState {
   from_label: string;
@@ -49,6 +52,7 @@ type Step = 1 | 2 | 3;
 
 export function CreateRideScreen() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   useTelegramBack(() => navigate(-1));
   const { notification } = useTelegramHaptic();
   const [step, setStep] = useState<Step>(1);
@@ -195,8 +199,9 @@ export function CreateRideScreen() {
         template_id = tmpl.id;
       }
 
+      let createdRide: Ride | null = null;
       try {
-        await apiFetch("/rides", {
+        createdRide = await apiFetch<Ride>("/rides", {
           method: "POST",
           body: JSON.stringify({
             from_label: form.from_label.trim(),
@@ -222,6 +227,21 @@ export function CreateRideScreen() {
           }
         }
         throw ridesErr;
+      }
+      if (createdRide) {
+        const newRide = createdRide;
+        qc.setQueryData<{ rides: Ride[]; nextCursor: string | null }>(
+          queryKeys.rides.all,
+          (prev) =>
+            prev
+              ? { ...prev, rides: [newRide, ...prev.rides.filter((r) => r.id !== newRide.id)] }
+              : { rides: [newRide], nextCursor: null },
+        );
+        qc.setQueryData<{ rides: Ride[] }>(queryKeys.rides.mine("driver", "future"), (prev) =>
+          prev
+            ? { rides: [newRide, ...prev.rides.filter((r) => r.id !== newRide.id)] }
+            : { rides: [newRide] },
+        );
       }
       notification("success");
       navigate("/");

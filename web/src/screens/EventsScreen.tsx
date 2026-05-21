@@ -26,7 +26,7 @@ function displayName(n: UserNotification): string {
     getString(n, "liker_name") ??
     getString(n, "reviewer_name") ??
     getString(n, "sender_name") ??
-    "Попутчики Царёво"
+    "Пользователь"
   );
 }
 
@@ -39,25 +39,41 @@ function actionText(n: UserNotification): string {
       return "приняла твою заявку";
     case "ride_request_rejected":
       return "отклонила твою заявку";
+    case "ride_request_cancelled":
+      return "отменил заявку на поездку";
     case "ride_cancelled":
       return "отменил поездку";
+    case "ride_completed":
+      return "завершил поездку";
+    case "ride_changed":
+      return "изменил параметры поездки";
     case "confirm_participation":
       return dest ? `подтверди, что вы ездили в ${dest}` : "подтверди, что вы ездили";
+    case "participation_request":
+      return "подтвердил твоё участие в поездке";
     case "like_received":
       return "поставила тебе лайк";
     case "review_received":
       return "оставила отзыв 5★";
     case "ride_published":
       return dest ? `опубликовал поездку в ${dest}` : "опубликовал поездку";
+    case "favorite_new_ride":
+      return dest ? `опубликовал новую поездку в ${dest}` : "опубликовал новую поездку";
+    case "support_reply":
+      return "ответ от поддержки";
+    case "system":
+      return "Системное уведомление";
+    case "admin_review_cancellation_abuse":
+      return "слишком много отмен — требуется проверка";
     case "welcome":
       return "Добро пожаловать в Попутчики Царёво!";
     default:
-      return n.category;
+      return "новое уведомление";
   }
 }
 
 function isSystem(n: UserNotification): boolean {
-  return n.category === "welcome";
+  return n.category === "welcome" || n.category === "system" || n.category === "support_reply";
 }
 
 function formatTime(iso: string): string {

@@ -234,3 +234,95 @@ describe("EventsScreen — inline accept/reject (ride_request)", () => {
     });
   });
 });
+
+describe("EventsScreen — i18n действий и actor name", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("ride_request_cancelled: показывает локализованный текст, не raw category", async () => {
+    const notif = {
+      id: NOTIF_ID,
+      category: "ride_request_cancelled",
+      ride_id: RIDE_ID,
+      data: { passenger_name: "Иван", request_id: "req-xx" },
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [notif] });
+
+    renderScreen();
+
+    const row = await screen.findByTestId(`notification-${NOTIF_ID}-row`);
+    expect(row).not.toHaveTextContent("ride_request_cancelled");
+    expect(row).toHaveTextContent(/отмен/i);
+  });
+
+  it("ride_completed: показывает локализованный текст, не raw category", async () => {
+    const notif = {
+      id: NOTIF_ID,
+      category: "ride_completed",
+      ride_id: RIDE_ID,
+      data: { driver_name: "Иван" },
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [notif] });
+
+    renderScreen();
+
+    const row = await screen.findByTestId(`notification-${NOTIF_ID}-row`);
+    expect(row).not.toHaveTextContent("ride_completed");
+  });
+
+  it("favorite_new_ride: показывает локализованный текст", async () => {
+    const notif = {
+      id: NOTIF_ID,
+      category: "favorite_new_ride",
+      ride_id: RIDE_ID,
+      data: { driver_id: "x" },
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [notif] });
+
+    renderScreen();
+
+    const row = await screen.findByTestId(`notification-${NOTIF_ID}-row`);
+    expect(row).not.toHaveTextContent("favorite_new_ride");
+  });
+
+  it("если в data нет имени актора — fallback НЕ показывает 'Попутчики Царёво'", async () => {
+    const notif = {
+      id: NOTIF_ID,
+      category: "ride_request_rejected",
+      ride_id: RIDE_ID,
+      data: {},
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [notif] });
+
+    renderScreen();
+
+    const row = await screen.findByTestId(`notification-${NOTIF_ID}-row`);
+    expect(row).not.toHaveTextContent(/Попутчики\s+Царёво/i);
+  });
+
+  it("если actor_name=пустая строка — fallback НЕ показывает 'Попутчики Царёво'", async () => {
+    const notif = {
+      id: NOTIF_ID,
+      category: "ride_request",
+      ride_id: RIDE_ID,
+      data: { passenger_name: "", request_id: "req-yy" },
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce({ notifications: [notif] });
+
+    renderScreen();
+
+    const row = await screen.findByTestId(`notification-${NOTIF_ID}-row`);
+    expect(row).not.toHaveTextContent(/Попутчики\s+Царёво/i);
+  });
+});

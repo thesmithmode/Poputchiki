@@ -53,13 +53,14 @@ const mockedApiFetch = vi.mocked(apiFetch);
 
 function renderScreen(initialPath = "/rides/new") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(
+  const utils = render(
     <MemoryRouter initialEntries={[initialPath]}>
       <QueryClientProvider client={client}>
         <CreateRideScreen />
       </QueryClientProvider>
     </MemoryRouter>,
   );
+  return { ...utils, client };
 }
 
 function fillFromTo() {
@@ -354,6 +355,123 @@ describe("CreateRideScreen", () => {
       const body = JSON.parse((init as RequestInit).body as string);
       expect(body.template_id).toBeNull();
     });
+  });
+
+  it("optimistic: после submit ride вкидывается в кеш ['rides'] до refetch", async () => {
+    const createdRide = {
+      id: "ride-optimistic-1",
+      driver_id: "me-uuid",
+      from_label: "ЖК Царёво",
+      from_lat: 55.8945,
+      from_lng: 49.2043,
+      to_label: "ул. Баумана",
+      to_lat: 55.7887,
+      to_lng: 49.1222,
+      departure_at: "2099-01-01T10:00:00Z",
+      price_rub: null,
+      seats_total: 3,
+      seats_taken: 0,
+      status: "published",
+      comment: null,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce(createdRide);
+
+    const { client } = renderScreen();
+    // Pre-seed pустой кеш чтобы setQueryData мог его расширить
+    client.setQueryData(["rides"], { rides: [], nextCursor: null });
+
+    goToStep3();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      const cached = client.getQueryData<{ rides: Array<{ id: string }> }>(["rides"]);
+      expect(cached?.rides.some((r) => r.id === "ride-optimistic-1")).toBe(true);
+    });
+  });
+
+  it("optimistic: после submit ride вкидывается в кеш ['rides','mine','driver','future']", async () => {
+    const createdRide = {
+      id: "ride-optimistic-2",
+      driver_id: "me-uuid",
+      from_label: "ЖК Царёво",
+      from_lat: 55.8945,
+      from_lng: 49.2043,
+      to_label: "ул. Баумана",
+      to_lat: 55.7887,
+      to_lng: 49.1222,
+      departure_at: "2099-01-01T10:00:00Z",
+      price_rub: null,
+      seats_total: 3,
+      seats_taken: 0,
+      status: "published",
+      comment: null,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce(createdRide);
+
+    const { client } = renderScreen();
+    client.setQueryData(["rides", "mine", "driver", "future"], { rides: [] });
+
+    goToStep3();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      const cached = client.getQueryData<{ rides: Array<{ id: string }> }>([
+        "rides",
+        "mine",
+        "driver",
+        "future",
+      ]);
+      expect(cached?.rides.some((r) => r.id === "ride-optimistic-2")).toBe(true);
+    });
+  });
+
+  it("optimistic: НЕ дёргает доп. сетевые вызовы для refetch листа", async () => {
+    const createdRide = {
+      id: "ride-no-refetch",
+      driver_id: "me-uuid",
+      from_label: "ЖК Царёво",
+      from_lat: 55.8945,
+      from_lng: 49.2043,
+      to_label: "ул. Баумана",
+      to_lat: 55.7887,
+      to_lng: 49.1222,
+      departure_at: "2099-01-01T10:00:00Z",
+      price_rub: null,
+      seats_total: 3,
+      seats_taken: 0,
+      status: "published",
+      comment: null,
+      created_at: new Date().toISOString(),
+    };
+    mockedApiFetch.mockResolvedValueOnce(createdRide);
+
+    renderScreen();
+    goToStep3();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("submit-btn"));
+    });
+
+    await waitFor(() => {
+      const ridesPosts = mockedApiFetch.mock.calls.filter(
+        ([path, init]) => path === "/rides" && (init as RequestInit | undefined)?.method === "POST",
+      );
+      expect(ridesPosts).toHaveLength(1);
+    });
+    // SENTINEL: после успешного POST /rides не должно быть GET /rides или GET /rides/mine —
+    // оптимистично инжектим в кеш без доп. нагрузки на сервер.
+    const ridesGets = mockedApiFetch.mock.calls.filter(
+      ([path, init]) =>
+        String(path).startsWith("/rides") &&
+        (init as RequestInit | undefined)?.method !== "POST" &&
+        (init as RequestInit | undefined)?.method !== "DELETE",
+    );
+    expect(ridesGets).toHaveLength(0);
   });
 
   it("progress bar отражает текущий шаг", () => {

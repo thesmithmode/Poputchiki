@@ -259,6 +259,19 @@ jobs:
             sleep 5
           done
 
+  register-webhook:
+    needs: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register Telegram webhook
+        run: |
+          curl -sS --fail \
+            "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/setWebhook" \
+            -d "url=https://webhook.${{ vars.DOMAIN }}/webhook/tg" \
+            -d "secret_token=${{ secrets.WEBHOOK_SECRET }}" \
+            -d 'allowed_updates=["message","callback_query","my_chat_member"]' \
+            | tee /dev/stderr | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get('ok') else 1)"
+
   rollback-on-fail:
     needs: [deploy, smoke]
     if: failure()

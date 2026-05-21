@@ -5,13 +5,23 @@ import type { AppUser } from "../../../src/middleware/identity-guard";
 
 const USER: AppUser = { id: "00000000-0000-4000-a000-a01d00000001", tgId: 6001, role: "user" };
 
-function makeSql() {
-  const mock = vi.fn().mockResolvedValue([]);
-  // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
-  return mock as any;
+interface SqlMock {
+  (...args: unknown[]): Promise<unknown[]>;
+  tx: ReturnType<typeof vi.fn>;
+  begin: ReturnType<typeof vi.fn>;
 }
 
-function makeApp(sql = makeSql(), user?: AppUser) {
+function makeSql(): SqlMock {
+  const tx = vi.fn().mockResolvedValue([]);
+  // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
+  const sql = vi.fn().mockResolvedValue([]) as any as SqlMock;
+  sql.tx = tx;
+  sql.begin = vi.fn().mockImplementation(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
+  return sql;
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: test helper
+function makeApp(sql: any = makeSql(), user?: AppUser) {
   const app = new Hono();
   if (user) {
     app.use("*", async (c, next) => {
@@ -28,19 +38,24 @@ function makeApp(sql = makeSql(), user?: AppUser) {
   return { app, sql };
 }
 
+// Helper: get the INSERT call args from the tx mock (call index 1, after SET LOCAL ROLE)
+function txInsertArgs(sql: ReturnType<typeof makeSql>) {
+  // tx call[0] = SET LOCAL ROLE, tx call[1] = INSERT
+  return sql.tx.mock.calls[1]?.slice(1) as unknown[] | undefined;
+}
+
 describe("auditLog middleware", () => {
-  it("POST 201 → audit INSERT called", async () => {
+  it("POST 201 → audit INSERT called via sql.begin", async () => {
     const { app, sql } = makeApp(makeSql(), USER);
     await app.request("/api/rides", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ from: "A" }),
     });
-    // Give the fire-and-forget promise time to settle
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).toHaveBeenCalled();
-    const call = sql.mock.calls[0];
-    const queryStr = String(call?.[0]);
+    expect(sql.begin).toHaveBeenCalled();
+    const insertCall = sql.tx.mock.calls[1];
+    const queryStr = String(insertCall?.[0]);
     expect(queryStr).toContain("audit_log");
   });
 
@@ -48,14 +63,14 @@ describe("auditLog middleware", () => {
     const { app, sql } = makeApp(makeSql(), USER);
     await app.request("/api/rides");
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).not.toHaveBeenCalled();
+    expect(sql.begin).not.toHaveBeenCalled();
   });
 
   it("POST 422 (client error) → NO audit INSERT", async () => {
     const { app, sql } = makeApp(makeSql(), USER);
     await app.request("/api/fail", { method: "POST", body: "{}" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).not.toHaveBeenCalled();
+    expect(sql.begin).not.toHaveBeenCalled();
   });
 
   it("DELETE with UUID path param → entity_id extracted", async () => {
@@ -64,8 +79,8 @@ describe("auditLog middleware", () => {
       method: "DELETE",
     });
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).toHaveBeenCalled();
-    const interpolations = sql.mock.calls[0]?.slice(1);
+    expect(sql.begin).toHaveBeenCalled();
+    const interpolations = txInsertArgs(sql);
     expect(
       interpolations?.some((v: unknown) =>
         String(v).includes("00000000-0000-4000-a000-000000000001"),
@@ -74,10 +89,10 @@ describe("auditLog middleware", () => {
   });
 
   it("audit INSERT failure does not throw / swallowed", async () => {
-    const badSql = vi.fn().mockRejectedValue(new Error("DB down"));
+    const sql = makeSql();
+    sql.begin = vi.fn().mockRejectedValue(new Error("DB down"));
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const { app } = makeApp(badSql as any, USER);
-    // Should not throw
+    const { app } = makeApp(sql as any, USER);
     const res = await app.request("/api/rides", { method: "POST", body: "{}" });
     expect(res.status).toBe(201);
   });
@@ -89,7 +104,7 @@ describe("auditLog middleware", () => {
       body: "{}",
     });
     await new Promise((r) => setTimeout(r, 10));
-    const interpolations = sql.mock.calls[0]?.slice(1);
+    const interpolations = txInsertArgs(sql);
     expect(interpolations?.some((v: unknown) => String(v) === "POST /api/rides")).toBe(true);
   });
 
@@ -97,8 +112,8 @@ describe("auditLog middleware", () => {
     const { app, sql } = makeApp(); // no USER → user undefined
     await app.request("/api/rides", { method: "POST", body: "{}" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).toHaveBeenCalled();
-    const interpolations = sql.mock.calls[0]?.slice(1);
+    expect(sql.begin).toHaveBeenCalled();
+    const interpolations = txInsertArgs(sql);
     expect(interpolations?.includes(null)).toBe(true);
   });
 
@@ -106,8 +121,8 @@ describe("auditLog middleware", () => {
     const { app, sql } = makeApp();
     await app.request("/", { method: "PUT" });
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).toHaveBeenCalled();
-    const interpolations = sql.mock.calls[0]?.slice(1);
+    expect(sql.begin).toHaveBeenCalled();
+    const interpolations = txInsertArgs(sql);
     expect(interpolations?.some((v: unknown) => String(v) === "api")).toBe(true);
   });
 
@@ -119,7 +134,7 @@ describe("auditLog middleware", () => {
       body: JSON.stringify({ data: "test" }),
     });
     await new Promise((r) => setTimeout(r, 10));
-    const interpolations = sql.mock.calls[0]?.slice(1);
+    const interpolations = txInsertArgs(sql);
     const metaArg = interpolations?.find(
       (v: unknown) => typeof v === "string" && v.includes("payload_hash"),
     );
@@ -141,8 +156,8 @@ describe("auditLog middleware", () => {
       body: JSON.stringify({ data: "small but header says big" }),
     });
     await new Promise((r) => setTimeout(r, 10));
-    expect(sql).toHaveBeenCalled();
-    const interpolations = sql.mock.calls[0]?.slice(1);
+    expect(sql.begin).toHaveBeenCalled();
+    const interpolations = txInsertArgs(sql);
     const metaArg = interpolations?.find(
       (v: unknown) => typeof v === "string" && v.includes("payload_hash"),
     );

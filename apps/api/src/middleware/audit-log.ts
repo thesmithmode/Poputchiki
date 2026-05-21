@@ -57,16 +57,19 @@ export function auditLog(sql: postgres.Sql): MiddlewareHandler {
     const { entity, entityId } = parsePathParts(c.req.path);
 
     try {
-      await sql`
-        INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
-        VALUES (
-          ${user?.id ?? null},
-          ${action},
-          ${entity},
-          ${entityId},
-          ${JSON.stringify({ ip, ua, payload_hash: payloadHash })}::jsonb
-        )
-      `;
+      await sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_service`;
+        await tx`
+          INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+          VALUES (
+            ${user?.id ?? null},
+            ${action},
+            ${entity},
+            ${entityId},
+            ${JSON.stringify({ ip, ua, payload_hash: payloadHash })}::jsonb
+          )
+        `;
+      });
     } catch (err: unknown) {
       console.error("audit_log insert failed:", err);
     }

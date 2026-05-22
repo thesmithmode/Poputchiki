@@ -3,6 +3,8 @@ import { enqueueNotification, enqueueNotificationBatch } from "../src/notificati
 
 // biome-ignore lint/suspicious/noExplicitAny: tagged-template sql mock
 const mockSql = vi.fn() as any;
+// postgres.js helper — оборачивает объект как jsonb parameter
+mockSql.json = (v: unknown) => v;
 
 const USER_ID = "00000000-0000-4000-a000-000000000001";
 const RIDE_ID = "aaaaaaaa-0000-4000-a000-000000000001";

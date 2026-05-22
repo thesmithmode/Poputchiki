@@ -41,7 +41,7 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
     try {
       const inserted = await sql<{ key: string }[]>`
         INSERT INTO idempotency_keys (key, user_id, response)
-        VALUES (${key}, ${userId}::uuid, ${JSON.stringify(PENDING_SENTINEL)}::jsonb)
+        VALUES (${key}, ${userId}::uuid, ${sql.json(PENDING_SENTINEL)}::jsonb)
         ON CONFLICT (key, COALESCE(user_id, '00000000-0000-0000-0000-000000000000'::uuid)) DO NOTHING
         RETURNING key
       `;
@@ -103,7 +103,7 @@ export function idempotency(sql: postgres.Sql): MiddlewareHandler {
     try {
       await sql`
         UPDATE idempotency_keys
-        SET response = ${JSON.stringify(payload)}::jsonb
+        SET response = ${sql.json(payload as never)}::jsonb
         WHERE key = ${key}
           AND user_id IS NOT DISTINCT FROM ${userId}::uuid
       `;

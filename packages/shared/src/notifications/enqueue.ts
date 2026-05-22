@@ -8,7 +8,11 @@ import { type NotificationCategory, isNotificationCategory } from "./categories.
  * would otherwise reject a structural assignability check.
  */
 // biome-ignore lint/suspicious/noExplicitAny: structural match for postgres.js Sql / TransactionSql
-type SqlTagged = (strings: TemplateStringsArray, ...values: unknown[]) => any;
+type SqlTaggedFn = (strings: TemplateStringsArray, ...values: unknown[]) => any;
+// postgres.js helper: оборачивает объект в jsonb parameter без двойной сериализации.
+// biome-ignore lint/suspicious/noExplicitAny: postgres.js json signature varies by version
+type JsonHelper = (value: any) => any;
+type SqlTagged = SqlTaggedFn & { json: JsonHelper };
 
 export interface EnqueueArgs {
   userId: string;
@@ -78,13 +82,15 @@ export async function enqueueNotification(sql: SqlTagged, args: EnqueueArgs): Pr
   const rideId = args.rideId ?? null;
   const data = args.data ?? {};
 
+  // postgres.js сериализует строку для ::jsonb как jsonb-string (двойная сериализация).
+  // sql.json() оборачивает объект как jsonb parameter → сохраняется как jsonb-object.
   await sql`
     INSERT INTO user_notifications (user_id, category, ride_id, data)
     VALUES (
       ${args.userId}::uuid,
       ${args.category},
       ${rideId}::uuid,
-      ${JSON.stringify(data)}::jsonb
+      ${sql.json(data)}::jsonb
     )
   `;
 

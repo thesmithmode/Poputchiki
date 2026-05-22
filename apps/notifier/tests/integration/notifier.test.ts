@@ -208,4 +208,29 @@ describe("notifier integration", () => {
     const body = JSON.parse(opts.body as string);
     expect(body.chat_id).toBe(tg_id);
   });
+
+  it("multi-replica dedup: одновременные processEvent → ровно один fetch (TASK-139)", async () => {
+    // Симуляция: две replicas notifier'а получили один NOTIFY-event.
+    // Каждая processEvent атомарно делает INSERT в notification_log.
+    // Только первая (UNIQUE notification_id) шлёт в TG — вторая видит false.
+    const { id } = await createUser();
+    const fetchFn = vi.fn().mockResolvedValue({ status: 200, ok: true } as Response);
+
+    const payload = JSON.stringify({
+      user_id: id,
+      category: "system",
+    });
+
+    // Изолируем cache per replica (in-process LRU не share между instances).
+    const cacheA = new Map<string, number>();
+    const cacheB = new Map<string, number>();
+
+    await Promise.all([
+      processEvent(db, fetchFn as FetchFn, cacheA, payload, BOT_TOKEN),
+      processEvent(db, fetchFn as FetchFn, cacheB, payload, BOT_TOKEN),
+    ]);
+
+    // Ровно один fetch — DB-уровень дедуп через notification_log unique constraint.
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
 });

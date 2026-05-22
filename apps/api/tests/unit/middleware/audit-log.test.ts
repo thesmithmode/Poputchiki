@@ -17,6 +17,10 @@ function makeSql(): SqlMock {
   const sql = vi.fn().mockResolvedValue([]) as any as SqlMock;
   sql.tx = tx;
   sql.begin = vi.fn().mockImplementation(async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx));
+  // postgres.js helper — для теста сериализуем в строку (имитация wire format),
+  // assertions ниже парсят JSON из interpolation.
+  // biome-ignore lint/suspicious/noExplicitAny: mock json helper
+  (sql as any).json = (v: unknown) => JSON.stringify(v);
   return sql;
 }
 

@@ -26,8 +26,10 @@ const LIKE_ID = "00000000-0000-4000-a000-000000000004";
 
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockTx = vi.fn() as any;
+mockTx.json = (v: unknown) => JSON.stringify(v);
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockSql = vi.fn() as any;
+mockSql.json = (v: unknown) => JSON.stringify(v);
 
 function mockWithIdentityCallThrough() {
   vi.mocked(withIdentity).mockImplementation(async (_sql, _user, fn) => fn(mockTx));
@@ -106,15 +108,13 @@ describe("POST /likes", () => {
     // Allow fire-and-forget enqueueNotification microtasks to flush
     await new Promise((r) => setTimeout(r, 0));
 
-    // mockSql called twice: INSERT into user_notifications, then pg_notify
-    expect(mockSql).toHaveBeenCalledTimes(2);
-    // First call: INSERT user_notifications — userId, category, rideId, data
-    const insertCall = mockSql.mock.calls[0];
+    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
+    expect(mockSql).toHaveBeenCalledTimes(3);
+    const insertCall = mockSql.mock.calls[1];
     expect(insertCall[1]).toBe(TARGET_ID); // userId (liked user)
     expect(insertCall[2]).toBe("like_received");
     expect(insertCall[3]).toBe(RIDE_ID);
-    // Second call: pg_notify — payload JSON
-    const notifyCall = mockSql.mock.calls[1];
+    const notifyCall = mockSql.mock.calls[2];
     const payload = JSON.parse(notifyCall[1] as string);
     expect(payload.category).toBe("like_received");
     expect(payload.user_id).toBe(TARGET_ID);

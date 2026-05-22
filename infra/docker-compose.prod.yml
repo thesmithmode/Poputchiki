@@ -98,11 +98,59 @@ services:
     profiles:
       - migrations
 
+  # PgBouncer: transaction pooling перед postgres. Под 50k одновременных пользователей
+  # api держит max=20 client connections, bouncer мультиплексирует их на ~25 server
+  # connections к postgres. Spike трафика не убивает postgres connection limit.
+  # LISTEN/NOTIFY НЕСОВМЕСТИМ с tx-pool — notifier/cron/api(SSE) идут на postgres:5432 напрямую.
+  pgbouncer:
+    image: edoburu/pgbouncer:1.23.1
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: poputchiki_app
+      DB_PASSWORD: ${APP_DB_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 2000
+      DEFAULT_POOL_SIZE: 25
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+      SERVER_RESET_QUERY: DISCARD ALL
+      SERVER_IDLE_TIMEOUT: 60
+      QUERY_WAIT_TIMEOUT: 30
+      LISTEN_PORT: 6432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U poputchiki_app || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+
   api:
     image: ghcr.io/thesmithmode/poputchiki-api:${IMAGE_TAG:-latest}
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      # Через PgBouncer (tx pool) — query traffic.
+      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@pgbouncer:6432/${POSTGRES_DB}
+      # Прямое соединение postgres для LISTEN/NOTIFY (SSE realtime).
+      DATABASE_URL_DIRECT: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       BOT_TOKEN: ${BOT_TOKEN}
       PGCRYPTO_KEY: ${PGCRYPTO_KEY}
@@ -122,6 +170,8 @@ services:
       NOMINATIM_URL: ${NOMINATIM_URL:-http://nominatim:8080}
     depends_on:
       postgres:
+        condition: service_healthy
+      pgbouncer:
         condition: service_healthy
       nominatim:
         condition: service_started

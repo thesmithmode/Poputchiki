@@ -23,7 +23,9 @@ function makeSql(acquired: boolean, txResponses: (Row[] | Error)[]): import("pos
         const resp = txResponses[i - 2] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
-      });
+        // biome-ignore lint/suspicious/noExplicitAny: postgres.js helper mock
+      }) as unknown as any;
+      tx.json = (v: unknown) => JSON.stringify(v);
       return fn(tx);
     }),
   } as unknown as import("postgres").Sql;
@@ -75,13 +77,15 @@ describe("finalizeRides", () => {
 
   it("SET LOCAL ROLE poputchiki_service вызывается первым", async () => {
     const calls: string[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: mock with .json helper
     const tx = vi.fn().mockImplementation((strings: TemplateStringsArray, ..._v: unknown[]) => {
       const q = strings.join("?");
       calls.push(q);
       if (q.includes("SET LOCAL ROLE")) return Promise.resolve([]);
       if (q.includes("pg_try_advisory_xact_lock")) return Promise.resolve([{ acquired: true }]);
       return Promise.resolve([]);
-    });
+    }) as unknown as any;
+    tx.json = (v: unknown) => JSON.stringify(v);
     const sql = {
       begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
     } as unknown as import("postgres").Sql;

@@ -1,6 +1,7 @@
 import { isNotificationCategory } from "@poputchiki/shared";
 import type { CircuitBreaker } from "./circuit-breaker.js";
 import { buildDedupKey, checkAndSet } from "./dedup.js";
+import type { DlqClient } from "./dlq.js";
 import { formatMessage } from "./format.js";
 import { buildReplyMarkup } from "./reply-markup.js";
 import type { Category, NotifierDb, NotifyPayload } from "./types.js";
@@ -31,6 +32,7 @@ export async function processEvent(
   raw: string,
   botToken: string,
   circuit?: CircuitBreaker,
+  dlq?: DlqClient,
 ): Promise<void> {
   let payload: NotifyPayload;
   try {
@@ -108,9 +110,28 @@ export async function processEvent(
       body,
     });
   } catch (err) {
-    console.error(
-      JSON.stringify({ msg: "notifier_fetch_error", user_id, error: sanitizeErr(err, botToken) }),
-    );
+    const errMsg = sanitizeErr(err, botToken);
+    console.error(JSON.stringify({ msg: "notifier_fetch_error", user_id, error: errMsg }));
+    if (dlq) {
+      await dlq
+        .enqueue({
+          dedupKey: key,
+          userId: user_id,
+          category,
+          payload,
+          lastStatus: null,
+          lastError: errMsg,
+        })
+        .catch((e: unknown) =>
+          console.error(
+            JSON.stringify({
+              msg: "notifier_dlq_enqueue_error",
+              user_id,
+              error: sanitizeErr(e, botToken),
+            }),
+          ),
+        );
+    }
     return;
   }
 
@@ -126,10 +147,31 @@ export async function processEvent(
   if (resp.status === 429) {
     // biome-ignore lint/suspicious/noConsoleLog: structured worker log
     console.log(JSON.stringify({ msg: "notifier_rate_limited", user_id }));
-    // REL-02: НЕ блокируем основную очередь sleep(60s). Раньше per-user rate-limit
-    // останавливал обработку всех уведомлений — все события за 60s терялись из NOTIFY-payload.
-    // Решение: статус 'failed' + fire-and-forget retry через setTimeout без await.
     await db.updateNotificationStatus(key, "failed");
+    if (dlq) {
+      // Persistent DLQ path: запись переживёт restart, retry-loop опрашивает каждые N сек.
+      await dlq
+        .enqueue({
+          dedupKey: key,
+          userId: user_id,
+          category,
+          payload,
+          lastStatus: 429,
+          lastError: "rate_limited",
+        })
+        .catch((e: unknown) =>
+          console.error(
+            JSON.stringify({
+              msg: "notifier_dlq_enqueue_error",
+              user_id,
+              error: sanitizeErr(e, botToken),
+            }),
+          ),
+        );
+      return;
+    }
+    // Legacy fallback (без DLQ): in-memory setTimeout retry, 100 max in-flight.
+    /* c8 ignore next 9 -- overflow guard requires 100+ concurrent 429s to trigger */
     if (rateLimitRetriesInFlight >= MAX_RETRIES_IN_FLIGHT) {
       console.error(
         JSON.stringify({
@@ -171,9 +213,29 @@ export async function processEvent(
   if (!resp.ok) {
     console.error(JSON.stringify({ msg: "notifier_send_failed", user_id, status: resp.status }));
     await db.updateNotificationStatus(key, "failed");
-    // 5xx → record failure in circuit breaker
+    // 5xx → record failure in circuit breaker + enqueue DLQ для retry.
     /* c8 ignore next -- circuit may be undefined in tests without circuit breaker */
     if (resp.status >= 500) circuit?.recordFailure();
+    if (dlq && resp.status >= 500) {
+      await dlq
+        .enqueue({
+          dedupKey: key,
+          userId: user_id,
+          category,
+          payload,
+          lastStatus: resp.status,
+          lastError: `tg_${resp.status}`,
+        })
+        .catch((e: unknown) =>
+          console.error(
+            JSON.stringify({
+              msg: "notifier_dlq_enqueue_error",
+              user_id,
+              error: sanitizeErr(e, botToken),
+            }),
+          ),
+        );
+    }
     return;
   }
 

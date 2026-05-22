@@ -28,6 +28,10 @@ export function parseWebhookEnv(raw: Record<string, string | undefined>): Webhoo
 const ApiEnvSchema = z
   .object({
     DATABASE_URL: z.string().min(1),
+    // Прямое соединение к postgres минуя PgBouncer — для LISTEN/NOTIFY
+    // (transaction-pool режим pgbouncer LISTEN не поддерживает).
+    // Optional: fallback на DATABASE_URL если не задан (dev без pgbouncer).
+    DATABASE_URL_DIRECT: z.string().optional(),
     JWT_SECRET: z.string().min(32), // HS256 требует ≥256 бит; 32 символа ASCII = минимум
     BOT_TOKEN: z.string().min(1),
     ADMIN_TG_ID: z.string().optional(),

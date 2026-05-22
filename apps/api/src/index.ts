@@ -5,8 +5,11 @@ import { createDispatcher } from "./realtime/dispatcher";
 
 const env = parseApiEnv(process.env as Record<string, string | undefined>);
 
+// DATABASE_URL может указывать на PgBouncer (transaction pool, port 6432) —
+// query traffic мультиплексируется через bouncer.
+// DATABASE_URL_DIRECT — прямой postgres (5432) для LISTEN/NOTIFY (несовместимо с tx-pool).
 const sql = createPool(env.DATABASE_URL);
-const listenSql = createListenSql(env.DATABASE_URL);
+const listenSql = createListenSql(env.DATABASE_URL_DIRECT ?? env.DATABASE_URL);
 
 // Dispatcher is async — start it before the server accepts connections.
 // If it fails on startup (DB unreachable), залогировать причину перед exit чтобы

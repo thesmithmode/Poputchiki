@@ -92,14 +92,16 @@ IMAGE_TAG="$SHA" $COMPOSE --profile migrations run --rm migrations
 # Шаг 4: rolling restart сервисов (postgres не трогаем)
 echo "--- [4/7] up services ---"
 PREVIOUS_TAG=$(cat "$TAGS_DIR/current-tag" 2>/dev/null || echo "")
+# pgbouncer должен подняться раньше api (api держит DATABASE_URL на pgbouncer:6432).
+IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps pgbouncer
 IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps api notifier cron webhook web
 
 # Шаг 5: ждать healthcheck (per-service таймауты)
 # H1: единый 120s-дедлайн для всех сервисов создавал ложный rollback —
 # если api занял 110s, notifier получал <10s. Теперь каждый сервис имеет свой таймаут.
 echo "--- [5/7] healthcheck (per-service timeouts) ---"
-SERVICES=(api notifier cron webhook web)
-declare -A SVC_TIMEOUT=([api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
+SERVICES=(pgbouncer api notifier cron webhook web)
+declare -A SVC_TIMEOUT=([pgbouncer]=30 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
 for SVC in "${SERVICES[@]}"; do
   TIMEOUT="${SVC_TIMEOUT[$SVC]}"
   DEADLINE=$((SECONDS + TIMEOUT))

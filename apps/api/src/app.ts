@@ -20,6 +20,7 @@ import { identityGuard } from "./middleware/identity-guard";
 import { rateLimit } from "./middleware/rate-limit";
 import { requestId } from "./middleware/request-id";
 import { secureHeadersMiddleware } from "./middleware/secure-headers";
+import { createAdminNotificationsRouter } from "./notifications/adminNotificationsRouter";
 import { createNotificationsRouter } from "./notifications/notificationsRouter";
 import type { Dispatcher } from "./realtime/dispatcher";
 import { createRealtimeRouter } from "./realtime/realtimeRouter";
@@ -106,6 +107,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
       const { userRouter: supportUser, adminRouter: supportAdmin } = createSupportRouter(sql);
       app.route("/api/support", supportUser);
       app.route("/api/admin/support", supportAdmin);
+      app.route("/api/admin/notifications", createAdminNotificationsRouter(sql));
     }
   }
 

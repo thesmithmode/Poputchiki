@@ -16,6 +16,7 @@ const RIDE_ID = "aaaaaaaa-0000-4000-a000-000000000001";
 
 // biome-ignore lint/suspicious/noExplicitAny: mock
 const mockSql = vi.fn() as any;
+mockSql.json = (v: unknown) => JSON.stringify(v);
 
 function makeApp() {
   const app = new Hono();
@@ -131,14 +132,15 @@ describe("POST /rides/:id/request", () => {
       driverId: DRIVER_ID,
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
+    mockSql.mockResolvedValueOnce([{ c: "0" }]); // throttle COUNT under limit
     mockSql.mockResolvedValueOnce([]); // user_notifications INSERT
     mockSql.mockResolvedValueOnce([]); // pg_notify
 
     const app = makeApp();
     await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
 
-    // First sql call is INSERT INTO user_notifications; category is an interpolated arg.
-    const insertCall = mockSql.mock.calls[0];
+    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
+    const insertCall = mockSql.mock.calls[1];
     expect(insertCall).toBeDefined();
     const insertStrings: string[] = insertCall[0];
     const insertJoined = insertStrings.join("|");
@@ -147,8 +149,7 @@ describe("POST /rides/:id/request", () => {
     expect(insertCall[2]).toBe("ride_request");
     expect(insertCall[2]).not.toBe("notify_user");
 
-    // Second call is pg_notify with payload JSON; category must be 'ride_request' inside payload
-    const notifyCall = mockSql.mock.calls[1];
+    const notifyCall = mockSql.mock.calls[2];
     const payload = JSON.parse(notifyCall[1] as string);
     expect(payload.category).toBe("ride_request");
     expect(payload.category).not.toBe("notify_user");

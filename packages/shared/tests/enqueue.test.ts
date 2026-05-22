@@ -3,6 +3,8 @@ import { enqueueNotification, enqueueNotificationBatch } from "../src/notificati
 
 // biome-ignore lint/suspicious/noExplicitAny: tagged-template sql mock
 const mockSql = vi.fn() as any;
+// postgres.js helper — оборачивает объект как jsonb parameter
+mockSql.json = (v: unknown) => v;
 
 const USER_ID = "00000000-0000-4000-a000-000000000001";
 const RIDE_ID = "aaaaaaaa-0000-4000-a000-000000000001";
@@ -19,19 +21,21 @@ describe("enqueueNotification", () => {
       data: { passenger_id: "p", passenger_name: "Антон" },
     });
 
-    expect(mockSql).toHaveBeenCalledTimes(2);
+    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
+    expect(mockSql).toHaveBeenCalledTimes(3);
 
-    const insertStrings: string[] = mockSql.mock.calls[0][0];
-    const insertJoined = insertStrings.join("|");
-    expect(insertJoined).toContain("INSERT INTO user_notifications");
+    const countStrings: string[] = mockSql.mock.calls[0][0];
+    expect(countStrings.join("|")).toContain("COUNT(*)");
 
-    const notifyStrings: string[] = mockSql.mock.calls[1][0];
+    const insertStrings: string[] = mockSql.mock.calls[1][0];
+    expect(insertStrings.join("|")).toContain("INSERT INTO user_notifications");
+
+    const notifyStrings: string[] = mockSql.mock.calls[2][0];
     const notifyJoined = notifyStrings.join("|");
     expect(notifyJoined).toContain("pg_notify");
     expect(notifyJoined).toContain("notify_user");
 
-    // payload is the second interpolation arg of pg_notify
-    const payloadArg = mockSql.mock.calls[1][1];
+    const payloadArg = mockSql.mock.calls[2][1];
     const parsed = JSON.parse(payloadArg as string);
     expect(parsed.category).toBe("ride_request");
     expect(parsed.user_id).toBe(USER_ID);
@@ -68,7 +72,8 @@ describe("enqueueNotification", () => {
       data: { message_id: "m1" },
     });
 
-    const payloadArg = mockSql.mock.calls[1][1];
+    // calls: [0]=COUNT, [1]=INSERT, [2]=pg_notify
+    const payloadArg = mockSql.mock.calls[2][1];
     const parsed = JSON.parse(payloadArg as string);
     expect(parsed.ride_id).toBeUndefined();
     expect(parsed.message_id).toBe("m1");
@@ -79,6 +84,7 @@ describe("enqueueNotification", () => {
     const order: string[] = [];
     mockSql.mockImplementation((strings: TemplateStringsArray) => {
       const joined = strings.join("");
+      if (joined.includes("COUNT(*)")) return Promise.resolve([{ c: "0" }]);
       if (joined.includes("INSERT INTO user_notifications")) order.push("insert");
       else if (joined.includes("pg_notify")) order.push("notify");
       return Promise.resolve([]);
@@ -90,6 +96,63 @@ describe("enqueueNotification", () => {
     });
 
     expect(order).toEqual(["insert", "notify"]);
+  });
+
+  it("throttle: ride_request свыше лимита → не INSERT, не pg_notify, return", async () => {
+    mockSql.mockReset();
+    const calls: string[] = [];
+    mockSql.mockImplementation((strings: TemplateStringsArray) => {
+      const joined = strings.join("");
+      calls.push(joined);
+      if (joined.includes("COUNT(*)")) return Promise.resolve([{ c: "50" }]); // лимит = 50
+      return Promise.resolve([]);
+    });
+
+    await enqueueNotification(mockSql, {
+      userId: USER_ID,
+      category: "ride_request",
+      data: { passenger_name: "X" },
+    });
+
+    expect(calls.some((c) => c.includes("INSERT INTO user_notifications"))).toBe(false);
+    expect(calls.some((c) => c.includes("pg_notify"))).toBe(false);
+  });
+
+  it("throttle: ride_request под лимитом → INSERT + pg_notify происходят", async () => {
+    mockSql.mockReset();
+    const calls: string[] = [];
+    mockSql.mockImplementation((strings: TemplateStringsArray) => {
+      const joined = strings.join("");
+      calls.push(joined);
+      if (joined.includes("COUNT(*)")) return Promise.resolve([{ c: "10" }]); // под лимитом
+      return Promise.resolve([]);
+    });
+
+    await enqueueNotification(mockSql, {
+      userId: USER_ID,
+      category: "ride_request",
+    });
+
+    expect(calls.some((c) => c.includes("INSERT INTO user_notifications"))).toBe(true);
+    expect(calls.some((c) => c.includes("pg_notify"))).toBe(true);
+  });
+
+  it("throttle: system категория без лимита — COUNT не вызывается", async () => {
+    mockSql.mockReset();
+    const calls: string[] = [];
+    mockSql.mockImplementation((strings: TemplateStringsArray) => {
+      const joined = strings.join("");
+      calls.push(joined);
+      return Promise.resolve([]);
+    });
+
+    await enqueueNotification(mockSql, {
+      userId: USER_ID,
+      category: "system",
+    });
+
+    expect(calls.some((c) => c.includes("COUNT(*)"))).toBe(false);
+    expect(calls.some((c) => c.includes("INSERT INTO user_notifications"))).toBe(true);
   });
 });
 

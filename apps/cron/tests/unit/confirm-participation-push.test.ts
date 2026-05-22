@@ -7,11 +7,13 @@ function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
   return {
     begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       let i = 0;
+      // biome-ignore lint/suspicious/noExplicitAny: postgres.js helper mock
       const tx = vi.fn().mockImplementation(() => {
         const resp = txResponses[i] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
-      });
+      }) as unknown as any;
+      tx.json = (v: unknown) => JSON.stringify(v);
       return fn(tx);
     }),
   } as unknown as import("postgres").Sql;

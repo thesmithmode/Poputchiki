@@ -66,7 +66,7 @@ export function auditLog(sql: postgres.Sql): MiddlewareHandler {
             ${action},
             ${entity},
             ${entityId},
-            ${JSON.stringify({ ip, ua, payload_hash: payloadHash })}::jsonb
+            ${sql.json({ ip, ua, payload_hash: payloadHash })}::jsonb
           )
         `;
       });

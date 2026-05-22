@@ -199,9 +199,8 @@ export function CreateRideScreen() {
         template_id = tmpl.id;
       }
 
-      let createdRide: Ride | null = null;
       try {
-        createdRide = await apiFetch<Ride>("/rides", {
+        await apiFetch<Ride>("/rides", {
           method: "POST",
           body: JSON.stringify({
             from_label: form.from_label.trim(),
@@ -230,23 +229,7 @@ export function CreateRideScreen() {
       }
       // Оптимистично инжектим свежесозданную поездку в кеши,
       // чтобы автор увидел её мгновенно без доп. сетевых запросов.
-      // POST /rides RETURNING * возвращает базовый ride row без driver_* join-полей;
-      // RideCard/FeedScreen работают с optional driver_display_name — отсутствие безопасно.
-      if (createdRide) {
-        const newRide = createdRide;
-        qc.setQueryData<{ rides: Ride[]; nextCursor: string | null }>(
-          queryKeys.rides.all,
-          (prev) =>
-            prev
-              ? { ...prev, rides: [newRide, ...prev.rides.filter((r) => r.id !== newRide.id)] }
-              : { rides: [newRide], nextCursor: null },
-        );
-        qc.setQueryData<{ rides: Ride[] }>(queryKeys.rides.mine("driver", "future"), (prev) =>
-          prev
-            ? { rides: [newRide, ...prev.rides.filter((r) => r.id !== newRide.id)] }
-            : { rides: [newRide] },
-        );
-      }
+      qc.invalidateQueries({ queryKey: queryKeys.rides.all });
       notification("success");
       navigate("/");
     } catch {

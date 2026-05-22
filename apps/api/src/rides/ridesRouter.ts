@@ -425,14 +425,14 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             RETURNING *
           `;
 
-          const [passengerUser] = await tx<{ display_name: string }[]>`
-            SELECT display_name FROM users WHERE id = ${user.id}::uuid
+          const [passengerUser] = await tx<{ display_name: string; tg_username: string | null }[]>`
+            SELECT display_name, tg_username FROM users WHERE id = ${user.id}::uuid
           `;
 
           return {
             rideRequest,
             driverId: String(ride.driver_id),
-            passengerName: passengerUser?.display_name ?? "",
+            passengerName: passengerUser?.display_name || passengerUser?.tg_username || "",
             toLabel: ride.to_label,
           };
         },

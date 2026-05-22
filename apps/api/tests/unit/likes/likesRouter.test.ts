@@ -26,8 +26,10 @@ const LIKE_ID = "00000000-0000-4000-a000-000000000004";
 
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockTx = vi.fn() as any;
+mockTx.json = (v: unknown) => JSON.stringify(v);
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockSql = vi.fn() as any;
+mockSql.json = (v: unknown) => JSON.stringify(v);
 
 function mockWithIdentityCallThrough() {
   vi.mocked(withIdentity).mockImplementation(async (_sql, _user, fn) => fn(mockTx));

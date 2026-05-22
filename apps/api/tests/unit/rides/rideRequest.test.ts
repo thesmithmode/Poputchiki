@@ -16,6 +16,7 @@ const RIDE_ID = "aaaaaaaa-0000-4000-a000-000000000001";
 
 // biome-ignore lint/suspicious/noExplicitAny: mock
 const mockSql = vi.fn() as any;
+mockSql.json = (v: unknown) => JSON.stringify(v);
 
 function makeApp() {
   const app = new Hono();

@@ -5,10 +5,19 @@ import { readJson } from "../../helpers/json";
 
 const KEY = "test-idempotency-key-abc";
 
+// postgres.js .json() helper — мок сериализует объект в строку
+// (имитация wire-format). Используется внутри idempotency middleware.
+// biome-ignore lint/suspicious/noExplicitAny: mock json helper attach
+function withJson<T>(sql: T): T {
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic attach
+  (sql as any).json = (v: unknown) => JSON.stringify(v);
+  return sql;
+}
+
 describe("idempotency middleware", () => {
   it("GET → not intercepted (no key check)", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     const app = new Hono();
     app.use("*", idempotency(sql));
     app.get("/api/rides", (c) => c.json({ rides: [] }, 200));
@@ -19,7 +28,7 @@ describe("idempotency middleware", () => {
 
   it("POST without Idempotency-Key → passes through normally", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     const app = new Hono();
     app.use("*", idempotency(sql));
     app.post("/api/rides", (c) => c.json({ id: "new-ride" }, 201));
@@ -30,7 +39,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, claim wins → executes + persists response", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql
       .mockResolvedValueOnce([{ key: KEY }]) // INSERT sentinel — wins
       .mockResolvedValueOnce([]); // UPDATE response
@@ -50,7 +59,7 @@ describe("idempotency middleware", () => {
   it("POST with key, claim lost, cached response present → returns cached", async () => {
     const cachedBody = { id: "cached-ride" };
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql
       .mockResolvedValueOnce([]) // INSERT — lost (key already exists)
       .mockResolvedValueOnce([{ response: { status_code: 201, body: cachedBody } }]); // SELECT cached
@@ -92,6 +101,7 @@ describe("idempotency middleware", () => {
       }
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
 
     const handler = (c: { json: (b: unknown, s: number) => Response }) => {
       handlerRuns++;
@@ -113,7 +123,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, claim lost, sentinel still pending → 409", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql
       .mockResolvedValueOnce([]) // INSERT — lost
       .mockResolvedValueOnce([{ response: { _pending: true } }]); // SELECT — still pending
@@ -131,7 +141,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, claim lost, key expired (>24h) → 409", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql
       .mockResolvedValueOnce([]) // INSERT — lost
       .mockResolvedValueOnce([]); // SELECT (with 24h filter) — empty = expired
@@ -161,6 +171,7 @@ describe("idempotency middleware", () => {
       }
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
 
     const app = new Hono();
     app.use("*", idempotency(sql));
@@ -184,6 +195,7 @@ describe("idempotency middleware", () => {
       if (text.includes("DELETE")) return Promise.reject(new Error("db dead"));
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
     const app = new Hono();
     app.use("*", idempotency(sql));
     app.post("/api/rides", () => {
@@ -202,6 +214,7 @@ describe("idempotency middleware", () => {
       if (text.includes("INSERT")) return Promise.reject(new Error("db down"));
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
     const app = new Hono();
     app.use("*", idempotency(sql));
     app.post("/api/rides", (c) => c.json({ id: "ok" }, 201));
@@ -214,7 +227,7 @@ describe("idempotency middleware", () => {
 
   it("POST claim lost, no cached row (>24h expired) → 409 expired", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const app = new Hono();
     app.use("*", idempotency(sql));
@@ -235,6 +248,7 @@ describe("idempotency middleware", () => {
       if (text.includes("UPDATE")) return Promise.reject(new Error("update fail"));
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
     const app = new Hono();
     app.use("*", idempotency(sql));
     app.post("/api/rides", (c) => c.json({ id: "ok" }, 201));
@@ -251,6 +265,7 @@ describe("idempotency middleware", () => {
       if (text.includes("INSERT")) return Promise.resolve([{ key: KEY }]);
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
     const app = new Hono();
     app.use("*", idempotency(sql));
     app.post("/api/rides", (c) => c.text("plain", 201));
@@ -275,6 +290,7 @@ describe("idempotency middleware", () => {
       }
       return Promise.resolve([]);
     }) as unknown as Parameters<typeof idempotency>[0];
+    withJson(sql);
 
     const app = new Hono();
     app.use("*", idempotency(sql));
@@ -290,7 +306,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, INSERT throws → falls through to next() (best-effort)", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql.mockRejectedValueOnce(new Error("DB down"));
 
     const app = new Hono();
@@ -306,7 +322,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, claim wins, user in context → response stored with user_id", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql.mockResolvedValueOnce([{ key: KEY }]).mockResolvedValueOnce([]);
 
     const app = new Hono();
@@ -327,7 +343,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, non-JSON response body → stored as null, status preserved", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql.mockResolvedValueOnce([{ key: KEY }]).mockResolvedValueOnce([]);
 
     const app = new Hono();
@@ -344,7 +360,7 @@ describe("idempotency middleware", () => {
 
   it("POST with key, UPDATE throws → response still returned (best-effort)", async () => {
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    const sql = vi.fn() as any;
+    const sql = withJson(vi.fn() as any);
     sql
       .mockResolvedValueOnce([{ key: KEY }]) // INSERT wins
       .mockRejectedValueOnce(new Error("UPDATE failed")); // UPDATE fails

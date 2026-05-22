@@ -81,10 +81,9 @@ async function runAuditLogCleanup() {
 }
 
 async function runExpandTemplates() {
-  // Cron-style guard: only fire if current UTC hour === 3.
-  if (new Date().getUTCHours() !== 3) return;
-  await oncePer(sql, "expand_templates", DAY_MS, () => expandTemplates(sql)).catch((err: unknown) =>
-    console.error(JSON.stringify({ msg: "expand_templates_error", error: String(err) })),
+  await oncePer(sql, "expand_templates", ONE_HOUR, () => expandTemplates(sql)).catch(
+    (err: unknown) =>
+      console.error(JSON.stringify({ msg: "expand_templates_error", error: String(err) })),
   );
 }
 
@@ -130,6 +129,11 @@ async function runConfirmParticipationPush() {
 
 runCleanup();
 runRefreshUserStats();
+// Безусловный запуск при старте контейнера — гарантирует поездки после деплоя,
+// независимо от oncePer и UTCHour.
+expandTemplates(sql).catch((err: unknown) =>
+  console.error(JSON.stringify({ msg: "expand_templates_error", error: String(err) })),
+);
 runExpandTemplates();
 runAuditLogCleanup();
 runFinalizeRides();

@@ -37,5 +37,5 @@ export type {
   NotificationCategory,
   UserToggleableCategory,
 } from "./notifications/categories.js";
-export { enqueueNotification } from "./notifications/enqueue.js";
+export { enqueueNotification, enqueueNotificationBatch } from "./notifications/enqueue.js";
 export type { EnqueueArgs } from "./notifications/enqueue.js";

@@ -21,12 +21,12 @@ const USER: AppUser = {
 };
 
 const VALID_BODY = {
-  from_label: "Улица Пушкина",
-  from_lat: 55.75,
-  from_lng: 37.61,
-  to_label: "Красная площадь",
-  to_lat: 55.753,
-  to_lng: 37.621,
+  from_label: "Царёво Village, ул. Тукая",
+  from_lat: 55.811,
+  from_lng: 49.44,
+  to_label: "ТЦ МЕГА Казань",
+  to_lat: 55.863,
+  to_lng: 49.099,
   departure_at: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
   seats_total: 2,
 };
@@ -68,27 +68,25 @@ describe("POST /rides — validation", () => {
     expect(body.id).toBe("ride-uuid");
   });
 
-  it("on create → emits favorite_new_ride to each follower (favorites SELECT → enqueueNotification per row)", async () => {
+  it("on create → emits favorite_new_ride batch для всех подписчиков (1 INSERT + N pg_notify)", async () => {
     const FOLLOWER_A = "00000000-0000-4000-a000-0000000000aa";
     const FOLLOWER_B = "00000000-0000-4000-a000-0000000000bb";
     const RIDE_ID = "ride-uuid-fav";
     const mockRide = { id: RIDE_ID, driver_id: USER.id, ...VALID_BODY };
     // biome-ignore lint/suspicious/noExplicitAny: mock
     vi.mocked(withIdentity).mockResolvedValueOnce(mockRide as any);
-    // mockSql call sequence on success:
+    // mockSql call sequence с enqueueNotificationBatch:
     //   [0] pg_notify('rides_changed', ...) — cache-bust broadcast
     //   [1] SELECT user_id FROM favorites WHERE target_id = ... AND notify = true
-    //   [2] enqueueNotification A: INSERT user_notifications
-    //   [3] enqueueNotification A: pg_notify('notify_user', ...)
-    //   [4] enqueueNotification B: INSERT user_notifications
-    //   [5] enqueueNotification B: pg_notify('notify_user', ...)
+    //   [2] enqueueNotificationBatch: 1 batch UNNEST INSERT для A+B
+    //   [3] enqueueNotificationBatch: pg_notify для A
+    //   [4] enqueueNotificationBatch: pg_notify для B
     mockSql
       .mockResolvedValueOnce([]) // [0] rides_changed pg_notify
       .mockResolvedValueOnce([{ user_id: FOLLOWER_A }, { user_id: FOLLOWER_B }]) // [1] favorites
-      .mockResolvedValueOnce([]) // [2]
-      .mockResolvedValueOnce([]) // [3]
-      .mockResolvedValueOnce([]) // [4]
-      .mockResolvedValueOnce([]); // [5]
+      .mockResolvedValueOnce([]) // [2] batch INSERT
+      .mockResolvedValueOnce([]) // [3] pg_notify A
+      .mockResolvedValueOnce([]); // [4] pg_notify B
 
     const app = makeApp(USER);
     const res = await app.request("/rides", {
@@ -99,24 +97,22 @@ describe("POST /rides — validation", () => {
     expect(res.status).toBe(201);
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(mockSql).toHaveBeenCalledTimes(6);
-    // [2] follower A INSERT
-    const insertA = mockSql.mock.calls[2];
-    expect(insertA[1]).toBe(FOLLOWER_A);
-    expect(insertA[2]).toBe("favorite_new_ride");
-    expect(insertA[3]).toBe(RIDE_ID);
-    // [3] follower A pg_notify payload
+    expect(mockSql).toHaveBeenCalledTimes(5);
+    // [2] batch INSERT: первый аргумент — массив userIds, содержит обоих
+    const batchInsert = mockSql.mock.calls[2];
+    const insertSql = (batchInsert[0] as string[]).join("");
+    expect(insertSql).toContain("INSERT INTO user_notifications");
+    expect(insertSql).toContain("unnest");
+    expect(batchInsert[1]).toContain(FOLLOWER_A);
+    expect(batchInsert[1]).toContain(FOLLOWER_B);
+    // [3] pg_notify для follower A
     const notifyA = JSON.parse(mockSql.mock.calls[3][1] as string);
     expect(notifyA.category).toBe("favorite_new_ride");
     expect(notifyA.user_id).toBe(FOLLOWER_A);
     expect(notifyA.ride_id).toBe(RIDE_ID);
     expect(notifyA.driver_id).toBe(USER.id);
-    // [4] follower B INSERT
-    const insertB = mockSql.mock.calls[4];
-    expect(insertB[1]).toBe(FOLLOWER_B);
-    expect(insertB[2]).toBe("favorite_new_ride");
-    // [5] follower B pg_notify payload
-    const notifyB = JSON.parse(mockSql.mock.calls[5][1] as string);
+    // [4] pg_notify для follower B
+    const notifyB = JSON.parse(mockSql.mock.calls[4][1] as string);
     expect(notifyB.user_id).toBe(FOLLOWER_B);
   });
 
@@ -215,6 +211,30 @@ describe("POST /rides — validation", () => {
       body: JSON.stringify({ ...VALID_BODY, price_rub: -100 }),
     });
     expect(res.status).toBe(422);
+  });
+
+  it("from coordinates outside service area → 422", async () => {
+    const app = makeApp(USER);
+    const res = await app.request("/rides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...VALID_BODY, from_lat: 55.75, from_lng: 37.61 }),
+    });
+    expect(res.status).toBe(422);
+    const body = await readJson(res);
+    expect(body.error).toBe("Координаты за пределами зоны обслуживания");
+  });
+
+  it("to coordinates outside service area → 422", async () => {
+    const app = makeApp(USER);
+    const res = await app.request("/rides", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...VALID_BODY, to_lat: 55.753, to_lng: 37.621 }),
+    });
+    expect(res.status).toBe(422);
+    const body = await readJson(res);
+    expect(body.error).toBe("Координаты за пределами зоны обслуживания");
   });
 });
 
@@ -434,7 +454,7 @@ describe("POST /rides/:id/complete", () => {
     expect(body.error).toBe("invalid_state");
   });
 
-  it("уведомляет принятых пассажиров о завершении поездки", async () => {
+  it("уведомляет принятых пассажиров о завершении поездки (batch)", async () => {
     const PASSENGER_ID = "550e8400-e29b-41d4-a716-446655440099";
     vi.mocked(withIdentity).mockResolvedValueOnce({
       rideId: VALID_UUID,
@@ -447,13 +467,23 @@ describe("POST /rides/:id/complete", () => {
     expect(res.status).toBe(200);
     await new Promise((r) => setTimeout(r, 0));
 
-    // H4: audit_log INSERT теперь внутри withIdentity tx — не через внешний sql.
-    // Внешний sql: pg_notify + enqueueNotification (INSERT + pg_notify per passenger)
-    // минимум 3 sql вызова
+    // Внешний sql: pg_notify rides_changed + enqueueNotificationBatch (1 INSERT + 1 pg_notify)
     expect(mockSql.mock.calls.length).toBeGreaterThanOrEqual(3);
-    // категория ride_completed в enqueueNotification INSERT
-    const insertCall = mockSql.mock.calls.find((call: unknown[]) => call[2] === "ride_completed");
-    expect(insertCall).toBeDefined();
-    expect(insertCall?.[1]).toBe(PASSENGER_ID);
+    // Батч INSERT содержит UNNEST и пассажира в массиве userIds
+    const batchInsert = mockSql.mock.calls.find((call: unknown[]) =>
+      (call[0] as string[]).join("").includes("INSERT INTO user_notifications"),
+    );
+    expect(batchInsert).toBeDefined();
+    expect(batchInsert?.[1]).toContain(PASSENGER_ID);
+    // pg_notify с категорией ride_completed
+    const notifyCall = mockSql.mock.calls.find((call: unknown[]) => {
+      try {
+        const p = JSON.parse(call[1] as string);
+        return p.category === "ride_completed";
+      } catch {
+        return false;
+      }
+    });
+    expect(notifyCall).toBeDefined();
   });
 });

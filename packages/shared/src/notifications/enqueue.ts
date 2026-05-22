@@ -28,6 +28,45 @@ export interface EnqueueArgs {
  * notifier worker reads the channel. When `sql` is a TransactionSql handle,
  * both writes share the transaction — row + notify commit together.
  */
+export async function enqueueNotificationBatch(
+  sql: SqlTagged,
+  items: EnqueueArgs[],
+): Promise<void> {
+  if (items.length === 0) return;
+  for (const { userId, category } of items) {
+    if (!isNotificationCategory(category)) {
+      throw new Error(`enqueueNotificationBatch: invalid category '${category}'`);
+    }
+    if (!userId) throw new Error("enqueueNotificationBatch: userId required");
+  }
+
+  const userIds = items.map((i) => i.userId);
+  const categories = items.map((i) => i.category);
+  const rideIds = items.map((i) => i.rideId ?? null);
+  const dataValues = items.map((i) => JSON.stringify(i.data ?? {}));
+
+  await sql`
+    INSERT INTO user_notifications (user_id, category, ride_id, data)
+    SELECT u::uuid, c, r::uuid, d::jsonb
+    FROM unnest(
+      ${userIds}::text[],
+      ${categories}::text[],
+      ${rideIds}::text[],
+      ${dataValues}::text[]
+    ) AS t(u, c, r, d)
+  `;
+
+  for (const { userId, category, rideId, data } of items) {
+    const payload = JSON.stringify({
+      user_id: userId,
+      category,
+      ...(rideId ? { ride_id: rideId } : {}),
+      ...(data ?? {}),
+    });
+    await sql`SELECT pg_notify('notify_user', ${payload})`;
+  }
+}
+
 export async function enqueueNotification(sql: SqlTagged, args: EnqueueArgs): Promise<void> {
   if (!isNotificationCategory(args.category)) {
     throw new Error(`enqueueNotification: invalid category '${args.category}'`);

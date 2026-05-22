@@ -148,12 +148,12 @@ function futureDate(hoursFromNow = 2): string {
 }
 
 const BASE_RIDE = {
-  from_label: "Старт",
-  from_lat: 55.77,
-  from_lng: 37.63,
-  to_label: "Финиш",
-  to_lat: 55.826,
-  to_lng: 37.641,
+  from_label: "Царёво Village, ул. Тукая",
+  from_lat: 55.811,
+  from_lng: 49.44,
+  to_label: "ТЦ МЕГА Казань",
+  to_lat: 55.863,
+  to_lng: 49.099,
   seats_total: 2,
 };
 

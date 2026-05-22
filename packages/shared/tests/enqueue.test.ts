@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { enqueueNotification } from "../src/notifications/enqueue";
+import { enqueueNotification, enqueueNotificationBatch } from "../src/notifications/enqueue";
 
 // biome-ignore lint/suspicious/noExplicitAny: tagged-template sql mock
 const mockSql = vi.fn() as any;
@@ -89,6 +89,75 @@ describe("enqueueNotification", () => {
       category: "like_received",
     });
 
+    expect(order).toEqual(["insert", "notify"]);
+  });
+});
+
+describe("enqueueNotificationBatch", () => {
+  it("пустой массив — ноль вызовов sql", async () => {
+    mockSql.mockReset();
+    await enqueueNotificationBatch(mockSql, []);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
+
+  it("2 items → 1 INSERT + 2 pg_notify (итого 3 вызова)", async () => {
+    mockSql.mockReset();
+    mockSql.mockResolvedValue([]);
+
+    const USER2 = "00000000-0000-4000-a000-000000000002";
+    await enqueueNotificationBatch(mockSql, [
+      { userId: USER_ID, category: "ride_request", rideId: RIDE_ID, data: { x: 1 } },
+      { userId: USER2, category: "ride_cancelled" },
+    ]);
+
+    expect(mockSql).toHaveBeenCalledTimes(3);
+
+    const insertStrings: string[] = mockSql.mock.calls[0][0];
+    expect(insertStrings.join("")).toContain("INSERT INTO user_notifications");
+    expect(insertStrings.join("")).toContain("unnest");
+
+    const notify1: string[] = mockSql.mock.calls[1][0];
+    expect(notify1.join("")).toContain("pg_notify");
+    const payload1 = JSON.parse(mockSql.mock.calls[1][1] as string);
+    expect(payload1.user_id).toBe(USER_ID);
+    expect(payload1.category).toBe("ride_request");
+    expect(payload1.ride_id).toBe(RIDE_ID);
+
+    const notify2: string[] = mockSql.mock.calls[2][0];
+    expect(notify2.join("")).toContain("pg_notify");
+    const payload2 = JSON.parse(mockSql.mock.calls[2][1] as string);
+    expect(payload2.user_id).toBe(USER2);
+    expect(payload2.ride_id).toBeUndefined();
+  });
+
+  it("невалидная category → throw до sql-вызова", async () => {
+    mockSql.mockReset();
+    await expect(
+      // biome-ignore lint/suspicious/noExplicitAny: намеренно плохая category
+      enqueueNotificationBatch(mockSql, [{ userId: USER_ID, category: "bad_cat" as any }]),
+    ).rejects.toThrow(/invalid category/);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
+
+  it("пустой userId → throw до sql-вызова", async () => {
+    mockSql.mockReset();
+    await expect(
+      enqueueNotificationBatch(mockSql, [{ userId: "", category: "system" }]),
+    ).rejects.toThrow(/userId/);
+    expect(mockSql).not.toHaveBeenCalled();
+  });
+
+  it("INSERT происходит до pg_notify (feed-then-push семантика)", async () => {
+    mockSql.mockReset();
+    const order: string[] = [];
+    mockSql.mockImplementation((strings: TemplateStringsArray) => {
+      const s = strings.join("");
+      if (s.includes("INSERT INTO user_notifications")) order.push("insert");
+      else if (s.includes("pg_notify")) order.push("notify");
+      return Promise.resolve([]);
+    });
+
+    await enqueueNotificationBatch(mockSql, [{ userId: USER_ID, category: "like_received" }]);
     expect(order).toEqual(["insert", "notify"]);
   });
 });

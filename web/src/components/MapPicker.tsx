@@ -44,6 +44,12 @@ export function MapPicker({
       const map = L.map(containerRef.current, {
         zoomControl: true,
         attributionControl: false,
+        maxBounds: [
+          [55.2, 48.3],
+          [56.4, 50.2],
+        ] as [[number, number], [number, number]],
+        maxBoundsViscosity: 1.0,
+        minZoom: 9,
       }).setView([start.lat, start.lng], initialCoords ? 16 : 13);
       mapRef.current = map;
 

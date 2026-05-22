@@ -4,8 +4,9 @@ aliases: [enqueueNotification, notification-helper, centralised-notify, shared-e
 tags: [backend, notifications, architecture, pattern, shared-package]
 sources:
   - "daily/2026-05-18.md"
+  - "daily/2026-05-22.md"
 created: 2026-05-18
-updated: 2026-05-18
+updated: 2026-05-22
 ---
 
 # enqueueNotification Helper — Centralised Notification Dispatch
@@ -50,6 +51,42 @@ The INSERT fires first so that even if the process crashes between the two calls
 
 Moving the helper from `apps/api` to `packages/shared` was necessary because `apps/cron` also needs to emit notifications (ride expiry, booking reminder) and cannot import from `apps/api` without creating a circular workspace dependency. Shared package is the correct home for cross-app utilities.
 
+## Batch Variant: enqueueNotificationBatch
+
+`enqueueNotificationBatch` добавлена в `packages/shared/src/notifications/enqueue.ts` для отправки уведомлений нескольким получателям одним round-trip в БД.
+
+```typescript
+export async function enqueueNotificationBatch(
+  sql: Sql,
+  notifications: Array<{ userId: string; type: NotificationCategory; data: Record<string, unknown> }>
+): Promise<void> {
+  if (notifications.length === 0) return;
+
+  const userIds = notifications.map(n => n.userId);
+  const types = notifications.map(n => n.type);
+  const dataArr = notifications.map(n => JSON.stringify(n.data));
+
+  // Единый UNNEST INSERT для всех получателей — один round-trip
+  await sql`
+    INSERT INTO user_notifications (user_id, type, data)
+    SELECT * FROM UNNEST(
+      ${sql.array(userIds)}::uuid[],
+      ${sql.array(types)}::text[],
+      ${sql.array(dataArr)}::jsonb[]
+    )
+  `;
+
+  // pg_notify цикл — дёшево, без disk I/O, отдельные вызовы оправданы
+  for (const { userId, type, data } of notifications) {
+    await sql`SELECT pg_notify('notify_user', ${JSON.stringify({ user_id: userId, type, data })})`;
+  }
+}
+```
+
+Ключевое решение: INSERT объединён в один UNNEST (один round-trip), pg_notify остаётся в цикле — он lightweight (нет disk I/O), и разделение по пользователям необходимо для корректного payload.
+
+Применяется в `ridesRouter` вместо 5 независимых for-циклов с отдельными уведомлениями на каждый запрос.
+
 ## Related Concepts
 
 - [[concepts/pg-notify-single-channel]] — The `notify_user` channel and payload schema that `enqueueNotification` uses
@@ -60,3 +97,4 @@ Moving the helper from `apps/api` to `packages/shared` was necessary because `ap
 ## Sources
 
 - [[daily/2026-05-18.md]] — Session 15:01: `enqueueNotification` helper created; moved to `packages/shared`; 11 pg_notify call sites replaced; mock order (INSERT first, pg_notify second) must match in tests; canonical CATEGORIES also added to shared
+- [[daily/2026-05-22.md]] — Session 18:15: `enqueueNotificationBatch` добавлена; UNNEST INSERT для batch-вставки нескольким получателям; используется в ridesRouter вместо 5 for-циклов

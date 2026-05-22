@@ -1,5 +1,39 @@
 # Build Log
 
+## [2026-05-22T18:35:47+03:00] compile | 2026-05-22.md (pass final — session 18:35)
+- Source: daily/2026-05-22.md
+- Articles created: [[concepts/postgres-js-boolean-array-wire-type]], [[concepts/migration-linux-sort-down-file]]
+- Articles updated: (none — все статьи сессий 17:11–18:15 уже имели источник daily/2026-05-22.md из предыдущих компиляций)
+- Notes: Session 18:35 — два CI-инцидента: (1) UNNEST boolean[] wire type — postgres.js кодирует boolean не через text-путь PostgreSQL; ::text[]::boolean[] double-cast обязателен для всех boolean-параметров в UNNEST (commit 2b9f8b8); (2) Linux sort order — .down.sql < .sql по ASCII (d=100 < s=115) → down-файл бежал первым как "up" миграция; фикс: IF NOT EXISTS / IF EXISTS в DDL down-файлов (commit e05104d)
+
+## [2026-05-22T18:30:00] compile | Daily Log 2026-05-22
+- Source: daily/2026-05-22.md
+- Articles created: [[concepts/enqueue-notification-batch]], [[concepts/generate-series-cron-expand]]
+- Articles updated: [[concepts/enqueue-notification-helper]] (added enqueueNotificationBatch reference — already present from prior session), [[concepts/bulk-insert-transaction-risk]] (added implemented solution note — already present from prior session)
+- Notes: enqueue-notification-batch.md и generate-series-cron-expand.md — новые canonical-статьи для commits 35a1f60 и 31f82ea; unnest-batch-update.md и generate-series-expand-templates.md существовали с предыдущей компиляции; в index добавлены все 4 slugs
+
+## [2026-05-22T18:23:00+03:00] compile | daily/2026-05-22.md
+- Source: daily/2026-05-22.md
+- Articles created: [[concepts/unnest-batch-update]], [[concepts/generate-series-expand-templates]]
+- Articles updated: [[concepts/enqueue-notification-helper]] (enqueueNotificationBatch variant — UNNEST INSERT для batch-вставки нескольким получателям; pg_notify цикл оправдан как lightweight), [[concepts/bulk-insert-transaction-risk]] (GENERATE_SERIES single-SQL solution — финальное решение вместо батчинга по шаблону/дате; уникальный частичный индекс миграция 033)
+
+## [2026-05-22T23:00:00+03:00] compile | 2026-05-22.md (pass 2)
+- Source: daily/2026-05-22.md
+- Articles created: [[concepts/map-service-zone-bounds]]
+- Notes: Сессия 17:11 — Leaflet maxBounds для ограничения MapPicker зоной Казань. Bbox [[55.2,48.3],[56.4,50.2]], maxBoundsViscosity:1.0 (жёсткий bounce), minZoom:9. RouteMapLeaflet полностью non-interactive.
+
+## [2026-05-22T20:00:00+03:00] compile | 2026-05-22.md
+- Source: daily/2026-05-22.md
+- Articles created: [[concepts/tanstack-query-semantic-key]], [[concepts/cron-startup-vs-scheduled-trap]], [[concepts/bulk-insert-transaction-risk]]
+- Articles updated: [[concepts/advisory-lock-pool-safety]] (добавлен раздел "Silent hole: winner crashes before completion" — если winner упал до commit, второй инстанс уже вышел, результат 0 записей до следующего scheduled run; добавлен источник daily/2026-05-22.md)
+- Notes: Сессия 2026-05-22. Три основных паттерна: (1) TanStack Query semantic key — query key должен отражать намерение (пресет), не вычисленное время; resolveDateRange() → new Date().toISOString() внутри key → fetch на каждом рендере → mock израсходован в тестах; (2) UTCHour guard trap — guard при 3:00 UTC блокирует запуск при деплое → поездки не создаются до следующего дня; фикс: убрать guard, oncePer + безусловный startup run; (3) Bulk INSERT risk — 180k INSERTs в одной транзакции = минуты = full rollback при lock timeout/connection drop; нужен батчинг по шаблону/дате с идемпотентным INSERT.
+
+## [2026-05-22T00:00:00+03:00] compile | 2026-05-21.md
+- Source: daily/2026-05-21.md
+- Articles created: [[concepts/postgres-js-listen-once-semantics]], [[concepts/crash-loop-container-detection]], [[concepts/backup-db-docker-network]], [[concepts/optimistic-setquerydata-post]]
+- Articles updated: [[concepts/pg-listen-reconnect-loop]] (добавлен раздел о postgres.js исключении: sql.listen() резолвится после ACK, not after disconnect; reconnect loop поверх него = crash-loop; commit 9a6a184 инцидент; добавлен источник daily/2026-05-21.md), [[concepts/deployment-pipeline]] (добавлены findings #7 и #8: verify-ci должен проверять HEAD SHA dev-ветки не parent SHA squash-коммита в main; backup-db.sh pg_dump hostname postgres недоступен с хоста → docker exec; добавлен источник daily/2026-05-21.md)
+- Notes: Сессия 2026-05-21. Три основных инцидента: (1) crash-loop notifier из-за неправильного reconnect wrapper поверх sql.listen() — postgres.js резолвит после ACK, not disconnect; (2) backup-db.sh ломался с хоста — hostname postgres DNS только внутри Docker-сети; (3) verify-ci SHA mismatch — проверял parent SHA squash-коммита в main вместо HEAD SHA dev. Также: оптимистичный setQueryData после POST /rides для мгновенного фида автора без лишнего GET.
+
 ## [2026-05-20T23:30:00+03:00] compile | 2026-05-20.md (session 19:54 pass 3 — frontend + api deep)
 - Source: daily/2026-05-20.md
 - Articles created: [[concepts/usefilters-trust-filter-noop]], [[concepts/react-useeffect-memory-leak]], [[concepts/optimistic-update-without-rollback]], [[concepts/createride-toctou-saga]]

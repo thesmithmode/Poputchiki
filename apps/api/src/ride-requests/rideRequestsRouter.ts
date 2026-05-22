@@ -16,6 +16,7 @@ export function createRideRequestsRouter(sql: postgres.Sql): Hono {
         WHERE passenger_id = ${user.id}::uuid
           AND status IN ('pending', 'accepted')
         ORDER BY created_at DESC
+        LIMIT 200
       `;
     });
     return c.json({ requests: rows });

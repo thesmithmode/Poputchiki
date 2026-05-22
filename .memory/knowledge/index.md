@@ -25,7 +25,7 @@
 | [[concepts/batch-ci-fix-discipline]] | Reactive push→fail→fix loop wastes CI queue time; collect full failure surface first, fix all in one commit | daily/2026-05-03.md | 2026-05-03 |
 | [[concepts/truncate-cascade-test-isolation]] | `TRUNCATE ... CASCADE` helper removes FK ordering problems in test teardown; `fileParallelism: false` prevents deadlock | daily/2026-05-03.md | 2026-05-03 |
 | [[concepts/auth-security-vulnerabilities]] | XFF spoofing bypasses rate-limit; idempotency race; soft-deleted users can refresh; logout doesn't revoke JTI | daily/2026-05-03.md | 2026-05-03 |
-| [[concepts/advisory-lock-pool-safety]] | `pg_try_advisory_lock` session-level breaks in connection pools; use `pg_try_advisory_xact_lock` inside `sql.begin()` | daily/2026-05-04.md | 2026-05-04 |
+| [[concepts/advisory-lock-pool-safety]] | `pg_try_advisory_lock` session-level breaks in connection pools; use `pg_try_advisory_xact_lock` inside `sql.begin()`; winner-crash = silent 0 results | daily/2026-05-04.md, daily/2026-05-22.md | 2026-05-22 |
 | [[concepts/on-conflict-constraint-pitfall]] | `ON CONFLICT DO NOTHING` without unique constraint silently inserts duplicates; use `WHERE NOT EXISTS` instead | daily/2026-05-04.md | 2026-05-04 |
 | [[concepts/hono-use-vs-handler-chain]] | `app.use("/", mw)` fires on ALL methods; use `app.post("/", mw, handler)` chain for POST-only middleware | daily/2026-05-06.md | 2026-05-06 |
 | [[concepts/hono-onerror-required]] | Hono 4: `app.onError` required to catch handler errors; catch-middleware does NOT intercept thrown errors | daily/2026-05-06.md | 2026-05-06 |
@@ -107,3 +107,17 @@
 | [[concepts/react-useeffect-memory-leak]] | map.on('moveend') in useEffect without cleanup → handler accumulates on remount, multiple API calls per map move | daily/2026-05-20.md | 2026-05-20 |
 | [[concepts/optimistic-update-without-rollback]] | TripCard join optimistic update sets joined=true immediately, no rollback in catch → UI desync if server rejects | daily/2026-05-20.md | 2026-05-20 |
 | [[concepts/createride-toctou-saga]] | POST /rides creates template then ride in two separate INSERTs without transaction — crash between them = orphan template | daily/2026-05-20.md | 2026-05-20 |
+| [[concepts/postgres-js-listen-once-semantics]] | postgres.js sql.listen() resolves once after PG ACK; reconnect is internal via onclose — while-loop over it = tight infinite loop → crash-loop | daily/2026-05-21.md | 2026-05-21 |
+| [[concepts/crash-loop-container-detection]] | `docker ps` short uptime = crash-loop first signal; notifier crash-loop silent for SSE but breaks TG notifications; project name affects container names | daily/2026-05-21.md | 2026-05-21 |
+| [[concepts/backup-db-docker-network]] | pg_dump hostname `postgres` only resolves inside Docker network; from host use docker exec; detection-based backup-db.sh for both contexts | daily/2026-05-21.md | 2026-05-21 |
+| [[concepts/optimistic-setquerydata-post]] | After POST /rides, use setQueryData with server response to instantly show ride to author; cheaper than invalidateQueries (no extra GET) | daily/2026-05-21.md | 2026-05-21 |
+| [[concepts/tanstack-query-semantic-key]] | Query key = intent (preset name), not computed time value; queryFn computes time at request time — prevents fetch-on-every-render | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/cron-startup-vs-scheduled-trap]] | UTCHour guard misses deploy-triggered restarts; fix: remove guard + unconditional startup run + oncePer dedup | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/bulk-insert-transaction-risk]] | 180k INSERTs in one transaction → minutes → lock timeout → full rollback; fix: batch per template/date with idempotent INSERT | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/map-service-zone-bounds]] | Leaflet maxBounds [[55.2,48.3],[56.4,50.2]] + maxBoundsViscosity:1.0 + minZoom:9 ограничивает MapPicker зоной Казань; RouteMapLeaflet non-interactive | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/unnest-batch-update]] | UNNEST для batch UPDATE — N UPDATE в цикле → единый round-trip UPDATE ... FROM UNNEST($1::uuid[], ...); открыто в notificationsRouter (13 UPDATE на категорию) | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/generate-series-expand-templates]] | GENERATE_SERIES заменяет вложенные циклы в expand_templates — единый INSERT...SELECT...GENERATE_SERIES ON CONFLICT DO NOTHING; 180k await'ов → 1 SQL; уникальный частичный индекс rides(template_id, departure_at) | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/enqueue-notification-batch]] | Batch notification dispatch via UNNEST INSERT + pg_notify loop; replaces N round-trips with 1 | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/generate-series-cron-expand]] | Single-SQL cron expand via INSERT...SELECT...GENERATE_SERIES ON CONFLICT DO NOTHING; eliminates 150k async round-trips | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/postgres-js-boolean-array-wire-type]] | postgres.js boolean[] must be cast ::text[]::boolean[] in UNNEST; wire type incompatibility with PostgreSQL boolean[] | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/migration-linux-sort-down-file]] | Linux sorts .down.sql before .sql (ASCII d=100 < s=115); use IF EXISTS/IF NOT EXISTS guards in down files | daily/2026-05-22.md | 2026-05-22 |

@@ -1,4 +1,9 @@
-import { CreateRideInput, MarkParticipantsInput, enqueueNotification } from "@poputchiki/shared";
+import {
+  CreateRideInput,
+  MarkParticipantsInput,
+  enqueueNotification,
+  enqueueNotificationBatch,
+} from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
@@ -10,6 +15,11 @@ import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
 import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
+
+// Зона обслуживания: те же константы что в geocodeRouter.ts — Казань + Царёво + окрестности.
+function inServiceArea(lat: number, lng: number): boolean {
+  return lat >= 55.3 && lat <= 56.2 && lng >= 48.5 && lng <= 50.0;
+}
 
 function isNoSeatsError(err: unknown): boolean {
   return err instanceof Error && (err as Error & { code?: string }).code === "NO_SEATS";
@@ -310,6 +320,14 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const input = parsedBody.data;
     const user = c.get("user" as never) as AppUser;
 
+    // Зона обслуживания: Казань + ЖК Царёво + окрестности. Те же границы что в geocodeRouter.
+    if (
+      !inServiceArea(input.from_lat, input.from_lng) ||
+      !inServiceArea(input.to_lat, input.to_lng)
+    ) {
+      return c.json({ error: "Координаты за пределами зоны обслуживания" }, 422);
+    }
+
     let ride: Record<string, unknown>;
     try {
       ride = await withIdentity(sql, user, async (tx) => {
@@ -346,15 +364,16 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         SELECT user_id FROM favorites
         WHERE target_id = ${user.id}::uuid AND notify = true
       `;
-      /* c8 ignore next 7 -- fire-and-forget: covered by integration only when follower exists */
-      for (const f of followers) {
-        await enqueueNotification(sql, {
+      /* c8 ignore next 5 -- fire-and-forget: covered by integration only when follower exists */
+      await enqueueNotificationBatch(
+        sql,
+        followers.map((f) => ({
           userId: f.user_id,
-          category: "favorite_new_ride",
+          category: "favorite_new_ride" as const,
           rideId: String(ride.id),
           data: { driver_id: user.id, driver_name: user.displayName ?? "" },
-        });
-      }
+        })),
+      );
     })().catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
     return c.json(ride, 201);
@@ -518,14 +537,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     }
 
     // Notify passengers — feed row + TG push
-    for (const passengerId of passenger_ids) {
-      enqueueNotification(sql, {
-        userId: passengerId,
-        category: "participation_request",
+    enqueueNotificationBatch(
+      sql,
+      passenger_ids.map((pid) => ({
+        userId: pid,
+        category: "participation_request" as const,
         rideId,
         data: { driver_name: user.displayName ?? "" },
-      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
-    }
+      })),
+    ).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
     return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);
   });
@@ -738,14 +758,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     }
 
     if (result.changedKeyFields) {
-      for (const passengerId of result.affectedPassengers) {
-        enqueueNotification(sql, {
-          userId: passengerId,
-          category: "ride_changed",
+      enqueueNotificationBatch(
+        sql,
+        result.affectedPassengers.map((pid) => ({
+          userId: pid,
+          category: "ride_changed" as const,
           rideId,
           data: { driver_name: user.displayName ?? "" },
-        }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
-      }
+        })),
+      ).catch(/* c8 ignore next -- fire-and-forget */ () => {});
     }
 
     cache.clear();
@@ -845,14 +866,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     }
 
     // Notify each affected passenger — feed row + TG push
-    for (const passengerId of result.affectedPassengers) {
-      enqueueNotification(sql, {
-        userId: passengerId,
-        category: "ride_cancelled",
+    enqueueNotificationBatch(
+      sql,
+      result.affectedPassengers.map((pid) => ({
+        userId: pid,
+        category: "ride_cancelled" as const,
         rideId,
         data: { driver_name: user.displayName ?? "" },
-      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
-    }
+      })),
+    ).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
     // Admin alert if abuse threshold exceeded
     if (result.dailyCancels > 3) {
@@ -924,14 +946,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       throw err;
     }
 
-    for (const passengerId of result.affectedPassengers) {
-      enqueueNotification(sql, {
-        userId: passengerId,
-        category: "ride_completed",
+    enqueueNotificationBatch(
+      sql,
+      result.affectedPassengers.map((pid) => ({
+        userId: pid,
+        category: "ride_completed" as const,
         rideId,
         data: { driver_name: user.displayName ?? "" },
-      }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
-    }
+      })),
+    ).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
     cache.clear();
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "completed" })})`.catch(

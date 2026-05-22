@@ -36,13 +36,22 @@ export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }
     let destroyed = false;
 
     const cs = getComputedStyle(document.documentElement);
-    const colorFrom = cs.getPropertyValue("--brand-primary").trim() || "#2d5a3d";
-    const colorTo = cs.getPropertyValue("--brand-danger").trim() || "#b53d3d";
+    const colorFrom = cs.getPropertyValue("--route-from").trim() || "#3d6b8a";
+    const colorTo = cs.getPropertyValue("--route-to").trim() || "#7c8694";
 
     import("leaflet").then((L) => {
       if (destroyed || !containerRef.current || mapRef.current) return;
 
-      const map = L.map(containerRef.current, { zoomControl: false, attributionControl: false });
+      const map = L.map(containerRef.current, {
+        zoomControl: false,
+        attributionControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        touchZoom: false,
+        doubleClickZoom: false,
+        keyboard: false,
+        boxZoom: false,
+      });
       mapRef.current = map;
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {

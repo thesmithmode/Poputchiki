@@ -6,8 +6,9 @@ sources:
   - "daily/2026-05-01.md"
   - "daily/2026-05-08.md"
   - "daily/2026-05-13.md"
+  - "daily/2026-05-21.md"
 created: 2026-05-01
-updated: 2026-05-13
+updated: 2026-05-21
 ---
 
 # Deployment Pipeline (GHA → GHCR → SSH → Docker Compose)
@@ -36,6 +37,8 @@ Key operational findings from the 2026-05-13 first production deployment: (1) `n
 
 Two deployment gaps found in the 2026-05-08 pre-release review: (1) `DATABASE_MIGRATOR_URL` was not threaded through the deploy pipeline — migrations require elevated rights (DDL + GRANT) that the regular app role lacks; without a separate migrator URL, migrations fail or silently apply with insufficient privileges. (2) Cron cleanup jobs (deleting expired tokens, stale sessions, rate-limit rows) were executing as the `poputchiki_app` role, which is subject to RLS. RLS policies prevent cross-user DELETEs — the cleanup job saw 0 rows deleted because it had no `app.current_user_id` set and the USING clause filtered everything out. Fix: cron cleanup must use `SET ROLE poputchiki_service` or the migrator role that has `BYPASSRLS`.
 
+Two issues found during 2026-05-21 session: (7) `verify-ci` SHA check must use the HEAD SHA of the **dev branch** (the squash source), not the parent SHA of the squash-commit in main. Using the parent SHA finds a commit that has no CI run attached → blocks valid deploys with "CI run not found". Fix: capture `git rev-parse origin/dev` before squash merge, pass that SHA to the CI status check. (8) `backup-db.sh` pre-deploy step ran `pg_dump -h postgres` from the host — hostname `postgres` resolves only inside Docker network, fails from host. Fix: `docker exec postgres pg_dump -U $POSTGRES_USER $POSTGRES_DB` from host, or detection-based script (see [[concepts/backup-db-docker-network]]).
+
 ## Related Concepts
 
 - [[concepts/poputchiki-stack]] - Services being deployed
@@ -46,9 +49,11 @@ Two deployment gaps found in the 2026-05-08 pre-release review: (1) `DATABASE_MI
 - [[concepts/docker-compose-run-skips-healthcheck]] - `docker compose run` ignores depends_on health — must `up -d --wait` first
 - [[concepts/reactive-deploy-fix-loop]] - 15 failed deploys from reactive fix loop; pre-deploy static audit discipline
 - [[concepts/deploy-single-healthcheck-window]] - Single timeout window for all services creates false rollback risk for slow-starting services
+- [[concepts/backup-db-docker-network]] — pg_dump hostname routing: `postgres` only resolves inside Docker network; host must use `docker exec`
 
 ## Sources
 
 - [[daily/2026-05-01.md]] - Deploy pipeline documented as part of architecture revision; domain confirmed; rollback script requirement noted
 - [[daily/2026-05-08.md]] - Session 09:28: code review found `DATABASE_MIGRATOR_URL` not plumbed through deploy pipeline → migration failures; cron cleanup runs as app role → RLS blocks all DELETEs; both classified as release blockers
 - [[daily/2026-05-13.md]] - Sessions 14:43–19:16: 15 failed production deploys; Traefik v3.3 Docker API incompatibility fixed with `traefik:latest`; node-pg-migrate dotenv issue; GHCR/docker pull transient timeouts need retry; rollback.sh relative path fix; `docker compose run` doesn't wait for healthy postgres
+- [[daily/2026-05-21.md]] — verify-ci SHA check must use dev branch HEAD SHA (squash source), not parent SHA of squash-commit in main; backup-db.sh pg_dump hostname `postgres` unreachable from host → must use docker exec

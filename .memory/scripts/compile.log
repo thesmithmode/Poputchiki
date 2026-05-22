@@ -193,3 +193,36 @@ Files to compile (1):
 Compilation complete. Total cost: $1.05
 Knowledge base: 66 articles
 SessionEnd hook [uv run python hooks/session-end.py] failed: Hook cancelled
+Files to compile (2):
+  - 2026-05-21.md
+  - 2026-05-22.md
+
+[1/2] Compiling 2026-05-21.md...
+  Cost: $1.8065
+  Done.
+
+[2/2] Compiling 2026-05-22.md...
+  Cost: $0.9254
+  Done.
+
+Compilation complete. Total cost: $2.73
+Knowledge base: 119 articles
+SessionEnd hook [uv run python hooks/session-end.py] failed: Hook cancelled
+Files to compile (1):
+  - 2026-05-22.md
+
+[1/1] Compiling 2026-05-22.md...
+  Cost: $1.5163
+  Done.
+
+Compilation complete. Total cost: $1.52
+Knowledge base: 123 articles
+Files to compile (1):
+  - 2026-05-22.md
+
+[1/1] Compiling 2026-05-22.md...
+  Cost: $1.1651
+  Done.
+
+Compilation complete. Total cost: $1.17
+Knowledge base: 125 articles

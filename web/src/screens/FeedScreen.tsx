@@ -47,13 +47,13 @@ const QUICK_CHIPS = [
 
 export function FeedScreen() {
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useRides();
+  const { filters, setFilters, resetFilters } = useFilters();
+  const { data, isLoading, isError } = useRides(filters.datePreset, filters.fromAt, filters.toAt);
   useRealtime();
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedSet);
-  const { filters, setFilters, resetFilters } = useFilters();
   const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
   const [showFilters, setShowFilters] = useState(false);
   const [density, setDensity] = useState<"compact" | "cozy">(() => {

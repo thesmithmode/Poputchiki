@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-21T09:50:29.226Z",
+  "timestamp": "2026-05-22T16:20:14.153Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,7 +18,35 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-21.md"
+      "path": ".memory/daily/2026-05-22.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/concepts/advisory-lock-pool-safety.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/concepts/deployment-pipeline.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/concepts/enqueue-notification-helper.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/concepts/pg-listen-reconnect-loop.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/index.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/log.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/scripts/compile.log"
     },
     {
       "status": "M",
@@ -30,13 +58,73 @@
     },
     {
       "status": "M",
+      "path": ".memory/scripts/state.json"
+    },
+    {
+      "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
       "status": "??",
-      "path": ".planning/debug/"
+      "path": ".memory/knowledge/concepts/backup-db-docker-network.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/bulk-insert-transaction-risk.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/crash-loop-container-detection.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/cron-startup-vs-scheduled-trap.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/enqueue-notification-batch.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/generate-series-cron-expand.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/generate-series-expand-templates.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/map-service-zone-bounds.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/migration-linux-sort-down-file.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/optimistic-setquerydata-post.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/postgres-js-boolean-array-wire-type.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/postgres-js-listen-once-semantics.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/tanstack-query-semantic-key.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/unnest-batch-update.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/scripts/session-flush-57838d08-ec14-44b9-86da-2d78a513aa96-20260522-191941.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nfcfada5 FIX: notifier listen.ts — return после успешного subscribe, не tight loop\n5682715 CHORE: обновить memory-логи — сессия optimistic insert + i18n events squash\nded7c4c FIX: optimistic insert своей поездки + i18n events (actor name + ride_request_cancelled)\n63f69a3 FIX: cron Dockerfile — tini в /sbin/tini (alpine), не /usr/bin/tini (debian-наследие после M10)\ndc04d68 CHORE: обновить memory-логи — сессия 2026-05-21 deploy fix"
+  "context_notes": "Recent commits:\n29b5209 CHORE: убрать диагностическое логирование — CI зелёный\n409d5e7 CHORE: biome format fix — отступ в fire-and-forget callback\naa76f07 FIX: unnest без типов в alias, диагностика rideComplete, LIMIT в ride-requests/mine\nf071b89 FIX: убрать типы из unnest alias + diagnostic logging для CI диагностики\n23b6e77 FIX: UNNEST массивы text[] вместо uuid[]/jsonb[] — implicit cast конфликт с column alias"
 }

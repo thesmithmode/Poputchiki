@@ -4,8 +4,9 @@ aliases: [pg-listen-reconnect, listen-notify-reconnect, sse-pg-reconnect, pg-lis
 tags: [postgresql, sse, notifications, resilience, gotcha]
 sources:
   - "daily/2026-05-20.md"
+  - "daily/2026-05-21.md"
 created: 2026-05-20
-updated: 2026-05-20
+updated: 2026-05-21
 ---
 
 # PG LISTEN Reconnect Loop — Notification Connection Drop Recovery
@@ -86,7 +87,19 @@ const queryClient = postgres(DATABASE_URL, { max: 20 }); // regular pool
 - [[concepts/pg-notify-single-channel]] — The `notify_user` channel architecture; reconnect loop is the reliability layer for this channel
 - [[concepts/sse-pool-connection-ceiling]] — SSE fan-out scale limit; reconnect is a correctness concern, pool ceiling is a scale concern — both affect the same notification path
 - [[concepts/enqueue-notification-helper]] — `enqueueNotification` persists to `user_notifications` before pg_notify; if the LISTEN connection is down when pg_notify fires, the DB record still exists for retrieval on reconnect
+- [[concepts/postgres-js-listen-once-semantics]] — postgres.js-specific semantics: sql.listen() resolves once after ACK; reconnect loop over it creates infinite tight loop → crash-loop
+
+## postgres.js — важное исключение
+
+Статья выше описывает паттерн для драйверов **без** встроенного auto-reconnect (например, `pg`, `pg-listen-on-notify`). Библиотека **postgres.js** (`postgres` npm package) обрабатывает TCP-reconnect внутри через `onclose` callback — повторный вызов `sql.listen()` в reconnect-loop НЕ нужен и опасен.
+
+`sql.listen()` в postgres.js резолвится ОДИН РАЗ — после ACK от Postgres на команду LISTEN. Обёртывание в `while(true) { await sql.listen(...) }` создаёт tight infinite loop (каждая итерация завершается мгновенно после ACK) → CPU 100% / OOM → crash-loop контейнера.
+
+Реальный инцидент (commit 9a6a184): `attempt = 0` вместо `return` после первого успешного listen = crash-loop notifier в prod.
+
+Правильная архитектура для postgres.js: вызвать `sql.listen()` один раз; кастомный reconnect — через `onclose` параметр при создании Sql-экземпляра. Подробнее: [[concepts/postgres-js-listen-once-semantics]].
 
 ## Sources
 
 - [[daily/2026-05-20.md]] — Session 19:45: sector-api-review finding #4 CRITICAL: `notifications.ts` — PG LISTEN соединение не переоткрывается при обрыве → пользователи теряют SSE-нотификации навсегда до рестарта сервера; fix: reconnect loop с exponential backoff
+- [[daily/2026-05-21.md]] — Инцидент: неправильный reconnect wrapper (attempt = 0 вместо return) вызвал crash-loop prod-notifier; postgres.js резолвит sql.listen() после ACK, не после disconnect; reconnect поверх sql.listen() = infinite loop

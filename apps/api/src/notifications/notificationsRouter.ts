@@ -126,13 +126,17 @@ export function createNotificationsRouter(sql: postgres.Sql): Hono {
     const updates = parsed.data;
     const prefs = await withIdentity(sql, user, async (tx) => {
       await upsertDefaults(tx, user.id);
-      for (const [cat, enabled] of Object.entries(updates)) {
-        /* c8 ignore next -- Zod optional() omits absent keys; guard for schema-level changes */
-        if (enabled === undefined) continue;
+      const entries = (Object.entries(updates) as [string, boolean | undefined][]).filter(
+        (e): e is [string, boolean] => e[1] !== undefined,
+      );
+      if (entries.length > 0) {
+        const cats = entries.map(([c]) => c);
+        const vals = entries.map(([, v]) => String(v));
         await tx`
-          UPDATE notification_preferences
-          SET enabled = ${enabled as boolean}
-          WHERE user_id = ${user.id} AND category = ${cat}
+          UPDATE notification_preferences AS p
+          SET enabled = u.enabled::boolean
+          FROM unnest(${cats}::text[], ${vals}::text[]) AS u(category, enabled)
+          WHERE p.user_id = ${user.id} AND p.category = u.category
         `;
       }
       return readPrefs(tx, user.id);

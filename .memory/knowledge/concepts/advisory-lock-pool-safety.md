@@ -4,8 +4,9 @@ aliases: [advisory-lock, pg-advisory-lock, advisory-xact-lock, connection-pool-l
 tags: [database, postgresql, concurrency, gotcha]
 sources:
   - "daily/2026-05-04.md"
+  - "daily/2026-05-22.md"
 created: 2026-05-04
-updated: 2026-05-04
+updated: 2026-05-22
 ---
 
 # Advisory Lock Pool Safety: xact-level vs session-level
@@ -50,6 +51,18 @@ await sql.begin(async (tx) => {
 This pattern was discovered in Poputchiki when reviewing TASK-089's `withLock` helper. The initial implementation used `pg_try_advisory_lock` with a `finally` block. Code review before merging to `dev` caught the race condition. The fix rewrote `withLock` to accept a transaction (`tx`) parameter and use `pg_try_advisory_xact_lock` exclusively.
 
 A secondary finding from the same session: TASK-089 created `withLock` but left 4 cron job files using inline advisory lock patterns rather than migrating them to the new helper. This is a class of incomplete refactoring — the abstraction exists but not all callers use it — that coverage checks may not catch if the inline code still runs.
+
+## Silent hole: winner crashes before completion
+
+При dual-instance cron (blue/green deploy) `pg_try_advisory_xact_lock` корректно гарантирует, что задачу выполняет ровно один инстанс. Но если winner падает до завершения:
+- Транзакционный lock auto-release при ROLLBACK → lock свободен
+- Второй инстанс уже вышел (проиграл lock и не ждёт)
+- Результат: 0 поездок/записей молча, без ошибки в логах
+- Следующий шанс: по расписанию (до часа ожидания)
+
+Митигация: `oncePer` с timestamp в БД — если timestamp не записан (winner упал до commit), следующий планировщик запустит задачу без ожидания.
+
+Источник: [[daily/2026-05-22.md]] — Session 17:49: expand_templates с advisory lock, двойной инстанс при blue/green deploy.
 
 ## Related Concepts
 

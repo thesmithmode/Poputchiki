@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Ride } from "../types/ride";
 
+export type DatePreset = "24h" | "48h" | "7d" | "custom" | null;
+
 export interface Filters {
   trustMinAccountAgeDays: number;
   trustMinLikes: number;
@@ -11,6 +13,9 @@ export interface Filters {
   priceMin: number | null;
   priceMax: number | null;
   seatsMin: number;
+  datePreset: DatePreset;
+  fromAt: string | null;
+  toAt: string | null;
 }
 
 export const DEFAULT_FILTERS: Filters = {
@@ -23,6 +28,9 @@ export const DEFAULT_FILTERS: Filters = {
   priceMin: null,
   priceMax: null,
   seatsMin: 0,
+  datePreset: "24h",
+  fromAt: null,
+  toAt: null,
 };
 
 const STORAGE_KEY = "poputchiki:filters";
@@ -41,7 +49,8 @@ function loadFilters(): Filters {
 }
 
 function saveFilters(f: Filters): void {
-  const { direction, ...rest } = f;
+  // datePreset/fromAt/toAt не персистим — при новой сессии всегда дефолт "24h"
+  const { direction, datePreset: _dp, fromAt: _fa, toAt: _ta, ...rest } = f;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
   if (direction) {
     sessionStorage.setItem(SESSION_DIRECTION_KEY, direction);
@@ -68,6 +77,29 @@ export function useFilters() {
   }
 
   return { filters, setFilters, resetFilters };
+}
+
+export function resolveDateRange(filters: {
+  datePreset: DatePreset;
+  fromAt: string | null;
+  toAt: string | null;
+}): { fromAt: string | null; toAt: string | null } {
+  if (filters.datePreset === "custom") {
+    return { fromAt: filters.fromAt, toAt: filters.toAt };
+  }
+  const now = new Date();
+  const from = now.toISOString();
+  if (filters.datePreset === "24h") {
+    return { fromAt: from, toAt: new Date(now.getTime() + 24 * 3600 * 1000).toISOString() };
+  }
+  if (filters.datePreset === "48h") {
+    return { fromAt: from, toAt: new Date(now.getTime() + 48 * 3600 * 1000).toISOString() };
+  }
+  if (filters.datePreset === "7d") {
+    return { fromAt: from, toAt: new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString() };
+  }
+  // null — без ограничений
+  return { fromAt: from, toAt: null };
 }
 
 export function applyFilters(

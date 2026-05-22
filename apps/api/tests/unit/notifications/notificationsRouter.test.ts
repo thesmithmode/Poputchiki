@@ -270,7 +270,7 @@ describe("PUT /notifications/preferences", () => {
 
   it("multiple fields updated → 200", async () => {
     mockWithIdentityCallThrough();
-    // M3: один upsert + UPDATE × 2 = 3 tx calls before readPrefs
+    // M3: один upsert + 1 UNNEST UPDATE (все поля разом) + readPrefs SELECT = 3 tx calls
     mockTx.mockResolvedValue([]);
     const updatedPrefs = PREFS_ROWS.map((r) =>
       r.category === "like_received" || r.category === "review_received"
@@ -281,7 +281,7 @@ describe("PUT /notifications/preferences", () => {
       let callCount = 0;
       const countingTx = vi.fn().mockImplementation(() => {
         callCount++;
-        if (callCount <= 3) return Promise.resolve([]);
+        if (callCount <= 2) return Promise.resolve([]);
         return Promise.resolve(updatedPrefs);
       });
       return fn(countingTx as never);

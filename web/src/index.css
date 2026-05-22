@@ -146,6 +146,9 @@
   --ride-viewed-soft: rgba(255, 255, 255, 0.04);
   --ride-viewed-line: rgba(255, 255, 255, 0.08);
 
+  --route-from: #6ea8c8;
+  --route-to: #8fa0ad;
+
   --shadow-sm: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);

@@ -44,12 +44,35 @@ export interface TelegramViewport {
   isExpanded: boolean;
 }
 
+export interface TelegramLocationData {
+  latitude: number;
+  longitude: number;
+  altitude: number | null;
+  course: number | null;
+  speed: number | null;
+  horizontal_accuracy: number | null;
+  vertical_accuracy: number | null;
+  course_accuracy: number | null;
+  speed_accuracy: number | null;
+}
+
+export interface TelegramLocationManager {
+  isInited: boolean;
+  isLocationAvailable: boolean;
+  isAccessRequested: boolean;
+  isAccessGranted: boolean;
+  init(callback?: () => void): void;
+  getLocation(callback: (location: TelegramLocationData | null) => void): TelegramLocationManager;
+  openSettings(): TelegramLocationManager;
+}
+
 export interface TelegramWebApp {
   colorScheme: TelegramColorScheme;
   themeParams?: TelegramThemeParams;
   BackButton?: TelegramBackButton;
   MainButton?: TelegramMainButton;
   HapticFeedback?: TelegramHapticFeedback;
+  LocationManager?: TelegramLocationManager;
   viewportHeight?: number;
   expand?: () => void;
   disableSwipeClose?: boolean;

@@ -254,38 +254,25 @@ export function MapScreen() {
     setLocating(true);
     setLocateError(null);
 
-    // Telegram WebApp LocationManager (Bot API 8.0+)
-    const tgWA = getTelegramWebApp() as unknown as {
-      LocationManager?: {
-        init?: (cb: () => void) => void;
-        requestLocation?: (
-          cb: (loc: { latitude: number; longitude: number } | null) => void,
-        ) => void;
-        isInited?: boolean;
-        isLocationAvailable?: boolean;
-      };
-    };
-    const lm = tgWA?.LocationManager;
+    const lm = getTelegramWebApp()?.LocationManager;
 
-    // На PC Telegram нет LocationManager → browser geolocation тоже не работает в iframe.
-    // Предупреждаем сразу, не пытаясь делать запрос.
-    if (tgWA && !lm) {
-      setLocating(false);
-      setLocateError("Геолокация доступна только в мобильном Telegram");
-      return;
-    }
-
-    if (lm?.requestLocation) {
-      const doRequest = () =>
-        lm.requestLocation?.((loc) => {
+    if (lm) {
+      // Telegram LocationManager API (Bot API 8.0+) — работает на iOS/Android/Desktop
+      const doRequest = () => {
+        lm.getLocation((loc) => {
           if (loc) {
             applyLocationOnMap(loc.latitude, loc.longitude);
           } else {
             setLocating(false);
-            setLocateError("Геолокация недоступна");
+            setLocateError(
+              lm.isAccessGranted
+                ? "Геолокация временно недоступна"
+                : "Разрешите геолокацию в настройках Telegram",
+            );
           }
         });
-      if (!lm.isInited && lm.init) {
+      };
+      if (!lm.isInited) {
         lm.init(doRequest);
       } else {
         doRequest();
@@ -293,10 +280,10 @@ export function MapScreen() {
       return;
     }
 
-    // Fallback: browser geolocation API
+    // Fallback: browser geolocation (десктоп-браузер, Telegram Desktop без LocationManager)
     if (!navigator.geolocation) {
       setLocating(false);
-      setLocateError("Геолокация не поддерживается");
+      setLocateError("Геолокация не поддерживается вашим браузером");
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -306,7 +293,7 @@ export function MapScreen() {
       (err) => {
         setLocating(false);
         if (err.code === 1) {
-          setLocateError("Разрешите геолокацию в настройках Telegram");
+          setLocateError("Разрешите геолокацию в настройках браузера или Telegram");
         } else if (err.code === 2) {
           setLocateError("Геолокация временно недоступна");
         } else {

@@ -133,7 +133,10 @@ Telegram Mini App. Работает внутри WebView Telegram.
 **Структура:**
 
 ```
-screens/        — 14 экранов (Map, Feed, Profile, Ride, Onboarding, Admin...)
+screens/        — 18 экранов (RidesScreen, RideDetail, CreateRide, Profile, EditProfile,
+                  MyRides, Events, FilterPresets, ConfirmParticipation, Onboarding,
+                  Settings, NotificationPreferences, Support, Admin, About,
+                  Privacy, Terms, NotFound)
 components/     — RideCard, Avatar, FiltersPanel, ComplaintSheet, ErrorBoundary
 hooks/          — useRides, useUser, useRealtime, useTelegramBack/Haptic...
 lib/

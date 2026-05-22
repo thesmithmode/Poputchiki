@@ -3,12 +3,24 @@ import { finalizeRides } from "../../src/finalize-rides";
 
 type Row = Record<string, unknown>;
 
-function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
+// finalizeRides использует useServiceRole=true → порядок: [SET ROLE, lock, data...]
+function makeSql(acquired: boolean, txResponses: (Row[] | Error)[]): import("postgres").Sql {
   return {
     begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       let i = 0;
       const tx = vi.fn().mockImplementation(() => {
-        const resp = txResponses[i] ?? [];
+        // SET LOCAL ROLE — первый вызов
+        if (i === 0) {
+          i++;
+          return Promise.resolve([]);
+        }
+        // advisory lock — второй вызов
+        if (i === 1) {
+          i++;
+          return Promise.resolve([{ acquired }]);
+        }
+        // данные — остальные
+        const resp = txResponses[i - 2] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
       });
@@ -21,25 +33,24 @@ describe("finalizeRides", () => {
   afterEach(() => vi.restoreAllMocks());
 
   it("returns null when lock not acquired", async () => {
-    const sql = makeSql([[{ acquired: false }]]);
+    const sql = makeSql(false, []);
     expect(await finalizeRides(sql)).toBeNull();
   });
 
   it("returns completed=0, archived=0 when no rides to process", async () => {
-    // lock check, UPDATE completed (empty), UPDATE archived (empty)
-    const sql = makeSql([[{ acquired: true }], [], []]);
+    // UPDATE completed (empty), UPDATE archived (empty)
+    const sql = makeSql(true, [[], []]);
     const result = await finalizeRides(sql);
     expect(result).toEqual({ completed: 0, archived: 0 });
   });
 
   it("returns completed=1 when one ride transitions active→completed", async () => {
     const completedRide = { id: "rid-1", driver_id: "drv-1" };
-    const sql = makeSql([
-      [{ acquired: true }],
+    const sql = makeSql(true, [
       [completedRide], // UPDATE completed
       [], // UPDATE archived
       [], // INSERT audit_log
-      [], // pg_notify driver
+      [], // enqueueNotification
     ]);
     const result = await finalizeRides(sql);
     expect(result?.completed).toBe(1);
@@ -47,8 +58,7 @@ describe("finalizeRides", () => {
   });
 
   it("returns archived=1 when one ride transitions completed→archived", async () => {
-    const sql = makeSql([
-      [{ acquired: true }],
+    const sql = makeSql(true, [
       [], // UPDATE completed (no rides)
       [{ id: "rid-2" }], // UPDATE archived
       [], // INSERT audit_log archived
@@ -59,10 +69,23 @@ describe("finalizeRides", () => {
   });
 
   it("propagates error from UPDATE (transaction rollbacks, lock auto-released)", async () => {
-    const sql = makeSql([
-      [{ acquired: true }],
-      new Error("DB fail"), // UPDATE completed throws
-    ]);
+    const sql = makeSql(true, [new Error("DB fail")]);
     await expect(finalizeRides(sql)).rejects.toThrow("DB fail");
+  });
+
+  it("SET LOCAL ROLE poputchiki_service вызывается первым", async () => {
+    const calls: string[] = [];
+    const tx = vi.fn().mockImplementation((strings: TemplateStringsArray, ..._v: unknown[]) => {
+      const q = strings.join("?");
+      calls.push(q);
+      if (q.includes("SET LOCAL ROLE")) return Promise.resolve([]);
+      if (q.includes("pg_try_advisory_xact_lock")) return Promise.resolve([{ acquired: true }]);
+      return Promise.resolve([]);
+    });
+    const sql = {
+      begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
+    } as unknown as import("postgres").Sql;
+    await finalizeRides(sql);
+    expect(calls[0]).toContain("SET LOCAL ROLE poputchiki_service");
   });
 });

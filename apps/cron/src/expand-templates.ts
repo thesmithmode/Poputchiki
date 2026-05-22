@@ -8,11 +8,14 @@ export async function expandTemplates(
   sql: postgres.Sql,
   now: Date = new Date(),
 ): Promise<{ created: number } | null> {
-  return withLock(sql, LOCK_ID, async (tx) => {
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-    const todayIso = today.toISOString().slice(0, 10);
+  return withLock(
+    sql,
+    LOCK_ID,
+    async (tx) => {
+      const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+      const todayIso = today.toISOString().slice(0, 10);
 
-    const rows = await tx<{ id: string }[]>`
+      const rows = await tx<{ id: string }[]>`
       INSERT INTO rides
         (driver_id, template_id, from_label, from_lat, from_lng,
          to_label, to_lat, to_lng, departure_at, price_rub, seats_total, comment)
@@ -43,17 +46,19 @@ export async function expandTemplates(
       RETURNING id
     `;
 
-    const created = rows.length;
+      const created = rows.length;
 
-    // biome-ignore lint/suspicious/noConsoleLog: structured cron log
-    console.log(
-      JSON.stringify({
-        msg: "expand_templates",
-        rides_created: created,
-        horizon_days: HORIZON_DAYS,
-        ts: new Date().toISOString(),
-      }),
-    );
-    return { created };
-  });
+      // biome-ignore lint/suspicious/noConsoleLog: structured cron log
+      console.log(
+        JSON.stringify({
+          msg: "expand_templates",
+          rides_created: created,
+          horizon_days: HORIZON_DAYS,
+          ts: new Date().toISOString(),
+        }),
+      );
+      return { created };
+    },
+    { useServiceRole: true },
+  );
 }

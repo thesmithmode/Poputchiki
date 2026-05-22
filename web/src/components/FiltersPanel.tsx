@@ -21,24 +21,25 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
     filters.toAt !== DEFAULT_FILTERS.toAt;
 
   const DATE_PRESETS: { id: DatePreset; label: string }[] = [
-    { id: "24h", label: "24 часа" },
-    { id: "48h", label: "48 часов" },
+    { id: "24h", label: "1 день" },
+    { id: "48h", label: "2 дня" },
     { id: "7d", label: "7 дней" },
     { id: null, label: "Любой" },
-    { id: "custom", label: "Свой период" },
   ];
 
-  function toLocalDatetimeValue(iso: string | null): string {
+  function toLocalDateValue(iso: string | null): string {
     if (!iso) return "";
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   }
 
-  function fromLocalDatetimeValue(v: string): string | null {
+  function fromLocalDateValue(v: string): string | null {
     if (!v) return null;
     return new Date(v).toISOString();
   }
+
+  const todayIso = new Date().toISOString().slice(0, 10);
 
   return (
     <div
@@ -79,39 +80,37 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             );
           })}
         </div>
-        {filters.datePreset === "custom" && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-            <input
-              data-testid="filter-from-at"
-              type="datetime-local"
-              value={toLocalDatetimeValue(filters.fromAt)}
-              onChange={(e) =>
-                onChange({ fromAt: fromLocalDatetimeValue(e.target.value), datePreset: "custom" })
-              }
-              className="rounded-md px-2 py-1 text-sm"
-              style={{
-                background: "var(--brand-surface)",
-                color: "var(--brand-text)",
-                border: "1px solid var(--brand-line)",
-              }}
-            />
-            <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>—</span>
-            <input
-              data-testid="filter-to-at"
-              type="datetime-local"
-              value={toLocalDatetimeValue(filters.toAt)}
-              onChange={(e) =>
-                onChange({ toAt: fromLocalDatetimeValue(e.target.value), datePreset: "custom" })
-              }
-              className="rounded-md px-2 py-1 text-sm"
-              style={{
-                background: "var(--brand-surface)",
-                color: "var(--brand-text)",
-                border: "1px solid var(--brand-line)",
-              }}
-            />
-          </div>
-        )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <input
+            data-testid="filter-from-at"
+            type="date"
+            value={toLocalDateValue(filters.fromAt) || todayIso}
+            onChange={(e) =>
+              onChange({ fromAt: fromLocalDateValue(e.target.value), datePreset: "custom" })
+            }
+            className="rounded-md px-2 py-1 text-sm"
+            style={{
+              background: "var(--brand-surface)",
+              color: "var(--brand-text)",
+              border: "1px solid var(--brand-line)",
+            }}
+          />
+          <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>—</span>
+          <input
+            data-testid="filter-to-at"
+            type="date"
+            value={toLocalDateValue(filters.toAt)}
+            onChange={(e) =>
+              onChange({ toAt: fromLocalDateValue(e.target.value), datePreset: "custom" })
+            }
+            className="rounded-md px-2 py-1 text-sm"
+            style={{
+              background: "var(--brand-surface)",
+              color: "var(--brand-text)",
+              border: "1px solid var(--brand-line)",
+            }}
+          />
+        </div>
       </div>
 
       <input

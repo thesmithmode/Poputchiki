@@ -98,8 +98,8 @@ export function resolveDateRange(filters: {
   if (filters.datePreset === "7d") {
     return { fromAt: from, toAt: new Date(now.getTime() + 7 * 24 * 3600 * 1000).toISOString() };
   }
-  // null — без ограничений
-  return { fromAt: from, toAt: null };
+  // null — без ограничений по дате
+  return { fromAt: null, toAt: null };
 }
 
 export function applyFilters(

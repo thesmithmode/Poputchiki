@@ -23,7 +23,8 @@ export function useRides(
         fromAt: customFromAt,
         toAt: customToAt,
       });
-      const params = new URLSearchParams({ fromAt: fromAt ?? new Date().toISOString() });
+      const params = new URLSearchParams();
+      if (fromAt) params.set("fromAt", fromAt);
       if (toAt) params.set("toAt", toAt);
       return apiFetch<RidesResponse>(`/rides?${params.toString()}`);
     },

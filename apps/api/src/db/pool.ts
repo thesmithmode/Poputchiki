@@ -4,6 +4,13 @@ export const POOL_CONFIG = {
   max: 20,
   idle_timeout: 20,
   connect_timeout: 5,
+  // PgBouncer transaction-pool совместимость: prepared statements кэшируются на
+  // backend connection. В tx-pool connection между транзакциями возвращается в pool,
+  // а server-side prepared statement (по имени) теряется → следующий клиент получит
+  // "prepared statement S_1 does not exist". prepare: false шлёт queries как simple
+  // protocol → каждый запрос компилируется отдельно. Незначительная стоимость
+  // (~µs per query) против стабильности при tx-pool.
+  prepare: false,
 } as const;
 
 const _metrics = { in_use: 0, waiting: 0, sse_subscribers: 0 };

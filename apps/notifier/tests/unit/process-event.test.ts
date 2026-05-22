@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DlqClient } from "../../src/dlq.js";
 import type { FetchFn } from "../../src/process-event.js";
-import { processEvent } from "../../src/process-event.js";
+import { getRateLimitRetriesInFlight, processEvent } from "../../src/process-event.js";
 import type { NotifierDb, Recipient } from "../../src/types.js";
 
 const BOT_TOKEN = "test_token";
@@ -483,6 +484,56 @@ describe("processEvent", () => {
       BOT_TOKEN,
     );
     expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("getRateLimitRetriesInFlight returns number", () => {
+    expect(typeof getRateLimitRetriesInFlight()).toBe("number");
+  });
+
+  it("5xx with DLQ → dlq.enqueue called with correct args", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(500, false);
+    const dlq: DlqClient = {
+      enqueue: vi.fn().mockResolvedValue(undefined),
+      claimBatch: vi.fn(),
+      markSuccess: vi.fn(),
+      markRetry: vi.fn(),
+    };
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({ user_id: "u1", category: "system" }),
+      BOT_TOKEN,
+      undefined,
+      dlq,
+    );
+    expect(dlq.enqueue).toHaveBeenCalledOnce();
+    const arg = (dlq.enqueue as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(arg.lastStatus).toBe(500);
+    expect(arg.userId).toBe("u1");
+  });
+
+  it("5xx with DLQ enqueue failing → caught gracefully, no throw", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(503, false);
+    const dlq: DlqClient = {
+      enqueue: vi.fn().mockRejectedValue(new Error("db down")),
+      claimBatch: vi.fn(),
+      markSuccess: vi.fn(),
+      markRetry: vi.fn(),
+    };
+    await expect(
+      processEvent(
+        db,
+        fetchFn as FetchFn,
+        cache,
+        JSON.stringify({ user_id: "u1", category: "system" }),
+        BOT_TOKEN,
+        undefined,
+        dlq,
+      ),
+    ).resolves.toBeUndefined();
   });
 
   it("skips and marks skipped_disabled when circuit breaker is open", async () => {

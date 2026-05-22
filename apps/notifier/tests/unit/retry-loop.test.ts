@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import type { CircuitBreaker } from "../../src/circuit-breaker.js";
 import type { DlqClient, DlqRow } from "../../src/dlq.js";
 import type { FetchFn } from "../../src/process-event.js";
 import { runRetryTick } from "../../src/retry-loop.js";
@@ -145,10 +146,26 @@ describe("runRetryTick", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it("db.getRecipient throws → outer catch logs dlq_tick_unhandled, processed=0", async () => {
+    const db = makeDb({ getRecipient: vi.fn().mockRejectedValue(new Error("db error")) });
+    const dlq = makeDlq([makeRow()]);
+    const fetchFn = vi.fn() as unknown as FetchFn;
+    const res = await runRetryTick({ db, dlq, fetchFn, botToken: BOT_TOKEN, log });
+    expect(res.processed).toBe(0);
+    expect(log).toHaveBeenCalledWith(
+      "dlq_tick_unhandled",
+      expect.objectContaining({ user_id: "u1" }),
+    );
+  });
+
   it("circuit open → skip всего tick, claimBatch не зовётся", async () => {
     const dlq = makeDlq([makeRow()]);
     const fetchFn = vi.fn() as unknown as FetchFn;
-    const circuit = { isOpen: () => true, recordFailure: vi.fn(), recordSuccess: vi.fn() } as any;
+    const circuit = {
+      isOpen: () => true,
+      recordFailure: vi.fn(),
+      recordSuccess: vi.fn(),
+    } as CircuitBreaker;
     await runRetryTick({
       db: makeDb(),
       dlq,

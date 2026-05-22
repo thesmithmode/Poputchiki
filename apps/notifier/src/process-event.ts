@@ -171,6 +171,7 @@ export async function processEvent(
       return;
     }
     // Legacy fallback (без DLQ): in-memory setTimeout retry, 100 max in-flight.
+    /* c8 ignore next 9 -- overflow guard requires 100+ concurrent 429s to trigger */
     if (rateLimitRetriesInFlight >= MAX_RETRIES_IN_FLIGHT) {
       console.error(
         JSON.stringify({

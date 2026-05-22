@@ -163,8 +163,10 @@ export function MapScreen() {
           Math.max(center.distanceTo(ne), center.distanceTo(bounds.getSouthWest())) / 1000;
 
         try {
+          const now = new Date();
+          const sixHoursLater = new Date(now.getTime() + 6 * 60 * 60 * 1000);
           const data = await apiFetch<{ rides: Ride[] }>(
-            `/rides?fromLat=${center.lat.toFixed(6)}&fromLng=${center.lng.toFixed(6)}&radiusKm=${Math.ceil(radiusKm)}`,
+            `/rides?fromLat=${center.lat.toFixed(6)}&fromLng=${center.lng.toFixed(6)}&radiusKm=${Math.ceil(radiusKm)}&fromAt=${now.toISOString()}&toAt=${sixHoursLater.toISOString()}`,
           );
           if (!destroyed) {
             setRides(data.rides);

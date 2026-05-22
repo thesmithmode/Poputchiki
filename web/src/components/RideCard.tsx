@@ -14,6 +14,26 @@ interface RideCardProps {
   cardState?: RideCardState;
 }
 
+function formatAddress(label: string): string {
+  if (!label) return label;
+  const cleaned = label
+    .replace(/,?\s*г\.?\s*Казань\b/gi, "")
+    .replace(/,?\s*\bКазань\b/gi, "")
+    .replace(/,?\s*Республика\s+Татарстан\b/gi, "")
+    .replace(/,?\s*\bТатарстан\b/gi, "")
+    .replace(/,?\s*\bРоссия\b/gi, "")
+    .replace(/\bулица\b/gi, "ул.")
+    .replace(/\bпроспект\b/gi, "пр.")
+    .replace(/\bпереулок\b/gi, "пер.")
+    .replace(/\bбульвар\b/gi, "бул.")
+    .replace(/\bшоссе\b/gi, "ш.")
+    .replace(/\bнабережная\b/gi, "наб.")
+    .replace(/^\s*,\s*/, "")
+    .replace(/,\s*$/, "")
+    .trim();
+  return cleaned || label;
+}
+
 function relativeTime(departureAt: string): string {
   const diff = Math.round((new Date(departureAt).getTime() - Date.now()) / 60000);
   if (diff < 0) return "уже уехал";
@@ -100,7 +120,7 @@ export function RideCard({
           textAlign: "left",
           background: bg,
           borderRadius: 8,
-          padding: "7px 12px",
+          padding: "6px 12px",
           cursor: "pointer",
           border: "none",
           boxShadow: borderColor
@@ -109,7 +129,7 @@ export function RideCard({
           fontFamily: "inherit",
           transition: "transform 0.08s",
           display: "grid",
-          gridTemplateColumns: "44px 8px minmax(0,1fr) 56px 26px",
+          gridTemplateColumns: "40px minmax(0,1fr) 52px 24px",
           alignItems: "center",
           columnGap: 8,
           fontVariantNumeric: "tabular-nums",
@@ -137,31 +157,54 @@ export function RideCard({
           {time}
         </div>
 
-        {/* Colored dot */}
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: "50%",
-            background: "var(--brand-primary)",
-            display: "block",
-          }}
-        />
-
-        {/* Destination — truncates on long text */}
+        {/* From → To inline, split 50/50 */}
         <div
           style={{
-            fontWeight: 600,
-            fontSize: 13,
-            color: "var(--brand-text)",
-            lineHeight: 1,
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
             minWidth: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
           }}
         >
-          {ride.to_label}
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 11.5,
+              fontWeight: 500,
+              color: "var(--brand-sub)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {formatAddress(ride.from_label)}
+          </span>
+          <span
+            style={{
+              color: "var(--brand-faint)",
+              fontSize: 11,
+              flexShrink: 0,
+              lineHeight: 1,
+            }}
+          >
+            →
+          </span>
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--brand-text)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              textAlign: "right",
+            }}
+          >
+            {formatAddress(ride.to_label)}
+          </span>
         </div>
 
         {/* Price */}
@@ -305,52 +348,53 @@ export function RideCard({
         </div>
       </div>
 
-      {/* Route row: from dot → line → pin + to */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <div
-          style={{
-            width: 8,
-            height: 8,
-            borderRadius: "50%",
-            background: "var(--route-from)",
-            flexShrink: 0,
-          }}
-        />
-        <div
-          style={{
-            fontSize: 13.5,
-            fontWeight: 500,
-            color: "var(--brand-text)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}
-        >
-          {ride.from_label}
+      {/* Route: two lines — FROM then TO */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "var(--route-from)",
+              flexShrink: 0,
+            }}
+          />
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              color: "var(--brand-sub)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {formatAddress(ride.from_label)}
+          </span>
         </div>
-        <div
-          style={{
-            flex: "0 1 24px",
-            height: 1.5,
-            background: "var(--brand-line)",
-            minWidth: 14,
-            flexShrink: 0,
-          }}
-        />
-        <Icon name="pin" size={13} style={{ color: "var(--route-to)", flexShrink: 0 }} />
-        <div
-          style={{
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: "var(--brand-text)",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          {ride.to_label}
+        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+          <Icon
+            name="pin"
+            size={10}
+            style={{ color: "var(--route-to)", flexShrink: 0, marginLeft: -1 }}
+          />
+          <span
+            style={{
+              fontSize: 13.5,
+              fontWeight: 700,
+              color: "var(--brand-text)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {formatAddress(ride.to_label)}
+          </span>
         </div>
       </div>
 

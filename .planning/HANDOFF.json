@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-22T21:53:21.588Z",
+  "timestamp": "2026-05-22T22:33:37.836Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -31,36 +31,8 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/likes/likesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/middleware/audit-log.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/middleware/idempotency.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/reviews/reviewsRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/rides/rideRequest.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/cron/tests/unit/confirm-participation-push.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/cron/tests/unit/finalize-rides.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n6d1d6db CHORE: добавить scale-задачи под 50k — retention, TG retry/DLQ, notifier multi-replica, throttle\n0b83a35 FIX: jsonb double-encoding в enqueue/audit-log/idempotency — sql.json() вместо JSON.stringify\n338be2d TEST: обновить тесты CreateRideScreen под invalidateQueries вместо setQueryData\need9dd9 CHORE: обновить planning state — сессия 2026-05-23\nc16804c CHORE: обновить memory-логи — сессия 2026-05-23"
+  "context_notes": "Recent commits:\n0c7694c FEAT: PgBouncer transaction pool перед postgres для api\nf6c953d FIX: notifier graceful shutdown ждёт in-flight DLQ retry tick (max 5s)\n1f5b824 FEAT: TASK-139 multi-replica notifier дедуп через notification_log UNIQUE\n0772d18 FEAT: TASK-138 DLQ retry для TG с exponential backoff\n35c90a1 FEAT: TASK-140 per-recipient throttle уведомлений (rolling 1h окно)"
 }

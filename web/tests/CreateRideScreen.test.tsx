@@ -357,7 +357,7 @@ describe("CreateRideScreen", () => {
     });
   });
 
-  it("optimistic: после submit ride вкидывается в кеш ['rides'] до refetch", async () => {
+  it("после submit ride инвалидирует кеш ['rides'] для последующего refetch", async () => {
     const createdRide = {
       id: "ride-optimistic-1",
       driver_id: "me-uuid",
@@ -378,8 +378,7 @@ describe("CreateRideScreen", () => {
     mockedApiFetch.mockResolvedValueOnce(createdRide);
 
     const { client } = renderScreen();
-    // Pre-seed pустой кеш чтобы setQueryData мог его расширить
-    client.setQueryData(["rides"], { rides: [], nextCursor: null });
+    client.setQueryData(["rides", "list", null, null, null], { rides: [], nextCursor: null });
 
     goToStep3();
     await act(async () => {
@@ -387,12 +386,12 @@ describe("CreateRideScreen", () => {
     });
 
     await waitFor(() => {
-      const cached = client.getQueryData<{ rides: Array<{ id: string }> }>(["rides"]);
-      expect(cached?.rides.some((r) => r.id === "ride-optimistic-1")).toBe(true);
+      const state = client.getQueryState(["rides", "list", null, null, null]);
+      expect(state?.isInvalidated).toBe(true);
     });
   });
 
-  it("optimistic: после submit ride вкидывается в кеш ['rides','mine','driver','future']", async () => {
+  it("после submit ride инвалидирует кеш ['rides','mine','driver','future'] для последующего refetch", async () => {
     const createdRide = {
       id: "ride-optimistic-2",
       driver_id: "me-uuid",
@@ -421,13 +420,8 @@ describe("CreateRideScreen", () => {
     });
 
     await waitFor(() => {
-      const cached = client.getQueryData<{ rides: Array<{ id: string }> }>([
-        "rides",
-        "mine",
-        "driver",
-        "future",
-      ]);
-      expect(cached?.rides.some((r) => r.id === "ride-optimistic-2")).toBe(true);
+      const state = client.getQueryState(["rides", "mine", "driver", "future"]);
+      expect(state?.isInvalidated).toBe(true);
     });
   });
 

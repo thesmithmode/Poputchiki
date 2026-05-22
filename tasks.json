@@ -3342,6 +3342,72 @@
         "TASK-125"
       ],
       "status": "pending"
+    },
+    {
+      "id": "TASK-137",
+      "category": "scale-notifications",
+      "priority": "high",
+      "phase": "scale",
+      "description": "Retention для user_notifications: cron-задача удаления уведомлений старше 90 дней + индекс под этот запрос",
+      "acceptance_criteria": [
+        "apps/cron: runUserNotificationsCleanup ежедневно 02:30 UTC под advisory lock",
+        "DELETE FROM user_notifications WHERE created_at < now() - INTERVAL '90 days'",
+        "Партиал-индекс или batch-delete (5k за итерацию) во избежание long-running transaction",
+        "Integration test: вставка 100 строк со старой датой → cleanup удаляет → счётчик 0",
+        "Метрика: количество удалённых строк логируется"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-138",
+      "category": "scale-notifications",
+      "priority": "high",
+      "phase": "scale",
+      "description": "Telegram retry queue: DLQ + exponential backoff для notifier при сбоях TG API",
+      "acceptance_criteria": [
+        "Новая таблица notification_delivery_attempts (notification_id, attempt, next_retry_at, last_error, status)",
+        "notifier: при сбое TG sendMessage → INSERT/UPDATE attempt с backoff (1м, 5м, 30м, 2ч, 12ч)",
+        "Max 5 attempts → status=dead → admin TG-alert через support_admin channel",
+        "Cron: каждую минуту берёт строки next_retry_at < now() и пытается переотправить",
+        "Integration test: симуляция 4xx/5xx ответа TG → запись в DLQ → retry → eventual delivery"
+      ],
+      "dependencies": [],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-139",
+      "category": "scale-notifications",
+      "priority": "medium",
+      "phase": "scale",
+      "description": "Notifier multi-replica: ≥2 instance с дедупом через SELECT FOR UPDATE SKIP LOCKED",
+      "acceptance_criteria": [
+        "Переход с pure LISTEN/NOTIFY (broadcast всем) на claim-pattern: outbox-таблица + worker poll",
+        "Воркер: SELECT id FROM notifications_outbox WHERE status='pending' FOR UPDATE SKIP LOCKED LIMIT 10",
+        "LISTEN остаётся как wake-up signal (cheap polling between)",
+        "docker-compose: scale notifier до 2 replicas",
+        "Integration test: 1000 нотификаций распределяются между 2 воркерами без дубликатов"
+      ],
+      "dependencies": [
+        "TASK-138"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "TASK-140",
+      "category": "scale-notifications",
+      "priority": "medium",
+      "phase": "scale",
+      "description": "Per-recipient notification throttle: защита от спама inbox получателя",
+      "acceptance_criteria": [
+        "В enqueueNotification проверка: количество уведомлений категории X для user Y за последний час",
+        "Лимит: ride_request — 50/час, like_received — 100/час, system — без лимита",
+        "Превышение → 429-like skip + log, без INSERT в user_notifications",
+        "Конфигурация лимитов в shared constants",
+        "Integration test: 51-й ride_request за час не создаёт нотификацию"
+      ],
+      "dependencies": [],
+      "status": "pending"
     }
   ]
 }

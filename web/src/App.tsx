@@ -222,6 +222,22 @@ function AppShell() {
       <a href="#main-content" className="skip-link">
         Перейти к основному контенту
       </a>
+      {/* MapScreen живёт постоянно — не демонтируется при навигации.
+          visibility:hidden сохраняет размеры для Leaflet, но не рендерит на экран. */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: isFullScreen ? 5 : -1,
+          visibility: isFullScreen ? "visible" : "hidden",
+          pointerEvents: isFullScreen ? "all" : "none",
+        }}
+      >
+        <Suspense fallback={null}>
+          <MapScreen />
+        </Suspense>
+      </div>
+
       <main id="main-content" style={showTabs && !isFullScreen ? { paddingBottom: 64 } : undefined}>
         <Suspense
           fallback={
@@ -240,7 +256,6 @@ function AppShell() {
             <Route path="/rides" element={<FeedScreen />} />
             <Route path="/rides/new" element={<CreateRideScreen />} />
             <Route path="/favorites" element={<FavoritesScreen />} />
-            <Route path="/map" element={<MapScreen />} />
             <Route path="/events" element={<EventsScreen />} />
             <Route path="/about" element={<AboutScreen />} />
             <Route path="/rides/:id" element={<RideDetailRoute />} />

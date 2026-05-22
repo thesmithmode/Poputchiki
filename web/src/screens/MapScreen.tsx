@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import { getTelegramWebApp } from "../lib/telegram";
 import type { Ride } from "../types/ride";
@@ -74,6 +74,7 @@ function useDarkMode() {
 
 export function MapScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const isDark = useDarkMode();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
@@ -86,6 +87,25 @@ export function MapScreen() {
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+
+  // Карта живёт постоянно (не демонтируется). При возврате на /map — пересчитать размер.
+  useEffect(() => {
+    if (location.pathname !== "/map" || !mapRef.current) return;
+    const t = setTimeout(() => {
+      (mapRef.current as { invalidateSize: (o: unknown) => void } | null)?.invalidateSize({
+        animate: false,
+      });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
+
+  // Пре-инициализация LocationManager при маунте — чтобы к нажатию кнопки уже был готов
+  useEffect(() => {
+    const lm = getTelegramWebApp()?.LocationManager;
+    if (lm && !lm.isInited) {
+      lm.init();
+    }
+  }, []);
 
   useEffect(() => {
     if (!locateError) return;
@@ -256,10 +276,11 @@ export function MapScreen() {
     setLocating(true);
     setLocateError(null);
 
-    const lm = getTelegramWebApp()?.LocationManager;
+    const tgWA = getTelegramWebApp();
+    const lm = tgWA?.LocationManager;
 
     if (lm) {
-      // Telegram LocationManager API (Bot API 8.0+) — работает на iOS/Android/Desktop
+      // Telegram LocationManager API (Bot API 8.0+)
       const doRequest = () => {
         lm.getLocation((loc) => {
           if (loc) {
@@ -269,7 +290,7 @@ export function MapScreen() {
             setLocateError(
               lm.isAccessGranted
                 ? "Геолокация временно недоступна"
-                : "Разрешите геолокацию в настройках Telegram",
+                : "Разрешите геолокацию: Настройки Telegram → Конфиденциальность → Местоположение",
             );
           }
         });
@@ -282,7 +303,14 @@ export function MapScreen() {
       return;
     }
 
-    // Fallback: browser geolocation (десктоп-браузер, Telegram Desktop без LocationManager)
+    // Внутри Telegram без LocationManager — клиент устарел
+    if (tgWA) {
+      setLocating(false);
+      setLocateError("Обновите Telegram до последней версии для работы геолокации");
+      return;
+    }
+
+    // Вне Telegram (обычный браузер)
     if (!navigator.geolocation) {
       setLocating(false);
       setLocateError("Геолокация не поддерживается вашим браузером");
@@ -295,7 +323,7 @@ export function MapScreen() {
       (err) => {
         setLocating(false);
         if (err.code === 1) {
-          setLocateError("Разрешите геолокацию в настройках браузера или Telegram");
+          setLocateError("Разрешите геолокацию в настройках браузера");
         } else if (err.code === 2) {
           setLocateError("Геолокация временно недоступна");
         } else {

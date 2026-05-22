@@ -7,13 +7,13 @@ Telegram Mini App. Vite + React 18 + TypeScript. Работает внутри T
 | Экран | Путь | Назначение |
 |-------|------|-----------|
 | OnboardingScreen | / (первый визит) | приветствие, ввод имени/фото |
-| MapScreen | /map | карта активных поездок |
-| FeedScreen | /feed | лента поездок с фильтрами |
+| RidesScreen | /, /map | лента поездок (список) или карта — одна компонента, путь определяет вид |
 | CreateRideScreen | /rides/new | форма создания поездки |
 | RideDetailScreen | /rides/:id | детали, участники, чат запросов |
 | ConfirmParticipationScreen | /rides/:id/confirm | водитель подтверждает участников |
 | ProfileScreen | /profile/:id | профиль пользователя |
-| FavoritesScreen | /favorites | избранные маршруты |
+| FilterPresetsScreen | /presets | сохранённые пресеты фильтров (набор направление+цена+время) |
+| EventsScreen | /events | лента событий (запросы, лайки, уведомления) |
 | SettingsScreen | /settings | настройки, выход |
 | NotificationPreferencesScreen | /settings/notifications | подписки на уведомления |
 | SupportScreen | /support | обращение в поддержку |

@@ -37,10 +37,20 @@ const handler = async (raw: string) => {
 
 // DLQ retry loop: каждые DLQ_TICK_MS забирает batch failed-уведомлений и пытается заново.
 let retryTickRunning = false;
+let inflightTick: Promise<void> | null = null;
+let shuttingDown = false;
 const retryTimer = setInterval(() => {
-  if (retryTickRunning) return; // защита от наложения ticks при медленном DB.
+  if (retryTickRunning || shuttingDown) return; // защита от наложения ticks + блок при shutdown.
   retryTickRunning = true;
-  void runRetryTick({ db, dlq, fetchFn: fetch, botToken: BOT_TOKEN as string, circuit, log })
+  inflightTick = runRetryTick({
+    db,
+    dlq,
+    fetchFn: fetch,
+    botToken: BOT_TOKEN as string,
+    circuit,
+    log,
+  })
+    .then(() => undefined)
     .catch((err: unknown) => {
       console.error(
         JSON.stringify({
@@ -51,7 +61,9 @@ const retryTimer = setInterval(() => {
     })
     .finally(() => {
       retryTickRunning = false;
+      inflightTick = null;
     });
+  void inflightTick;
 }, DLQ_TICK_MS);
 
 log("notifier_started");
@@ -62,7 +74,14 @@ const listenSql = postgres(dsn, { max: 1, onnotice: () => {} });
 // Закрываем пулы → in-flight queries дренируются, новые блокируются.
 const shutdown = async (signal: string) => {
   log("notifier_shutdown_start", { signal });
+  shuttingDown = true;
   clearInterval(retryTimer);
+  // Ждать in-flight retry tick max 5s — лучше дать ему закончить markRetry/markSuccess,
+  // чем оставить batch в lease-окне на 30s до следующего tick после restart.
+  if (inflightTick) {
+    const SHUTDOWN_GRACE_MS = 5_000;
+    await Promise.race([inflightTick, new Promise<void>((r) => setTimeout(r, SHUTDOWN_GRACE_MS))]);
+  }
   await Promise.allSettled([sql.end({ timeout: 5 }), listenSql.end({ timeout: 5 })]);
   log("notifier_shutdown_done");
   process.exit(0);

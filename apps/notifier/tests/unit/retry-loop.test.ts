@@ -165,7 +165,7 @@ describe("runRetryTick", () => {
       isOpen: () => true,
       recordFailure: vi.fn(),
       recordSuccess: vi.fn(),
-    } as CircuitBreaker;
+    } as unknown as CircuitBreaker;
     await runRetryTick({
       db: makeDb(),
       dlq,

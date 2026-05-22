@@ -146,6 +146,46 @@ describe("runRetryTick", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  it("ride_request с request_id → reply_markup в body (replyMarkup branch)", async () => {
+    const dlq = makeDlq([
+      makeRow({
+        category: "ride_request",
+        payload: { user_id: "u1", category: "ride_request", request_id: "req-1", ride_id: "r-1" },
+      }),
+    ]);
+    const fetchFn = vi.fn().mockResolvedValue({ status: 200, ok: true } as Response);
+    await runRetryTick({
+      db: makeDb(),
+      dlq,
+      fetchFn: fetchFn as unknown as FetchFn,
+      botToken: BOT_TOKEN,
+      log,
+    });
+    expect(dlq.markSuccess).toHaveBeenCalledWith(1);
+    const [, opts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(opts.body as string);
+    expect(body.reply_markup).toBeDefined();
+  });
+
+  it("5xx + circuit → circuit.recordFailure вызывается", async () => {
+    const dlq = makeDlq([makeRow()]);
+    const fetchFn = vi.fn().mockResolvedValue({ status: 500, ok: false } as Response);
+    const circuit = {
+      isOpen: () => false,
+      recordFailure: vi.fn(),
+      recordSuccess: vi.fn(),
+    } as unknown as CircuitBreaker;
+    await runRetryTick({
+      db: makeDb(),
+      dlq,
+      fetchFn: fetchFn as unknown as FetchFn,
+      botToken: BOT_TOKEN,
+      circuit,
+      log,
+    });
+    expect(circuit.recordFailure).toHaveBeenCalledOnce();
+  });
+
   it("db.getRecipient throws → outer catch logs dlq_tick_unhandled, processed=0", async () => {
     const db = makeDb({ getRecipient: vi.fn().mockRejectedValue(new Error("db error")) });
     const dlq = makeDlq([makeRow()]);

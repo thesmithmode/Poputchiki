@@ -3357,7 +3357,7 @@
         "Метрика: количество удалённых строк логируется"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-138",
@@ -3373,7 +3373,7 @@
         "Integration test: симуляция 4xx/5xx ответа TG → запись в DLQ → retry → eventual delivery"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-139",
@@ -3391,7 +3391,7 @@
       "dependencies": [
         "TASK-138"
       ],
-      "status": "pending"
+      "status": "done"
     },
     {
       "id": "TASK-140",
@@ -3407,7 +3407,7 @@
         "Integration test: 51-й ride_request за час не создаёт нотификацию"
       ],
       "dependencies": [],
-      "status": "pending"
+      "status": "done"
     }
   ]
 }

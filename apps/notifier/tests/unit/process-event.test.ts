@@ -558,4 +558,96 @@ describe("processEvent", () => {
       "skipped_disabled",
     );
   });
+
+  it("fetch error + DLQ → dlq.enqueue с lastStatus=null", async () => {
+    const db = makeDb();
+    const fetchFn = vi.fn().mockRejectedValue(new Error("ECONNRESET"));
+    const dlq: DlqClient = {
+      enqueue: vi.fn().mockResolvedValue(undefined),
+      claimBatch: vi.fn(),
+      markSuccess: vi.fn(),
+      markRetry: vi.fn(),
+    };
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({ user_id: "u1", category: "system" }),
+      BOT_TOKEN,
+      undefined,
+      dlq,
+    );
+    expect(dlq.enqueue).toHaveBeenCalledOnce();
+    const arg = (dlq.enqueue as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(arg.lastStatus).toBeNull();
+    expect(arg.lastError).toContain("ECONNRESET");
+  });
+
+  it("fetch error + DLQ enqueue failing → caught gracefully", async () => {
+    const db = makeDb();
+    const fetchFn = vi.fn().mockRejectedValue(new Error("timeout"));
+    const dlq: DlqClient = {
+      enqueue: vi.fn().mockRejectedValue(new Error("db down")),
+      claimBatch: vi.fn(),
+      markSuccess: vi.fn(),
+      markRetry: vi.fn(),
+    };
+    await expect(
+      processEvent(
+        db,
+        fetchFn as FetchFn,
+        cache,
+        JSON.stringify({ user_id: "u1", category: "system" }),
+        BOT_TOKEN,
+        undefined,
+        dlq,
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("429 + DLQ → dlq.enqueue с lastStatus=429", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(429, false);
+    const dlq: DlqClient = {
+      enqueue: vi.fn().mockResolvedValue(undefined),
+      claimBatch: vi.fn(),
+      markSuccess: vi.fn(),
+      markRetry: vi.fn(),
+    };
+    await processEvent(
+      db,
+      fetchFn as FetchFn,
+      cache,
+      JSON.stringify({ user_id: "u1", category: "system" }),
+      BOT_TOKEN,
+      undefined,
+      dlq,
+    );
+    expect(dlq.enqueue).toHaveBeenCalledOnce();
+    const arg = (dlq.enqueue as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    expect(arg.lastStatus).toBe(429);
+    expect(arg.lastError).toBe("rate_limited");
+  });
+
+  it("429 + DLQ enqueue failing → caught gracefully", async () => {
+    const db = makeDb();
+    const fetchFn = makeFetch(429, false);
+    const dlq: DlqClient = {
+      enqueue: vi.fn().mockRejectedValue(new Error("db down")),
+      claimBatch: vi.fn(),
+      markSuccess: vi.fn(),
+      markRetry: vi.fn(),
+    };
+    await expect(
+      processEvent(
+        db,
+        fetchFn as FetchFn,
+        cache,
+        JSON.stringify({ user_id: "u1", category: "system" }),
+        BOT_TOKEN,
+        undefined,
+        dlq,
+      ),
+    ).resolves.toBeUndefined();
+  });
 });

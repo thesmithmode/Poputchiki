@@ -1,11 +1,25 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
+import { withIdentity } from "../db/with-identity";
 import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
 import { type Action, isDomainError, respondToRideRequest } from "./respond";
 
 export function createRideRequestsRouter(sql: postgres.Sql): Hono {
   const app = new Hono();
+
+  app.get("/mine", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+    const rows = await withIdentity(sql, user, async (tx) => {
+      return tx<{ ride_id: string; status: string }[]>`
+        SELECT ride_id, status FROM ride_requests
+        WHERE passenger_id = ${user.id}::uuid
+          AND status IN ('pending', 'accepted')
+        ORDER BY created_at DESC
+      `;
+    });
+    return c.json({ requests: rows });
+  });
 
   for (const action of ["accept", "reject", "cancel"] as Action[]) {
     app.post(`/:id/${action}`, async (c) => {

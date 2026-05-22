@@ -43,4 +43,7 @@ export const queryKeys = {
   support: {
     tickets: ["support-tickets"] as const,
   },
+  rideRequests: {
+    mine: ["ride-requests", "mine"] as const,
+  },
 } as const;

@@ -3,13 +3,15 @@ import type { Ride } from "../types/ride";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
+export type RideCardState = "own" | "applied" | "approved" | "viewed" | "default";
+
 interface RideCardProps {
   ride: Ride;
   density?: "compact" | "cozy";
   onClick?: (ride: Ride) => void;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
-  isOwnRide?: boolean;
+  cardState?: RideCardState;
 }
 
 function relativeTime(departureAt: string): string {
@@ -22,13 +24,58 @@ function relativeTime(departureAt: string): string {
   return m > 0 ? `через ${h} ч ${m} мин` : `через ${h} ч`;
 }
 
+function getCardBg(state: RideCardState): string {
+  switch (state) {
+    case "own":
+      return "var(--ride-own-soft)";
+    case "applied":
+      return "var(--ride-applied-soft)";
+    case "approved":
+      return "var(--ride-approved-soft)";
+    case "viewed":
+      return "var(--ride-viewed-soft)";
+    default:
+      return "var(--brand-surface)";
+  }
+}
+
+function getCardBorderColor(state: RideCardState): string | undefined {
+  switch (state) {
+    case "own":
+      return "var(--ride-own)";
+    case "applied":
+      return "var(--ride-applied)";
+    case "approved":
+      return "var(--ride-approved)";
+    default:
+      return undefined;
+  }
+}
+
+function getBadgeConfig(state: RideCardState): { label: string; color: string; bg: string } | null {
+  switch (state) {
+    case "own":
+      return { label: "Ваша поездка", color: "var(--ride-own)", bg: "var(--ride-own-soft)" };
+    case "applied":
+      return {
+        label: "Заявка подана",
+        color: "var(--ride-applied)",
+        bg: "var(--ride-applied-soft)",
+      };
+    case "approved":
+      return { label: "Одобрено", color: "var(--ride-approved)", bg: "var(--ride-approved-soft)" };
+    default:
+      return null;
+  }
+}
+
 export function RideCard({
   ride,
   density = "cozy",
   onClick,
   isFavorited,
   onToggleFavorite,
-  isOwnRide = false,
+  cardState = "default",
 }: RideCardProps) {
   const { selection } = useTelegramHaptic();
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
@@ -39,6 +86,9 @@ export function RideCard({
   const priceLabel = ride.price_rub !== null ? `${ride.price_rub} ₽` : "0 ₽";
   const noSeats = seats === 0;
   const rel = relativeTime(ride.departure_at);
+  const bg = getCardBg(cardState);
+  const borderColor = getCardBorderColor(cardState);
+  const badge = getBadgeConfig(cardState);
 
   if (density === "compact") {
     return (
@@ -48,13 +98,13 @@ export function RideCard({
         style={{
           width: "100%",
           textAlign: "left",
-          background: isOwnRide ? "var(--brand-primary-soft)" : "var(--brand-surface)",
+          background: bg,
           borderRadius: 8,
           padding: "7px 12px",
           cursor: "pointer",
           border: "none",
-          boxShadow: isOwnRide
-            ? "inset 0 0 0 1.5px var(--brand-primary-line), var(--shadow-sm)"
+          boxShadow: borderColor
+            ? `inset 0 0 0 1.5px ${borderColor}, var(--shadow-sm)`
             : "var(--shadow-sm)",
           fontFamily: "inherit",
           transition: "transform 0.08s",
@@ -161,7 +211,7 @@ export function RideCard({
       style={{
         width: "100%",
         textAlign: "left",
-        background: isOwnRide ? "var(--brand-primary-soft)" : "var(--brand-surface)",
+        background: bg,
         borderRadius: 18,
         padding: 14,
         cursor: onClick ? "pointer" : "default",
@@ -171,8 +221,8 @@ export function RideCard({
         display: "flex",
         flexDirection: "column",
         gap: 10,
-        ...(isOwnRide && {
-          borderLeft: "3px solid var(--brand-primary)",
+        ...(borderColor && {
+          borderLeft: `3px solid ${borderColor}`,
           paddingLeft: 11,
         }),
       }}
@@ -186,7 +236,7 @@ export function RideCard({
         (e.currentTarget as HTMLElement).style.transform = "";
       }}
     >
-      {/* Top row: time + relative + [own badge] + price */}
+      {/* Top row: time + relative + [state badge] + price */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div
           style={{
@@ -201,20 +251,20 @@ export function RideCard({
           {time}
         </div>
         <div style={{ fontSize: 12, color: "var(--brand-sub)", lineHeight: 1 }}>{rel}</div>
-        {isOwnRide && (
+        {badge && (
           <span
             style={{
               fontSize: 11,
               fontWeight: 600,
-              color: "var(--brand-primary)",
-              background: "var(--brand-primary-soft)",
+              color: badge.color,
+              background: badge.bg,
               borderRadius: 6,
               padding: "2px 7px",
               lineHeight: 1.4,
               whiteSpace: "nowrap",
             }}
           >
-            Ваша поездка
+            {badge.label}
           </span>
         )}
         <div style={{ flex: 1 }} />

@@ -64,6 +64,32 @@ beforeEach(() => {
   mockSql.mockResolvedValue([]);
 });
 
+describe("GET /ride-requests/mine", () => {
+  it("200 — пустой массив когда нет активных заявок", async () => {
+    mockCallThrough();
+    mockTx.mockResolvedValueOnce([]);
+    const res = await makeApp(PASSENGER).request("/ride-requests/mine");
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.requests).toEqual([]);
+  });
+
+  it("200 — возвращает pending и accepted заявки пассажира", async () => {
+    mockCallThrough();
+    const RIDE_ID_2 = "00000000-0000-4000-a000-000000000444";
+    mockTx.mockResolvedValueOnce([
+      { ride_id: RIDE_ID, status: "pending" },
+      { ride_id: RIDE_ID_2, status: "accepted" },
+    ]);
+    const res = await makeApp(PASSENGER).request("/ride-requests/mine");
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.requests).toHaveLength(2);
+    expect(body.requests[0]).toEqual({ ride_id: RIDE_ID, status: "pending" });
+    expect(body.requests[1]).toEqual({ ride_id: RIDE_ID_2, status: "accepted" });
+  });
+});
+
 describe("POST /ride-requests/:id/accept", () => {
   it("400 — invalid uuid", async () => {
     const res = await makeApp(DRIVER).request("/ride-requests/bad/accept", { method: "POST" });

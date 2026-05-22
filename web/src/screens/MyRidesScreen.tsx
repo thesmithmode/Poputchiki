@@ -169,7 +169,12 @@ export function MyRidesScreen() {
           </div>
         )}
         {(data?.rides ?? []).map((ride) => (
-          <RideCard key={ride.id} ride={ride} onClick={handleClick} />
+          <RideCard
+            key={ride.id}
+            ride={ride}
+            onClick={handleClick}
+            cardState={role === "driver" ? "own" : "approved"}
+          />
         ))}
       </div>
     </div>

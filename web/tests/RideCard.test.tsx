@@ -134,4 +134,33 @@ describe("RideCard", () => {
     render(<RideCard ride={mockRide} density="compact" />);
     expect(screen.getByText("2")).toBeInTheDocument();
   });
+
+  it("cardState='own' показывает бейдж 'Ваша поездка'", () => {
+    render(<RideCard ride={mockRide} cardState="own" />);
+    expect(screen.getByText("Ваша поездка")).toBeInTheDocument();
+  });
+
+  it("cardState='applied' показывает бейдж 'Заявка подана'", () => {
+    render(<RideCard ride={mockRide} cardState="applied" />);
+    expect(screen.getByText("Заявка подана")).toBeInTheDocument();
+  });
+
+  it("cardState='approved' показывает бейдж 'Одобрено'", () => {
+    render(<RideCard ride={mockRide} cardState="approved" />);
+    expect(screen.getByText("Одобрено")).toBeInTheDocument();
+  });
+
+  it("cardState='viewed' не показывает бейдж", () => {
+    render(<RideCard ride={mockRide} cardState="viewed" />);
+    expect(screen.queryByText("Ваша поездка")).not.toBeInTheDocument();
+    expect(screen.queryByText("Заявка подана")).not.toBeInTheDocument();
+    expect(screen.queryByText("Одобрено")).not.toBeInTheDocument();
+  });
+
+  it("без cardState (default) не показывает бейдж состояния", () => {
+    render(<RideCard ride={mockRide} />);
+    expect(screen.queryByText("Ваша поездка")).not.toBeInTheDocument();
+    expect(screen.queryByText("Заявка подана")).not.toBeInTheDocument();
+    expect(screen.queryByText("Одобрено")).not.toBeInTheDocument();
+  });
 });

@@ -33,6 +33,13 @@ export function createDb(sql: postgres.Sql): NotifierDb {
       });
     },
 
+    /**
+     * Multi-replica dedup: ON CONFLICT DO NOTHING на notification_id (UNIQUE).
+     * При двух параллельных replicas получивших один NOTIFY-event:
+     *   - Первый INSERT успешен → returns true → шлёт в TG.
+     *   - Второй INSERT попадает в conflict → returns [] → returns false → skip.
+     * notification_id = buildDedupKey(payload) — детерминирован, одинаков на всех replicas.
+     */
     async tryLogNotification(
       notificationId: string,
       userId: string,

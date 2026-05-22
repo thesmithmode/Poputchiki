@@ -201,9 +201,16 @@ function AutoOnboard() {
   );
 }
 
-const TAB_PATHS = new Set(["/", "/favorites", "/events", "/settings", "/settings/notifications"]);
+const TAB_PATHS = new Set([
+  "/",
+  "/map",
+  "/favorites",
+  "/events",
+  "/settings",
+  "/settings/notifications",
+]);
 // RidesScreen manages its own full-height layout — no bottom padding from main
-const SELF_MANAGED_PATHS = new Set(["/", "/rides"]);
+const SELF_MANAGED_PATHS = new Set(["/", "/rides", "/map"]);
 
 function AppShell() {
   const location = useLocation();

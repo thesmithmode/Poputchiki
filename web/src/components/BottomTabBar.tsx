@@ -22,7 +22,8 @@ const SHOW_ON_PATHS = new Set([
 ]);
 
 function getActiveId(pathname: string): string {
-  if (pathname === "/" || pathname === "/rides" || pathname === "/map") return "feed";
+  if (pathname === "/" || pathname === "/rides") return "feed";
+  if (pathname === "/map") return "map";
   if (pathname === "/events") return "notif";
   if (pathname.startsWith("/settings")) return "me";
   if (pathname === "/favorites") return "feed";
@@ -40,7 +41,8 @@ export function BottomTabBar() {
   const activeId = getActiveId(location.pathname);
 
   const TABS: TabItem[] = [
-    { id: "feed", label: "Поездки", icon: "home", path: "/" },
+    { id: "feed", label: "Лента", icon: "home", path: "/" },
+    { id: "map", label: "Карта", icon: "map", path: "/map" },
     ...(role === "driver"
       ? [{ id: "create", label: "", icon: "plus", path: "/rides/new", isFab: true } as TabItem]
       : []),

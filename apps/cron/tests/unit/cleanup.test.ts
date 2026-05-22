@@ -4,6 +4,7 @@ import {
   cleanupIdempotencyKeys,
   cleanupNotificationLog,
   cleanupRateLimitBuckets,
+  cleanupUserNotifications,
 } from "../../src/cleanup";
 
 type Row = Record<string, unknown>;
@@ -195,3 +196,113 @@ describe("cleanupErrorLog", () => {
     expect(capturedSql).toContain("30 days");
   });
 });
+
+// ── cleanupUserNotifications ──────────────────────────────────────────────────
+// retention 90 дней, batch-delete 5000 за итерацию, max 10 итераций за прогон,
+// SET LOCAL ROLE poputchiki_service (BYPASSRLS) для обхода RLS policies.
+
+describe("cleanupUserNotifications", () => {
+  it("returns null when lock not acquired", async () => {
+    // tx call 1 = SET LOCAL ROLE, tx call 2 = advisory lock check
+    const sql = makeSqlServiceRole(false, []);
+    expect(await cleanupUserNotifications(sql)).toBeNull();
+  });
+
+  it("returns deleted=0 when first batch empty (no rows to clean)", async () => {
+    const sql = makeSqlServiceRole(true, [[{ count: "0" }]]);
+    expect(await cleanupUserNotifications(sql)).toEqual({ deleted: 0 });
+  });
+
+  it("returns deleted=N when single batch under 5000 (final batch)", async () => {
+    const sql = makeSqlServiceRole(true, [[{ count: "1234" }]]);
+    expect(await cleanupUserNotifications(sql)).toEqual({ deleted: 1234 });
+  });
+
+  it("loops batches until partial batch returned (stop condition)", async () => {
+    // Два полных батча по 5000 + третий частичный = 12300
+    const sql = makeSqlServiceRole(true, [
+      [{ count: "5000" }],
+      [{ count: "5000" }],
+      [{ count: "2300" }],
+    ]);
+    expect(await cleanupUserNotifications(sql)).toEqual({ deleted: 12300 });
+  });
+
+  it("hard cap: stops after 10 full batches (50000 max per run)", async () => {
+    // 10 full batches => продолжать нельзя, но result = 50000.
+    const batches: Row[][] = Array.from({ length: 10 }, () => [{ count: "5000" }]);
+    const sql = makeSqlServiceRole(true, batches);
+    expect(await cleanupUserNotifications(sql)).toEqual({ deleted: 50000 });
+  });
+
+  it("propagates DB error from DELETE", async () => {
+    const sql = makeSqlServiceRole(true, [new Error("PG err")]);
+    await expect(cleanupUserNotifications(sql)).rejects.toThrow("PG err");
+  });
+
+  it("executes DELETE with 90 days interval + 5000 LIMIT against user_notifications", async () => {
+    const captured: { q: string; values: unknown[] }[] = [];
+    const tx = vi.fn().mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const q = strings.join("$?");
+      captured.push({ q, values });
+      if (q.includes("SET LOCAL ROLE")) return Promise.resolve([]);
+      if (q.includes("pg_try_advisory_xact_lock")) return Promise.resolve([{ acquired: true }]);
+      return Promise.resolve([{ count: "0" }]);
+    });
+    const sql = {
+      begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
+    } as unknown as import("postgres").Sql;
+    await cleanupUserNotifications(sql);
+    const del = captured.find((c) => c.q.includes("user_notifications"));
+    expect(del).toBeDefined();
+    expect(del?.q).toContain("90 days");
+    // LIMIT 5000 интерполируется как $? — проверяем через values
+    expect(del?.values).toContain(5000);
+  });
+
+  it("uses SET LOCAL ROLE poputchiki_service (BYPASSRLS path)", async () => {
+    const captured: string[] = [];
+    const tx = vi.fn().mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const q = strings.join("$?");
+      captured.push(q);
+      void values;
+      if (q.includes("SET LOCAL ROLE")) return Promise.resolve([]);
+      if (q.includes("pg_try_advisory_xact_lock")) return Promise.resolve([{ acquired: true }]);
+      return Promise.resolve([{ count: "0" }]);
+    });
+    const sql = {
+      begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(tx)),
+    } as unknown as import("postgres").Sql;
+    await cleanupUserNotifications(sql);
+    expect(captured[0]).toContain("SET LOCAL ROLE poputchiki_service");
+  });
+});
+
+// useServiceRole=true в withLock добавляет SET LOCAL ROLE первым вызовом tx,
+// затем advisory_lock. Поэтому txResponses сдвинуты на 2.
+function makeSqlServiceRole(
+  acquired: boolean,
+  txResponses: (Row[] | Error)[],
+): import("postgres").Sql {
+  return {
+    begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      let i = 0;
+      const tx = vi.fn().mockImplementation(() => {
+        if (i === 0) {
+          // SET LOCAL ROLE
+          i++;
+          return Promise.resolve([]);
+        }
+        if (i === 1) {
+          // advisory lock
+          i++;
+          return Promise.resolve([{ acquired }]);
+        }
+        const resp = txResponses[i - 2] ?? [];
+        i++;
+        return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
+      });
+      return fn(tx);
+    }),
+  } as unknown as import("postgres").Sql;
+}

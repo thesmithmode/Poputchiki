@@ -6,6 +6,7 @@ import {
   cleanupIdempotencyKeys,
   cleanupNotificationLog,
   cleanupRateLimitBuckets,
+  cleanupUserNotifications,
 } from "./cleanup";
 import { cleanupAuditLog } from "./cleanup-audit-log";
 import { cleanupNonces } from "./cleanup-nonces";
@@ -61,6 +62,17 @@ async function runErrorLogCleanup() {
   await oncePer(sql, "error_log_cleanup", DAY_MS, () => cleanupErrorLog(sql)).catch(
     (err: unknown) =>
       console.error(JSON.stringify({ msg: "error_log_cleanup_error", error: String(err) })),
+  );
+}
+
+async function runUserNotificationsCleanup() {
+  // 02:30 UTC daily — раньше остальных cleanup, чтобы не упёрлось в backup hour
+  const now = new Date();
+  if (now.getUTCHours() !== 2 || now.getUTCMinutes() < 30) return;
+  await oncePer(sql, "user_notifications_cleanup", DAY_MS, () =>
+    cleanupUserNotifications(sql),
+  ).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "user_notifications_cleanup_error", error: String(err) })),
   );
 }
 
@@ -145,6 +157,7 @@ runRateLimitBucketsCleanup();
 runIdempotencyKeysCleanup();
 runNotificationLogCleanup();
 runErrorLogCleanup();
+runUserNotificationsCleanup();
 detectAnomalies(sql).catch((err: unknown) =>
   console.error(JSON.stringify({ msg: "anomaly_detect_error", error: String(err) })),
 );
@@ -156,6 +169,7 @@ setInterval(runAuditLogCleanup, ONE_HOUR);
 setInterval(runIdempotencyKeysCleanup, ONE_HOUR);
 setInterval(runNotificationLogCleanup, ONE_HOUR);
 setInterval(runErrorLogCleanup, ONE_HOUR);
+setInterval(runUserNotificationsCleanup, ONE_HOUR);
 setInterval(runFinalizeRides, ONE_HOUR);
 setInterval(runConfirmParticipationPush, 30 * 60 * 1000);
 setInterval(runDailyBackup, ONE_HOUR);

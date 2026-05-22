@@ -11,6 +11,10 @@ const LOCK_RATE_LIMIT = 100007;
 const LOCK_IDEMPOTENCY = 100008;
 const LOCK_NOTIFICATION_LOG = 100009;
 const LOCK_ERROR_LOG = 100010;
+const LOCK_USER_NOTIFICATIONS = 100011;
+
+const USER_NOTIFICATIONS_BATCH = 5000;
+const USER_NOTIFICATIONS_MAX_BATCHES = 10;
 
 /**
  * rate_limit_buckets: delete expired windows older than 1 hour.
@@ -100,6 +104,53 @@ export async function cleanupNotificationLog(
     );
     return { deleted };
   });
+}
+
+/**
+ * user_notifications: retention 90 дней. Удаляет батчами по 5000 строк,
+ * максимум 10 батчей за прогон (50 000 строк), чтобы транзакция не висла
+ * долго при большом backlog. Если остались строки — добиваются на следующем
+ * прогоне cron. RLS на user_notifications: DELETE-политики нет, используем
+ * SET LOCAL ROLE poputchiki_service (BYPASSRLS).
+ */
+export async function cleanupUserNotifications(
+  sql: postgres.Sql,
+): Promise<{ deleted: number } | null> {
+  return withLock(
+    sql,
+    LOCK_USER_NOTIFICATIONS,
+    async (tx) => {
+      let total = 0;
+      for (let i = 0; i < USER_NOTIFICATIONS_MAX_BATCHES; i++) {
+        const rows = await tx<{ count: number | string }[]>`
+          WITH victims AS (
+            SELECT id FROM user_notifications
+            WHERE created_at < NOW() - INTERVAL '90 days'
+            LIMIT ${USER_NOTIFICATIONS_BATCH}
+          ),
+          del AS (
+            DELETE FROM user_notifications
+            WHERE id IN (SELECT id FROM victims)
+            RETURNING 1
+          )
+          SELECT COUNT(*) AS count FROM del
+        `;
+        const n = Number(rows[0]?.count ?? 0);
+        total += n;
+        if (n < USER_NOTIFICATIONS_BATCH) break;
+      }
+      // biome-ignore lint/suspicious/noConsoleLog: structured cron log
+      console.log(
+        JSON.stringify({
+          msg: "user_notifications_cleanup",
+          last_run_at: new Date().toISOString(),
+          deleted_count: total,
+        }),
+      );
+      return { deleted: total };
+    },
+    { useServiceRole: true },
+  );
 }
 
 /**

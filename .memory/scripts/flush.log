@@ -2220,3 +2220,10 @@ Error output: Check stderr output for details
 2026-05-23 00:17:52 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-23 00:18:06 INFO Result: FLUSH_OK
 2026-05-23 00:18:06 INFO Flush complete for session 89ead997-dca1-4545-8743-ca4fc2d83bc8
+2026-05-23 00:44:04 INFO [pre-compact] PreCompact fired: session=89ead997-dca1-4545-8743-ca4fc2d83bc8
+2026-05-23 00:44:04 INFO [pre-compact] Spawned flush.py for session 89ead997-dca1-4545-8743-ca4fc2d83bc8 (30 turns, 5844 chars)
+2026-05-23 00:44:05 INFO flush.py started for session 89ead997-dca1-4545-8743-ca4fc2d83bc8, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-89ead997-dca1-4545-8743-ca4fc2d83bc8-20260523-004404.md
+2026-05-23 00:44:05 INFO Flushing session 89ead997-dca1-4545-8743-ca4fc2d83bc8: 5843 chars
+2026-05-23 00:44:06 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-23 00:44:19 INFO Result: FLUSH_OK
+2026-05-23 00:44:19 INFO Flush complete for session 89ead997-dca1-4545-8743-ca4fc2d83bc8

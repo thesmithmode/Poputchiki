@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-22T21:20:51.085Z",
+  "timestamp": "2026-05-22T21:53:21.588Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,6 +18,10 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".memory/daily/2026-05-23.md"
+    },
+    {
+      "status": "M",
       "path": ".memory/scripts/flush.log"
     },
     {
@@ -30,25 +34,33 @@
     },
     {
       "status": "M",
-      "path": "docs/ARCHITECTURE.md"
+      "path": "apps/api/tests/unit/likes/likesRouter.test.ts"
     },
     {
-      "status": "??",
-      "path": ".memory/daily/2026-05-23.md"
+      "status": "M",
+      "path": "apps/api/tests/unit/middleware/audit-log.test.ts"
     },
     {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/feed-map-filter-symmetry.md"
+      "status": "M",
+      "path": "apps/api/tests/unit/middleware/idempotency.test.ts"
     },
     {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/filter-presets-favorites.md"
+      "status": "M",
+      "path": "apps/api/tests/unit/reviews/reviewsRouter.test.ts"
     },
     {
-      "status": "??",
-      "path": ".memory/knowledge/concepts/unnest-multi-column-alias-no-types.md"
+      "status": "M",
+      "path": "apps/api/tests/unit/rides/rideRequest.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/cron/tests/unit/confirm-participation-push.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/cron/tests/unit/finalize-rides.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n9689020 DOCS: актуализировать web.md и README под текущий UI\n10525c2 CHORE: sync dev с main (af13351)\naf13351 FIX: имя актора в событиях + кеш-баг создания поездки\nb2ae4f1 REFACTOR: лента+карта симметрия + пресеты фильтров\n084cbf2 FEAT: пресеты фильтров вместо избранных водителей"
+  "context_notes": "Recent commits:\n6d1d6db CHORE: добавить scale-задачи под 50k — retention, TG retry/DLQ, notifier multi-replica, throttle\n0b83a35 FIX: jsonb double-encoding в enqueue/audit-log/idempotency — sql.json() вместо JSON.stringify\n338be2d TEST: обновить тесты CreateRideScreen под invalidateQueries вместо setQueryData\need9dd9 CHORE: обновить planning state — сессия 2026-05-23\nc16804c CHORE: обновить memory-логи — сессия 2026-05-23"
 }

@@ -39,3 +39,4 @@ export type {
 } from "./notifications/categories.js";
 export { enqueueNotification, enqueueNotificationBatch } from "./notifications/enqueue.js";
 export type { EnqueueArgs } from "./notifications/enqueue.js";
+export { NOTIFICATION_HOURLY_LIMITS, getHourlyLimit } from "./notifications/throttle.js";

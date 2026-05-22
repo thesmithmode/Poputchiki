@@ -134,12 +134,13 @@ describe("POST /reviews", () => {
     expect(res.status).toBe(201);
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(mockSql).toHaveBeenCalledTimes(2);
-    const insertCall = mockSql.mock.calls[0];
+    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
+    expect(mockSql).toHaveBeenCalledTimes(3);
+    const insertCall = mockSql.mock.calls[1];
     expect(insertCall[1]).toBe(TARGET_ID); // userId (reviewed user)
     expect(insertCall[2]).toBe("review_received");
     expect(insertCall[3]).toBe(RIDE_ID);
-    const notifyCall = mockSql.mock.calls[1];
+    const notifyCall = mockSql.mock.calls[2];
     const payload = JSON.parse(notifyCall[1] as string);
     expect(payload.category).toBe("review_received");
     expect(payload.user_id).toBe(TARGET_ID);

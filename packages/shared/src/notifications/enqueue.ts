@@ -1,4 +1,5 @@
 import { type NotificationCategory, isNotificationCategory } from "./categories.js";
+import { getHourlyLimit } from "./throttle.js";
 
 /**
  * Minimal tagged-template SQL surface (compatible with postgres.js Sql /
@@ -8,7 +9,7 @@ import { type NotificationCategory, isNotificationCategory } from "./categories.
  * would otherwise reject a structural assignability check.
  */
 // biome-ignore lint/suspicious/noExplicitAny: structural match for postgres.js Sql / TransactionSql
-type SqlTaggedFn = (strings: TemplateStringsArray, ...values: unknown[]) => any;
+type SqlTaggedFn = <_T = any>(strings: TemplateStringsArray, ...values: unknown[]) => any;
 // postgres.js helper: оборачивает объект в jsonb parameter без двойной сериализации.
 // biome-ignore lint/suspicious/noExplicitAny: postgres.js json signature varies by version
 type JsonHelper = (value: any) => any;
@@ -81,6 +82,24 @@ export async function enqueueNotification(sql: SqlTagged, args: EnqueueArgs): Pr
 
   const rideId = args.rideId ?? null;
   const data = args.data ?? {};
+
+  // Per-recipient throttle: защита от спама inbox. Лимиты в throttle.ts.
+  // null = без лимита (system, admin_*).
+  const limit = getHourlyLimit(args.category);
+  if (limit !== null) {
+    const counted = await sql<{ c: number | string }[]>`
+      SELECT COUNT(*) AS c FROM user_notifications
+      WHERE user_id = ${args.userId}::uuid
+        AND category = ${args.category}
+        AND created_at > NOW() - INTERVAL '1 hour'
+    `;
+    const n = Number(counted?.[0]?.c ?? 0);
+    if (n >= limit) {
+      // Throttle silent: shared library не зависит от console (нет @types/node).
+      // Observability на стороне call-sites — они логируют return == void как dropped.
+      return;
+    }
+  }
 
   // postgres.js сериализует строку для ::jsonb как jsonb-string (двойная сериализация).
   // sql.json() оборачивает объект как jsonb parameter → сохраняется как jsonb-object.

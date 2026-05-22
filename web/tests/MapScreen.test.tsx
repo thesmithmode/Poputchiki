@@ -120,13 +120,20 @@ describe("MapScreen", () => {
     expect(screen.getByTestId("map-loading")).toBeInTheDocument();
   });
 
-  it("показывает счётчик поездок после загрузки", async () => {
+  it("вызывает onRidesCount с количеством поездок", async () => {
+    const onRidesCount = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     mockedApiFetch.mockResolvedValueOnce({ rides: MOCK_RIDES });
-    renderScreen();
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <MapScreen onRidesCount={onRidesCount} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
     await waitFor(() => {
-      expect(screen.getByTestId("rides-count")).toBeInTheDocument();
+      expect(onRidesCount).toHaveBeenCalledWith(1);
     });
-    expect(screen.getByTestId("rides-count")).toHaveTextContent("1 поездок");
   });
 
   it("показывает кнопки zoom и locate", () => {
@@ -145,17 +152,19 @@ describe("MapScreen", () => {
     });
   });
 
-  it("не показывает rides-count пока loading", () => {
-    mockedApiFetch.mockReturnValue(new Promise(() => {}));
-    renderScreen();
-    expect(screen.queryByTestId("rides-count")).not.toBeInTheDocument();
-  });
-
-  it("показывает 0 поездок при пустом ответе", async () => {
+  it("вызывает onRidesCount(0) при пустом ответе", async () => {
+    const onRidesCount = vi.fn();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     mockedApiFetch.mockResolvedValueOnce({ rides: [] });
-    renderScreen();
+    render(
+      <MemoryRouter>
+        <QueryClientProvider client={client}>
+          <MapScreen onRidesCount={onRidesCount} />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
     await waitFor(() => {
-      expect(screen.getByTestId("rides-count")).toHaveTextContent("0 поездок");
+      expect(onRidesCount).toHaveBeenCalledWith(0);
     });
   });
 

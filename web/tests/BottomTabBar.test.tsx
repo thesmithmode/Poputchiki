@@ -71,14 +71,9 @@ describe("BottomTabBar", () => {
     expect(container.querySelector("[role='navigation']")).not.toBeInTheDocument();
   });
 
-  it("показывает кнопку 'Лента'", () => {
+  it("показывает кнопку 'Поездки'", () => {
     renderTabBar("/");
-    expect(screen.getByLabelText("Лента")).toBeInTheDocument();
-  });
-
-  it("показывает кнопку 'Карта'", () => {
-    renderTabBar("/");
-    expect(screen.getByLabelText("Карта")).toBeInTheDocument();
+    expect(screen.getByLabelText("Поездки")).toBeInTheDocument();
   });
 
   it("показывает FAB кнопку 'Создать поездку'", () => {
@@ -96,15 +91,9 @@ describe("BottomTabBar", () => {
     expect(screen.getByLabelText("Я")).toBeInTheDocument();
   });
 
-  it("нажатие на 'Карта' вызывает navigate /map", () => {
-    renderTabBar("/");
-    fireEvent.click(screen.getByLabelText("Карта"));
-    expect(mockNavigate).toHaveBeenCalledWith("/map");
-  });
-
-  it("нажатие на 'Лента' вызывает navigate /", () => {
-    renderTabBar("/map");
-    fireEvent.click(screen.getByLabelText("Лента"));
+  it("нажатие на 'Поездки' вызывает navigate /", () => {
+    renderTabBar("/settings");
+    fireEvent.click(screen.getByLabelText("Поездки"));
     expect(mockNavigate).toHaveBeenCalledWith("/");
   });
 

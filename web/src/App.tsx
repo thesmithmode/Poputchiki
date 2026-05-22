@@ -10,8 +10,8 @@ import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 // Все экраны lazy — skeleton показывается пока auth + chunk загружаются
-const FeedScreen = lazy(() =>
-  import("./screens/FeedScreen").then((m) => ({ default: m.FeedScreen })),
+const RidesScreen = lazy(() =>
+  import("./screens/RidesScreen").then((m) => ({ default: m.RidesScreen })),
 );
 const AboutScreen = lazy(() =>
   import("./screens/AboutScreen").then((m) => ({ default: m.AboutScreen })),
@@ -36,7 +36,6 @@ const EventsScreen = lazy(() =>
 const FavoritesScreen = lazy(() =>
   import("./screens/FavoritesScreen").then((m) => ({ default: m.FavoritesScreen })),
 );
-const MapScreen = lazy(() => import("./screens/MapScreen").then((m) => ({ default: m.MapScreen })));
 const MyRidesScreen = lazy(() =>
   import("./screens/MyRidesScreen").then((m) => ({ default: m.MyRidesScreen })),
 );
@@ -202,43 +201,20 @@ function AutoOnboard() {
   );
 }
 
-const TAB_PATHS = new Set([
-  "/",
-  "/map",
-  "/favorites",
-  "/events",
-  "/settings",
-  "/settings/notifications",
-]);
-// Map is full-screen — tab bar overlays it, no bottom padding needed
-const FULL_SCREEN_PATHS = new Set(["/map"]);
+const TAB_PATHS = new Set(["/", "/favorites", "/events", "/settings", "/settings/notifications"]);
+// RidesScreen manages its own full-height layout — no bottom padding from main
+const SELF_MANAGED_PATHS = new Set(["/", "/rides"]);
 
 function AppShell() {
   const location = useLocation();
   const showTabs = TAB_PATHS.has(location.pathname);
-  const isFullScreen = FULL_SCREEN_PATHS.has(location.pathname);
+  const selfManaged = SELF_MANAGED_PATHS.has(location.pathname);
   return (
     <>
       <a href="#main-content" className="skip-link">
         Перейти к основному контенту
       </a>
-      {/* MapScreen живёт постоянно — не демонтируется при навигации.
-          visibility:hidden сохраняет размеры для Leaflet, но не рендерит на экран. */}
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          zIndex: isFullScreen ? 5 : -1,
-          visibility: isFullScreen ? "visible" : "hidden",
-          pointerEvents: isFullScreen ? "all" : "none",
-        }}
-      >
-        <Suspense fallback={null}>
-          <MapScreen />
-        </Suspense>
-      </div>
-
-      <main id="main-content" style={showTabs && !isFullScreen ? { paddingBottom: 64 } : undefined}>
+      <main id="main-content" style={showTabs && !selfManaged ? { paddingBottom: 64 } : undefined}>
         <Suspense
           fallback={
             <div
@@ -252,8 +228,9 @@ function AppShell() {
           }
         >
           <Routes>
-            <Route path="/" element={<FeedScreen />} />
-            <Route path="/rides" element={<FeedScreen />} />
+            <Route path="/" element={<RidesScreen />} />
+            <Route path="/rides" element={<RidesScreen />} />
+            <Route path="/map" element={<RidesScreen />} />
             <Route path="/rides/new" element={<CreateRideScreen />} />
             <Route path="/favorites" element={<FavoritesScreen />} />
             <Route path="/events" element={<EventsScreen />} />

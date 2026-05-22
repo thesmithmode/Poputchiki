@@ -14,6 +14,8 @@ interface RideCardProps {
   cardState?: RideCardState;
 }
 
+const MAX_ADDR_LEN = 22;
+
 function formatAddress(label: string): string {
   if (!label) return label;
   const cleaned = label
@@ -31,7 +33,19 @@ function formatAddress(label: string): string {
     .replace(/^\s*,\s*/, "")
     .replace(/,\s*$/, "")
     .trim();
-  return cleaned || label;
+  const result = cleaned || label;
+  return result.length > MAX_ADDR_LEN ? `${result.slice(0, MAX_ADDR_LEN - 1)}…` : result;
+}
+
+function dateLabel(departureAt: string): string | null {
+  const dep = new Date(departureAt);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const depStart = new Date(dep.getFullYear(), dep.getMonth(), dep.getDate());
+  const diffDays = Math.round((depStart.getTime() - todayStart.getTime()) / 86400000);
+  if (diffDays <= 0) return null;
+  if (diffDays === 1) return "завтра";
+  return dep.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
 function relativeTime(departureAt: string): string {
@@ -106,6 +120,7 @@ export function RideCard({
   const priceLabel = ride.price_rub !== null ? `${ride.price_rub} ₽` : "0 ₽";
   const noSeats = seats === 0;
   const rel = relativeTime(ride.departure_at);
+  const dateBadge = dateLabel(ride.departure_at);
   const bg = getCardBg(cardState);
   const borderColor = getCardBorderColor(cardState);
   const badge = getBadgeConfig(cardState);
@@ -147,14 +162,37 @@ export function RideCard({
         {/* Time */}
         <div
           style={{
-            color: "var(--brand-text)",
-            fontWeight: 500,
-            fontSize: 12.5,
-            letterSpacing: "-0.01em",
-            lineHeight: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-start",
+            gap: 1,
           }}
         >
-          {time}
+          {dateBadge && (
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 600,
+                color: "var(--brand-primary)",
+                lineHeight: 1,
+                textTransform: "uppercase",
+                letterSpacing: "0.03em",
+              }}
+            >
+              {dateBadge}
+            </span>
+          )}
+          <span
+            style={{
+              color: "var(--brand-text)",
+              fontWeight: 700,
+              fontSize: 12.5,
+              letterSpacing: "-0.01em",
+              lineHeight: 1,
+            }}
+          >
+            {time}
+          </span>
         </div>
 
         {/* From → To inline, split 50/50 */}
@@ -170,8 +208,8 @@ export function RideCard({
             style={{
               flex: 1,
               minWidth: 0,
-              fontSize: 11.5,
-              fontWeight: 500,
+              fontSize: 12,
+              fontWeight: 400,
               color: "var(--brand-sub)",
               whiteSpace: "nowrap",
               overflow: "hidden",
@@ -195,8 +233,8 @@ export function RideCard({
               flex: 1,
               minWidth: 0,
               fontSize: 12,
-              fontWeight: 700,
-              color: "var(--brand-text)",
+              fontWeight: 400,
+              color: "var(--brand-sub)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -281,17 +319,33 @@ export function RideCard({
     >
       {/* Top row: time + relative + [state badge] + price */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div
-          style={{
-            fontSize: 18,
-            fontWeight: 500,
-            color: "var(--brand-text)",
-            letterSpacing: "-0.01em",
-            lineHeight: 1,
-            fontVariantNumeric: "tabular-nums",
-          }}
-        >
-          {time}
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {dateBadge && (
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "var(--brand-primary)",
+                lineHeight: 1,
+                textTransform: "uppercase",
+                letterSpacing: "0.03em",
+              }}
+            >
+              {dateBadge}
+            </span>
+          )}
+          <div
+            style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--brand-text)",
+              letterSpacing: "-0.01em",
+              lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {time}
+          </div>
         </div>
         <div style={{ fontSize: 12, color: "var(--brand-sub)", lineHeight: 1 }}>{rel}</div>
         {badge && (
@@ -383,9 +437,9 @@ export function RideCard({
           />
           <span
             style={{
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: "var(--brand-text)",
+              fontSize: 13,
+              fontWeight: 400,
+              color: "var(--brand-sub)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",

@@ -13,6 +13,7 @@ interface TabItem {
 
 const SHOW_ON_PATHS = new Set([
   "/",
+  "/rides",
   "/map",
   "/favorites",
   "/events",
@@ -21,8 +22,7 @@ const SHOW_ON_PATHS = new Set([
 ]);
 
 function getActiveId(pathname: string): string {
-  if (pathname === "/") return "feed";
-  if (pathname === "/map") return "map";
+  if (pathname === "/" || pathname === "/rides" || pathname === "/map") return "feed";
   if (pathname === "/events") return "notif";
   if (pathname.startsWith("/settings")) return "me";
   if (pathname === "/favorites") return "feed";
@@ -40,8 +40,7 @@ export function BottomTabBar() {
   const activeId = getActiveId(location.pathname);
 
   const TABS: TabItem[] = [
-    { id: "feed", label: "Лента", icon: "home", path: "/" },
-    { id: "map", label: "Карта", icon: "map", path: "/map" },
+    { id: "feed", label: "Поездки", icon: "home", path: "/" },
     ...(role === "driver"
       ? [{ id: "create", label: "", icon: "plus", path: "/rides/new", isFab: true } as TabItem]
       : []),

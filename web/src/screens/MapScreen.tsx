@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { applyFilters, resolveDateRange, useFilters } from "../hooks/useFilters";
+import type { Filters } from "../hooks/useFilters";
 import { apiFetch } from "../lib/api";
 import { getTelegramWebApp } from "../lib/telegram";
 import type { Ride } from "../types/ride";
+
+interface MapScreenProps {
+  externalFilters?: Filters;
+  height?: string;
+  onRidesCount?: (n: number) => void;
+}
 
 const DEFAULT_CENTER: [number, number] = [55.76, 49.1];
 const DEFAULT_ZOOM = 11;
@@ -45,6 +53,17 @@ function truncate(s: string, max: number): string {
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
+function markerDateLabel(isoStr: string): string | null {
+  const dep = new Date(isoStr);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const depStart = new Date(dep.getFullYear(), dep.getMonth(), dep.getDate());
+  const diffDays = Math.round((depStart.getTime() - todayStart.getTime()) / 86400000);
+  if (diffDays <= 0) return null;
+  if (diffDays === 1) return "завтра";
+  return dep.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+}
+
 function makeRideMarkerHtml(ride: Ride): string {
   const initials = escapeHtml(getInitials(ride.driver_display_name));
   const avatarColor = getAvatarColor(ride.driver_id);
@@ -57,7 +76,11 @@ function makeRideMarkerHtml(ride: Ride): string {
   const subLine = firstName
     ? `<div style="font-size:10px;color:#6b716e;line-height:1.3;margin-top:1px;overflow:hidden;text-overflow:ellipsis">${ratingStr} · ${firstName}</div>`
     : "";
-  return `<div style="position:relative;background:#fff;border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;border:1px solid rgba(0,0,0,.08);white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden"><div style="font-size:12px;font-weight:700;color:#0e1410;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff"></div></div>`;
+  const dl = markerDateLabel(ride.departure_at);
+  const dateLine = dl
+    ? `<div style="font-size:9px;font-weight:600;color:#2d5a3d;line-height:1;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">${escapeHtml(dl)}</div>`
+    : "";
+  return `<div style="position:relative;background:#fff;border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;border:1px solid rgba(0,0,0,.08);white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:#0e1410;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff"></div></div>`;
 }
 
 function useDarkMode() {
@@ -72,21 +95,32 @@ function useDarkMode() {
   return isDark;
 }
 
-export function MapScreen() {
+export function MapScreen({
+  externalFilters,
+  height = "100dvh",
+  onRidesCount,
+}: MapScreenProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const isDark = useDarkMode();
+  const internal = useFilters();
+  const filters = externalFilters ?? internal.filters;
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
   const tileLayerRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
   const clusterGroupRef = useRef<unknown>(null);
   const locateMarkerRef = useRef<unknown>(null);
-  const [rides, setRides] = useState<Ride[]>([]);
+  const loadRidesRef = useRef<(() => void) | null>(null);
+  const filtersRef = useRef(filters);
+  const [_rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+
+  // Keep filtersRef in sync so loadRides always reads current filters without remounting map
+  filtersRef.current = filters;
 
   // Карта живёт постоянно (не демонтируется). При возврате на /map — пересчитать размер.
   useEffect(() => {
@@ -119,6 +153,13 @@ export function MapScreen() {
     mapContainerRef.current.classList.toggle("leaflet-dark", isDark);
   }, [isDark]);
 
+  // Reload markers when filters change (map already initialized)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadRidesRef is a stable ref
+  useEffect(() => {
+    loadRidesRef.current?.();
+  }, [filters]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable prop ref, map init runs once
   useEffect(() => {
     let destroyed = false;
 
@@ -146,7 +187,13 @@ export function MapScreen() {
       const map = L.map(mapContainerRef.current, {
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
-        minZoom: 7,
+        minZoom: 9,
+        maxZoom: 17,
+        maxBounds: [
+          [54.5, 47.5],
+          [57.0, 52.0],
+        ],
+        maxBoundsViscosity: 1.0,
         zoomControl: false,
         preferCanvas: true,
       });
@@ -165,8 +212,8 @@ export function MapScreen() {
       const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
       const tile = L.tileLayer(tileUrl, {
-        minZoom: 7,
-        maxZoom: 19,
+        minZoom: 9,
+        maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
       });
@@ -182,15 +229,26 @@ export function MapScreen() {
         const radiusKm =
           Math.max(center.distanceTo(ne), center.distanceTo(bounds.getSouthWest())) / 1000;
 
+        const { fromAt, toAt } = resolveDateRange(filtersRef.current);
+        const params = new URLSearchParams({
+          fromLat: center.lat.toFixed(6),
+          fromLng: center.lng.toFixed(6),
+          radiusKm: String(Math.ceil(radiusKm)),
+        });
+        if (fromAt) params.set("fromAt", fromAt);
+        if (toAt) params.set("toAt", toAt);
+        if (filtersRef.current.priceMax !== null)
+          params.set("priceMax", String(filtersRef.current.priceMax));
+        if (filtersRef.current.seatsMin > 0)
+          params.set("seatsMin", String(filtersRef.current.seatsMin));
+
         try {
-          const now = new Date();
-          const sixHoursLater = new Date(now.getTime() + 6 * 60 * 60 * 1000);
-          const data = await apiFetch<{ rides: Ride[] }>(
-            `/rides?fromLat=${center.lat.toFixed(6)}&fromLng=${center.lng.toFixed(6)}&radiusKm=${Math.ceil(radiusKm)}&fromAt=${now.toISOString()}&toAt=${sixHoursLater.toISOString()}`,
-          );
+          const data = await apiFetch<{ rides: Ride[] }>(`/rides?${params.toString()}`);
           if (!destroyed) {
-            setRides(data.rides);
-            renderMarkers(map, L, data.rides);
+            const filtered = applyFilters(data.rides, filtersRef.current);
+            setRides(filtered);
+            onRidesCount?.(filtered.length);
+            renderMarkers(map, L, filtered);
           }
         } catch {
           // network/API error — keep map visible, rides empty
@@ -198,6 +256,7 @@ export function MapScreen() {
           if (!destroyed) setLoading(false);
         }
       };
+      loadRidesRef.current = loadRides;
 
       // Debounce: активный pan генерит десятки moveend/sec → без debounce при 50k DAU = DoS.
       // 400ms — пользователь успевает отпустить палец, запрос идёт один раз.
@@ -303,14 +362,7 @@ export function MapScreen() {
       return;
     }
 
-    // Внутри Telegram без LocationManager — клиент устарел
-    if (tgWA) {
-      setLocating(false);
-      setLocateError("Обновите Telegram до последней версии для работы геолокации");
-      return;
-    }
-
-    // Вне Telegram (обычный браузер)
+    // Fallback: browser geolocation (Telegram Desktop без LocationManager, обычный браузер)
     if (!navigator.geolocation) {
       setLocating(false);
       setLocateError("Геолокация не поддерживается вашим браузером");
@@ -421,7 +473,7 @@ export function MapScreen() {
       style={{
         position: "relative",
         width: "100%",
-        height: "100dvh",
+        height,
         overflow: "hidden",
         background: "var(--brand-bg)",
       }}
@@ -450,32 +502,6 @@ export function MapScreen() {
         data-testid="leaflet-container"
         style={{ position: "absolute", inset: 0, zIndex: 0 }}
       />
-
-      {/* Ride count chip */}
-      {!loading && (
-        <div
-          data-testid="rides-count"
-          style={{
-            position: "absolute",
-            left: 12,
-            top: 16,
-            zIndex: 1000,
-            padding: "8px 12px",
-            borderRadius: 999,
-            ...glassStyle,
-            fontSize: 12.5,
-            fontWeight: 600,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-          }}
-        >
-          <span
-            style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand-primary)" }}
-          />
-          {rides.length} поездок
-        </div>
-      )}
 
       {/* Geolocation error toast */}
       {locateError && (

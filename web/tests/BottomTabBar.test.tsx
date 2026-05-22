@@ -132,8 +132,8 @@ describe("BottomTabBar", () => {
     expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
   });
 
-  it("рендерится на /favorites", () => {
-    renderTabBar("/favorites");
+  it("рендерится на /presets", () => {
+    renderTabBar("/presets");
     expect(screen.getByRole("navigation")).toBeInTheDocument();
   });
 });

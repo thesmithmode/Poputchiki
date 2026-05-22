@@ -33,8 +33,8 @@ const EditProfileScreen = lazy(() =>
 const EventsScreen = lazy(() =>
   import("./screens/EventsScreen").then((m) => ({ default: m.EventsScreen })),
 );
-const FavoritesScreen = lazy(() =>
-  import("./screens/FavoritesScreen").then((m) => ({ default: m.FavoritesScreen })),
+const FilterPresetsScreen = lazy(() =>
+  import("./screens/FilterPresetsScreen").then((m) => ({ default: m.FilterPresetsScreen })),
 );
 const MyRidesScreen = lazy(() =>
   import("./screens/MyRidesScreen").then((m) => ({ default: m.MyRidesScreen })),
@@ -204,7 +204,7 @@ function AutoOnboard() {
 const TAB_PATHS = new Set([
   "/",
   "/map",
-  "/favorites",
+  "/presets",
   "/events",
   "/settings",
   "/settings/notifications",
@@ -239,7 +239,7 @@ function AppShell() {
             <Route path="/rides" element={<RidesScreen />} />
             <Route path="/map" element={<RidesScreen />} />
             <Route path="/rides/new" element={<CreateRideScreen />} />
-            <Route path="/favorites" element={<FavoritesScreen />} />
+            <Route path="/presets" element={<FilterPresetsScreen />} />
             <Route path="/events" element={<EventsScreen />} />
             <Route path="/about" element={<AboutScreen />} />
             <Route path="/rides/:id" element={<RideDetailRoute />} />

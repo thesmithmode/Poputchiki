@@ -15,7 +15,7 @@ const SHOW_ON_PATHS = new Set([
   "/",
   "/rides",
   "/map",
-  "/favorites",
+  "/presets",
   "/events",
   "/settings",
   "/settings/notifications",
@@ -26,7 +26,7 @@ function getActiveId(pathname: string): string {
   if (pathname === "/map") return "map";
   if (pathname === "/events") return "notif";
   if (pathname.startsWith("/settings")) return "me";
-  if (pathname === "/favorites") return "feed";
+  if (pathname === "/presets") return "me";
   return "";
 }
 

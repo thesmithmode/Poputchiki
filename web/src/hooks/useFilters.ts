@@ -6,7 +6,6 @@ export type DatePreset = "24h" | "48h" | "7d" | "custom" | null;
 export interface Filters {
   trustMinAccountAgeDays: number;
   trustMinLikes: number;
-  favoritesOnly: boolean;
   verifiedOnly: boolean;
   hideMyRides: boolean;
   direction: string;
@@ -21,7 +20,6 @@ export interface Filters {
 export const DEFAULT_FILTERS: Filters = {
   trustMinAccountAgeDays: 0,
   trustMinLikes: 0,
-  favoritesOnly: false,
   verifiedOnly: false,
   hideMyRides: false,
   direction: "",
@@ -102,18 +100,9 @@ export function resolveDateRange(filters: {
   return { fromAt: null, toAt: null };
 }
 
-export function applyFilters(
-  rides: Ride[],
-  filters: Filters,
-  favoriteIds?: Set<string>,
-  myUserId?: string | null,
-): Ride[] {
+export function applyFilters(rides: Ride[], filters: Filters, myUserId?: string | null): Ride[] {
   return rides.filter((ride) => {
     if (filters.hideMyRides && myUserId && ride.driver_id === myUserId) return false;
-
-    if (filters.favoritesOnly && favoriteIds !== undefined) {
-      if (!favoriteIds.has(ride.driver_id)) return false;
-    }
 
     if (filters.direction) {
       const q = filters.direction.toLowerCase();

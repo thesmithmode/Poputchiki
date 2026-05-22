@@ -14,7 +14,6 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
     filters.priceMax !== DEFAULT_FILTERS.priceMax ||
     filters.seatsMin !== DEFAULT_FILTERS.seatsMin ||
     filters.verifiedOnly !== DEFAULT_FILTERS.verifiedOnly ||
-    filters.favoritesOnly !== DEFAULT_FILTERS.favoritesOnly ||
     filters.hideMyRides !== DEFAULT_FILTERS.hideMyRides ||
     filters.datePreset !== DEFAULT_FILTERS.datePreset ||
     filters.fromAt !== DEFAULT_FILTERS.fromAt ||
@@ -189,16 +188,6 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
             onChange={(e) => onChange({ verifiedOnly: e.target.checked })}
           />
           Только верифицированные
-        </label>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            data-testid="filter-favorites"
-            type="checkbox"
-            checked={filters.favoritesOnly}
-            onChange={(e) => onChange({ favoritesOnly: e.target.checked })}
-          />
-          Только избранные ♥
         </label>
 
         <label className="flex items-center gap-2 text-sm">

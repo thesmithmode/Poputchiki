@@ -1,7 +1,1 @@
-export const TAB_PATHS = new Set([
-  "/",
-  "/map",
-  "/favorites",
-  "/settings",
-  "/settings/notifications",
-]);
+export const TAB_PATHS = new Set(["/", "/map", "/presets", "/settings", "/settings/notifications"]);

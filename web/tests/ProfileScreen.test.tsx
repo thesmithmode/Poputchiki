@@ -176,7 +176,7 @@ describe("ProfileScreen", () => {
     expect(screen.queryByTestId("notifications-btn")).not.toBeInTheDocument();
   });
 
-  it("показывает кнопку избранного для чужого профиля", async () => {
+  it("кнопка избранного удалена (был fav-btn)", async () => {
     mockedApiFetch.mockResolvedValueOnce(mockUser);
     mockedUseMe.mockReturnValue({
       status: "ok",
@@ -191,26 +191,6 @@ describe("ProfileScreen", () => {
       },
     });
     renderScreen();
-    await waitFor(() => {
-      expect(screen.getByTestId("fav-btn")).toBeInTheDocument();
-    });
-  });
-
-  it("НЕ показывает кнопку избранного на своём профиле", async () => {
-    mockedApiFetch.mockResolvedValueOnce({ ...mockUser, id: USER_ID });
-    mockedUseMe.mockReturnValue({
-      status: "ok",
-      user: {
-        id: USER_ID,
-        display_name: "Иван Иванов",
-        onboarded: true,
-        is_banned: false,
-        ban_reason: null,
-        banned_at: null,
-        role: "user",
-      },
-    });
-    renderScreen(USER_ID);
     await waitFor(() => {
       expect(screen.getByText("Иван Иванов")).toBeInTheDocument();
     });

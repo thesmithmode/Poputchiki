@@ -71,33 +71,15 @@ describe("RideCard", () => {
     expect(screen.queryByText("Тихая поездка")).not.toBeInTheDocument();
   });
 
-  it("показывает кнопку избранного если передан onToggleFavorite", () => {
-    render(<RideCard ride={mockRide} onToggleFavorite={vi.fn()} />);
-    expect(screen.getByTestId("fav-toggle")).toBeInTheDocument();
-  });
-
-  it("не показывает кнопку избранного без onToggleFavorite", () => {
+  it("не отображает кнопку избранного — сердечко удалено", () => {
     render(<RideCard ride={mockRide} />);
     expect(screen.queryByTestId("fav-toggle")).not.toBeInTheDocument();
   });
 
-  it("кнопка показывает ❤️ когда isFavorited=true", () => {
-    render(<RideCard ride={mockRide} isFavorited onToggleFavorite={vi.fn()} />);
-    expect(screen.getByTestId("fav-toggle")).toHaveTextContent("❤️");
-  });
-
-  it("кнопка показывает 🤍 когда isFavorited=false", () => {
-    render(<RideCard ride={mockRide} isFavorited={false} onToggleFavorite={vi.fn()} />);
-    expect(screen.getByTestId("fav-toggle")).toHaveTextContent("🤍");
-  });
-
-  it("клик на fav-toggle вызывает onToggleFavorite и не вызывает onClick карточки", () => {
-    const onToggleFavorite = vi.fn();
-    const onClickCard = vi.fn();
-    render(<RideCard ride={mockRide} onClick={onClickCard} onToggleFavorite={onToggleFavorite} />);
-    fireEvent.click(screen.getByTestId("fav-toggle"));
-    expect(onToggleFavorite).toHaveBeenCalledTimes(1);
-    expect(onClickCard).not.toHaveBeenCalled();
+  it("отображает лейблы 'Откуда' и 'Куда' в cozy режиме", () => {
+    render(<RideCard ride={mockRide} />);
+    expect(screen.getByText("Откуда")).toBeInTheDocument();
+    expect(screen.getByText("Куда")).toBeInTheDocument();
   });
 
   it("отображает относительное время отправления (через X ч)", () => {

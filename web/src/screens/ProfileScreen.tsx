@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useFavorites } from "../hooks/useFavorites";
 import { useMe } from "../hooks/useMe";
 import { useUser } from "../hooks/useUser";
 import { ApiError } from "../lib/api";
@@ -23,9 +22,7 @@ export function ProfileScreen({ id }: Props) {
   const [roleView, setRoleView] = useState<RoleView>("passenger");
   const [tab, setTab] = useState<"schedule" | "reviews" | "rides">("schedule");
 
-  const { isFavorite, toggle: toggleFavorite } = useFavorites();
   const isOwnProfile = me.status === "ok" && me.user.id === id;
-  const showFavBtn = me.status === "ok" && !isOwnProfile;
 
   if (isLoading) {
     return (
@@ -129,30 +126,6 @@ export function ProfileScreen({ id }: Props) {
         >
           Профиль
         </h1>
-        {showFavBtn && (
-          <button
-            type="button"
-            data-testid="fav-btn"
-            onClick={() =>
-              toggleFavorite(id, {
-                display_name: user.display_name,
-                tg_username: user.tg_username,
-                avatar_url: user.avatar_url,
-              })
-            }
-            style={{
-              background: "none",
-              border: "1px solid var(--brand-line)",
-              borderRadius: 8,
-              padding: "6px 12px",
-              fontSize: 18,
-              cursor: "pointer",
-            }}
-            aria-label={isFavorite(id) ? "Убрать из избранного" : "Добавить в избранное"}
-          >
-            {isFavorite(id) ? "❤️" : "🤍"}
-          </button>
-        )}
         {isOwnProfile && (
           <button
             type="button"

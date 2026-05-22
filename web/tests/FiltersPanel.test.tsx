@@ -12,7 +12,6 @@ describe("FiltersPanel", () => {
     expect(screen.getByTestId("filter-price-max")).toBeInTheDocument();
     expect(screen.getByTestId("filter-seats-min")).toBeInTheDocument();
     expect(screen.getByTestId("filter-verified")).toBeInTheDocument();
-    expect(screen.getByTestId("filter-favorites")).toBeInTheDocument();
   });
 
   it("кнопка сброса скрыта при дефолтных фильтрах", () => {
@@ -50,13 +49,6 @@ describe("FiltersPanel", () => {
     render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
     fireEvent.click(screen.getByTestId("filter-verified"));
     expect(onChange).toHaveBeenCalledWith({ verifiedOnly: true });
-  });
-
-  it("onChange вызывается при переключении favoritesOnly", () => {
-    const onChange = vi.fn();
-    render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={onChange} onReset={vi.fn()} />);
-    fireEvent.click(screen.getByTestId("filter-favorites"));
-    expect(onChange).toHaveBeenCalledWith({ favoritesOnly: true });
   });
 
   it("onReset вызывается при клике на сброс", () => {

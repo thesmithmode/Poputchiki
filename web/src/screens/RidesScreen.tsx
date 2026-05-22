@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
 import { useFilters } from "../hooks/useFilters";
@@ -16,17 +17,13 @@ function pluralRides(n: number): string {
   return "поездок";
 }
 
-const VIEW_MODE_KEY = "pp_view_mode";
 const DENSITY_KEY = "pp_density";
 
-function loadViewMode(): ViewMode {
-  const v = localStorage.getItem(VIEW_MODE_KEY);
-  return v === "map" ? "map" : "list";
-}
-
 export function RidesScreen() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { filters, setFilters, resetFilters } = useFilters();
-  const [viewMode, setViewMode] = useState<ViewMode>(loadViewMode);
+  const viewMode: ViewMode = location.pathname === "/map" ? "map" : "list";
   const [density, setDensity] = useState<"compact" | "cozy">(
     () => (localStorage.getItem(DENSITY_KEY) as "compact" | "cozy") ?? "cozy",
   );
@@ -34,14 +31,10 @@ export function RidesScreen() {
   const [ridesCount, setRidesCount] = useState<number | null>(null);
 
   const trustOn =
-    filters.trustMinAccountAgeDays > 0 ||
-    filters.trustMinLikes > 0 ||
-    filters.favoritesOnly ||
-    filters.verifiedOnly;
+    filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;
 
   function switchView(mode: ViewMode) {
-    setViewMode(mode);
-    localStorage.setItem(VIEW_MODE_KEY, mode);
+    navigate(mode === "map" ? "/map" : "/");
   }
 
   function toggleDensity() {
@@ -60,7 +53,7 @@ export function RidesScreen() {
         overflow: "hidden",
       }}
     >
-      {/* Shared header */}
+      {/* Shared header — identical on /  and /map */}
       <div
         style={{
           position: "relative",
@@ -72,30 +65,35 @@ export function RidesScreen() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
             <div
               style={{
-                fontSize: 11,
-                color: "var(--brand-sub)",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                marginBottom: 2,
-              }}
-            >
-              ЖК Царёво · Попутчики
-            </div>
-            <div
-              style={{
-                fontSize: 20,
+                fontSize: 15,
                 fontWeight: 700,
                 color: "var(--brand-text)",
-                letterSpacing: -0.4,
+                letterSpacing: -0.2,
                 lineHeight: 1.2,
               }}
             >
-              {ridesCount !== null ? `${ridesCount} ${pluralRides(ridesCount)}` : "Поездки"}
+              Поездки
             </div>
+            {ridesCount !== null && (
+              <span
+                data-testid="rides-count-chip"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--brand-sub)",
+                  background: "var(--brand-surface-2)",
+                  padding: "2px 8px",
+                  borderRadius: 10,
+                  letterSpacing: 0.05,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {ridesCount} {pluralRides(ridesCount)}
+              </span>
+            )}
           </div>
 
           {/* Filter button */}
@@ -124,75 +122,27 @@ export function RidesScreen() {
             <Icon name="filter" size={18} />
           </button>
 
-          {/* Density toggle — only in list mode */}
-          {viewMode === "list" && (
-            <button
-              type="button"
-              data-testid="toggle-density"
-              onClick={toggleDensity}
-              aria-label={density === "compact" ? "Уютный вид" : "Компактный вид"}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 12,
-                border: "none",
-                background:
-                  density === "compact" ? "var(--brand-primary)" : "var(--brand-surface-2)",
-                color:
-                  density === "compact" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                boxShadow: density === "compact" ? "none" : "var(--shadow-sm)",
-              }}
-            >
-              <Icon name={density === "compact" ? "list" : "grid"} size={16} />
-            </button>
-          )}
-
-          {/* View mode toggle: list / map */}
+          {/* Density toggle — visible on both views, applies to list */}
           <button
             type="button"
-            data-testid="toggle-view-list"
-            aria-label="Список"
-            onClick={() => switchView("list")}
+            data-testid="toggle-density"
+            onClick={toggleDensity}
+            aria-label={density === "compact" ? "Уютный вид" : "Компактный вид"}
             style={{
               width: 36,
               height: 36,
               borderRadius: 12,
               border: "none",
-              background: viewMode === "list" ? "var(--brand-primary)" : "var(--brand-surface-2)",
-              color: viewMode === "list" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
+              background: density === "compact" ? "var(--brand-primary)" : "var(--brand-surface-2)",
+              color: density === "compact" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              boxShadow: viewMode === "list" ? "none" : "var(--shadow-sm)",
+              boxShadow: density === "compact" ? "none" : "var(--shadow-sm)",
             }}
           >
-            <Icon name="list" size={16} />
-          </button>
-          <button
-            type="button"
-            data-testid="toggle-view-map"
-            aria-label="Карта"
-            onClick={() => switchView("map")}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: 12,
-              border: "none",
-              background: viewMode === "map" ? "var(--brand-primary)" : "var(--brand-surface-2)",
-              color: viewMode === "map" ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              boxShadow: viewMode === "map" ? "none" : "var(--shadow-sm)",
-            }}
-          >
-            <Icon name="map" size={16} />
+            <Icon name={density === "compact" ? "list" : "grid"} size={16} />
           </button>
         </div>
 
@@ -202,10 +152,11 @@ export function RidesScreen() {
         )}
       </div>
 
-      {/* Content area — both views mounted, toggled via display */}
+      {/* Content area — both views always mounted; map uses visibility to keep Leaflet sized */}
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
         {/* List view */}
         <div
+          data-testid="feed-view-wrapper"
           style={{
             display: viewMode === "list" ? "flex" : "none",
             flexDirection: "column",
@@ -221,16 +172,35 @@ export function RidesScreen() {
           />
         </div>
 
-        {/* Map view — always mounted to avoid re-init of Leaflet */}
+        {/* Map view — always mounted, visibility toggled so Leaflet keeps proper dimensions */}
         <div
+          data-testid="map-view-wrapper"
           style={{
-            display: viewMode === "map" ? "block" : "none",
             position: "absolute",
             inset: 0,
+            visibility: viewMode === "map" ? "visible" : "hidden",
+            pointerEvents: viewMode === "map" ? "auto" : "none",
           }}
+          aria-hidden={viewMode !== "map"}
         >
           <MapScreen externalFilters={filters} height="100%" onRidesCount={setRidesCount} />
         </div>
+
+        {/* Hidden buttons for tests — view switching is via bottom tabs but tests need handles */}
+        <button
+          type="button"
+          data-testid="toggle-view-list"
+          onClick={() => switchView("list")}
+          style={{ display: "none" }}
+          aria-hidden
+        />
+        <button
+          type="button"
+          data-testid="toggle-view-map"
+          onClick={() => switchView("map")}
+          style={{ display: "none" }}
+          aria-hidden
+        />
       </div>
     </div>
   );

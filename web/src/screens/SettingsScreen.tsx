@@ -197,9 +197,9 @@ export function SettingsScreen() {
             onClick={() => navigate("/me/rides")}
           />
           <RowLink
-            label="⭐ Избранные водители"
-            testId="link-favorites"
-            onClick={() => navigate("/favorites")}
+            label="⭐ Пресеты фильтров"
+            testId="link-presets"
+            onClick={() => navigate("/presets")}
           />
         </Section>
 

@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import type { RideCardState } from "../components/RideCard";
 import { RideCard } from "../components/RideCard";
-import { useFavorites } from "../hooks/useFavorites";
 import type { Filters } from "../hooks/useFilters";
 import { applyFilters } from "../hooks/useFilters";
 import { useMe } from "../hooks/useMe";
@@ -69,11 +68,10 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedSet);
-  const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
 
   const filteredRides = useMemo(
-    () => applyFilters(data?.rides ?? [], filters, favoriteIds, myUserId),
-    [data, filters, favoriteIds, myUserId],
+    () => applyFilters(data?.rides ?? [], filters, myUserId),
+    [data, filters, myUserId],
   );
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable callback ref
@@ -82,10 +80,7 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
   }, [filteredRides.length]);
 
   const trustOn =
-    filters.trustMinAccountAgeDays > 0 ||
-    filters.trustMinLikes > 0 ||
-    filters.favoritesOnly ||
-    filters.verifiedOnly;
+    filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;
 
   function getCardState(ride: Ride): RideCardState {
     if (myUserId && ride.driver_id === myUserId) return "own";
@@ -243,8 +238,6 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
               ride={ride}
               density={density}
               onClick={handleCardClick}
-              isFavorited={isFavorite(ride.driver_id)}
-              onToggleFavorite={() => toggleFavorite(ride.driver_id)}
               cardState={getCardState(ride)}
             />
           ))

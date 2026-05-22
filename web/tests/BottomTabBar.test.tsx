@@ -71,9 +71,14 @@ describe("BottomTabBar", () => {
     expect(container.querySelector("[role='navigation']")).not.toBeInTheDocument();
   });
 
-  it("показывает кнопку 'Поездки'", () => {
+  it("показывает кнопку 'Лента'", () => {
     renderTabBar("/");
-    expect(screen.getByLabelText("Поездки")).toBeInTheDocument();
+    expect(screen.getByLabelText("Лента")).toBeInTheDocument();
+  });
+
+  it("показывает кнопку 'Карта'", () => {
+    renderTabBar("/");
+    expect(screen.getByLabelText("Карта")).toBeInTheDocument();
   });
 
   it("показывает FAB кнопку 'Создать поездку'", () => {
@@ -91,10 +96,16 @@ describe("BottomTabBar", () => {
     expect(screen.getByLabelText("Я")).toBeInTheDocument();
   });
 
-  it("нажатие на 'Поездки' вызывает navigate /", () => {
+  it("нажатие на 'Лента' вызывает navigate /", () => {
     renderTabBar("/settings");
-    fireEvent.click(screen.getByLabelText("Поездки"));
+    fireEvent.click(screen.getByLabelText("Лента"));
     expect(mockNavigate).toHaveBeenCalledWith("/");
+  });
+
+  it("нажатие на 'Карта' вызывает navigate /map", () => {
+    renderTabBar("/");
+    fireEvent.click(screen.getByLabelText("Карта"));
+    expect(mockNavigate).toHaveBeenCalledWith("/map");
   });
 
   it("нажатие на FAB вызывает navigate /rides/new", () => {
@@ -121,8 +132,8 @@ describe("BottomTabBar", () => {
     expect(screen.queryByLabelText("Создать поездку")).not.toBeInTheDocument();
   });
 
-  it("рендерится на /favorites", () => {
-    renderTabBar("/favorites");
+  it("рендерится на /presets", () => {
+    renderTabBar("/presets");
     expect(screen.getByRole("navigation")).toBeInTheDocument();
   });
 });

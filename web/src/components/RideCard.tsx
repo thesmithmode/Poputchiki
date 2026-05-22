@@ -1,4 +1,3 @@
-import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import type { Ride } from "../types/ride";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -9,8 +8,6 @@ interface RideCardProps {
   ride: Ride;
   density?: "compact" | "cozy";
   onClick?: (ride: Ride) => void;
-  isFavorited?: boolean;
-  onToggleFavorite?: () => void;
   cardState?: RideCardState;
 }
 
@@ -107,11 +104,8 @@ export function RideCard({
   ride,
   density = "cozy",
   onClick,
-  isFavorited,
-  onToggleFavorite,
   cardState = "default",
 }: RideCardProps) {
-  const { selection } = useTelegramHaptic();
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -319,7 +313,7 @@ export function RideCard({
     >
       {/* Top row: time + relative + [state badge] + price */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
           {dateBadge && (
             <span
               style={{
@@ -347,7 +341,17 @@ export function RideCard({
             {time}
           </div>
         </div>
-        <div style={{ fontSize: 12, color: "var(--brand-sub)", lineHeight: 1 }}>{rel}</div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--brand-sub)",
+            lineHeight: 1.2,
+            minWidth: 0,
+            flex: 1,
+          }}
+        >
+          {rel}
+        </div>
         {badge && (
           <span
             style={{
@@ -359,35 +363,11 @@ export function RideCard({
               padding: "2px 7px",
               lineHeight: 1.4,
               whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {badge.label}
           </span>
-        )}
-        <div style={{ flex: 1 }} />
-        {onToggleFavorite && (
-          <button
-            type="button"
-            data-testid="fav-toggle"
-            onClick={(e) => {
-              e.stopPropagation();
-              selection();
-              onToggleFavorite();
-            }}
-            aria-label={isFavorited ? "Убрать из избранного" : "Добавить в избранное"}
-            style={{
-              padding: 4,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 16,
-              lineHeight: 1,
-              color: isFavorited ? "var(--brand-accent)" : "var(--brand-faint)",
-              flexShrink: 0,
-            }}
-          >
-            {isFavorited ? "❤️" : "🤍"}
-          </button>
         )}
         <div
           style={{
@@ -396,29 +376,36 @@ export function RideCard({
             color: "var(--brand-text)",
             letterSpacing: -0.3,
             lineHeight: 1,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+            fontVariantNumeric: "tabular-nums",
           }}
         >
           {priceLabel}
         </div>
       </div>
 
-      {/* Route: two lines — FROM then TO */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 5, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+      {/* Route: two labelled rows — "Откуда: <addr>" and "Куда: <addr>" */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
           <span
             style={{
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              background: "var(--route-from)",
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--brand-faint)",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
               flexShrink: 0,
+              minWidth: 54,
             }}
-          />
+          >
+            Откуда
+          </span>
           <span
             style={{
               fontSize: 13,
               fontWeight: 500,
-              color: "var(--brand-sub)",
+              color: "var(--brand-text)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -429,17 +416,25 @@ export function RideCard({
             {formatAddress(ride.from_label)}
           </span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-          <Icon
-            name="pin"
-            size={10}
-            style={{ color: "var(--route-to)", flexShrink: 0, marginLeft: -1 }}
-          />
+        <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: "var(--brand-faint)",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              flexShrink: 0,
+              minWidth: 54,
+            }}
+          >
+            Куда
+          </span>
           <span
             style={{
               fontSize: 13,
-              fontWeight: 400,
-              color: "var(--brand-sub)",
+              fontWeight: 500,
+              color: "var(--brand-text)",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",

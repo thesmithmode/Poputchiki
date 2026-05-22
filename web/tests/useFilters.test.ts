@@ -166,22 +166,4 @@ describe("applyFilters", () => {
   it("пустой список rides → пустой результат", () => {
     expect(applyFilters([], DEFAULT_FILTERS)).toHaveLength(0);
   });
-
-  it("favoritesOnly=true с favoriteIds оставляет только поездки от избранных водителей", () => {
-    const DRIVER_A = "550e8400-e29b-41d4-a716-446655440001";
-    const DRIVER_B = "550e8400-e29b-41d4-a716-446655440002";
-    const ridesAB = [makeRide({ driver_id: DRIVER_A }), makeRide({ driver_id: DRIVER_B })];
-    const result = applyFilters(
-      ridesAB,
-      { ...DEFAULT_FILTERS, favoritesOnly: true },
-      new Set([DRIVER_A]),
-    );
-    expect(result).toHaveLength(1);
-    expect(result[0]?.driver_id).toBe(DRIVER_A);
-  });
-
-  it("favoritesOnly=true без favoriteIds не фильтрует", () => {
-    const ridesTwo = [makeRide({}), makeRide({})];
-    expect(applyFilters(ridesTwo, { ...DEFAULT_FILTERS, favoritesOnly: true })).toHaveLength(2);
-  });
 });

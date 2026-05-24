@@ -373,7 +373,7 @@ export function RideDetailScreen({ id }: Props) {
     serverRequestStatus !== "cancelled" &&
     serverRequestStatus !== "rejected";
   const respondBtnDisabled =
-    isFetching ||
+    isLoading ||
     reqStatus === "loading" ||
     requestIsActive ||
     serverRequestStatus === "cancelled" ||
@@ -385,7 +385,7 @@ export function RideDetailScreen({ id }: Props) {
         ? "var(--brand-primary-soft)"
         : "var(--brand-primary)";
   const respondBtnLabel =
-    isFetching && reqStatus === "idle"
+    isLoading && reqStatus === "idle"
       ? "Проверяем места…"
       : serverRequestStatus === "rejected"
         ? "Заявка отклонена"

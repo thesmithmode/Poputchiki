@@ -21,8 +21,10 @@ export type MeUser = {
   role: "user" | "admin";
 };
 
+export type BootPhase = "init" | "auth" | "profile";
+
 export type MeState =
-  | { status: "loading" }
+  | { status: "loading"; phase: BootPhase }
   | { status: "banned"; reason: string | null; banned_at: string | null }
   | { status: "ok"; user: MeUser }
   | { status: "error"; message: string };
@@ -76,7 +78,7 @@ export function useMe(): MeState {
       const cached = readMeCache<MeUser>(tgId);
       if (cached) return toMeState(cached);
     }
-    return { status: "loading" };
+    return { status: "loading", phase: "init" };
   });
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export function useMe(): MeState {
       }
 
       if (!getTokens()) {
+        setState({ status: "loading", phase: "auth" });
         const result = await telegramAuth();
         if (cancelled) return;
         if ("error" in result) {
@@ -110,6 +113,7 @@ export function useMe(): MeState {
         return;
       }
 
+      setState({ status: "loading", phase: "profile" });
       try {
         const user = await apiFetch<MeUser>("/users/me");
         if (cancelled) return;
@@ -121,6 +125,7 @@ export function useMe(): MeState {
           // apiFetch уже пробовал refresh внутри — раз вернулся 401, refresh не помог.
           clearTokens();
           clearMeCache();
+          setState({ status: "loading", phase: "auth" });
           const result = await telegramAuth();
           if (cancelled) return;
           if ("error" in result) {

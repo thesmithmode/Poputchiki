@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, dehydrate, hydrate } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -272,16 +272,46 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
-      gcTime: 30 * 60_000,
+      gcTime: 24 * 60 * 60_000,
       networkMode: "offlineFirst",
     },
   },
+});
+
+const CACHE_KEY = "pp_qc_v1";
+const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
+
+// Восстанавливаем дегидрированный кэш из localStorage при старте
+try {
+  const raw = localStorage.getItem(CACHE_KEY);
+  if (raw) {
+    const { ts, state } = JSON.parse(raw) as { ts: number; state: unknown };
+    if (Date.now() - ts < CACHE_MAX_AGE) hydrate(queryClient, state);
+  }
+} catch {}
+
+// Сохраняем кэш в localStorage каждые 3 сек через throttle
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+queryClient.getQueryCache().subscribe(() => {
+  if (_saveTimer) return;
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), state: dehydrate(queryClient) }));
+    } catch {}
+  }, 3000);
 });
 
 function AppRoutes() {
   const me = useMe();
 
   if (me.status === "loading") {
+    const phaseConfig = {
+      init: { label: "Запуск приложения…", pct: 15 },
+      auth: { label: "Выполняется вход…", pct: 50 },
+      profile: { label: "Загрузка профиля…", pct: 80 },
+    };
+    const { label, pct } = phaseConfig[me.phase];
     return (
       <div
         style={{
@@ -289,67 +319,56 @@ function AppRoutes() {
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 24,
+          padding: "0 40px",
         }}
       >
-        {/* Header skeleton */}
+        {/* Logo / app name */}
         <div
           style={{
-            padding: "16px 16px 8px",
-            background: "var(--brand-surface, #fff)",
-            borderBottom: "1px solid var(--brand-line, rgba(15,23,42,0.06))",
+            fontSize: 22,
+            fontWeight: 800,
+            color: "var(--brand-primary, #2d5a3d)",
+            letterSpacing: "-0.02em",
+            fontFamily: "inherit",
           }}
         >
+          Попутчики
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ width: "100%", maxWidth: 280, display: "flex", flexDirection: "column", gap: 10 }}>
           <div
             style={{
-              width: 140,
-              height: 20,
-              borderRadius: 6,
-              background: "var(--brand-line, #e8e9e8)",
+              width: "100%",
+              height: 4,
+              borderRadius: 2,
+              background: "var(--brand-line, rgba(15,23,42,0.1))",
+              overflow: "hidden",
             }}
-          />
-        </div>
-        {/* Ride card skeletons */}
-        <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-          {[88, 96, 80, 92].map((h, i) => (
+          >
             <div
-              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton
-              key={i}
               style={{
-                height: h,
-                borderRadius: 16,
-                background: "var(--brand-surface, #fff)",
-                border: "1px solid var(--brand-line, rgba(15,23,42,0.06))",
+                height: "100%",
+                width: `${pct}%`,
+                borderRadius: 2,
+                background: "var(--brand-primary, #2d5a3d)",
+                transition: "width 0.4s ease",
               }}
             />
-          ))}
-        </div>
-        {/* BottomTabBar skeleton */}
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 64,
-            background: "var(--brand-surface, #fff)",
-            borderTop: "1px solid var(--brand-line, rgba(15,23,42,0.06))",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-around",
-            padding: "0 16px",
-          }}
-        >
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div
-              key={i}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 6,
-                background: "var(--brand-line, #e8e9e8)",
-              }}
-            />
-          ))}
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--brand-sub, #6b7a6e)",
+              textAlign: "center",
+              fontWeight: 500,
+            }}
+          >
+            {label}
+          </div>
         </div>
       </div>
     );
@@ -414,7 +433,47 @@ function AppRoutes() {
   );
 }
 
+function usePrefetchRides() {
+  useEffect(() => {
+    // Prefetch с ключом идентичным useRides("24h", null, null).
+    // queryFn вычисляет даты в момент запроса — аналогично useRides.
+    const now = new Date();
+    const fromAt = now.toISOString();
+    const toAt = new Date(now.getTime() + 24 * 3600 * 1000).toISOString();
+    queryClient.prefetchQuery({
+      queryKey: ["rides", "list", "24h", null, null],
+      queryFn: () =>
+        import("./lib/api").then(({ apiFetch }) =>
+          apiFetch(`/rides?fromAt=${encodeURIComponent(fromAt)}&toAt=${encodeURIComponent(toAt)}`),
+        ),
+      staleTime: 20_000,
+    });
+  }, []);
+}
+
+function usePrefetchScreens() {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Prefetch all lazy screens in background after first render
+      // so subsequent navigation feels instant
+      import("./screens/ProfileScreen");
+      import("./screens/CreateRideScreen");
+      import("./screens/MyRidesScreen");
+      import("./screens/RideDetailScreen");
+      import("./screens/SettingsScreen");
+      import("./screens/EditProfileScreen");
+      import("./screens/FilterPresetsScreen");
+      import("./screens/EventsScreen");
+      import("./screens/NotificationPreferencesScreen");
+      import("./screens/AdminScreen");
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+}
+
 export function App() {
+  usePrefetchRides();
+  usePrefetchScreens();
   useEffect(() => {
     const storedPref = getStoredTheme();
     const wa = getTelegramWebApp();

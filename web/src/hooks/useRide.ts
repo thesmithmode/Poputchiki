@@ -40,5 +40,7 @@ export function useRide(id: string) {
     queryKey: queryKeys.ride.detail(id),
     queryFn: () => apiFetch<RideDetail>(`/rides/${id}`),
     enabled: !!id,
+    // Всегда свежие данные при открытии детали — мест может уже не быть
+    staleTime: 0,
   });
 }

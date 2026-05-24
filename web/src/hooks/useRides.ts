@@ -28,7 +28,8 @@ export function useRides(
       if (toAt) params.set("toAt", toAt);
       return apiFetch<RidesResponse>(`/rides?${params.toString()}`);
     },
-    staleTime: 60_000,
-    refetchInterval: 60_000,
+    staleTime: 20_000,
+    // refetchInterval убран — SSE (useRealtime) инвалидирует при изменениях,
+    // при обрыве SSE его fallback polling делает то же каждые 30s
   });
 }

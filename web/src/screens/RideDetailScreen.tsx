@@ -48,7 +48,7 @@ export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   useTelegramBack(() => navigate(-1));
-  const { data: ride, isLoading, isError, error } = useRide(id);
+  const { data: ride, isLoading, isError, error, isFetching } = useRide(id);
   const me = useMe();
   const [reqStatus, setReqStatus] = useState<RequestStatus>("idle");
   const [likeStatus, setLikeStatus] = useState<LikeStatus>("idle");
@@ -373,6 +373,7 @@ export function RideDetailScreen({ id }: Props) {
     serverRequestStatus !== "cancelled" &&
     serverRequestStatus !== "rejected";
   const respondBtnDisabled =
+    isFetching ||
     reqStatus === "loading" ||
     requestIsActive ||
     serverRequestStatus === "cancelled" ||
@@ -384,21 +385,23 @@ export function RideDetailScreen({ id }: Props) {
         ? "var(--brand-primary-soft)"
         : "var(--brand-primary)";
   const respondBtnLabel =
-    serverRequestStatus === "rejected"
-      ? "Заявка отклонена"
-      : serverRequestStatus === "cancelled"
-        ? "Заявка отменена"
-        : reqStatus === "sent"
-          ? "Заявка отправлена"
-          : reqStatus === "loading"
-            ? "Отправляем..."
-            : reqStatus === "full"
-              ? "Мест нет"
-              : reqStatus === "duplicate"
-                ? "Уже отправлено"
-                : reqStatus === "error"
-                  ? "Ошибка, повторите"
-                  : "Записаться";
+    isFetching && reqStatus === "idle"
+      ? "Проверяем места…"
+      : serverRequestStatus === "rejected"
+        ? "Заявка отклонена"
+        : serverRequestStatus === "cancelled"
+          ? "Заявка отменена"
+          : reqStatus === "sent"
+            ? "Заявка отправлена"
+            : reqStatus === "loading"
+              ? "Отправляем..."
+              : reqStatus === "full"
+                ? "Мест нет"
+                : reqStatus === "duplicate"
+                  ? "Уже отправлено"
+                  : reqStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Записаться";
 
   // Пассажир может отозвать заявку (pending или accepted)
   const canCancelRequest =

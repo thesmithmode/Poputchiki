@@ -62,7 +62,7 @@ function pluralRides(n: number): string {
 
 export function FeedView({ filters, setFilters, density, onRidesCount }: FeedViewProps) {
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useRides(filters.datePreset, filters.fromAt, filters.toAt);
+  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useRides(filters.datePreset, filters.fromAt, filters.toAt);
   useRealtime();
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
@@ -173,6 +173,51 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
           );
         })}
       </div>
+
+      {/* Freshness strip */}
+      {!isLoading && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 16px 0",
+            fontSize: 11.5,
+            color: "var(--brand-sub)",
+            fontWeight: 500,
+          }}
+        >
+          {isFetching ? (
+            <span>Обновляется…</span>
+          ) : dataUpdatedAt ? (
+            <span>
+              Лента актуальна на{" "}
+              {new Date(dataUpdatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Обновить ленту"
+            onClick={() => { refetch(); }}
+            disabled={isFetching}
+            style={{
+              marginLeft: "auto",
+              background: "none",
+              border: "none",
+              padding: "2px 4px",
+              cursor: isFetching ? "default" : "pointer",
+              opacity: isFetching ? 0.4 : 1,
+              color: "var(--brand-primary)",
+              fontSize: 14,
+              lineHeight: 1,
+              display: "flex",
+              alignItems: "center",
+            }}
+          >
+            ↻
+          </button>
+        </div>
+      )}
 
       {/* Trust filter banner */}
       {trustOn && (

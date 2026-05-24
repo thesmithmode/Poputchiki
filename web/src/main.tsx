@@ -18,6 +18,9 @@ if (rawHash && !rawHash.startsWith("#/")) {
 const container = document.getElementById("root");
 if (!container) throw new Error("root container not found");
 
+// Удаляем inline splash как только React готов к монтированию
+document.getElementById("inline-splash")?.remove();
+
 createRoot(container).render(
   <StrictMode>
     <App />

@@ -1,9 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { BannedScreen } from "./components/BannedScreen";
-import { BottomTabBar } from "./components/BottomTabBar";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+const BannedScreen = lazy(() =>
+  import("./components/BannedScreen").then((m) => ({ default: m.BannedScreen })),
+);
+const BottomTabBar = lazy(() =>
+  import("./components/BottomTabBar").then((m) => ({ default: m.BottomTabBar })),
+);
 import { useMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
@@ -257,7 +261,9 @@ function AppShell() {
           </Routes>
         </Suspense>
       </main>
-      <BottomTabBar />
+      <Suspense fallback={null}>
+        <BottomTabBar />
+      </Suspense>
     </>
   );
 }
@@ -350,7 +356,11 @@ function AppRoutes() {
   }
 
   if (me.status === "banned") {
-    return <BannedScreen reason={me.reason} bannedAt={me.banned_at} />;
+    return (
+      <Suspense fallback={null}>
+        <BannedScreen reason={me.reason} bannedAt={me.banned_at} />
+      </Suspense>
+    );
   }
 
   if (me.status === "ok" && !me.user.onboarded) {

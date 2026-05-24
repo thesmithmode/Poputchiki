@@ -2343,3 +2343,11 @@ Error output: Check stderr output for details
 2026-05-24 21:25:45 INFO Result: saved to daily log (15761 chars)
 2026-05-24 21:25:45 INFO End-of-day compilation triggered (after 18:00)
 2026-05-24 21:25:45 INFO Flush complete for session 70e3f94f-f46f-4edf-8237-82c1d43ef398
+2026-05-24 22:13:52 INFO [hook] SessionEnd fired: session=70e3f94f-f46f-4edf-8237-82c1d43ef398 source=unknown
+2026-05-24 22:13:52 INFO [hook] Spawned flush.py for session 70e3f94f-f46f-4edf-8237-82c1d43ef398 (30 turns, 3584 chars)
+2026-05-24 22:13:52 INFO flush.py started for session 70e3f94f-f46f-4edf-8237-82c1d43ef398, context: C:\Soft\Projects\Poputchiki\.memory\scripts\session-flush-70e3f94f-f46f-4edf-8237-82c1d43ef398-20260524-221352.md
+2026-05-24 22:13:52 INFO Flushing session 70e3f94f-f46f-4edf-8237-82c1d43ef398: 3583 chars
+2026-05-24 22:13:55 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-24 22:14:15 INFO Result: saved to daily log (1003 chars)
+2026-05-24 22:14:15 INFO End-of-day compilation triggered (after 18:00)
+2026-05-24 22:14:15 INFO Flush complete for session 70e3f94f-f46f-4edf-8237-82c1d43ef398

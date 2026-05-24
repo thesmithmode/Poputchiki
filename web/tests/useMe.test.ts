@@ -11,7 +11,8 @@ vi.mock("../src/lib/telegram", () => ({
   getTelegramWebApp: vi.fn(() => null),
 }));
 
-import { useMe } from "../src/hooks/useMe";
+import { createElement } from "react";
+import { MeContext, useBootMe, useMe } from "../src/hooks/useMe";
 import { apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
@@ -31,7 +32,7 @@ beforeEach(() => {
   localStorage.clear();
 });
 
-describe("useMe", () => {
+describe("useBootMe — boot-цикл", () => {
   it("SENTINEL: когда /auth/telegram возвращает user — GET /users/me НЕ вызывается", async () => {
     mockedApiFetch.mockResolvedValueOnce({
       access_token: "access.token.test",
@@ -39,7 +40,7 @@ describe("useMe", () => {
       user: MOCK_USER,
     });
 
-    const { result } = renderHook(() => useMe());
+    const { result } = renderHook(() => useBootMe());
 
     await waitFor(() => expect(result.current.status).toBe("ok"));
 
@@ -57,7 +58,7 @@ describe("useMe", () => {
     );
     mockedApiFetch.mockResolvedValueOnce(MOCK_USER);
 
-    const { result } = renderHook(() => useMe());
+    const { result } = renderHook(() => useBootMe());
 
     await waitFor(() => expect(result.current.status).toBe("ok"));
 
@@ -75,7 +76,7 @@ describe("useMe", () => {
       user: MOCK_USER,
     });
 
-    const { result } = renderHook(() => useMe());
+    const { result } = renderHook(() => useBootMe());
 
     await waitFor(() => expect(result.current.status).toBe("ok"));
 
@@ -97,7 +98,7 @@ describe("useMe", () => {
       },
     });
 
-    const { result } = renderHook(() => useMe());
+    const { result } = renderHook(() => useBootMe());
 
     await waitFor(() => expect(result.current.status).toBe("banned"));
 
@@ -111,7 +112,7 @@ describe("useMe", () => {
   it("статус error при сбое /auth/telegram", async () => {
     mockedApiFetch.mockRejectedValueOnce(new Error("network fail"));
 
-    const { result } = renderHook(() => useMe());
+    const { result } = renderHook(() => useBootMe());
 
     await waitFor(() => expect(result.current.status).toBe("error"));
   });
@@ -119,8 +120,74 @@ describe("useMe", () => {
   it("статус loading в начале", () => {
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
 
-    const { result } = renderHook(() => useMe());
+    const { result } = renderHook(() => useBootMe());
 
     expect(result.current.status).toBe("loading");
+  });
+
+  it("REGRESSION: прогресс не идёт назад — фаза не откатывается после done", async () => {
+    mockedApiFetch.mockResolvedValueOnce({
+      access_token: "tok",
+      refresh_token: "ref",
+      user: MOCK_USER,
+    });
+
+    const { result } = renderHook(() => useBootMe());
+
+    const phases: string[] = [];
+    await waitFor(() => {
+      if (result.current.status === "loading") {
+        phases.push(result.current.phase);
+      }
+      return result.current.status === "ok";
+    });
+
+    // Проверяем что фазы идут только вперёд (нет отката)
+    const phaseOrder = { init: 0, auth: 1, profile: 2, done: 3 };
+    for (let i = 1; i < phases.length; i++) {
+      const prev = phaseOrder[phases[i - 1] as keyof typeof phaseOrder];
+      const cur = phaseOrder[phases[i] as keyof typeof phaseOrder];
+      expect(cur).toBeGreaterThanOrEqual(prev);
+    }
+  });
+});
+
+describe("useMe — контекст", () => {
+  it("читает состояние из MeContext.Provider", () => {
+    const meState = { status: "ok" as const, user: MOCK_USER };
+
+    const { result } = renderHook(() => useMe(), {
+      wrapper: ({ children }) => createElement(MeContext.Provider, { value: meState }, children),
+    });
+
+    expect(result.current).toEqual(meState);
+  });
+
+  it("бросает ошибку без MeContext.Provider", () => {
+    expect(() => {
+      renderHook(() => useMe());
+    }).toThrow("useMe: MeContext.Provider not found in tree");
+  });
+
+  it("возвращает loading state из контекста", () => {
+    const loadingState = { status: "loading" as const, phase: "profile" as const };
+
+    const { result } = renderHook(() => useMe(), {
+      wrapper: ({ children }) =>
+        createElement(MeContext.Provider, { value: loadingState }, children),
+    });
+
+    expect(result.current.status).toBe("loading");
+  });
+
+  it("REGRESSION: useMe в дочерних компонентах не запускает boot-цикл", () => {
+    // Если useMe читает контекст — apiFetch НЕ вызывается
+    const meState = { status: "ok" as const, user: MOCK_USER };
+
+    renderHook(() => useMe(), {
+      wrapper: ({ children }) => createElement(MeContext.Provider, { value: meState }, children),
+    });
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 });

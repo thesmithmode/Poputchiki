@@ -90,7 +90,8 @@ export function RideDetailScreen({ id }: Props) {
   const templateId = ride?.template_id ?? null;
   const subscribeMutation = useSubscribeMutation(id, templateId ?? "");
   const subActionMutation = useSubscriptionActionMutation(id);
-  const { data: driverSubs } = useDriverSubscriptions();
+  const isDriver = me.status === "ok" && ride?.driver_id === me.user.id;
+  const { data: driverSubs } = useDriverSubscriptions(isDriver);
 
   const pendingDriverSubs =
     driverSubs?.filter((s) => s.template_id === templateId && s.status === "pending") ?? [];

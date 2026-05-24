@@ -139,7 +139,7 @@ describe("POST /api/template-subscriptions", () => {
     const res = await app.request("/api/template-subscriptions", {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify({ template_id: "00000000-0000-4000-0000-000000000999" }),
+      body: JSON.stringify({ template_id: "00000000-0000-4000-a000-000000000999" }),
     });
     expect(res.status).toBe(404);
   });
@@ -201,11 +201,13 @@ describe("accept / reject / cancel / revoke", () => {
   let subId: string;
 
   beforeAll(async () => {
-    const [row] = await sql<{ id: string }[]>`
-      SELECT id FROM template_subscriptions
-      WHERE template_id = ${templateId} AND passenger_id = ${PASSENGER.id}
-        AND status = 'pending'
-    `;
+    const [row] = await withSystem(sql, async (tx) => {
+      return tx<{ id: string }[]>`
+        SELECT id FROM template_subscriptions
+        WHERE template_id = ${templateId} AND passenger_id = ${PASSENGER.id}
+          AND status = 'pending'
+      `;
+    });
     subId = row?.id ?? "";
   });
 
@@ -303,7 +305,7 @@ describe("accept / reject / cancel / revoke", () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request(
-      "/api/template-subscriptions/00000000-0000-4000-0000-000000000999/reject",
+      "/api/template-subscriptions/00000000-0000-4000-a000-000000000999/reject",
       { method: "POST", headers: authHeaders(token) },
     );
     expect(res.status).toBe(404);

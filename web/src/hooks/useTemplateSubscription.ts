@@ -34,7 +34,7 @@ export function useMySubscriptions() {
   });
 }
 
-export function useDriverSubscriptions() {
+export function useDriverSubscriptions(enabled = true) {
   return useQuery({
     queryKey: queryKeys.templateSubscriptions.driver,
     queryFn: () =>
@@ -42,6 +42,7 @@ export function useDriverSubscriptions() {
         (r) => r.subscriptions,
       ),
     staleTime: 30_000,
+    enabled,
   });
 }
 

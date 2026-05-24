@@ -288,7 +288,21 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             SELECT pr2.status FROM ride_requests pr2
             WHERE pr2.ride_id = r.id AND pr2.passenger_id = ${user.id}::uuid
             LIMIT 1
-          ) AS my_request_status
+          ) AS my_request_status,
+          (
+            SELECT ts.id FROM template_subscriptions ts
+            WHERE ts.template_id = r.template_id
+              AND ts.passenger_id = ${user.id}::uuid
+              AND ts.status NOT IN ('rejected', 'cancelled', 'revoked')
+            LIMIT 1
+          ) AS my_subscription_id,
+          (
+            SELECT ts.status FROM template_subscriptions ts
+            WHERE ts.template_id = r.template_id
+              AND ts.passenger_id = ${user.id}::uuid
+              AND ts.status NOT IN ('rejected', 'cancelled', 'revoked')
+            LIMIT 1
+          ) AS my_subscription_status
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         LEFT JOIN ride_requests rr ON rr.ride_id = r.id AND rr.status = 'accepted'

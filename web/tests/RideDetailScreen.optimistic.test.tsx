@@ -15,6 +15,13 @@ vi.mock("../src/lib/api", async (importOriginal) => {
 const DRIVER_ID = "550e8400-e29b-41d4-a716-446655440001";
 const PASSENGER_ID = "550e8400-e29b-41d4-a716-446655440010";
 
+vi.mock("../src/hooks/useTemplateSubscription", () => ({
+  useSubscribeMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useSubscriptionActionMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useDriverSubscriptions: vi.fn(() => ({ data: [] })),
+  useMySubscriptions: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock("../src/hooks/useMe", () => ({
   useMe: vi.fn(),
 }));
@@ -55,6 +62,8 @@ const baseRide: RideDetail = {
   pending_requests: [],
   my_request_id: null,
   my_request_status: null,
+  my_subscription_id: null,
+  my_subscription_status: null,
 };
 
 function makeClient() {

@@ -48,4 +48,8 @@ export const queryKeys = {
   rideRequests: {
     mine: ["ride-requests", "mine"] as const,
   },
+  templateSubscriptions: {
+    mine: ["template-subscriptions", "mine"] as const,
+    driver: ["template-subscriptions", "driver"] as const,
+  },
 } as const;

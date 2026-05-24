@@ -1,5 +1,43 @@
 # Build Log
 
+## [2026-05-24T23:59:00+03:00] compile | daily/2026-05-24.md (pass 3 — verification)
+- Source: daily/2026-05-24.md
+- Articles created: (none)
+- Articles updated: (none — все концепты уже скомпилированы в pass 1 и pass 2)
+- Note: Полный проход подтвердил: concepts/stale-ride-feed-ux-trap.md, concepts/feed-freshness-indicator.md, concepts/tanstack-query-semantic-key.md покрывают все знания из 2026-05-24. Индекс актуален.
+
+## [2026-05-24T23:30:00+03:00] compile | daily/2026-05-24.md (pass 2 — article rewrite)
+- Source: daily/2026-05-24.md
+- Articles created: (none — статьи уже существовали как стабы)
+- Articles updated: concepts/stale-ride-feed-ux-trap.md (полный рерайт: AGENTS.md frontmatter + Key Points + Details 2 абз. + Related Concepts), concepts/feed-freshness-indicator.md (полный рерайт: аналогично)
+- Index: без изменений (Updated даты уже 2026-05-24)
+- Note: Оба стаба имели нестандартный frontmatter (name/description/type вместо title/aliases/tags/sources/created/updated); конвертированы в полноценные статьи по схеме AGENTS.md
+
+## [2026-05-24T22:00:00+03:00] compile | daily/2026-05-24.md
+- Source: daily/2026-05-24.md
+- Articles created: concepts/stale-ride-feed-ux-trap.md, concepts/feed-freshness-indicator.md
+- Articles updated: concepts/tanstack-query-semantic-key.md (staleTime tuning + safety rationale)
+- Index: +2 rows
+- Note: Session 18:40 — autoresearch остановлен (proxy metrics < 2%), staleTime 60s→20s для ленты, useRide всегда fresh, feed freshness indicator
+
+## [2026-05-24T00:45:00+03:00] compile | daily/2026-05-23.md
+- Source: daily/2026-05-23.md
+- Articles created: (none)
+- Articles updated: (none)
+- Note: Пустая сессия — все 3 memory flush вернули FLUSH_OK без контента
+
+## [2026-05-24T00:30:00+03:00] compile | daily/2026-05-22.md (pass final — session 19:20 + library-package-no-console)
+- Source: daily/2026-05-22.md
+- Articles created: [[concepts/library-package-no-console]]
+- Articles updated: (none — все остальные концепции сессии 19:20 покрыты существующими статьями: unnest-multi-column-alias, tanstack-query-semantic-key, advisory-lock-pool-safety)
+- Notes: Единственный новый концепт из полного прохода daily/2026-05-22.md — TypeScript lib packages не могут использовать console.* (нет DOM lib); симптом: TS2304 Cannot find name 'console' в packages/shared; фикс: убрать try-catch из library, логирование на call-site в apps/
+
+## [2026-05-24T00:00:00+03:00] compile | daily/2026-05-22 (1).md
+- Source: daily/2026-05-22 (1).md
+- Articles created: (нет)
+- Articles updated: (нет)
+- Notes: Файл является дублем/переполнением того же дня что и daily/2026-05-22.md. Все сессии (17:11, 17:49, 18:05, 18:15, 18:35) уже скомпилированы в предыдущих проходах. Все концепции покрыты существующими статьями: map-service-zone-bounds, cron-startup-vs-scheduled-trap, bulk-insert-transaction-risk, generate-series-expand-templates, generate-series-cron-expand, tanstack-query-semantic-key, enqueue-notification-batch, unnest-batch-update, postgres-js-boolean-array-wire-type, migration-linux-sort-down-file.
+
 ## [2026-05-22T18:35:47+03:00] compile | 2026-05-22.md (pass final — session 18:35)
 - Source: daily/2026-05-22.md
 - Articles created: [[concepts/postgres-js-boolean-array-wire-type]], [[concepts/migration-linux-sort-down-file]]

@@ -7,3 +7,14 @@ discard	44.59	discard	manualChunks function — vendor-react+router net +2.63 kB
 7341c75	10.98	keep	lazy BottomTabBar+Suspense: index.js 6.93 kB (-3.22 kB, -31.7%)
 c1656cb	10.75	keep	lazy BannedScreen: index.js 6.70 kB (-0.23 kB)
 discard	12.19	discard	убрать Tailwind — visual loss, FiltersPanel сломается
+89ee328	72221	discard	modulePreload polyfill false — только 0.189ee328	72221	discard	modulePreload polyfill false — 0.1% улучшения
+baa52a3	74363	keep	Query persistence — return visit показывает данные мгновенно из localStorage (функциональный KEEP)
+537e75e	74451	keep	Background prefetch экранов — навигация мгновенная после 1.5с
+3fb9418	74451	keep	vite-plugin-pwa SW — второй визит загружает из disk cache (~0ms)
+03a0db5	74679	keep	Prefetch rides параллельно с auth — убирает один RTT
+a3bbccc	74679	keep	Inline splash — юзер видит что-то мгновенно до React
+a3bbccc	74679	discard	lightningcss — 0% улучшения на CSS
+03aabc5	74229	keep	Function manualChunks — react отдельно, лучший cache hit
+afb0a48	73478	keep	es2020 target — -751 bytes (-1.01%)
+2ed7311	71557	keep	Terser passes:2 — -1921 bytes (-2.6%)
+1060caa	70816	keep	Свой query persister — убрали @tanstack/react-query-persist-client

@@ -1,4 +1,4 @@
-import termsRaw from "../../../../docs/legal/terms-of-service.md?raw";
+import termsRaw from "../../assets/legal/terms-of-service.md?raw";
 import { parseMarkdown } from "../../lib/parseMarkdown";
 
 interface Props {

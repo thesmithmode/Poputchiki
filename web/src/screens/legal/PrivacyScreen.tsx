@@ -1,4 +1,4 @@
-import privacyRaw from "../../../../docs/legal/privacy-policy.md?raw";
+import privacyRaw from "../../assets/legal/privacy-policy.md?raw";
 import { parseMarkdown } from "../../lib/parseMarkdown";
 
 interface Props {

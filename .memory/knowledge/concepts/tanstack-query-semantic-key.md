@@ -5,7 +5,7 @@ tags: [frontend, react, tanstack-query, caching, gotcha]
 sources:
   - "daily/2026-05-22.md"
 created: 2026-05-22
-updated: 2026-05-22
+updated: 2026-05-24
 ---
 
 # TanStack Query: семантический ключ вместо вычисленного времени
@@ -46,6 +46,12 @@ const { data } = useQuery({
 - Key: `["resource", "list", presetName, customFrom, customTo]` — `customFrom`/`customTo` = null при пресете
 - `queryFn`: `resolveDateRange(preset)` вызывается внутри функции, не при объявлении key
 - `staleTime` = `refetchInterval` = период обновления (60s для большинства feed-экранов)
+- Исключение: экраны с транзакционным действием (кнопка «Записаться») — `staleTime: 0`, всегда свежий fetch. Пример: `useRide` (детальный экран поездки). Лента допускает 20с устаревания, кнопка действия — никогда.
+
+## staleTime tuning (2026-05-24)
+
+Rides feed: `staleTime: 60_000` → `staleTime: 20_000` — уменьшено для снижения риска показа занятых мест как свободных.
+`useRide` detail: `staleTime: 0` — join/request кнопка всегда на актуальных данных.
 
 Округление до минуты — плохой фикс: вызывает flash reload каждую минуту. Правильный фикс — структурный: убрать вычисление времени из key.
 

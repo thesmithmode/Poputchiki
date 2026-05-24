@@ -20,6 +20,10 @@ export const NOTIFICATION_CATEGORIES = [
   "favorite_new_ride",
   "support_reply",
   "ride_changed",
+  "template_subscription_request",
+  "template_subscription_accepted",
+  "template_subscription_rejected",
+  "template_subscription_revoked",
   "admin_review_cancellation_abuse",
   "system",
 ] as const;
@@ -44,6 +48,10 @@ export const USER_TOGGLEABLE_CATEGORIES = [
   "review_received",
   "favorite_new_ride",
   "support_reply",
+  "template_subscription_request",
+  "template_subscription_accepted",
+  "template_subscription_rejected",
+  "template_subscription_revoked",
 ] as const;
 
 export type UserToggleableCategory = (typeof USER_TOGGLEABLE_CATEGORIES)[number];

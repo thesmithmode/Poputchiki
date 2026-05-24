@@ -1,0 +1,3 @@
+commit	value	status	description
+4448e5d	0	keep	baseline (entry+router+query gzip)
+2ed7311	70816	keep	Свой query persister — убрали @tanstack/react-query-persist-client

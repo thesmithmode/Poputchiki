@@ -33,6 +33,8 @@ export interface RideDetail extends Ride {
   pending_requests: PendingRequest[];
   my_request_id: string | null;
   my_request_status: "pending" | "accepted" | "rejected" | "cancelled" | null;
+  my_subscription_id: string | null;
+  my_subscription_status: "pending" | "accepted" | "rejected" | "cancelled" | "revoked" | null;
 }
 
 export function useRide(id: string) {

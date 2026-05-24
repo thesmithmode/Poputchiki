@@ -120,18 +120,26 @@ describe("formatMessage", () => {
   });
 
   it("template_subscription_request", () => {
-    expect(formatMessage("template_subscription_request", payload("template_subscription_request"))).toContain("регулярно");
+    expect(
+      formatMessage("template_subscription_request", payload("template_subscription_request")),
+    ).toContain("регулярно");
   });
 
   it("template_subscription_accepted", () => {
-    expect(formatMessage("template_subscription_accepted", payload("template_subscription_accepted"))).toContain("принял");
+    expect(
+      formatMessage("template_subscription_accepted", payload("template_subscription_accepted")),
+    ).toContain("принял");
   });
 
   it("template_subscription_rejected", () => {
-    expect(formatMessage("template_subscription_rejected", payload("template_subscription_rejected"))).toContain("отклонил");
+    expect(
+      formatMessage("template_subscription_rejected", payload("template_subscription_rejected")),
+    ).toContain("отклонил");
   });
 
   it("template_subscription_revoked", () => {
-    expect(formatMessage("template_subscription_revoked", payload("template_subscription_revoked"))).toContain("отменил");
+    expect(
+      formatMessage("template_subscription_revoked", payload("template_subscription_revoked")),
+    ).toContain("отменил");
   });
 });

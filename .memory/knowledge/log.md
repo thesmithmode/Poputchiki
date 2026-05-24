@@ -1,5 +1,11 @@
 # Build Log
 
+## [2026-05-25T00:10:00+03:00] compile | daily/2026-05-24.md (pass 4 — context-restore re-check)
+- Source: daily/2026-05-24.md
+- Articles created: (none)
+- Articles updated: (none — все концепты скомпилированы в предыдущих 3 проходах)
+- Note: После восстановления контекста сессии повторно проверены log.md и существующие статьи. Подтверждено: stale-ride-feed-ux-trap.md, feed-freshness-indicator.md, tanstack-query-semantic-key.md полностью покрывают знания из 2026-05-24.
+
 ## [2026-05-24T23:59:00+03:00] compile | daily/2026-05-24.md (pass 3 — verification)
 - Source: daily/2026-05-24.md
 - Articles created: (none)

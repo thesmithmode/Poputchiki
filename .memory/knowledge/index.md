@@ -121,3 +121,6 @@
 | [[concepts/generate-series-cron-expand]] | Single-SQL cron expand via INSERT...SELECT...GENERATE_SERIES ON CONFLICT DO NOTHING; eliminates 150k async round-trips | daily/2026-05-22.md | 2026-05-22 |
 | [[concepts/postgres-js-boolean-array-wire-type]] | postgres.js boolean[] must be cast ::text[]::boolean[] in UNNEST; wire type incompatibility with PostgreSQL boolean[] | daily/2026-05-22.md | 2026-05-22 |
 | [[concepts/migration-linux-sort-down-file]] | Linux sorts .down.sql before .sql (ASCII d=100 < s=115); use IF EXISTS/IF NOT EXISTS guards in down files | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/library-package-no-console]] | TypeScript lib packages (no DOM lib) cannot use console.*; logging must be at call-site in apps/ | daily/2026-05-22.md | 2026-05-22 |
+| [[concepts/stale-ride-feed-ux-trap]] | Stale-while-revalidate кэш показывает занятые места как свободные — баг безопасности данных; staleTime 60s→20s; useRide detail всегда свежий | daily/2026-05-24.md | 2026-05-24 |
+| [[concepts/feed-freshness-indicator]] | Мини-баннер над лентой: время последнего fetch + кнопка принудительного обновления; появляется при данных старше порога | daily/2026-05-24.md | 2026-05-24 |

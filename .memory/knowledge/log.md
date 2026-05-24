@@ -1,5 +1,11 @@
 # Build Log
 
+## [2026-05-25T01:00:00+03:00] compile | daily/2026-05-24.md (pass 5 — Session 21:25 SSE concepts)
+- Source: daily/2026-05-24.md
+- Articles created: sse-named-events-onmessage-gap.md, notifier-api-sse-bridge.md
+- Articles updated: (none)
+- Note: Предыдущие 4 прохода покрывали сессию 18:40 (staleTime/feed). Сессия 21:25 (TASK-111..125, SSE broadcast) не была скомпилирована. Два новых концепта: EventSource.onmessage silent-fail для named events; cross-process SSE bridge через internal HTTP endpoint.
+
 ## [2026-05-25T00:10:00+03:00] compile | daily/2026-05-24.md (pass 4 — context-restore re-check)
 - Source: daily/2026-05-24.md
 - Articles created: (none)

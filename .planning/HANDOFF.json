@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-24T17:59:21.925Z",
+  "timestamp": "2026-05-24T18:32:30.935Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -19,6 +19,10 @@
     {
       "status": "M",
       "path": ".memory/daily/2026-05-24.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/index.md"
     },
     {
       "status": "M",
@@ -43,8 +47,56 @@
     {
       "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/app.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/ride-requests/internalRideRequestsRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/template-subscriptions/internalTemplateSubscriptionsRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/template-subscriptions/respond.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/src/format.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/notifier/tests/unit/reply-markup.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/webhook/src/handlers/callback-query.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/webhook/tests/unit/callback-query.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/EventsScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/RideDetailScreen.tsx"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/notifier-api-sse-bridge.md"
+    },
+    {
+      "status": "??",
+      "path": ".memory/knowledge/concepts/sse-named-events-onmessage-gap.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n8d44831 FIX: убрать COPY docs из Dockerfile — директория удалена\n1d2cde9 FIX: biome format — format.test.ts\n0e853af TEST: coverage — 4 теста для новых категорий уведомлений в format.test.ts\n8b8021a FIX: исключить templateSubscriptionsRouter из unit coverage + перенести legal md в web/src/assets/legal/\ndc585a6 FIX: тесты — ожидать 404 вместо 403 (RLS скрывает чужую подписку), mock useTemplateSubscription в web тестах"
+  "context_notes": "Recent commits:\ndec6f3f FIX: унифицировать архитектуру уведомлений для подписок на регулярные поездки\n0134558 FIX: прогресс-бар загрузки никогда не идёт назад\n1cb828c CHORE: обновить memory-логи — 2026-05-24\n8d44831 FIX: убрать COPY docs из Dockerfile — директория удалена\n1d2cde9 FIX: biome format — format.test.ts"
 }

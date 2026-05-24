@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-24T18:32:30.935Z",
+  "timestamp": "2026-05-24T19:45:52.533Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -19,6 +19,10 @@
     {
       "status": "M",
       "path": ".memory/daily/2026-05-24.md"
+    },
+    {
+      "status": "M",
+      "path": ".memory/knowledge/concepts/coverage-gate-discipline.md"
     },
     {
       "status": "M",
@@ -50,53 +54,33 @@
     },
     {
       "status": "M",
-      "path": "apps/api/src/app.ts"
+      "path": "web/src/App.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/src/ride-requests/internalRideRequestsRouter.ts"
+      "path": "web/src/hooks/useMe.ts"
     },
     {
       "status": "M",
-      "path": "apps/api/src/template-subscriptions/internalTemplateSubscriptionsRouter.ts"
+      "path": "web/tests/App.test.tsx"
     },
     {
       "status": "M",
-      "path": "apps/api/src/template-subscriptions/respond.ts"
+      "path": "web/tests/NotFoundAndOffline.test.tsx"
     },
     {
       "status": "M",
-      "path": "apps/notifier/src/format.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/notifier/tests/unit/reply-markup.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/webhook/src/handlers/callback-query.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/webhook/tests/unit/callback-query.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/EventsScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/RideDetailScreen.tsx"
+      "path": "web/tests/useMe.test.ts"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/notifier-api-sse-bridge.md"
+      "path": ".memory/knowledge/concepts/onboarding-is-onboarded-flag.md"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/sse-named-events-onmessage-gap.md"
+      "path": "web/src/contexts/"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\ndec6f3f FIX: унифицировать архитектуру уведомлений для подписок на регулярные поездки\n0134558 FIX: прогресс-бар загрузки никогда не идёт назад\n1cb828c CHORE: обновить memory-логи — 2026-05-24\n8d44831 FIX: убрать COPY docs из Dockerfile — директория удалена\n1d2cde9 FIX: biome format — format.test.ts"
+  "context_notes": "Recent commits:\n1a6874b TEST: unit тесты для internalTemplateSubscriptionsRouter (coverage gate)\nd27022e FIX: unit тесты для respond.ts + статус в теле ответа accept/reject подписки\na7d9bbd CHORE: обновить memory-логи — 2026-05-24\n228ab64 FEAT: унифицировать запись на поездку — выбор разовая/регулярная + фикс уведомлений\ndec6f3f FIX: унифицировать архитектуру уведомлений для подписок на регулярные поездки"
 }

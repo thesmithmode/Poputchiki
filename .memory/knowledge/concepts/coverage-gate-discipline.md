@@ -4,8 +4,9 @@ aliases: [coverage-discipline, coverage-gate, threshold-rollback]
 tags: [testing, ci-cd, discipline, coverage]
 sources:
   - "daily/2026-05-03.md"
+  - "daily/2026-05-24.md"
 created: 2026-05-03
-updated: 2026-05-03
+updated: 2026-05-24
 ---
 
 # Coverage Gate Discipline (Never Lower Thresholds)
@@ -27,6 +28,14 @@ The failure mode is subtle: a developer encounters a red CI coverage gate, reaso
 A correct alternative is the `c8 ignore` strategy: for code that is structurally unreachable in tests (not logically unreachable — that indicates a design problem), add `/* c8 ignore next */` inline. This keeps the threshold intact while acknowledging the specific line. Examples of legitimate ignores: `.catch(/* c8 ignore next */ () => {})` for fire-and-forget error handlers, nullish guards for types that the library guarantees are non-null (e.g., postgres.js always returns `Date` for `timestamptz`).
 
 Defensive ternary branches for library-guaranteed types are considered dead code, not untestable code — they should be removed rather than annotated. The presence of an unreachable branch signals a misunderstanding of the library's contract and should be fixed at the source.
+
+**New endpoint rule:** Every new route handler file or endpoint created in a session requires tests to be written in the same commit or immediately after. Deferring test writing until "after CI fails" guarantees a red CI run. In the 2026-05-24 session, two endpoints were created without tests:
+- `respond.ts` (subscription accept/reject handler) → CI red at 91.48% line coverage
+- `internalTemplateSubscriptionsRouter.ts` → CI red at 93.42% line coverage
+
+Both required fixing before CI could be green. The cost: a full CI cycle (~10 min) plus a fix commit, all preventable by writing tests immediately.
+
+**Response body contract:** When a service function returns a typed result object (e.g., `SubRespondResult`), the router must explicitly include the relevant fields in its JSON response. Returning `c.json({ ok: true })` when the test expects `c.json({ ok: true, status: "accepted" })` causes test failures that appear as contract mismatches, not coverage failures.
 
 ## Related Concepts
 

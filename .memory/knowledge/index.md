@@ -126,3 +126,4 @@
 | [[concepts/feed-freshness-indicator]] | Мини-баннер над лентой: время последнего fetch + кнопка принудительного обновления; появляется при данных старше порога | daily/2026-05-24.md | 2026-05-24 |
 | [[concepts/sse-named-events-onmessage-gap]] | EventSource.onmessage ловит только unnamed SSE; named events (Hono writeSSE с event:) требуют addEventListener — silent fail без ошибок | daily/2026-05-24.md | 2026-05-24 |
 | [[concepts/notifier-api-sse-bridge]] | Cross-process SSE broadcast: notifier→POST /internal/sse/broadcast→api sseManager; защита INTERNAL_API_SECRET; fire-and-forget | daily/2026-05-24.md | 2026-05-24 |
+| [[concepts/onboarding-is-onboarded-flag]] | WelcomeScreen + ProfileSetupScreen + is_onboarded flag; routing guard skips for registered users | daily/2026-05-24.md | 2026-05-24 |

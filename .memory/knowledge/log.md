@@ -1,5 +1,11 @@
 # Build Log
 
+## [2026-05-24T22:14:00] compile | Daily Log 2026-05-24
+- Source: daily/2026-05-24.md
+- Articles created: [[concepts/onboarding-is-onboarded-flag]]
+- Articles updated: [[concepts/coverage-gate-discipline]] (new endpoint → immediate tests rule; response body contract lesson), [[concepts/tanstack-query-semantic-key]] (staleTime 60s→20s tuning, useRide staleTime:0)
+- Note: [[concepts/stale-ride-feed-ux-trap]], [[concepts/feed-freshness-indicator]], [[concepts/sse-named-events-onmessage-gap]], [[concepts/notifier-api-sse-bridge]] were compiled in a prior pass from the same daily log
+
 ## [2026-05-25T01:00:00+03:00] compile | daily/2026-05-24.md (pass 5 — Session 21:25 SSE concepts)
 - Source: daily/2026-05-24.md
 - Articles created: sse-named-events-onmessage-gap.md, notifier-api-sse-bridge.md

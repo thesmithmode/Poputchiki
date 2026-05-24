@@ -10,6 +10,13 @@ vi.mock("../src/lib/api", async (importOriginal) => {
   return { ...actual, apiFetch: vi.fn() };
 });
 
+vi.mock("../src/hooks/useTemplateSubscription", () => ({
+  useSubscribeMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useSubscriptionActionMutation: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useDriverSubscriptions: vi.fn(() => ({ data: [] })),
+  useMySubscriptions: vi.fn(() => ({ data: [] })),
+}));
+
 vi.mock("../src/hooks/useMe", () => ({
   useMe: vi.fn(() => ({
     status: "ok",

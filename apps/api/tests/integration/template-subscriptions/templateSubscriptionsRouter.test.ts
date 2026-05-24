@@ -211,14 +211,15 @@ describe("accept / reject / cancel / revoke", () => {
     subId = row?.id ?? "";
   });
 
-  it("только водитель может принять → другой user → 403", async () => {
+  it("только водитель может принять → другой user → 404 (RLS скрывает чужую подписку)", async () => {
     const app = makeApp();
     const token = await makeToken(OTHER);
     const res = await app.request(`/api/template-subscriptions/${subId}/accept`, {
       method: "POST",
       headers: authHeaders(token),
     });
-    expect(res.status).toBe(403);
+    // RLS: OTHER не является ни пассажиром ни водителем — subscription не видна → 404
+    expect(res.status).toBe(404);
   });
 
   it("водитель принимает → status=accepted", async () => {

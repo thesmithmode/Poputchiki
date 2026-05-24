@@ -31,6 +31,7 @@ import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter"
 import { ridesCache } from "./rides/ridesCache";
 import { createRidesRouter } from "./rides/ridesRouter";
 import { createSupportRouter } from "./support/supportRouter";
+import { createInternalTemplateSubscriptionsRouter } from "./template-subscriptions/internalTemplateSubscriptionsRouter";
 import { createTemplateSubscriptionsRouter } from "./template-subscriptions/templateSubscriptionsRouter";
 import { createUsersRouter } from "./users/usersRouter";
 
@@ -78,6 +79,10 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
     const internalSecret = process.env.INTERNAL_API_SECRET;
     if (internalSecret) {
       app.route("/internal/ride-requests", createInternalRideRequestsRouter(sql, internalSecret));
+      app.route(
+        "/internal/template-subscriptions",
+        createInternalTemplateSubscriptionsRouter(sql, internalSecret),
+      );
     }
 
     if (jwtSecret) {

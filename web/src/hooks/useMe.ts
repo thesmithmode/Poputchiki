@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch } from "../lib/api";
 import { clearMeCache, readMeCache, writeMeCache } from "../lib/meCache";
 import { getTelegramWebApp } from "../lib/telegram";
@@ -43,9 +43,14 @@ function toMeState(user: MeUser): MeState {
   return { status: "ok", user };
 }
 
-function applyUserState(user: MeUser, setState: (s: MeState) => void): void {
-  // Показываем 100% перед переходом к основному экрану — бар всегда доходит до конца
-  setState({ status: "loading", phase: "done" });
+const phaseLevel: Record<BootPhase, number> = { init: 0, auth: 1, profile: 2, done: 3 };
+
+function applyUserState(
+  user: MeUser,
+  setState: (s: MeState) => void,
+  advancePhase: (p: BootPhase) => void,
+): void {
+  advancePhase("done");
   setTimeout(() => setState(toMeState(user)), 350);
 }
 
@@ -83,8 +88,21 @@ export function useMe(): MeState {
     return { status: "loading", phase: "init" };
   });
 
+  // Прогресс никогда не идёт назад. Инициализируем по начальному состоянию:
+  // - ok/banned/error → 999 (скрытый рефреш, без loading-флешей)
+  // - loading/init → -1 (все фазы разрешены)
+  const progressRef = useRef(state.status !== "loading" ? 999 : -1);
+
   useEffect(() => {
     let cancelled = false;
+
+    // Заменяет прямой setState({ status: "loading" }) — гарантирует только forward-движение
+    function advancePhase(phase: BootPhase) {
+      const level = phaseLevel[phase];
+      if (level <= progressRef.current) return;
+      progressRef.current = level;
+      setState({ status: "loading", phase });
+    }
 
     async function boot() {
       const tgId = getTgId();
@@ -103,7 +121,7 @@ export function useMe(): MeState {
       }
 
       if (!getTokens()) {
-        setState({ status: "loading", phase: "auth" });
+        advancePhase("auth");
         const result = await telegramAuth();
         if (cancelled) return;
         if ("error" in result) {
@@ -111,16 +129,16 @@ export function useMe(): MeState {
           return;
         }
         if (tgId !== undefined) writeMeCache(result.user, tgId);
-        applyUserState(result.user, setState);
+        applyUserState(result.user, setState, advancePhase);
         return;
       }
 
-      setState({ status: "loading", phase: "profile" });
+      advancePhase("profile");
       try {
         const user = await apiFetch<MeUser>("/users/me");
         if (cancelled) return;
         if (tgId !== undefined) writeMeCache(user, tgId);
-        applyUserState(user, setState);
+        applyUserState(user, setState, advancePhase);
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) {
@@ -136,7 +154,7 @@ export function useMe(): MeState {
             return;
           }
           if (tgId !== undefined) writeMeCache(result.user, tgId);
-          applyUserState(result.user, setState);
+          applyUserState(result.user, setState, advancePhase);
         } else if (err instanceof ApiError && err.status === 403) {
           const body = err.body as { reason?: string; banned_at?: string } | null;
           setState({

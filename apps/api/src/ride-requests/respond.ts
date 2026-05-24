@@ -151,5 +151,15 @@ export async function respondToRideRequest(
     /* c8 ignore next -- fire-and-forget */ () => {},
   );
 
+  // Пометить уведомление водителя как прочитанное — кнопки пропадут при следующем рефреше в web
+  if (action !== "cancel") {
+    sql`
+      UPDATE user_notifications SET is_read = true
+      WHERE user_id = ${result.request.driver_id}::uuid
+        AND data->>'request_id' = ${requestId}
+        AND category = 'ride_request'
+    `.catch(/* c8 ignore next -- fire-and-forget */ () => {});
+  }
+
   return result;
 }

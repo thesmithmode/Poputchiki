@@ -1,21 +1,18 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { UUID_RE } from "../lib/uuid";
-import type { AppUser } from "../middleware/identity-guard";
-import { type Action, isDomainError, respondToRideRequest } from "./respond";
+import { type SubAction, isDomainError, respondToSubscription } from "./respond";
 
 /**
  * Internal endpoint используется только webhook-сервисом для применения
- * accept/reject поступающих через callback_query из Telegram.
+ * accept/reject подписок через callback_query из Telegram.
  *
- * Защита: X-Internal-Secret header сравнивается со shared secret из env.
- * tg_id из body → user.id через users.tg_id (с pgcrypto decrypt если нужно
- * — но tg_id хранится plaintext, см. db/migrations/001_users.sql).
- *
- * Не выставлять на публичный домен. В docker compose роут вешается на
- * loopback, доступен только по docker-network имени api:PORT.
+ * Зеркало internalRideRequestsRouter — тот же security/auth pattern.
  */
-export function createInternalRideRequestsRouter(sql: postgres.Sql, internalSecret: string): Hono {
+export function createInternalTemplateSubscriptionsRouter(
+  sql: postgres.Sql,
+  internalSecret: string,
+): Hono {
   const app = new Hono();
 
   app.use("*", async (c, next) => {
@@ -26,10 +23,10 @@ export function createInternalRideRequestsRouter(sql: postgres.Sql, internalSecr
     return next();
   });
 
-  for (const action of ["accept", "reject", "cancel"] as Action[]) {
+  for (const action of ["accept", "reject"] as SubAction[]) {
     app.post(`/:id/${action}`, async (c) => {
-      const requestId = c.req.param("id");
-      if (!UUID_RE.test(requestId)) return c.json({ error: "invalid id" }, 400);
+      const subId = c.req.param("id");
+      if (!UUID_RE.test(subId)) return c.json({ error: "invalid id" }, 400);
 
       let body: { tg_id?: number };
       try {
@@ -47,32 +44,26 @@ export function createInternalRideRequestsRouter(sql: postgres.Sql, internalSecr
       `;
       if (!userRow) return c.json({ error: "user_not_found" }, 404);
 
-      const user: AppUser = {
-        id: userRow.id,
-        tgId,
-        role: userRow.role as AppUser["role"],
-      };
-
       try {
-        const result = await respondToRideRequest(sql, user, requestId, action);
+        const result = await respondToSubscription(
+          sql,
+          { id: userRow.id, tgId, role: userRow.role as "user" | "admin" },
+          subId,
+          action,
+        );
 
         // Кнопки в in-app EventsScreen должны исчезнуть без перезагрузки
         sql`
           UPDATE user_notifications SET is_read = true
-          WHERE data->>'request_id' = ${requestId} AND is_read = false
+          WHERE data->>'subscription_id' = ${subId} AND is_read = false
         `.catch(() => {});
 
-        return c.json({
-          id: result.request.id,
-          status: result.request.status,
-          seat_refunded: result.refunded,
-        });
+        return c.json({ id: result.sub.id, status: result.sub.status });
       } catch (err) {
         if (isDomainError(err)) {
           if (err.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
           if (err.code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
-          if (err.code === "NO_SEATS") return c.json({ error: "no_seats" }, 409);
-          return c.json({ error: "invalid_state", message: err.message }, 409);
+          return c.json({ error: "invalid_state" }, 409);
         }
         /* c8 ignore next -- defensive */
         throw err;

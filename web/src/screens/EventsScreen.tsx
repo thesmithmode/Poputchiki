@@ -6,10 +6,16 @@ import {
   useMarkNotificationRead,
   useNotifications,
   useRespondRideRequest,
+  useRespondSubscription,
 } from "../hooks/useNotifications";
 
 function getRequestId(n: UserNotification): string | null {
   const id = n.data?.request_id;
+  return typeof id === "string" && id.length > 0 ? id : null;
+}
+
+function getSubscriptionId(n: UserNotification): string | null {
+  const id = n.data?.subscription_id;
   return typeof id === "string" && id.length > 0 ? id : null;
 }
 
@@ -63,6 +69,24 @@ function actionText(n: UserNotification): string {
       return "ответ от поддержки";
     case "system":
       return "Системное уведомление";
+    case "template_subscription_request": {
+      const dest = getString(n, "destination");
+      return dest ? `хочет ездить с тобой регулярно в ${dest}` : "хочет ездить с тобой регулярно";
+    }
+    case "template_subscription_accepted": {
+      const dest = getString(n, "destination");
+      return dest
+        ? `принял заявку на регулярные поездки в ${dest}`
+        : "принял заявку на регулярные поездки";
+    }
+    case "template_subscription_rejected": {
+      const dest = getString(n, "destination");
+      return dest
+        ? `отклонил заявку на регулярные поездки в ${dest}`
+        : "отклонил заявку на регулярные поездки";
+    }
+    case "template_subscription_revoked":
+      return "отменил подписку на маршрут";
     case "admin_review_cancellation_abuse":
       return "слишком много отмен — требуется проверка";
     case "welcome":
@@ -143,6 +167,7 @@ export function EventsScreen() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const respond = useRespondRideRequest();
+  const respondSub = useRespondSubscription();
   const [respondState, setRespondState] = useState<Record<string, "loading" | "done" | "error">>(
     {},
   );
@@ -166,6 +191,22 @@ export function EventsScreen() {
     setRespondState((p) => ({ ...p, [n.id]: "loading" }));
     respond.mutate(
       { requestId, action },
+      {
+        onSuccess: () => {
+          setRespondState((p) => ({ ...p, [n.id]: "done" }));
+          if (!n.is_read) markRead.mutate(n.id);
+        },
+        onError: () => setRespondState((p) => ({ ...p, [n.id]: "error" })),
+      },
+    );
+  }
+
+  function handleRespondSub(n: UserNotification, action: "accept" | "reject") {
+    const subscriptionId = getSubscriptionId(n);
+    if (!subscriptionId) return;
+    setRespondState((p) => ({ ...p, [n.id]: "loading" }));
+    respondSub.mutate(
+      { subscriptionId, action },
       {
         onSuccess: () => {
           setRespondState((p) => ({ ...p, [n.id]: "done" }));
@@ -382,7 +423,10 @@ export function EventsScreen() {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {unread.map((n) => {
                 const requestId = getRequestId(n);
+                const subscriptionId = getSubscriptionId(n);
                 const showActions = n.category === "ride_request" && requestId !== null;
+                const showSubActions =
+                  n.category === "template_subscription_request" && subscriptionId !== null;
                 const state = respondState[n.id];
                 return (
                   <div
@@ -499,6 +543,50 @@ export function EventsScreen() {
                         </button>
                       </div>
                     )}
+                    {showSubActions && state !== "done" && (
+                      <div style={{ display: "flex", gap: 8, paddingLeft: 52 }}>
+                        <button
+                          type="button"
+                          data-testid={`notification-${n.id}-sub-accept`}
+                          disabled={state === "loading"}
+                          onClick={() => handleRespondSub(n, "accept")}
+                          style={{
+                            padding: "8px 18px",
+                            border: "none",
+                            borderRadius: 8,
+                            background: "var(--brand-primary)",
+                            color: "#fff",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: state === "loading" ? "wait" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: state === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Принять
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`notification-${n.id}-sub-reject`}
+                          disabled={state === "loading"}
+                          onClick={() => handleRespondSub(n, "reject")}
+                          style={{
+                            padding: "8px 18px",
+                            border: "1px solid var(--brand-line)",
+                            borderRadius: 8,
+                            background: "transparent",
+                            color: "var(--brand-text)",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: state === "loading" ? "wait" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: state === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Отклонить
+                        </button>
+                      </div>
+                    )}
                     {n.category === "confirm_participation" && (
                       <div style={{ paddingLeft: 52 }}>
                         <button
@@ -554,7 +642,10 @@ export function EventsScreen() {
             <div style={{ display: "flex", flexDirection: "column" }}>
               {read.map((n) => {
                 const requestId = getRequestId(n);
+                const subscriptionId = getSubscriptionId(n);
                 const showActions = n.category === "ride_request" && requestId !== null;
+                const showSubActions =
+                  n.category === "template_subscription_request" && subscriptionId !== null;
                 const state = respondState[n.id];
                 return (
                   <div
@@ -640,6 +731,50 @@ export function EventsScreen() {
                           data-testid={`notification-${n.id}-reject`}
                           disabled={state === "loading"}
                           onClick={() => handleRespond(n, "reject")}
+                          style={{
+                            padding: "6px 14px",
+                            border: "1px solid var(--brand-line)",
+                            borderRadius: 8,
+                            background: "transparent",
+                            color: "var(--brand-text)",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: state === "loading" ? "wait" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: state === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Отклонить
+                        </button>
+                      </div>
+                    )}
+                    {showSubActions && state !== "done" && (
+                      <div style={{ display: "flex", gap: 8, paddingLeft: 48 }}>
+                        <button
+                          type="button"
+                          data-testid={`notification-${n.id}-sub-accept`}
+                          disabled={state === "loading"}
+                          onClick={() => handleRespondSub(n, "accept")}
+                          style={{
+                            padding: "6px 14px",
+                            border: "none",
+                            borderRadius: 8,
+                            background: "var(--brand-primary)",
+                            color: "#fff",
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: state === "loading" ? "wait" : "pointer",
+                            fontFamily: "inherit",
+                            opacity: state === "loading" ? 0.6 : 1,
+                          }}
+                        >
+                          Принять
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`notification-${n.id}-sub-reject`}
+                          disabled={state === "loading"}
+                          onClick={() => handleRespondSub(n, "reject")}
                           style={{
                             padding: "6px 14px",
                             border: "1px solid var(--brand-line)",

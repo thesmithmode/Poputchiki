@@ -45,4 +45,24 @@ describe("buildReplyMarkup", () => {
   it("system → null", () => {
     expect(buildReplyMarkup("system", { ...payload(), category: "system" })).toBeNull();
   });
+
+  it("template_subscription_request с subscription_id → sub:accept/reject кнопки", () => {
+    const p: ReturnType<typeof payload> = {
+      ...payload(),
+      category: "template_subscription_request",
+      subscription_id: "sub-uuid-1",
+    };
+    const m = buildReplyMarkup("template_subscription_request", p);
+    expect(m).not.toBeNull();
+    if (!m) throw new Error("unreachable");
+    const row = m.inline_keyboard[0];
+    if (!row) throw new Error("unreachable");
+    expect(row[0]?.callback_data).toBe("sub:accept:sub-uuid-1");
+    expect(row[1]?.callback_data).toBe("sub:reject:sub-uuid-1");
+  });
+
+  it("template_subscription_request без subscription_id → null", () => {
+    const p = { ...payload(), category: "template_subscription_request" as const };
+    expect(buildReplyMarkup("template_subscription_request", p)).toBeNull();
+  });
 });

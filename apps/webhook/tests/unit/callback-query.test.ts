@@ -71,7 +71,7 @@ describe("handleCallbackQuery", () => {
     const [answerUrl, answerInit] = fetchMock.mock.calls[2] as [string, RequestInit];
     expect(answerUrl).toContain("answerCallbackQuery");
     const answerBody = JSON.parse(answerInit.body as string);
-    expect(answerBody.text).toContain("принята");
+    expect(answerBody.text).toContain("Принято");
   });
 
   it("успешный reject → внутренний endpoint c action=reject + editMessageText с ❌", async () => {
@@ -88,7 +88,7 @@ describe("handleCallbackQuery", () => {
       RequestInit,
     ];
     const answerBody = JSON.parse(lastInit.body as string);
-    expect(answerBody.text).toContain("отклонена");
+    expect(answerBody.text).toContain("Отклонено");
   });
 
   it("403 от API → 'Доступ запрещён' и НЕ editMessage", async () => {
@@ -190,5 +190,32 @@ describe("handleCallbackQuery", () => {
     // 2 calls: internal API + answer (no edit)
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock.mock.calls.some((c) => String(c[0]).includes("editMessageText"))).toBe(false);
+  });
+
+  it("sub:accept → POST /internal/template-subscriptions/:id/accept + edit + answer", async () => {
+    fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    await handleCallbackQuery(deps(fetchMock), makeQuery(`sub:accept:${REQUEST_ID}`));
+    const [apiUrl, apiInit] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(apiUrl).toBe(`http://api/internal/template-subscriptions/${REQUEST_ID}/accept`);
+    expect((apiInit.headers as Record<string, string>)["X-Internal-Secret"]).toBe("SECRET");
+    const apiBody = JSON.parse(apiInit.body as string);
+    expect(apiBody.tg_id).toBe(999);
+    const editCall = fetchMock.mock.calls.find((c) => String(c[0]).includes("editMessageText"));
+    expect(editCall).toBeDefined();
+    const editBody = JSON.parse((editCall?.[1] as RequestInit).body as string);
+    expect(editBody.text).toContain("✅");
+  });
+
+  it("sub:reject → POST /internal/template-subscriptions/:id/reject", async () => {
+    fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    await handleCallbackQuery(deps(fetchMock), makeQuery(`sub:reject:${REQUEST_ID}`));
+    const [apiUrl] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(apiUrl).toContain(`template-subscriptions/${REQUEST_ID}/reject`);
+    const answerCall = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as [
+      string,
+      RequestInit,
+    ];
+    const answerBody = JSON.parse(answerCall[1].body as string);
+    expect(answerBody.text).toContain("Отклонено");
   });
 });

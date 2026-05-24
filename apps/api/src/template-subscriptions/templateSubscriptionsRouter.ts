@@ -5,6 +5,7 @@ import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
+import { isDomainError, respondToSubscription } from "./respond";
 
 const PostInput = z.object({
   template_id: z.string().uuid(),
@@ -81,7 +82,16 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
       `;
       if (!sub) return { error: "duplicate" as const };
 
-      return { sub, driverId: tmpl.driver_id, destination: tmpl.to_label };
+      const [passengerRow] = await tx<{ display_name: string }[]>`
+        SELECT display_name FROM users WHERE id = ${user.id}::uuid
+      `;
+
+      return {
+        sub,
+        driverId: tmpl.driver_id,
+        destination: tmpl.to_label,
+        passengerName: passengerRow?.display_name ?? "",
+      };
     });
 
     if ("error" in result) {
@@ -97,6 +107,7 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
         subscription_id: result.sub.id,
         template_id: result.sub.template_id,
         passenger_id: user.id,
+        passenger_name: result.passengerName,
         destination: result.destination,
         active_to: result.sub.active_to,
       },
@@ -158,68 +169,17 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
     const subId = c.req.param("id");
     if (!UUID_RE.test(subId)) return c.json({ error: "invalid id" }, 400);
 
-    const result = await withIdentity(sql, user, async (tx) => {
-      const [sub] = await tx<(SubRow & { driver_id: string; to_label: string })[]>`
-        SELECT ts.*, t.driver_id, t.to_label
-        FROM template_subscriptions ts
-        JOIN ride_templates t ON t.id = ts.template_id
-        WHERE ts.id = ${subId}
-      `;
-      if (!sub) return { error: "not_found" as const };
-      if (sub.driver_id !== user.id) return { error: "forbidden" as const };
-      if (sub.status !== "pending") return { error: "invalid_state" as const };
-
-      await tx`
-        UPDATE template_subscriptions SET status = 'accepted', updated_at = now()
-        WHERE id = ${subId}
-      `;
-
-      // Retroactively создать accepted ride_requests для всех будущих rides этого шаблона
-      const rides = await tx<{ id: string }[]>`
-        SELECT r.id FROM rides r
-        WHERE r.template_id = ${sub.template_id}
-          AND r.departure_at > now()
-          AND r.status = 'active'
-          AND NOT EXISTS (
-            SELECT 1 FROM ride_requests rr
-            WHERE rr.ride_id = r.id AND rr.passenger_id = ${sub.passenger_id}
-          )
-          AND r.departure_at::date >= ${sub.active_from as string}::date
-          AND (${sub.active_to as string | null}::date IS NULL OR r.departure_at::date <= ${sub.active_to as string | null}::date)
-      `;
-
-      for (const ride of rides) {
-        const inserted = await tx<{ id: string }[]>`
-          INSERT INTO ride_requests (ride_id, passenger_id, status)
-          VALUES (${ride.id}::uuid, ${sub.passenger_id}::uuid, 'accepted')
-          ON CONFLICT (ride_id, passenger_id) DO NOTHING
-          RETURNING id
-        `;
-        if (inserted.length > 0) {
-          await tx`SELECT app.book_seat(${ride.id}::uuid)`;
-        }
+    try {
+      const result = await respondToSubscription(sql, user, subId, "accept");
+      return c.json({ ok: true, status: result.sub.status });
+    } catch (err) {
+      if (isDomainError(err)) {
+        if (err.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+        if (err.code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+        return c.json({ error: "invalid_state" }, 409);
       }
-
-      return {
-        sub: { ...sub, status: "accepted" },
-        passengerId: sub.passenger_id,
-        destination: sub.to_label,
-      };
-    });
-
-    if ("error" in result) {
-      if (result.error === "not_found") return c.json({ error: "not_found" }, 404);
-      if (result.error === "forbidden") return c.json({ error: "forbidden" }, 403);
-      return c.json({ error: "invalid_state" }, 409);
+      throw err;
     }
-
-    enqueueNotification(sql, {
-      userId: result.passengerId,
-      category: "template_subscription_accepted",
-      data: { subscription_id: subId, destination: result.destination },
-    }).catch(() => {});
-
-    return c.json(result.sub);
   });
 
   // POST /:id/reject — водитель отклоняет
@@ -228,37 +188,17 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
     const subId = c.req.param("id");
     if (!UUID_RE.test(subId)) return c.json({ error: "invalid id" }, 400);
 
-    const result = await withIdentity(sql, user, async (tx) => {
-      const [sub] = await tx<(SubRow & { driver_id: string; to_label: string })[]>`
-        SELECT ts.*, t.driver_id, t.to_label
-        FROM template_subscriptions ts
-        JOIN ride_templates t ON t.id = ts.template_id
-        WHERE ts.id = ${subId}
-      `;
-      if (!sub) return { error: "not_found" as const };
-      if (sub.driver_id !== user.id) return { error: "forbidden" as const };
-      if (sub.status !== "pending") return { error: "invalid_state" as const };
-
-      await tx`
-        UPDATE template_subscriptions SET status = 'rejected', updated_at = now()
-        WHERE id = ${subId}
-      `;
-      return { passengerId: sub.passenger_id, destination: sub.to_label };
-    });
-
-    if ("error" in result) {
-      if (result.error === "not_found") return c.json({ error: "not_found" }, 404);
-      if (result.error === "forbidden") return c.json({ error: "forbidden" }, 403);
-      return c.json({ error: "invalid_state" }, 409);
+    try {
+      const result = await respondToSubscription(sql, user, subId, "reject");
+      return c.json({ ok: true, status: result.sub.status });
+    } catch (err) {
+      if (isDomainError(err)) {
+        if (err.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+        if (err.code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+        return c.json({ error: "invalid_state" }, 409);
+      }
+      throw err;
     }
-
-    enqueueNotification(sql, {
-      userId: result.passengerId,
-      category: "template_subscription_rejected",
-      data: { subscription_id: subId, destination: result.destination },
-    }).catch(() => {});
-
-    return c.json({ ok: true });
   });
 
   // POST /:id/revoke — водитель отзывает принятую подписку
@@ -283,7 +223,6 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
         WHERE id = ${subId}
       `;
 
-      // Отменить все будущие pending/accepted ride_requests этого пассажира на этом шаблоне
       const futureRequests = await tx<{ id: string; status: string; ride_id: string }[]>`
         SELECT rr.id, rr.status, rr.ride_id
         FROM ride_requests rr
@@ -338,7 +277,6 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
         WHERE id = ${subId}
       `;
 
-      // Если подписка была accepted — отменить будущие ride_requests
       if (sub.status === "accepted") {
         const futureRequests = await tx<{ id: string; status: string; ride_id: string }[]>`
           SELECT rr.id, rr.status, rr.ride_id

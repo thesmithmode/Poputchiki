@@ -39,7 +39,9 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
     case "ride_changed":
       return "Параметры поездки изменены";
     case "template_subscription_request":
-      return "Пассажир хочет ездить с вами регулярно";
+      return payload.passenger_name
+        ? `${payload.passenger_name} хочет ездить с вами регулярно`
+        : "Пассажир хочет ездить с вами регулярно";
     case "template_subscription_accepted":
       return "Водитель принял вашу заявку на регулярные поездки!";
     case "template_subscription_rejected":

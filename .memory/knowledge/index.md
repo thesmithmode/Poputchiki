@@ -124,3 +124,5 @@
 | [[concepts/library-package-no-console]] | TypeScript lib packages (no DOM lib) cannot use console.*; logging must be at call-site in apps/ | daily/2026-05-22.md | 2026-05-22 |
 | [[concepts/stale-ride-feed-ux-trap]] | Stale-while-revalidate кэш показывает занятые места как свободные — баг безопасности данных; staleTime 60s→20s; useRide detail всегда свежий | daily/2026-05-24.md | 2026-05-24 |
 | [[concepts/feed-freshness-indicator]] | Мини-баннер над лентой: время последнего fetch + кнопка принудительного обновления; появляется при данных старше порога | daily/2026-05-24.md | 2026-05-24 |
+| [[concepts/sse-named-events-onmessage-gap]] | EventSource.onmessage ловит только unnamed SSE; named events (Hono writeSSE с event:) требуют addEventListener — silent fail без ошибок | daily/2026-05-24.md | 2026-05-24 |
+| [[concepts/notifier-api-sse-bridge]] | Cross-process SSE broadcast: notifier→POST /internal/sse/broadcast→api sseManager; защита INTERNAL_API_SECRET; fire-and-forget | daily/2026-05-24.md | 2026-05-24 |

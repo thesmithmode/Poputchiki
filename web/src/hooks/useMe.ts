@@ -21,7 +21,7 @@ export type MeUser = {
   role: "user" | "admin";
 };
 
-export type BootPhase = "init" | "auth" | "profile";
+export type BootPhase = "init" | "auth" | "profile" | "done";
 
 export type MeState =
   | { status: "loading"; phase: BootPhase }
@@ -44,7 +44,9 @@ function toMeState(user: MeUser): MeState {
 }
 
 function applyUserState(user: MeUser, setState: (s: MeState) => void): void {
-  setState(toMeState(user));
+  // Показываем 100% перед переходом к основному экрану — бар всегда доходит до конца
+  setState({ status: "loading", phase: "done" });
+  setTimeout(() => setState(toMeState(user)), 350);
 }
 
 async function telegramAuth(): Promise<TelegramAuthResult> {
@@ -123,6 +125,7 @@ export function useMe(): MeState {
         if (cancelled) return;
         if (err instanceof ApiError && err.status === 401) {
           // apiFetch уже пробовал refresh внутри — раз вернулся 401, refresh не помог.
+          // Остаёмся на phase:"profile" (80%) — не откатываем прогресс назад.
           clearTokens();
           clearMeCache();
           setState({ status: "loading", phase: "auth" });

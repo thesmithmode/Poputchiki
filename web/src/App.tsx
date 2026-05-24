@@ -313,6 +313,7 @@ function AppRoutes() {
       init: { label: "Запуск приложения…", pct: 15 },
       auth: { label: "Выполняется вход…", pct: 50 },
       profile: { label: "Загрузка профиля…", pct: 80 },
+      done: { label: "Готово!", pct: 100 },
     };
     const { label, pct } = phaseConfig[me.phase];
     return (

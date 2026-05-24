@@ -12,7 +12,8 @@ function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
         const resp = txResponses[i] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
-      }) as unknown;
+      // biome-ignore lint/suspicious/noExplicitAny: postgres.js tx helper mock
+      }) as any;
       tx.json = (v: unknown) => JSON.stringify(v);
       return fn(tx);
     }),

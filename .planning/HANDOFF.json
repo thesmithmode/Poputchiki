@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-24T14:37:06.077Z",
+  "timestamp": "2026-05-24T14:55:16.263Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,41 +18,21 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".planning/HANDOFF.json"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/middleware/identity-guard.test.ts"
-    },
-    {
-      "status": "??",
-      "path": ".codex/"
-    },
-    {
-      "status": "??",
-      "path": "\".memory/daily/2026-05-22 (1).md\""
-    },
-    {
-      "status": "??",
       "path": ".memory/daily/2026-05-24.md"
     },
     {
-      "status": "??",
-      "path": "AGENTS.md"
+      "status": "M",
+      "path": ".memory/scripts/flush.log"
     },
     {
-      "status": "??",
-      "path": "results.tsv"
+      "status": "M",
+      "path": ".memory/scripts/last-flush.json"
     },
     {
-      "status": "??",
-      "path": "web/dist/"
-    },
-    {
-      "status": "??",
-      "path": "web/src/screens/FeedScreen.tsx"
+      "status": "M",
+      "path": ".planning/HANDOFF.json"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nc24586d FEAT: ускорение старта TMA — entry chunks -79% (51→10.75 kB gzip)\n79c53b4 Merge branch 'main' into dev\nd493511 FIX: тег pgbouncer v1.23.1-p3 — 1.23.1 не существует на Docker Hub\n994514f FIX: тег pgbouncer v1.23.1-p3 — 1.23.1 не существует на Docker Hub\n0502176 FEAT: squash dev→main — DLQ нотификаций, retry-loop, PgBouncer, admin DLQ endpoint, coverage 95%+"
+  "context_notes": "Recent commits:\nd8a6fe9 FIX: biome-ignore noExplicitAny в cron-тесте — правильное размещение\ndb954d8 FIX: biome-ignore autoFocus в FilterPresetsScreen\na5f75d5 FIX: форматирование fonts.css и тип tx в cron-тесте\ndfcfc78 FIX: lint — убрать stale biome-ignore, исправить форматирование и as any\n37a92ca FIX: useFavorites хук, favoritesOnly в Filters, обновить applyFilters и RideCard props"
 }

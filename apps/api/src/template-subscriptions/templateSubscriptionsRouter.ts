@@ -170,7 +170,8 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
     if (!UUID_RE.test(subId)) return c.json({ error: "invalid id" }, 400);
 
     try {
-      await respondToSubscription(sql, user, subId, "accept");
+      const result = await respondToSubscription(sql, user, subId, "accept");
+      return c.json({ ok: true, status: result.sub.status });
     } catch (err) {
       if (isDomainError(err)) {
         if (err.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
@@ -179,7 +180,6 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
       }
       throw err;
     }
-    return c.json({ ok: true });
   });
 
   // POST /:id/reject — водитель отклоняет
@@ -189,7 +189,8 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
     if (!UUID_RE.test(subId)) return c.json({ error: "invalid id" }, 400);
 
     try {
-      await respondToSubscription(sql, user, subId, "reject");
+      const result = await respondToSubscription(sql, user, subId, "reject");
+      return c.json({ ok: true, status: result.sub.status });
     } catch (err) {
       if (isDomainError(err)) {
         if (err.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
@@ -198,7 +199,6 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
       }
       throw err;
     }
-    return c.json({ ok: true });
   });
 
   // POST /:id/revoke — водитель отзывает принятую подписку

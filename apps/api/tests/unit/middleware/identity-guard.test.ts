@@ -174,11 +174,10 @@ describe("identityGuard: jti revocation check", () => {
   });
 
   it("valid jti not in revoked_tokens → 200", async () => {
-    // biome-ignore lint/suspicious/noExplicitAny: mock sql
     const sql = vi
       .fn()
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ display_name: "Test User" }]) as any;
+      .mockResolvedValueOnce([{ display_name: "Test User" }]);
     const app = new Hono();
     app.use("/api/*", identityGuard(SECRET, sql));
     app.get("/api/me", (c) => c.json(c.get("user" as never)));

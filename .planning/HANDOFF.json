@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-22T22:33:37.836Z",
+  "timestamp": "2026-05-24T14:37:06.077Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,21 +18,41 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-23.md"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/flush.log"
-    },
-    {
-      "status": "M",
-      "path": ".memory/scripts/last-flush.json"
-    },
-    {
-      "status": "M",
       "path": ".planning/HANDOFF.json"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/middleware/identity-guard.test.ts"
+    },
+    {
+      "status": "??",
+      "path": ".codex/"
+    },
+    {
+      "status": "??",
+      "path": "\".memory/daily/2026-05-22 (1).md\""
+    },
+    {
+      "status": "??",
+      "path": ".memory/daily/2026-05-24.md"
+    },
+    {
+      "status": "??",
+      "path": "AGENTS.md"
+    },
+    {
+      "status": "??",
+      "path": "results.tsv"
+    },
+    {
+      "status": "??",
+      "path": "web/dist/"
+    },
+    {
+      "status": "??",
+      "path": "web/src/screens/FeedScreen.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n0c7694c FEAT: PgBouncer transaction pool перед postgres для api\nf6c953d FIX: notifier graceful shutdown ждёт in-flight DLQ retry tick (max 5s)\n1f5b824 FEAT: TASK-139 multi-replica notifier дедуп через notification_log UNIQUE\n0772d18 FEAT: TASK-138 DLQ retry для TG с exponential backoff\n35c90a1 FEAT: TASK-140 per-recipient throttle уведомлений (rolling 1h окно)"
+  "context_notes": "Recent commits:\nc24586d FEAT: ускорение старта TMA — entry chunks -79% (51→10.75 kB gzip)\n79c53b4 Merge branch 'main' into dev\nd493511 FIX: тег pgbouncer v1.23.1-p3 — 1.23.1 не существует на Docker Hub\n994514f FIX: тег pgbouncer v1.23.1-p3 — 1.23.1 не существует на Docker Hub\n0502176 FEAT: squash dev→main — DLQ нотификаций, retry-loop, PgBouncer, admin DLQ endpoint, coverage 95%+"
 }

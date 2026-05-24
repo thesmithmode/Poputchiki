@@ -94,19 +94,33 @@ export function useMarkAllNotificationsRead() {
 
 /**
  * Inline accept/reject из карточки уведомления (драйверское действие).
- *
- * После вызова API меняется статус request И добавляется feed-row пассажиру.
- * Оптимистично НЕ обновляем notifications-список — карточка остаётся
- * как есть до приходящего обновления через invalidate. Причина: ответ
- * сервера несёт ID нового feed-row пассажира и обновлённый статус;
- * placeholder вне локального контекста рисовать смысла нет. Но invalidate
- * на settled — обязателен, и для notifications, и для ride.
  */
 export function useRespondRideRequest() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ requestId, action }: { requestId: string; action: "accept" | "reject" }) =>
       apiFetch<{ id: string; status: string }>(`/ride-requests/${requestId}/${action}`, {
+        method: "POST",
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
+      qc.invalidateQueries({ queryKey: queryKeys.ride.all });
+    },
+  });
+}
+
+/**
+ * Inline accept/reject подписки из карточки уведомления (драйверское действие).
+ * Симметрично useRespondRideRequest — единая архитектура.
+ */
+export function useRespondSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      subscriptionId,
+      action,
+    }: { subscriptionId: string; action: "accept" | "reject" }) =>
+      apiFetch<{ ok: true }>(`/template-subscriptions/${subscriptionId}/${action}`, {
         method: "POST",
       }),
     onSuccess: () => {

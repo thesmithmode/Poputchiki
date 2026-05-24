@@ -1121,7 +1121,9 @@ export function RideDetailScreen({ id }: Props) {
                       {sub.passenger_display_name}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--brand-sub)", marginTop: 2 }}>
-                      {sub.active_to ? `до ${sub.active_to}` : "бессрочно"}
+                      {sub.active_to
+                        ? `до ${new Date(sub.active_to).toLocaleDateString("ru-RU")}`
+                        : "бессрочно"}
                       {sub.message ? ` · ${sub.message}` : ""}
                     </div>
                   </div>
@@ -1237,7 +1239,9 @@ export function RideDetailScreen({ id }: Props) {
                       {sub.passenger_display_name}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--brand-sub)", marginTop: 2 }}>
-                      {sub.active_to ? `до ${sub.active_to}` : "бессрочно"}
+                      {sub.active_to
+                        ? `до ${new Date(sub.active_to).toLocaleDateString("ru-RU")}`
+                        : "бессрочно"}
                     </div>
                   </div>
                   <button

@@ -26,6 +26,7 @@ import type { Dispatcher } from "./realtime/dispatcher";
 import { createRealtimeRouter } from "./realtime/realtimeRouter";
 import { createReviewsRouter } from "./reviews/reviewsRouter";
 import { createInternalRideRequestsRouter } from "./ride-requests/internalRideRequestsRouter";
+import { createInternalTemplateSubscriptionsRouter } from "./template-subscriptions/internalTemplateSubscriptionsRouter";
 import { createRideRequestsRouter } from "./ride-requests/rideRequestsRouter";
 import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter";
 import { ridesCache } from "./rides/ridesCache";
@@ -78,6 +79,10 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
     const internalSecret = process.env.INTERNAL_API_SECRET;
     if (internalSecret) {
       app.route("/internal/ride-requests", createInternalRideRequestsRouter(sql, internalSecret));
+      app.route(
+        "/internal/template-subscriptions",
+        createInternalTemplateSubscriptionsRouter(sql, internalSecret),
+      );
     }
 
     if (jwtSecret) {

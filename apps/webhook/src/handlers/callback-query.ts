@@ -1,6 +1,7 @@
 import type { TelegramCallbackQuery } from "../types/telegram";
 
 const CALLBACK_RE = /^req:(accept|reject):([0-9a-f-]{36})$/i;
+const SUB_CALLBACK_RE = /^sub:(accept|reject):([0-9a-f-]{36})$/i;
 
 export interface CallbackDeps {
   botToken: string;
@@ -30,17 +31,24 @@ export async function handleCallbackQuery(
 ): Promise<void> {
   const fetchFn = deps.fetchFn ?? fetch;
   const data = query.data ?? "";
-  const match = CALLBACK_RE.exec(data);
-  if (!match) {
+
+  const reqMatch = CALLBACK_RE.exec(data);
+  const subMatch = !reqMatch ? SUB_CALLBACK_RE.exec(data) : null;
+
+  if (!reqMatch && !subMatch) {
     await answer(fetchFn, deps.botToken, query.id, "Неизвестная команда");
     return;
   }
-  const action = match[1] as "accept" | "reject";
-  const requestId = match[2];
+
+  const action = (reqMatch ?? subMatch)![1] as "accept" | "reject";
+  const entityId = (reqMatch ?? subMatch)![2];
+  const internalPath = reqMatch
+    ? `ride-requests/${entityId}/${action}`
+    : `template-subscriptions/${entityId}/${action}`;
 
   let resp: Response;
   try {
-    resp = await fetchFn(`${deps.apiUrl}/internal/ride-requests/${requestId}/${action}`, {
+    resp = await fetchFn(`${deps.apiUrl}/internal/${internalPath}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -55,7 +63,7 @@ export async function handleCallbackQuery(
 
   let userText: string;
   if (resp.ok) {
-    userText = action === "accept" ? "✅ Заявка принята" : "❌ Заявка отклонена";
+    userText = action === "accept" ? "✅ Принято" : "❌ Отклонено";
     if (query.message) {
       const statusLine = action === "accept" ? "\n\n✅ Принято" : "\n\n❌ Отклонено";
       const newText = (query.message.text ?? "") + statusLine;

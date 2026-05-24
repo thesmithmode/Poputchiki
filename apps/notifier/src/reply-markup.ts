@@ -32,5 +32,17 @@ export function buildReplyMarkup(
       ],
     };
   }
+  if (category === "template_subscription_request") {
+    const subscriptionId = payload.subscription_id;
+    if (typeof subscriptionId !== "string" || subscriptionId.length === 0) return null;
+    return {
+      inline_keyboard: [
+        [
+          { text: "✅ Принять", callback_data: `sub:accept:${subscriptionId}` },
+          { text: "❌ Отклонить", callback_data: `sub:reject:${subscriptionId}` },
+        ],
+      ],
+    };
+  }
   return null;
 }

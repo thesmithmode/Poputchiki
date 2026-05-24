@@ -204,6 +204,7 @@ export function FilterPresetsScreen() {
                         type="text"
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
+                        // biome-ignore lint/a11y/noAutofocus: поле переименования должно получать фокус автоматически
                         autoFocus
                         style={{
                           flex: 1,

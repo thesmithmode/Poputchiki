@@ -96,6 +96,28 @@ describe("respondToRideRequest — уведомление содержит им�
     );
   });
 
+  it("accept → pg_notify вызывается с ride_id для SSE-инвалидации", async () => {
+    mockTx
+      .mockResolvedValueOnce([PENDING_ROW]) // SELECT ride_request
+      .mockResolvedValueOnce([]) // advisory lock
+      .mockResolvedValueOnce([{ id: REQ_ID }]) // UPDATE
+      .mockResolvedValueOnce([{ id: RIDE_ID }]) // book_seat
+      .mockResolvedValueOnce([{ display_name: "Иван" }]); // SELECT display_name
+
+    await respondToRideRequest(mockSql, DRIVER, REQ_ID, "accept");
+
+    // mockSql вызывается как tagged template: первый аргумент — массив строк шаблона
+    const calls = mockSql.mock.calls as unknown[][];
+    const notifyCall = calls.find((args) => {
+      const parts = args[0];
+      return Array.isArray(parts) && (parts as string[]).some((s) => s.includes("pg_notify"));
+    });
+    expect(notifyCall).toBeDefined();
+    // Второй аргумент — JSON payload, должен содержать ride_id
+    const payload = notifyCall?.[1] as string;
+    expect(payload).toContain(RIDE_ID);
+  });
+
   it("display_name пустой → пустая строка в data, не падает", async () => {
     mockTx
       .mockResolvedValueOnce([PENDING_ROW]) // SELECT ride_request

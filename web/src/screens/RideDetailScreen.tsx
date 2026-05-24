@@ -373,6 +373,7 @@ export function RideDetailScreen({ id }: Props) {
     serverRequestStatus !== "cancelled" &&
     serverRequestStatus !== "rejected";
   const respondBtnDisabled =
+    isLoading ||
     reqStatus === "loading" ||
     requestIsActive ||
     serverRequestStatus === "cancelled" ||
@@ -384,21 +385,23 @@ export function RideDetailScreen({ id }: Props) {
         ? "var(--brand-primary-soft)"
         : "var(--brand-primary)";
   const respondBtnLabel =
-    serverRequestStatus === "rejected"
-      ? "Заявка отклонена"
-      : serverRequestStatus === "cancelled"
-        ? "Заявка отменена"
-        : reqStatus === "sent"
-          ? "Заявка отправлена"
-          : reqStatus === "loading"
-            ? "Отправляем..."
-            : reqStatus === "full"
-              ? "Мест нет"
-              : reqStatus === "duplicate"
-                ? "Уже отправлено"
-                : reqStatus === "error"
-                  ? "Ошибка, повторите"
-                  : "Записаться";
+    isLoading && reqStatus === "idle"
+      ? "Проверяем места…"
+      : serverRequestStatus === "rejected"
+        ? "Заявка отклонена"
+        : serverRequestStatus === "cancelled"
+          ? "Заявка отменена"
+          : reqStatus === "sent"
+            ? "Заявка отправлена"
+            : reqStatus === "loading"
+              ? "Отправляем..."
+              : reqStatus === "full"
+                ? "Мест нет"
+                : reqStatus === "duplicate"
+                  ? "Уже отправлено"
+                  : reqStatus === "error"
+                    ? "Ошибка, повторите"
+                    : "Записаться";
 
   // Пассажир может отозвать заявку (pending или accepted)
   const canCancelRequest =

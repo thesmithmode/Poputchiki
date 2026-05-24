@@ -11,7 +11,7 @@ vi.mock("../src/lib/api", async (importOriginal) => {
 });
 
 vi.mock("../src/hooks/useMe", () => ({
-  useMe: vi.fn(() => ({ status: "loading" })),
+  useMe: vi.fn(() => ({ status: "loading", phase: "init" })),
 }));
 
 vi.mock("../src/hooks/useFavorites", () => ({
@@ -66,7 +66,7 @@ function renderScreen(id = USER_ID) {
 describe("ProfileScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockedUseMe.mockReturnValue({ status: "loading" });
+    mockedUseMe.mockReturnValue({ status: "loading", phase: "init" });
   });
 
   it("показывает загрузку", () => {

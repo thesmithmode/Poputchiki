@@ -40,5 +40,7 @@ export function useRide(id: string) {
     queryKey: queryKeys.ride.detail(id),
     queryFn: () => apiFetch<RideDetail>(`/rides/${id}`),
     enabled: !!id,
+    // Короткий staleTime — данные детали протухают за 5с, пересвежий fetch при открытии
+    staleTime: 5_000,
   });
 }

@@ -297,7 +297,10 @@ queryClient.getQueryCache().subscribe(() => {
   _saveTimer = setTimeout(() => {
     _saveTimer = null;
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), state: dehydrate(queryClient) }));
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({ ts: Date.now(), state: dehydrate(queryClient) }),
+      );
     } catch {}
   }, 3000);
 });
@@ -339,7 +342,15 @@ function AppRoutes() {
         </div>
 
         {/* Progress bar */}
-        <div style={{ width: "100%", maxWidth: 280, display: "flex", flexDirection: "column", gap: 10 }}>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 280,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
           <div
             style={{
               width: "100%",

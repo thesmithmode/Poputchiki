@@ -1,3 +1,4 @@
+import "leaflet/dist/leaflet.css";
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
 import type { Coords } from "./AddressAutocomplete";

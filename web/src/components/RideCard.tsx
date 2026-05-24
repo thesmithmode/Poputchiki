@@ -9,6 +9,8 @@ interface RideCardProps {
   density?: "compact" | "cozy";
   onClick?: (ride: Ride) => void;
   cardState?: RideCardState;
+  isFavorited?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 const MAX_ADDR_LEN = 22;

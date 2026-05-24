@@ -1,0 +1,9 @@
+commit	value	status	description
+79c53b4	51.48	keep	baseline: index.js 25.31 + index.css 26.17 kB gzip
+fe28a09	44.62	keep	leaflet CSS → lazy chunks (-6.89 kB css gzip)
+discard	44.59	discard	manualChunks function — vendor-react+router net +2.63 kB хуже
+36551ad	29.43	keep	удалить неиспользуемый i18next: index.js 10.15 kB (-15.16 kB gzip, -60%!)
+6f03605	14.20	keep	минимальный fonts.css (только woff2 cyr+lat): index.css 4.05 kB (-15.23 kB gzip, -52%)
+7341c75	10.98	keep	lazy BottomTabBar+Suspense: index.js 6.93 kB (-3.22 kB, -31.7%)
+c1656cb	10.75	keep	lazy BannedScreen: index.js 6.70 kB (-0.23 kB)
+discard	12.19	discard	убрать Tailwind — visual loss, FiltersPanel сломается

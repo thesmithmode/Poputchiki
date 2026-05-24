@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-22T22:33:37.836Z",
+  "timestamp": "2026-05-24T14:55:16.263Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,7 +18,7 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-23.md"
+      "path": ".memory/daily/2026-05-24.md"
     },
     {
       "status": "M",
@@ -34,5 +34,5 @@
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n0c7694c FEAT: PgBouncer transaction pool перед postgres для api\nf6c953d FIX: notifier graceful shutdown ждёт in-flight DLQ retry tick (max 5s)\n1f5b824 FEAT: TASK-139 multi-replica notifier дедуп через notification_log UNIQUE\n0772d18 FEAT: TASK-138 DLQ retry для TG с exponential backoff\n35c90a1 FEAT: TASK-140 per-recipient throttle уведомлений (rolling 1h окно)"
+  "context_notes": "Recent commits:\nd8a6fe9 FIX: biome-ignore noExplicitAny в cron-тесте — правильное размещение\ndb954d8 FIX: biome-ignore autoFocus в FilterPresetsScreen\na5f75d5 FIX: форматирование fonts.css и тип tx в cron-тесте\ndfcfc78 FIX: lint — убрать stale biome-ignore, исправить форматирование и as any\n37a92ca FIX: useFavorites хук, favoritesOnly в Filters, обновить applyFilters и RideCard props"
 }

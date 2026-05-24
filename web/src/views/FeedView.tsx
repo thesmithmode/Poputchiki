@@ -70,7 +70,7 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedSet);
 
   const filteredRides = useMemo(
-    () => applyFilters(data?.rides ?? [], filters, myUserId),
+    () => applyFilters(data?.rides ?? [], filters, undefined, myUserId),
     [data, filters, myUserId],
   );
 

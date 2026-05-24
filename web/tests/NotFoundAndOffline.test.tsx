@@ -17,19 +17,22 @@ vi.mock("../src/lib/api", () => ({
   },
 }));
 
+const MOCK_ME_STATE = {
+  status: "ok" as const,
+  user: {
+    id: "test-user-id",
+    display_name: "Test User",
+    onboarded: true,
+    is_banned: false,
+    ban_reason: null,
+    banned_at: null,
+    role: "user" as const,
+  },
+};
+
 vi.mock("../src/hooks/useMe", () => ({
-  useMe: () => ({
-    status: "ok",
-    user: {
-      id: "test-user-id",
-      display_name: "Test User",
-      onboarded: true,
-      is_banned: false,
-      ban_reason: null,
-      banned_at: null,
-      role: "user" as const,
-    },
-  }),
+  useMe: () => MOCK_ME_STATE,
+  useBootMe: () => MOCK_ME_STATE,
 }));
 
 import { App } from "../src/App";

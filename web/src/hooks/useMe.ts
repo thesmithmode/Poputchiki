@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
+import { MeContext } from "../contexts/MeContext";
 import { ApiError, apiFetch } from "../lib/api";
 import { clearMeCache, readMeCache, writeMeCache } from "../lib/meCache";
 import { getTelegramWebApp } from "../lib/telegram";
@@ -78,7 +79,20 @@ async function telegramAuth(): Promise<TelegramAuthResult> {
   }
 }
 
+// MeContext живёт в contexts/MeContext.ts — отдельно от хука,
+// чтобы vi.mock("../hooks/useMe") не ломал провайдер в App.tsx.
+export { MeContext } from "../contexts/MeContext";
+
 export function useMe(): MeState {
+  const ctx = useContext(MeContext);
+  if (ctx !== null) return ctx;
+  // Fallback для тестов или компонентов вне провайдера — не должно происходить в prod
+  throw new Error("useMe: MeContext.Provider not found in tree");
+}
+
+// useBootMe — только для App. Запускает boot-цикл и возвращает MeState.
+// Результат передаётся в MeContext.Provider. Нигде больше не вызывать.
+export function useBootMe(): MeState {
   const [state, setState] = useState<MeState>(() => {
     const tgId = getTgId();
     if (tgId !== undefined && getTokens()) {

@@ -2,20 +2,19 @@ import { QueryClient, QueryClientProvider, dehydrate, hydrate } from "@tanstack/
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { MeContext } from "./contexts/MeContext";
+import { useBootMe } from "./hooks/useMe";
+import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
+import { apiFetch } from "./lib/api";
+import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
+// RidesScreen не lazy — первый экран, должен быть доступен мгновенно без Suspense fallback
+import { RidesScreen } from "./screens/RidesScreen";
 const BannedScreen = lazy(() =>
   import("./components/BannedScreen").then((m) => ({ default: m.BannedScreen })),
 );
 const BottomTabBar = lazy(() =>
   import("./components/BottomTabBar").then((m) => ({ default: m.BottomTabBar })),
-);
-import { useMe } from "./hooks/useMe";
-import { useOnlineStatus } from "./hooks/useOnlineStatus";
-import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
-import { apiFetch } from "./lib/api";
-import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
-// Все экраны lazy — skeleton показывается пока auth + chunk загружаются
-const RidesScreen = lazy(() =>
-  import("./screens/RidesScreen").then((m) => ({ default: m.RidesScreen })),
 );
 const AboutScreen = lazy(() =>
   import("./screens/AboutScreen").then((m) => ({ default: m.AboutScreen })),
@@ -306,7 +305,7 @@ queryClient.getQueryCache().subscribe(() => {
 });
 
 function AppRoutes() {
-  const me = useMe();
+  const me = useBootMe();
 
   if (me.status === "loading") {
     const phaseConfig = {
@@ -439,9 +438,11 @@ function AppRoutes() {
   }
 
   return (
-    <HashRouter>
-      <AppShell />
-    </HashRouter>
+    <MeContext.Provider value={me}>
+      <HashRouter>
+        <AppShell />
+      </HashRouter>
+    </MeContext.Provider>
   );
 }
 
@@ -465,21 +466,19 @@ function usePrefetchRides() {
 
 function usePrefetchScreens() {
   useEffect(() => {
-    const timer = setTimeout(() => {
-      // Prefetch all lazy screens in background after first render
-      // so subsequent navigation feels instant
-      import("./screens/ProfileScreen");
-      import("./screens/CreateRideScreen");
-      import("./screens/MyRidesScreen");
-      import("./screens/RideDetailScreen");
-      import("./screens/SettingsScreen");
-      import("./screens/EditProfileScreen");
-      import("./screens/FilterPresetsScreen");
-      import("./screens/EventsScreen");
-      import("./screens/NotificationPreferencesScreen");
-      import("./screens/AdminScreen");
-    }, 1500);
-    return () => clearTimeout(timer);
+    if (import.meta.env.MODE === "test") return;
+    import("./screens/ProfileScreen");
+    import("./screens/CreateRideScreen");
+    import("./screens/MyRidesScreen");
+    import("./screens/RideDetailScreen");
+    import("./screens/SettingsScreen");
+    import("./screens/EditProfileScreen");
+    import("./screens/FilterPresetsScreen");
+    import("./screens/EventsScreen");
+    import("./screens/NotificationPreferencesScreen");
+    import("./screens/AdminScreen");
+    import("./screens/SupportScreen");
+    import("./screens/AboutScreen");
   }, []);
 }
 

@@ -55,6 +55,13 @@ export function createInternalRideRequestsRouter(sql: postgres.Sql, internalSecr
 
       try {
         const result = await respondToRideRequest(sql, user, requestId, action);
+
+        // Кнопки в in-app EventsScreen должны исчезнуть без перезагрузки
+        sql`
+          UPDATE user_notifications SET is_read = true
+          WHERE data->>'request_id' = ${requestId} AND is_read = false
+        `.catch(() => {});
+
         return c.json({
           id: result.request.id,
           status: result.request.status,

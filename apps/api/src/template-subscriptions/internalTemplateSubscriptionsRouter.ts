@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type postgres from "postgres";
 import { UUID_RE } from "../lib/uuid";
-import { isDomainError, respondToSubscription, type SubAction } from "./respond";
+import { type SubAction, isDomainError, respondToSubscription } from "./respond";
 
 /**
  * Internal endpoint используется только webhook-сервисом для применения

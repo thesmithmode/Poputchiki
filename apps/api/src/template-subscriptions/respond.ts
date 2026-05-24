@@ -105,9 +105,7 @@ export async function respondToSubscription(
   enqueueNotification(sql, {
     userId: result.passengerId,
     category:
-      action === "accept"
-        ? "template_subscription_accepted"
-        : "template_subscription_rejected",
+      action === "accept" ? "template_subscription_accepted" : "template_subscription_rejected",
     data: { subscription_id: subId, destination: result.destination },
   }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 

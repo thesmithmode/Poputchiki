@@ -75,11 +75,15 @@ function actionText(n: UserNotification): string {
     }
     case "template_subscription_accepted": {
       const dest = getString(n, "destination");
-      return dest ? `принял заявку на регулярные поездки в ${dest}` : "принял заявку на регулярные поездки";
+      return dest
+        ? `принял заявку на регулярные поездки в ${dest}`
+        : "принял заявку на регулярные поездки";
     }
     case "template_subscription_rejected": {
       const dest = getString(n, "destination");
-      return dest ? `отклонил заявку на регулярные поездки в ${dest}` : "отклонил заявку на регулярные поездки";
+      return dest
+        ? `отклонил заявку на регулярные поездки в ${dest}`
+        : "отклонил заявку на регулярные поездки";
     }
     case "template_subscription_revoked":
       return "отменил подписку на маршрут";

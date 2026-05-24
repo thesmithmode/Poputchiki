@@ -26,12 +26,12 @@ import type { Dispatcher } from "./realtime/dispatcher";
 import { createRealtimeRouter } from "./realtime/realtimeRouter";
 import { createReviewsRouter } from "./reviews/reviewsRouter";
 import { createInternalRideRequestsRouter } from "./ride-requests/internalRideRequestsRouter";
-import { createInternalTemplateSubscriptionsRouter } from "./template-subscriptions/internalTemplateSubscriptionsRouter";
 import { createRideRequestsRouter } from "./ride-requests/rideRequestsRouter";
 import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter";
 import { ridesCache } from "./rides/ridesCache";
 import { createRidesRouter } from "./rides/ridesRouter";
 import { createSupportRouter } from "./support/supportRouter";
+import { createInternalTemplateSubscriptionsRouter } from "./template-subscriptions/internalTemplateSubscriptionsRouter";
 import { createTemplateSubscriptionsRouter } from "./template-subscriptions/templateSubscriptionsRouter";
 import { createUsersRouter } from "./users/usersRouter";
 

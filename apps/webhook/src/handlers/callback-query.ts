@@ -40,8 +40,8 @@ export async function handleCallbackQuery(
     return;
   }
 
-  const action = (reqMatch ?? subMatch)![1] as "accept" | "reject";
-  const entityId = (reqMatch ?? subMatch)![2];
+  const action = (reqMatch ?? subMatch)?.[1] as "accept" | "reject";
+  const entityId = (reqMatch ?? subMatch)?.[2];
   const internalPath = reqMatch
     ? `ride-requests/${entityId}/${action}`
     : `template-subscriptions/${entityId}/${action}`;

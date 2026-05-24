@@ -20,6 +20,10 @@ export const NOTIFICATION_HOURLY_LIMITS: Record<NotificationCategory, number | n
   favorite_new_ride: 200,
   support_reply: 100,
   ride_changed: 100,
+  template_subscription_request: 5,
+  template_subscription_accepted: 10,
+  template_subscription_rejected: 10,
+  template_subscription_revoked: 10,
   admin_review_cancellation_abuse: null,
   system: null,
 };

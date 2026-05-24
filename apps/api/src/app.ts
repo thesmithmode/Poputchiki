@@ -31,6 +31,7 @@ import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter"
 import { ridesCache } from "./rides/ridesCache";
 import { createRidesRouter } from "./rides/ridesRouter";
 import { createSupportRouter } from "./support/supportRouter";
+import { createTemplateSubscriptionsRouter } from "./template-subscriptions/templateSubscriptionsRouter";
 import { createUsersRouter } from "./users/usersRouter";
 
 export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: Dispatcher): Hono {
@@ -97,6 +98,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
         app.route("/api/realtime", createRealtimeRouter(dispatcher));
       }
       app.route("/api/ride-requests", createRideRequestsRouter(sql));
+      app.route("/api/template-subscriptions", createTemplateSubscriptionsRouter(sql));
       app.route("/api/users", createUsersRouter(sql));
       app.route("/api/notifications", createNotificationsRouter(sql));
       app.route("/api/favorites", createFavoritesRouter(sql));

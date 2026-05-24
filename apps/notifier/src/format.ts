@@ -38,6 +38,14 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
         : "Получен ответ от поддержки";
     case "ride_changed":
       return "Параметры поездки изменены";
+    case "template_subscription_request":
+      return "Пассажир хочет ездить с вами регулярно";
+    case "template_subscription_accepted":
+      return "Водитель принял вашу заявку на регулярные поездки!";
+    case "template_subscription_rejected":
+      return "Водитель отклонил заявку на регулярные поездки";
+    case "template_subscription_revoked":
+      return "Водитель отменил вашу подписку на маршрут";
     case "admin_review_cancellation_abuse":
       return "Пользователь отменил >3 поездок за сутки — требуется проверка";
     case "system":

@@ -55,6 +55,8 @@ const baseRide: RideDetail = {
   pending_requests: [],
   my_request_id: null,
   my_request_status: null,
+  my_subscription_id: null,
+  my_subscription_status: null,
 };
 
 function makeClient() {

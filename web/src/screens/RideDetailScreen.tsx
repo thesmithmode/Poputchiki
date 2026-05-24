@@ -8,6 +8,11 @@ import { useMe } from "../hooks/useMe";
 import type { RideDetail } from "../hooks/useRide";
 import { useRide } from "../hooks/useRide";
 import { useTelegramBack } from "../hooks/useTelegramBack";
+import {
+  useDriverSubscriptions,
+  useSubscribeMutation,
+  useSubscriptionActionMutation,
+} from "../hooks/useTemplateSubscription";
 import { ApiError, apiFetch } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { getTelegramWebApp } from "../lib/telegram";
@@ -61,6 +66,9 @@ export function RideDetailScreen({ id }: Props) {
   const [editSeats, setEditSeats] = useState<string>("");
   const [editPrice, setEditPrice] = useState<string>("");
   const [editComment, setEditComment] = useState<string>("");
+  const [showSubSheet, setShowSubSheet] = useState(false);
+  const [subActiveTo, setSubActiveTo] = useState<string>("");
+  const [subMessage, setSubMessage] = useState<string>("");
 
   /*
    * Optimistic UI для двух самых частых действий на экране:
@@ -78,6 +86,16 @@ export function RideDetailScreen({ id }: Props) {
    * Rules of Hooks: число хуков должно быть стабильным между рендерами.
    */
   const rideKey = queryKeys.ride.detail(id);
+
+  const templateId = ride?.template_id ?? null;
+  const subscribeMutation = useSubscribeMutation(id, templateId ?? "");
+  const subActionMutation = useSubscriptionActionMutation(id);
+  const { data: driverSubs } = useDriverSubscriptions();
+
+  const pendingDriverSubs =
+    driverSubs?.filter((s) => s.template_id === templateId && s.status === "pending") ?? [];
+  const acceptedDriverSubs =
+    driverSubs?.filter((s) => s.template_id === templateId && s.status === "accepted") ?? [];
 
   const respondMutation = useMutation({
     mutationFn: () => apiFetch(`/rides/${id}/request`, { method: "POST" }),
@@ -357,6 +375,46 @@ export function RideDetailScreen({ id }: Props) {
         window.open(url, "_blank");
       }
     }
+  }
+
+  async function handleSubscribe() {
+    if (!templateId) return;
+    await subscribeMutation.mutateAsync({
+      activeTo: subActiveTo || null,
+      ...(subMessage ? { message: subMessage } : {}),
+    });
+    setShowSubSheet(false);
+    setSubActiveTo("");
+    setSubMessage("");
+  }
+
+  async function handleCancelSubscription() {
+    if (!ride?.my_subscription_id) return;
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as {
+      showConfirm?: (m: string, cb: (ok: boolean) => void) => void;
+    };
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm) wa.showConfirm("Отписаться от регулярных поездок?", resolve);
+      else resolve(window.confirm("Отписаться от регулярных поездок?"));
+    });
+    if (!confirmed) return;
+    subActionMutation.mutate({ subId: ride.my_subscription_id as string, action: "cancel" });
+  }
+
+  async function handleRevokeSubscription(subId: string) {
+    const tg = getTelegramWebApp();
+    const wa = tg as unknown as {
+      showConfirm?: (m: string, cb: (ok: boolean) => void) => void;
+    };
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (wa?.showConfirm)
+        wa.showConfirm("Убрать пассажира с маршрута? Все будущие поездки будут отменены.", resolve);
+      else
+        resolve(window.confirm("Убрать пассажира с маршрута? Все будущие поездки будут отменены."));
+    });
+    if (!confirmed) return;
+    subActionMutation.mutate({ subId, action: "revoke" });
   }
 
   const departure = formatDeparture(ride.departure_at);
@@ -779,6 +837,99 @@ export function RideDetailScreen({ id }: Props) {
           </>
         )}
 
+        {/* Подписка на регулярный маршрут — для пассажира */}
+        {!isOwnRide && templateId && (
+          <div
+            style={{
+              background: "var(--brand-surface)",
+              borderRadius: 16,
+              padding: "12px 14px",
+              marginBottom: 10,
+              boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
+            }}
+          >
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--brand-sub)",
+                margin: "0 0 8px",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                letterSpacing: 0.4,
+              }}
+            >
+              Регулярный маршрут
+            </p>
+            {!ride.my_subscription_id && (
+              <button
+                type="button"
+                onClick={() => setShowSubSheet(true)}
+                disabled={subscribeMutation.isPending}
+                style={{
+                  background: "var(--brand-surface-2)",
+                  color: "var(--brand-text)",
+                  border: "1px solid var(--brand-line, var(--brand-border))",
+                  borderRadius: 12,
+                  padding: "10px 0",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: subscribeMutation.isPending ? "not-allowed" : "pointer",
+                  width: "100%",
+                  fontFamily: "inherit",
+                }}
+              >
+                {subscribeMutation.isPending ? "Отправляем..." : "Подписаться на все поездки"}
+              </button>
+            )}
+            {ride.my_subscription_status === "pending" && (
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 13, color: "var(--brand-warn)" }}>
+                  Заявка на подписку — ждём водителя
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--brand-sub)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Отозвать
+                </button>
+              </div>
+            )}
+            {ride.my_subscription_status === "accepted" && (
+              <div
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 13, color: "var(--brand-primary)" }}>
+                  ✓ Подписка активна
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCancelSubscription}
+                  style={{
+                    fontSize: 12,
+                    color: "var(--brand-sub)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  Отписаться
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Pending requests — только для водителя */}
         {isOwnRide && ride.pending_requests.length > 0 && (
           <>
@@ -905,7 +1056,335 @@ export function RideDetailScreen({ id }: Props) {
             </div>
           </>
         )}
+        {/* Pending subscription requests — только для водителя */}
+        {isOwnRide && templateId && pendingDriverSubs.length > 0 && (
+          <>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--brand-warn)",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+                padding: "12px 4px 8px",
+              }}
+            >
+              Заявки на постоянные поездки · {pendingDriverSubs.length}
+            </div>
+            <div
+              style={{
+                background: "var(--brand-surface)",
+                borderRadius: 18,
+                overflow: "hidden",
+                marginBottom: 16,
+                boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
+              }}
+            >
+              {pendingDriverSubs.map((sub, i) => (
+                <div
+                  key={sub.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 16px",
+                    borderBottom:
+                      i === pendingDriverSubs.length - 1 ? "none" : "1px solid var(--brand-border)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "var(--brand-primary-soft)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon name="user" size={18} style={{ color: "var(--brand-primary)" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--brand-text)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {sub.passenger_display_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--brand-sub)", marginTop: 2 }}>
+                      {sub.active_to ? `до ${sub.active_to}` : "бессрочно"}
+                      {sub.message ? ` · ${sub.message}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      disabled={subActionMutation.isPending}
+                      onClick={() => subActionMutation.mutate({ subId: sub.id, action: "accept" })}
+                      style={{
+                        padding: "6px 12px",
+                        background: "var(--brand-primary)",
+                        color: "var(--brand-primary-ink)",
+                        border: "none",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: subActionMutation.isPending ? "not-allowed" : "pointer",
+                        fontFamily: "inherit",
+                        opacity: subActionMutation.isPending ? 0.6 : 1,
+                      }}
+                    >
+                      Принять
+                    </button>
+                    <button
+                      type="button"
+                      disabled={subActionMutation.isPending}
+                      onClick={() => subActionMutation.mutate({ subId: sub.id, action: "reject" })}
+                      style={{
+                        padding: "6px 12px",
+                        background: "var(--brand-surface-2, var(--brand-surface))",
+                        color: "var(--brand-danger)",
+                        border: "1px solid var(--brand-danger)",
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: subActionMutation.isPending ? "not-allowed" : "pointer",
+                        fontFamily: "inherit",
+                        opacity: subActionMutation.isPending ? 0.6 : 1,
+                      }}
+                    >
+                      Отклонить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Активные подписчики — только для водителя */}
+        {isOwnRide && templateId && acceptedDriverSubs.length > 0 && (
+          <>
+            <div
+              style={{
+                fontSize: 11,
+                color: "var(--brand-sub)",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+                padding: "12px 4px 8px",
+              }}
+            >
+              Постоянные пассажиры · {acceptedDriverSubs.length}
+            </div>
+            <div
+              style={{
+                background: "var(--brand-surface)",
+                borderRadius: 18,
+                overflow: "hidden",
+                marginBottom: 16,
+                boxShadow: "0 1px 2px rgba(20,30,50,0.04)",
+              }}
+            >
+              {acceptedDriverSubs.map((sub, i) => (
+                <div
+                  key={sub.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 16px",
+                    borderBottom:
+                      i === acceptedDriverSubs.length - 1
+                        ? "none"
+                        : "1px solid var(--brand-border)",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: "50%",
+                      background: "var(--brand-primary-soft)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Icon name="user" size={18} style={{ color: "var(--brand-primary)" }} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: "var(--brand-text)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {sub.passenger_display_name}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--brand-sub)", marginTop: 2 }}>
+                      {sub.active_to ? `до ${sub.active_to}` : "бессрочно"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRevokeSubscription(sub.id)}
+                    style={{
+                      background: "none",
+                      border: "1px solid var(--brand-danger)",
+                      color: "var(--brand-danger)",
+                      borderRadius: 8,
+                      padding: "5px 10px",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      flexShrink: 0,
+                    }}
+                  >
+                    Убрать
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Bottom sheet для подписки */}
+      {showSubSheet && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "flex-end",
+          }}
+          onClick={() => setShowSubSheet(false)}
+          onKeyDown={(e) => e.key === "Escape" && setShowSubSheet(false)}
+        >
+          <div
+            style={{
+              background: "var(--brand-surface)",
+              borderRadius: "20px 20px 0 0",
+              padding: "20px 16px calc(32px + env(safe-area-inset-bottom, 0px))",
+              width: "100%",
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <p
+              style={{
+                fontWeight: 600,
+                fontSize: 16,
+                margin: "0 0 4px",
+                color: "var(--brand-text)",
+              }}
+            >
+              Подписаться на маршрут
+            </p>
+            <p style={{ fontSize: 13, color: "var(--brand-sub)", margin: "0 0 16px" }}>
+              Водитель одобрит вашу заявку — после этого вы автоматически будете записаны на все
+              поездки по этому маршруту
+            </p>
+            <label
+              htmlFor="sub-active-to"
+              style={{
+                fontSize: 13,
+                color: "var(--brand-sub)",
+                display: "block",
+                marginBottom: 4,
+              }}
+            >
+              До какой даты (оставьте пустым — бессрочно)
+            </label>
+            <input
+              id="sub-active-to"
+              type="date"
+              value={subActiveTo}
+              onChange={(e) => setSubActiveTo(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--brand-border)",
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
+                fontSize: 14,
+                marginBottom: 10,
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+            />
+            <label
+              htmlFor="sub-message"
+              style={{
+                fontSize: 13,
+                color: "var(--brand-sub)",
+                display: "block",
+                marginBottom: 4,
+              }}
+            >
+              Сообщение водителю (необязательно)
+            </label>
+            <input
+              id="sub-message"
+              type="text"
+              value={subMessage}
+              onChange={(e) => setSubMessage(e.target.value)}
+              placeholder="Например: буду каждый будний день"
+              maxLength={200}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: "1px solid var(--brand-border)",
+                background: "var(--brand-bg)",
+                color: "var(--brand-text)",
+                fontSize: 14,
+                marginBottom: 16,
+                boxSizing: "border-box",
+                fontFamily: "inherit",
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleSubscribe}
+              disabled={subscribeMutation.isPending}
+              style={{
+                background: "var(--brand-primary)",
+                color: "var(--brand-primary-ink)",
+                border: "none",
+                borderRadius: 14,
+                padding: "13px 0",
+                width: "100%",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: subscribeMutation.isPending ? "not-allowed" : "pointer",
+                fontFamily: "inherit",
+                opacity: subscribeMutation.isPending ? 0.6 : 1,
+              }}
+            >
+              {subscribeMutation.isPending ? "Отправляем..." : "Отправить заявку"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Edit form — inline, shown above action bar */}
       {showEditForm && (

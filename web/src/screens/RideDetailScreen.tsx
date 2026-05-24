@@ -48,7 +48,7 @@ export function RideDetailScreen({ id }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   useTelegramBack(() => navigate(-1));
-  const { data: ride, isLoading, isError, error, isFetching } = useRide(id);
+  const { data: ride, isLoading, isError, error } = useRide(id);
   const me = useMe();
   const [reqStatus, setReqStatus] = useState<RequestStatus>("idle");
   const [likeStatus, setLikeStatus] = useState<LikeStatus>("idle");

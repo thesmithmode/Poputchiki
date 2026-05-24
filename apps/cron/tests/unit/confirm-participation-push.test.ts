@@ -12,7 +12,7 @@ function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
         const resp = txResponses[i] ?? [];
         i++;
         return resp instanceof Error ? Promise.reject(resp) : Promise.resolve(resp);
-      }) as unknown as any;
+      }) as unknown;
       tx.json = (v: unknown) => JSON.stringify(v);
       return fn(tx);
     }),

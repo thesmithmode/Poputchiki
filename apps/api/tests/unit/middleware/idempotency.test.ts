@@ -7,7 +7,6 @@ const KEY = "test-idempotency-key-abc";
 
 // postgres.js .json() helper — мок сериализует объект в строку
 // (имитация wire-format). Используется внутри idempotency middleware.
-// biome-ignore lint/suspicious/noExplicitAny: mock json helper attach
 function withJson<T>(sql: T): T {
   // biome-ignore lint/suspicious/noExplicitAny: dynamic attach
   (sql as any).json = (v: unknown) => JSON.stringify(v);

@@ -55,9 +55,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/") || id.includes("node_modules/scheduler/")) return "vendor-react";
-          if (id.includes("node_modules/react-router") || id.includes("node_modules/@remix-run")) return "vendor-router";
-          if (id.includes("node_modules/@tanstack/react-query-persist") || id.includes("node_modules/@tanstack/query-sync") || id.includes("node_modules/@tanstack/query-core") || id.includes("node_modules/@tanstack/react-query")) return "vendor-query";
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/scheduler/")
+          )
+            return "vendor-react";
+          if (id.includes("node_modules/react-router") || id.includes("node_modules/@remix-run"))
+            return "vendor-router";
+          if (
+            id.includes("node_modules/@tanstack/react-query-persist") ||
+            id.includes("node_modules/@tanstack/query-sync") ||
+            id.includes("node_modules/@tanstack/query-core") ||
+            id.includes("node_modules/@tanstack/react-query")
+          )
+            return "vendor-query";
           if (id.includes("node_modules/leaflet")) return "vendor-leaflet";
         },
       },

@@ -62,7 +62,11 @@ function pluralRides(n: number): string {
 
 export function FeedView({ filters, setFilters, density, onRidesCount }: FeedViewProps) {
   const navigate = useNavigate();
-  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useRides(filters.datePreset, filters.fromAt, filters.toAt);
+  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useRides(
+    filters.datePreset,
+    filters.fromAt,
+    filters.toAt,
+  );
   useRealtime();
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
@@ -192,13 +196,18 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
           ) : dataUpdatedAt ? (
             <span>
               Лента актуальна на{" "}
-              {new Date(dataUpdatedAt).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+              {new Date(dataUpdatedAt).toLocaleTimeString("ru-RU", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           ) : null}
           <button
             type="button"
             aria-label="Обновить ленту"
-            onClick={() => { refetch(); }}
+            onClick={() => {
+              refetch();
+            }}
             disabled={isFetching}
             style={{
               marginLeft: "auto",

@@ -35,6 +35,10 @@ vi.mock("../src/hooks/useMe", () => ({
   useBootMe: () => MOCK_ME_STATE,
 }));
 
+vi.mock("../src/hooks/useRides", () => ({
+  useRides: () => ({ isPending: false, isError: false, data: { rides: [] }, isFetching: false }),
+}));
+
 import { App } from "../src/App";
 
 describe("NotFoundPage", () => {

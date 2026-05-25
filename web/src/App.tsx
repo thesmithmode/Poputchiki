@@ -5,6 +5,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MeContext } from "./contexts/MeContext";
 import { useBootMe } from "./hooks/useMe";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
+import { useRides } from "./hooks/useRides";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
@@ -439,29 +440,93 @@ function AppRoutes() {
 
   return (
     <MeContext.Provider value={me}>
-      <HashRouter>
-        <AppShell />
-      </HashRouter>
+      <RidesGate>
+        <HashRouter>
+          <AppShell />
+        </HashRouter>
+      </RidesGate>
     </MeContext.Provider>
   );
 }
 
-function usePrefetchRides() {
+function RidesGate({ children }: { children: React.ReactNode }) {
+  const { isPending } = useRides("24h", null, null);
+  const [gateOpen, setGateOpen] = useState(false);
+
   useEffect(() => {
-    // Prefetch с ключом идентичным useRides("24h", null, null).
-    // queryFn вычисляет даты в момент запроса — аналогично useRides.
-    const now = new Date();
-    const fromAt = now.toISOString();
-    const toAt = new Date(now.getTime() + 24 * 3600 * 1000).toISOString();
-    queryClient.prefetchQuery({
-      queryKey: ["rides", "list", "24h", null, null],
-      queryFn: () =>
-        import("./lib/api").then(({ apiFetch }) =>
-          apiFetch(`/rides?fromAt=${encodeURIComponent(fromAt)}&toAt=${encodeURIComponent(toAt)}`),
-        ),
-      staleTime: 20_000,
-    });
+    const t = setTimeout(() => setGateOpen(true), 2000);
+    return () => clearTimeout(t);
   }, []);
+
+  if (isPending && !gateOpen) {
+    return (
+      <div
+        style={{
+          background: "var(--brand-bg, #f4f5f4)",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 24,
+          padding: "0 40px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            color: "var(--brand-primary, #2d5a3d)",
+            letterSpacing: "-0.02em",
+            fontFamily: "inherit",
+          }}
+        >
+          Попутчики
+        </div>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 280,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              height: 4,
+              borderRadius: 2,
+              background: "var(--brand-line, rgba(15,23,42,0.1))",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: "95%",
+                borderRadius: 2,
+                background: "var(--brand-primary, #2d5a3d)",
+                transition: "width 0.4s ease",
+              }}
+            />
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--brand-sub, #6b7a6e)",
+              textAlign: "center",
+              fontWeight: 500,
+            }}
+          >
+            Загрузка ленты…
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 function usePrefetchScreens() {
@@ -483,7 +548,6 @@ function usePrefetchScreens() {
 }
 
 export function App() {
-  usePrefetchRides();
   usePrefetchScreens();
   useEffect(() => {
     const storedPref = getStoredTheme();

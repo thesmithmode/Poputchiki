@@ -451,8 +451,14 @@ function AppRoutes() {
 
 function RidesGate({ children }: { children: React.ReactNode }) {
   const { isPending } = useRides("24h", null, null);
+  const [gateOpen, setGateOpen] = useState(false);
 
-  if (isPending) {
+  useEffect(() => {
+    const t = setTimeout(() => setGateOpen(true), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (isPending && !gateOpen) {
     return (
       <div
         style={{

@@ -26,7 +26,7 @@ export default defineConfig({
             handler: "CacheFirst" as const,
             options: {
               cacheName: "osm-tiles-v1",
-              expiration: { maxEntries: 1000, maxAgeSeconds: 7 * 24 * 60 * 60 },
+              expiration: { maxEntries: 3000, maxAgeSeconds: 365 * 24 * 60 * 60 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

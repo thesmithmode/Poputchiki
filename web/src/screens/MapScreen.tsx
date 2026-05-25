@@ -225,8 +225,9 @@ export function MapScreen({
         maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
-        keepBuffer: 4,
-        updateWhenIdle: true,
+        crossOrigin: "anonymous",
+        keepBuffer: 6,
+        updateWhenZooming: false,
       });
       tile.addTo(map);
       tileLayerRef.current = tile;
@@ -337,13 +338,13 @@ export function MapScreen({
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
 
-      // Compass cone (below dot)
-      const coneHtml = `<svg width="40" height="40" viewBox="0 0 40 40" style="transform-origin:20px 20px"><path d="M20 4 L26 28 L20 24 L14 28 Z" fill="${locateColor}" opacity="0.7"/></svg>`;
+      // Compass cone (below dot) — sector/flashlight pointing forward
+      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><path d="M40 40 L22 9 A36 36 0 0 1 58 9 Z" fill="${locateColor}" opacity="0.35"/></svg>`;
       const coneIcon = L.divIcon({
         html: coneHtml,
         className: "",
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
+        iconSize: [80, 80],
+        iconAnchor: [40, 40],
       });
       const compassMarker = L.marker([lat, lng], {
         icon: coneIcon,

@@ -103,7 +103,7 @@ $COMPOSE up -d --no-deps tiles-proxy
 # если api занял 110s, notifier получал <10s. Теперь каждый сервис имеет свой таймаут.
 echo "--- [5/7] healthcheck (per-service timeouts) ---"
 SERVICES=(pgbouncer api notifier cron webhook web tiles-proxy)
-declare -A SVC_TIMEOUT=([pgbouncer]=30 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150 [tiles-proxy]=30)
+declare -A SVC_TIMEOUT=([pgbouncer]=30 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150 [tiles-proxy]=90)
 for SVC in "${SERVICES[@]}"; do
   TIMEOUT="${SVC_TIMEOUT[$SVC]}"
   DEADLINE=$((SECONDS + TIMEOUT))

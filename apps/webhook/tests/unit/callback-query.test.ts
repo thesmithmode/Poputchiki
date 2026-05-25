@@ -7,7 +7,7 @@ const REQUEST_ID = "11111111-1111-4111-a111-111111111111";
 function makeQuery(
   data: string,
   fromId = 999,
-  text = "У вас новая заявка на поездку",
+  text = "У Вас новая заявка на поездку",
 ): TelegramCallbackQuery {
   return {
     id: "cb-1",

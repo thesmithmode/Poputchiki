@@ -40,11 +40,13 @@ function actionText(n: UserNotification): string {
   const dest = getString(n, "destination") ?? getString(n, "ride_destination");
   switch (n.category) {
     case "ride_request":
-      return dest ? `откликнулась на твою поездку в ${dest}` : "откликнулась на твою поездку";
+      return dest
+        ? `откликнулся(-ась) на Вашу поездку в ${dest}`
+        : "откликнулся(-ась) на Вашу поездку";
     case "ride_request_accepted":
-      return dest ? `принял твою заявку на поездку в ${dest}` : "принял твою заявку";
+      return dest ? `принял Вашу заявку на поездку в ${dest}` : "принял Вашу заявку";
     case "ride_request_rejected":
-      return dest ? `отклонил твою заявку на поездку в ${dest}` : "отклонил твою заявку";
+      return dest ? `отклонил Вашу заявку на поездку в ${dest}` : "отклонил Вашу заявку";
     case "ride_request_cancelled":
       return dest ? `отменил заявку на поездку в ${dest}` : "отменил заявку на поездку";
     case "ride_cancelled":
@@ -54,11 +56,11 @@ function actionText(n: UserNotification): string {
     case "ride_changed":
       return "изменил параметры поездки";
     case "confirm_participation":
-      return dest ? `подтверди, что вы ездили в ${dest}` : "подтверди, что вы ездили";
+      return dest ? `подтвердите, что Вы ездили в ${dest}` : "подтвердите, что Вы ездили";
     case "participation_request":
-      return "подтвердил твоё участие в поездке";
+      return "подтвердил Ваше участие в поездке";
     case "like_received":
-      return "поставила тебе лайк";
+      return "поставил(-а) Вам лайк";
     case "review_received":
       return "оставила отзыв 5★";
     case "ride_published":

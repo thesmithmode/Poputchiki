@@ -1,5 +1,11 @@
 # Build Log
 
+## [2026-05-24T23:59:00] compile | daily/2026-05-24.md (pass 6 — Session 23:21 loading screen singleton)
+- Source: daily/2026-05-24.md
+- Articles created: [[concepts/loading-screen-singleton-mecontext]]
+- Articles updated: [[knowledge/index.md]] (+1 entry)
+- Key concepts captured: useBootMe singleton, MeContext separate file, vi.mock module replacement gotcha, RidesScreen non-lazy, usePrefetchScreens MODE=test guard, regular merge for diverged branches
+
 ## [2026-05-24T22:14:00] compile | Daily Log 2026-05-24
 - Source: daily/2026-05-24.md
 - Articles created: [[concepts/onboarding-is-onboarded-flag]]

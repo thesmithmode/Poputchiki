@@ -2,6 +2,7 @@
 
 | Article | Summary | Compiled From | Updated |
 |---------|---------|---------------|---------|
+| [[concepts/loading-screen-singleton-mecontext]] | useBootMe singleton + MeContext в отдельном файле — экран загрузки один раз при старте; vi.mock gotcha; RidesScreen eager | daily/2026-05-24.md | 2026-05-24 |
 | [[concepts/poputchiki-stack]] | Full tech stack: Hono+Bun backend, React SPA, self-hosted Postgres, Docker Compose, Traefik | daily/2026-05-01.md | 2026-05-01 |
 | [[concepts/self-hosted-postgres]] | PostgreSQL 16 in Docker; no Supabase/Neon/managed services; pgcrypto PII encryption | daily/2026-05-01.md | 2026-05-01 |
 | [[concepts/rls-guc-identity]] | RLS identity via `app.current_user_id` GUC set by API per-transaction, replacing Supabase `auth.uid()` | daily/2026-05-01.md | 2026-05-01 |

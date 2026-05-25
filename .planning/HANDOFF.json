@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-24T19:45:52.533Z",
+  "timestamp": "2026-05-25T03:55:36.412Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,11 +18,11 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-24.md"
+      "path": ".claude/settings.local.json"
     },
     {
       "status": "M",
-      "path": ".memory/knowledge/concepts/coverage-gate-discipline.md"
+      "path": ".memory/daily/2026-05-24.md"
     },
     {
       "status": "M",
@@ -54,33 +54,33 @@
     },
     {
       "status": "M",
-      "path": "web/src/App.tsx"
+      "path": "apps/notifier/src/format.ts"
     },
     {
       "status": "M",
-      "path": "web/src/hooks/useMe.ts"
+      "path": "apps/webhook/tests/unit/callback-query.test.ts"
     },
     {
       "status": "M",
-      "path": "web/tests/App.test.tsx"
+      "path": "web/src/screens/EventsScreen.tsx"
     },
     {
       "status": "M",
-      "path": "web/tests/NotFoundAndOffline.test.tsx"
+      "path": "web/src/screens/MapScreen.tsx"
     },
     {
       "status": "M",
-      "path": "web/tests/useMe.test.ts"
+      "path": "web/src/screens/SettingsScreen.tsx"
     },
     {
       "status": "??",
-      "path": ".memory/knowledge/concepts/onboarding-is-onboarded-flag.md"
+      "path": ".memory/daily/2026-05-25.md"
     },
     {
       "status": "??",
-      "path": "web/src/contexts/"
+      "path": ".memory/knowledge/concepts/loading-screen-singleton-mecontext.md"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n1a6874b TEST: unit тесты для internalTemplateSubscriptionsRouter (coverage gate)\nd27022e FIX: unit тесты для respond.ts + статус в теле ответа accept/reject подписки\na7d9bbd CHORE: обновить memory-логи — 2026-05-24\n228ab64 FEAT: унифицировать запись на поездку — выбор разовая/регулярная + фикс уведомлений\ndec6f3f FIX: унифицировать архитектуру уведомлений для подписок на регулярные поездки"
+  "context_notes": "Recent commits:\nac982e5 @ FIX: убрать flash-ошибку при загрузке — stale-while-revalidate + isPending\n169daaa CHORE: обновить memory-логи — 2026-05-24\ne4c2961 FIX: экран загрузки singleton через MeContext + RidesScreen не-lazy + regression тесты\n1a6874b TEST: unit тесты для internalTemplateSubscriptionsRouter (coverage gate)\nd27022e FIX: unit тесты для respond.ts + статус в теле ответа accept/reject подписки"
 }

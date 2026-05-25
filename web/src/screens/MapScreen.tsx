@@ -304,21 +304,21 @@ export function MapScreen({
         ro.observe(mapContainerRef.current);
       }
 
-      // Fast path: DOM settled
+      // Start loading tiles + data, but keep overlay until 600ms (Telegram expand animation).
       setTimeout(() => {
         if (!destroyed) {
           map.invalidateSize();
-          setLoading(false);
           loadRides();
         }
       }, 100);
 
-      // Fallback: PC Telegram animates window open, may finish after 100ms
+      // 600ms: Telegram has finished expanding → map is correctly sized → safe to hide overlay.
       setTimeout(() => {
         if (!destroyed && mapRef.current) {
           (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
             animate: false,
           });
+          setLoading(false);
         }
       }, 600);
     }
@@ -593,17 +593,17 @@ export function MapScreen({
           data-testid="map-loading"
           style={{
             position: "absolute",
-            top: 16,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 1000,
-            ...glassStyle,
-            borderRadius: 20,
-            padding: "6px 14px",
-            fontSize: 13,
+            inset: 0,
+            zIndex: 1001,
+            background: "var(--brand-bg)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
-          Загрузка...
+          <div style={{ ...glassStyle, borderRadius: 20, padding: "6px 14px", fontSize: 13 }}>
+            Загрузка карты...
+          </div>
         </div>
       )}
 

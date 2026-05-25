@@ -206,9 +206,6 @@ export function MapScreen({
         zoomDelta: 1,
         inertia: true,
         inertiaDeceleration: 3000,
-        zoomAnimation: false,
-        fadeAnimation: false,
-        markerZoomAnimation: false,
       });
 
       tg?.disableVerticalSwipes?.();
@@ -229,7 +226,7 @@ export function MapScreen({
         maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
-        keepBuffer: 6,
+        keepBuffer: 8,
         updateWhenZooming: false,
       });
       tile.addTo(map);

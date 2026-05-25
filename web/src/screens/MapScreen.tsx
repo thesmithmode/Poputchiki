@@ -219,6 +219,8 @@ export function MapScreen({
         maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
+        keepBuffer: 4,
+        updateWhenZooming: false,
       });
       tile.addTo(map);
       tileLayerRef.current = tile;
@@ -328,7 +330,7 @@ export function MapScreen({
         weight: 2.5,
       }).addTo(lMap as ReturnType<typeof L.map>);
       locateMarkerRef.current = circle;
-      lMap.flyTo([lat, lng], 15);
+      (lMap as ReturnType<typeof L.map>).setView([lat, lng], 15, { animate: true, duration: 0.4 });
       setLocating(false);
     });
   }

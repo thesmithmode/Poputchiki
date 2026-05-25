@@ -337,8 +337,9 @@ export function MapScreen({
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
 
-      // Compass cone — radial gradient fade (Google-style: visible near dot, transparent at edge)
-      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><defs><radialGradient id="cg" cx="40" cy="40" r="40" gradientUnits="userSpaceOnUse"><stop offset="0.12" stop-color="${locateColor}" stop-opacity="0.45"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M40 40 L17 9 A40 40 0 0 1 63 9 Z" fill="url(#cg)"/></svg>`;
+      // Cone: radial gradient, inner dead zone = dot radius (cone emerges from dot edge, not center)
+      // Dot: 20px fill + 3px white border = 23px visual radius from center → 23/40 ≈ 0.575 of cone radius
+      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><defs><radialGradient id="cg" cx="40" cy="40" r="40" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.36" stop-color="${locateColor}" stop-opacity="0.42"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M40 40 L14 8 A40 40 0 0 1 66 8 Z" fill="url(#cg)"/></svg>`;
       const coneIcon = L.divIcon({
         html: coneHtml,
         className: "",
@@ -356,15 +357,20 @@ export function MapScreen({
         .getElement?.()
         ?.querySelector("svg");
 
-      // User dot (on top)
-      const circle = L.circleMarker([lat, lng], {
-        radius: 10,
-        fillColor: locateColor,
-        fillOpacity: 1,
-        color: "#fff",
-        weight: 3,
+      // Dot: divIcon (DOM layer) — stays fixed pixel size during zoom animation, unlike circleMarker (SVG layer)
+      const dotHtml = `<div style="width:20px;height:20px;border-radius:50%;background:${locateColor};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);box-sizing:content-box;"></div>`;
+      const dotIcon = L.divIcon({
+        html: dotHtml,
+        className: "",
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      });
+      const dotMarker = L.marker([lat, lng], {
+        icon: dotIcon,
+        interactive: false,
+        zIndexOffset: 10,
       }).addTo(lMap as ReturnType<typeof L.map>);
-      locateMarkerRef.current = circle;
+      locateMarkerRef.current = dotMarker;
 
       (lMap as ReturnType<typeof L.map>).setView([lat, lng], 15, { animate: true, duration: 0.4 });
       setLocating(false);

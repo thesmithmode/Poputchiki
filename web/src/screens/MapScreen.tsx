@@ -229,7 +229,7 @@ export function MapScreen({
         maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
-        keepBuffer: 6,
+        keepBuffer: 8,
         updateWhenZooming: false,
       });
       tile.addTo(map);

@@ -289,20 +289,22 @@ export function MapScreen({
       // orientation change, PC window resize) without relying on fixed timeouts.
       let prevW = 0;
       let prevH = 0;
-      ro = new ResizeObserver((entries) => {
-        const entry = entries[0];
-        if (!entry || destroyed) return;
-        const { width, height } = entry.contentRect;
-        if (width === prevW && height === prevH) return;
-        prevW = width;
-        prevH = height;
-        if (mapRef.current) {
-          (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
-            animate: false,
-          });
-        }
-      });
-      if (mapContainerRef.current) ro.observe(mapContainerRef.current);
+      if (typeof ResizeObserver !== "undefined" && mapContainerRef.current) {
+        ro = new ResizeObserver((entries) => {
+          const entry = entries[0];
+          if (!entry || destroyed) return;
+          const { width, height } = entry.contentRect;
+          if (width === prevW && height === prevH) return;
+          prevW = width;
+          prevH = height;
+          if (mapRef.current) {
+            (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
+              animate: false,
+            });
+          }
+        });
+        ro.observe(mapContainerRef.current);
+      }
 
       // Fast path: DOM settled
       setTimeout(() => {

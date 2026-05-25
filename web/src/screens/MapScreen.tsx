@@ -199,6 +199,10 @@ export function MapScreen({
         maxBoundsViscosity: 1.0,
         zoomControl: false,
         preferCanvas: true,
+        zoomSnap: 0.25,
+        zoomDelta: 0.5,
+        inertia: true,
+        inertiaDeceleration: 3000,
       });
 
       tg?.disableVerticalSwipes?.();
@@ -220,7 +224,7 @@ export function MapScreen({
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
         keepBuffer: 4,
-        updateWhenZooming: false,
+        updateWhenIdle: true,
       });
       tile.addTo(map);
       tileLayerRef.current = tile;
@@ -342,6 +346,13 @@ export function MapScreen({
 
     const tgWA = getTelegramWebApp();
     const lm = tgWA?.LocationManager;
+
+    // Telegram Desktop не имеет LocationManager — геолокация только в мобильном приложении
+    if (tgWA && !lm) {
+      setLocating(false);
+      setLocateError("Геолокация доступна только в мобильном Telegram");
+      return;
+    }
 
     if (lm) {
       // Telegram LocationManager API (Bot API 8.0+)

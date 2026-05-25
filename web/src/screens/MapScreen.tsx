@@ -225,7 +225,6 @@ export function MapScreen({
         maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
-        crossOrigin: "anonymous",
         keepBuffer: 6,
         updateWhenZooming: false,
       });
@@ -338,8 +337,8 @@ export function MapScreen({
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
 
-      // Compass cone (below dot) — sector/flashlight pointing forward
-      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><path d="M40 40 L22 9 A36 36 0 0 1 58 9 Z" fill="${locateColor}" opacity="0.35"/></svg>`;
+      // Compass cone (below dot) — 90° sector, radius 40, proportional to dot
+      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><path d="M40 40 L12 12 A40 40 0 0 1 68 12 Z" fill="${locateColor}" opacity="0.35"/></svg>`;
       const coneIcon = L.divIcon({
         html: coneHtml,
         className: "",

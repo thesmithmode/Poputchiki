@@ -337,14 +337,14 @@ export function MapScreen({
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
 
-      // Cone: radial gradient, inner dead zone = dot radius (cone emerges from dot edge, not center)
-      // Dot: 20px fill + 3px white border = 23px visual radius from center → 23/40 ≈ 0.575 of cone radius
-      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><defs><radialGradient id="cg" cx="40" cy="40" r="40" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.36" stop-color="${locateColor}" stop-opacity="0.42"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M40 40 L14 8 A40 40 0 0 1 66 8 Z" fill="url(#cg)"/></svg>`;
+      // Cone: 100° arc, radial gradient — transparent inside dot (r=13px), peak at dot edge, fades to 0
+      // SVG 100×100, center 50,50: dot edge = 13/50 = 0.26; peak at 0.30; arc 50° each side of up
+      const coneHtml = `<svg width="100" height="100" viewBox="0 0 100 100" style="transform-origin:50px 50px"><defs><radialGradient id="cg" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.24" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0.55"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M50 50 L11 18 A50 50 0 0 1 89 18 Z" fill="url(#cg)"/></svg>`;
       const coneIcon = L.divIcon({
         html: coneHtml,
         className: "",
-        iconSize: [80, 80],
-        iconAnchor: [40, 40],
+        iconSize: [100, 100],
+        iconAnchor: [50, 50],
       });
       const compassMarker = L.marker([lat, lng], {
         icon: coneIcon,

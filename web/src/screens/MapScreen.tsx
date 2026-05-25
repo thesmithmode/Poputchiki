@@ -116,6 +116,7 @@ export function MapScreen({
   const locateMarkerRef = useRef<unknown>(null);
   const compassMarkerRef = useRef<unknown>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
+  const lastHeadingRef = useRef<number | null>(null);
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
   const [_rides, setRides] = useState<Ride[]>([]);
@@ -202,8 +203,8 @@ export function MapScreen({
         maxBoundsViscosity: 1.0,
         zoomControl: false,
         preferCanvas: true,
-        zoomSnap: 1,
-        zoomDelta: 1,
+        zoomSnap: 0.25,
+        zoomDelta: 0.5,
         inertia: true,
         inertiaDeceleration: 3000,
       });
@@ -226,7 +227,7 @@ export function MapScreen({
         maxZoom: 17,
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
-        keepBuffer: 8,
+        keepBuffer: 6,
         updateWhenZooming: false,
       });
       tile.addTo(map);
@@ -399,9 +400,16 @@ export function MapScreen({
 
       // Device orientation → rotate compass cone
       if (!svgEl) return;
+
+      // Apply last known heading immediately so cone doesn't flash to north on re-press
+      if (lastHeadingRef.current !== null) {
+        (svgEl as SVGSVGElement).style.transform = `rotate(${lastHeadingRef.current}deg)`;
+      }
+
       function startOrientation() {
         const handler = (e: DeviceOrientationEvent) => {
-          if (svgEl && e.alpha !== null) {
+          if (e.alpha !== null) {
+            lastHeadingRef.current = e.alpha;
             (svgEl as SVGSVGElement).style.transform = `rotate(${e.alpha}deg)`;
           }
         };

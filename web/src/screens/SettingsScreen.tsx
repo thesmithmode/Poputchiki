@@ -543,7 +543,20 @@ function RowLink({
       }}
     >
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {icon && <span style={{ lineHeight: 1, flexShrink: 0 }}>{icon}</span>}
+        {icon && (
+          <span
+            style={{
+              lineHeight: 1,
+              flexShrink: 0,
+              width: 24,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {icon}
+          </span>
+        )}
         <span>{text}</span>
       </span>
       <span style={{ color: "var(--brand-sub)" }}>→</span>

@@ -337,8 +337,8 @@ export function MapScreen({
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
 
-      // Compass cone (below dot) — 90° sector, radius 40, proportional to dot
-      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><path d="M40 40 L12 12 A40 40 0 0 1 68 12 Z" fill="${locateColor}" opacity="0.35"/></svg>`;
+      // Compass cone — radial gradient fade (Google-style: visible near dot, transparent at edge)
+      const coneHtml = `<svg width="80" height="80" viewBox="0 0 80 80" style="transform-origin:40px 40px"><defs><radialGradient id="cg" cx="40" cy="40" r="40" gradientUnits="userSpaceOnUse"><stop offset="0.12" stop-color="${locateColor}" stop-opacity="0.45"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M40 40 L17 9 A40 40 0 0 1 63 9 Z" fill="url(#cg)"/></svg>`;
       const coneIcon = L.divIcon({
         html: coneHtml,
         className: "",
@@ -358,11 +358,11 @@ export function MapScreen({
 
       // User dot (on top)
       const circle = L.circleMarker([lat, lng], {
-        radius: 8,
+        radius: 10,
         fillColor: locateColor,
         fillOpacity: 1,
         color: "#fff",
-        weight: 2.5,
+        weight: 3,
       }).addTo(lMap as ReturnType<typeof L.map>);
       locateMarkerRef.current = circle;
 

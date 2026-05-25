@@ -220,12 +220,7 @@ export function MapScreen({
         }
       });
 
-      // Local dev → OSM directly. Production → own caching proxy on same origin.
-      const h = window.location.hostname;
-      const tileUrl =
-        h === "localhost" || h.startsWith("127.")
-          ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          : `${window.location.origin}/tiles/{s}/{z}/{x}/{y}.png`;
+      const tileUrl = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
       const tile = L.tileLayer(tileUrl, {
         minZoom: 9,

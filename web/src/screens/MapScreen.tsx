@@ -167,6 +167,7 @@ export function MapScreen({
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable prop ref, map init runs once
   useEffect(() => {
     let destroyed = false;
+    let ro: ResizeObserver | null = null;
 
     async function init() {
       if (!mapContainerRef.current) return;
@@ -201,10 +202,13 @@ export function MapScreen({
         maxBoundsViscosity: 1.0,
         zoomControl: false,
         preferCanvas: true,
-        zoomSnap: 0.25,
-        zoomDelta: 0.5,
+        zoomSnap: 1,
+        zoomDelta: 1,
         inertia: true,
         inertiaDeceleration: 3000,
+        zoomAnimation: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
       });
 
       tg?.disableVerticalSwipes?.();
@@ -281,7 +285,26 @@ export function MapScreen({
       };
       map.on("moveend", debouncedLoadRides);
 
-      // First invalidateSize: DOM settled (fast path)
+      // ResizeObserver: catches any late viewport changes (Telegram expand animation,
+      // orientation change, PC window resize) without relying on fixed timeouts.
+      let prevW = 0;
+      let prevH = 0;
+      ro = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry || destroyed) return;
+        const { width, height } = entry.contentRect;
+        if (width === prevW && height === prevH) return;
+        prevW = width;
+        prevH = height;
+        if (mapRef.current) {
+          (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
+            animate: false,
+          });
+        }
+      });
+      if (mapContainerRef.current) ro.observe(mapContainerRef.current);
+
+      // Fast path: DOM settled
       setTimeout(() => {
         if (!destroyed) {
           map.invalidateSize();
@@ -290,8 +313,7 @@ export function MapScreen({
         }
       }, 100);
 
-      // Second invalidateSize: PC Telegram animates the window open — map container
-      // may still have wrong dimensions at 100ms, correct at 600ms.
+      // Fallback: PC Telegram animates window open, may finish after 100ms
       setTimeout(() => {
         if (!destroyed && mapRef.current) {
           (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
@@ -307,6 +329,7 @@ export function MapScreen({
 
     return () => {
       destroyed = true;
+      ro?.disconnect();
       orientationCleanupRef.current?.();
       if (mapRef.current) {
         (mapRef.current as { remove: () => void }).remove();

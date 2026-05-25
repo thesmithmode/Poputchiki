@@ -4,7 +4,6 @@ import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MeContext } from "./contexts/MeContext";
 import { useBootMe } from "./hooks/useMe";
-import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import { useRides } from "./hooks/useRides";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
@@ -117,33 +116,6 @@ function NotFoundPage() {
       >
         На главную
       </button>
-    </div>
-  );
-}
-
-function OfflineBanner() {
-  const online = useOnlineStatus();
-  if (online) return null;
-  return (
-    <div
-      aria-live="polite"
-      aria-atomic="true"
-      data-testid="offline-banner"
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        background: "var(--brand-warn)",
-        color: "var(--brand-primary-ink)",
-        textAlign: "center",
-        padding: "8px 16px",
-        fontSize: 13,
-        fontWeight: 600,
-      }}
-    >
-      Нет связи — показываем сохранённые данные
     </div>
   );
 }
@@ -578,7 +550,6 @@ export function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <div data-testid="app-root">
-          <OfflineBanner />
           <AppRoutes />
         </div>
       </QueryClientProvider>

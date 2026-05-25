@@ -132,7 +132,10 @@ describe("useBootMe — boot-цикл", () => {
     vi.mocked(getTelegramWebApp).mockReturnValue({
       initData: "test",
       initDataUnsafe: { user: { id: 123 } },
-    } as ReturnType<typeof getTelegramWebApp>);
+      colorScheme: "light",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    } as unknown as ReturnType<typeof getTelegramWebApp>);
 
     localStorage.setItem(
       "pp_tokens",
@@ -159,7 +162,7 @@ describe("useBootMe — boot-цикл", () => {
     // Состояние НЕ должно стать error
     expect(result.current.status).toBe("ok");
 
-    vi.mocked(getTelegramWebApp).mockReturnValue(null);
+    vi.mocked(getTelegramWebApp).mockReturnValue(undefined);
   });
 
   it("REGRESSION: прогресс не идёт назад — фаза не откатывается после done", async () => {

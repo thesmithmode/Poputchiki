@@ -174,6 +174,9 @@ export function useBootMe(): MeState {
             reason: body?.reason ?? null,
             banned_at: body?.banned_at ?? null,
           });
+        } else if (progressRef.current >= 999) {
+          // Stale-while-revalidate: кэшированный профиль валиден для рендера,
+          // transient-ошибки (500, сеть) не должны ломать UI
         } else {
           setState({ status: "error", message: String(err) });
         }

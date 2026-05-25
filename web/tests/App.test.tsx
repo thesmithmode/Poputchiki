@@ -45,6 +45,7 @@ vi.mock("../src/hooks/useRealtime", () => ({ useRealtime: vi.fn() }));
 vi.mock("../src/hooks/useRides", () => ({
   useRides: vi.fn(() => ({
     data: { rides: [] },
+    isPending: false,
     isLoading: false,
     isError: false,
     isFetching: false,

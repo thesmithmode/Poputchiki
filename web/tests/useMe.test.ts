@@ -125,6 +125,43 @@ describe("useBootMe — boot-цикл", () => {
     expect(result.current.status).toBe("loading");
   });
 
+  it("REGRESSION: кэшированный ok НЕ перебивается transient-ошибкой при фоновой проверке", async () => {
+    // Симулируем: кэш есть + токены есть → boot пытается GET /users/me → 500
+    // Ожидание: состояние остаётся ok (stale-while-revalidate), НЕ переходит в error
+    const { getTelegramWebApp } = await import("../src/lib/telegram");
+    vi.mocked(getTelegramWebApp).mockReturnValue({
+      initData: "test",
+      initDataUnsafe: { user: { id: 123 } },
+    } as ReturnType<typeof getTelegramWebApp>);
+
+    localStorage.setItem(
+      "pp_tokens",
+      JSON.stringify({ access: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.s", refresh: "ref" }),
+    );
+    localStorage.setItem(
+      "pp_me_v1",
+      JSON.stringify({ user: MOCK_USER, tgId: 123, at: Date.now() }),
+    );
+
+    // GET /users/me → 500
+    mockedApiFetch.mockRejectedValueOnce(new Error("Internal Server Error"));
+
+    const { result } = renderHook(() => useBootMe());
+
+    // Начальное состояние из кэша — ok
+    expect(result.current.status).toBe("ok");
+
+    // Ждём пока boot() завершится (ошибка подавлена)
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalled());
+    // Маленькая пауза чтобы boot() catch отработал
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Состояние НЕ должно стать error
+    expect(result.current.status).toBe("ok");
+
+    vi.mocked(getTelegramWebApp).mockReturnValue(null);
+  });
+
   it("REGRESSION: прогресс не идёт назад — фаза не откатывается после done", async () => {
     mockedApiFetch.mockResolvedValueOnce({
       access_token: "tok",

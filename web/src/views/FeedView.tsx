@@ -62,7 +62,7 @@ function pluralRides(n: number): string {
 
 export function FeedView({ filters, setFilters, density, onRidesCount }: FeedViewProps) {
   const navigate = useNavigate();
-  const { data, isLoading, isError, isFetching, dataUpdatedAt, refetch } = useRides(
+  const { data, isPending, isError, isFetching, dataUpdatedAt, refetch } = useRides(
     filters.datePreset,
     filters.fromAt,
     filters.toAt,
@@ -104,7 +104,7 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
     setFilters({ direction: filters.direction === query ? "" : query });
   };
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div
         data-testid="loading-skeleton"
@@ -179,7 +179,7 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
       </div>
 
       {/* Freshness strip */}
-      {!isLoading && (
+      {!isPending && (
         <div
           style={{
             display: "flex",

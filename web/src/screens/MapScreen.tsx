@@ -114,6 +114,8 @@ export function MapScreen({
   const markersRef = useRef<unknown[]>([]);
   const clusterGroupRef = useRef<unknown>(null);
   const locateMarkerRef = useRef<unknown>(null);
+  const compassMarkerRef = useRef<unknown>(null);
+  const orientationCleanupRef = useRef<(() => void) | null>(null);
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
   const [_rides, setRides] = useState<Ride[]>([]);
@@ -199,6 +201,10 @@ export function MapScreen({
         maxBoundsViscosity: 1.0,
         zoomControl: false,
         preferCanvas: true,
+        zoomSnap: 0.25,
+        zoomDelta: 0.5,
+        inertia: true,
+        inertiaDeceleration: 3000,
       });
 
       tg?.disableVerticalSwipes?.();
@@ -220,7 +226,7 @@ export function MapScreen({
         subdomains: "abc",
         attribution: "© OpenStreetMap contributors",
         keepBuffer: 4,
-        updateWhenZooming: false,
+        updateWhenIdle: true,
       });
       tile.addTo(map);
       tileLayerRef.current = tile;
@@ -301,6 +307,7 @@ export function MapScreen({
 
     return () => {
       destroyed = true;
+      orientationCleanupRef.current?.();
       if (mapRef.current) {
         (mapRef.current as { remove: () => void }).remove();
         mapRef.current = null;
@@ -311,17 +318,45 @@ export function MapScreen({
 
   function applyLocationOnMap(lat: number, lng: number) {
     const lMap = mapRef.current as {
-      flyTo: (c: [number, number], z: number) => void;
       addLayer: (l: unknown) => void;
       removeLayer: (l: unknown) => void;
     };
     import("leaflet").then((L) => {
+      // Cleanup previous orientation listener + markers
+      orientationCleanupRef.current?.();
+      orientationCleanupRef.current = null;
+      if (compassMarkerRef.current) {
+        lMap.removeLayer(compassMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
+        compassMarkerRef.current = null;
+      }
       if (locateMarkerRef.current) {
         lMap.removeLayer(locateMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
       }
+
       const locateColor =
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
+
+      // Compass cone (below dot)
+      const coneHtml = `<svg width="40" height="40" viewBox="0 0 40 40" style="transform-origin:20px 20px"><path d="M20 4 L26 28 L20 24 L14 28 Z" fill="${locateColor}" opacity="0.7"/></svg>`;
+      const coneIcon = L.divIcon({
+        html: coneHtml,
+        className: "",
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+      const compassMarker = L.marker([lat, lng], {
+        icon: coneIcon,
+        interactive: false,
+        zIndexOffset: -10,
+      });
+      compassMarker.addTo(lMap as ReturnType<typeof L.map>);
+      compassMarkerRef.current = compassMarker;
+      const svgEl = (compassMarker as { getElement?: () => HTMLElement | null })
+        .getElement?.()
+        ?.querySelector("svg");
+
+      // User dot (on top)
       const circle = L.circleMarker([lat, lng], {
         radius: 8,
         fillColor: locateColor,
@@ -330,8 +365,35 @@ export function MapScreen({
         weight: 2.5,
       }).addTo(lMap as ReturnType<typeof L.map>);
       locateMarkerRef.current = circle;
+
       (lMap as ReturnType<typeof L.map>).setView([lat, lng], 15, { animate: true, duration: 0.4 });
       setLocating(false);
+
+      // Device orientation → rotate compass cone
+      if (!svgEl) return;
+      function startOrientation() {
+        const handler = (e: DeviceOrientationEvent) => {
+          if (svgEl && e.alpha !== null) {
+            (svgEl as SVGSVGElement).style.transform = `rotate(${e.alpha}deg)`;
+          }
+        };
+        window.addEventListener("deviceorientation", handler);
+        orientationCleanupRef.current = () =>
+          window.removeEventListener("deviceorientation", handler);
+      }
+      const DOE = DeviceOrientationEvent as unknown as {
+        requestPermission?: () => Promise<string>;
+      };
+      if (typeof DOE.requestPermission === "function") {
+        // iOS 13+ requires explicit permission from user gesture
+        DOE.requestPermission()
+          .then((perm) => {
+            if (perm === "granted") startOrientation();
+          })
+          .catch(() => {});
+      } else if (typeof DeviceOrientationEvent !== "undefined") {
+        startOrientation();
+      }
     });
   }
 
@@ -342,6 +404,13 @@ export function MapScreen({
 
     const tgWA = getTelegramWebApp();
     const lm = tgWA?.LocationManager;
+
+    // Telegram Desktop не имеет LocationManager — геолокация только в мобильном приложении
+    if (tgWA && !lm) {
+      setLocating(false);
+      setLocateError("Геолокация доступна только в мобильном Telegram");
+      return;
+    }
 
     if (lm) {
       // Telegram LocationManager API (Bot API 8.0+)

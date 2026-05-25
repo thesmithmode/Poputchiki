@@ -7,6 +7,9 @@ import { setupErrorReporting } from "./lib/error-reporter";
 
 setupErrorReporting();
 
+// Просим браузер не вычищать кэш тайлов при нехватке места
+navigator.storage?.persist?.().catch(() => {});
+
 // Telegram Desktop appends #tgWebAppData=...&tgWebAppVersion=...&tgWebAppThemeParams=...
 // to the URL. HashRouter interprets this as a route path → shows NotFoundPage.
 // Strip it before React mounts so HashRouter always starts at #/.

@@ -368,7 +368,7 @@ export function MapScreen({
     // Fallback: browser geolocation (Telegram Desktop без LocationManager, обычный браузер)
     if (!navigator.geolocation) {
       setLocating(false);
-      setLocateError("Геолокация не поддерживается вашим браузером");
+      setLocateError("Геолокация не поддерживается Вашим браузером");
       return;
     }
     navigator.geolocation.getCurrentPosition(

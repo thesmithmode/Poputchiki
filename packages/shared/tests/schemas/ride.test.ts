@@ -134,4 +134,22 @@ describe("RideDTO", () => {
     expect(RideDTO.safeParse({ ...validRide, from_lat: 200 }).success).toBe(false);
     expect(RideDTO.safeParse({ ...validRide, from_lng: -300 }).success).toBe(false);
   });
+
+  it("accepts driver_avg_stars and driver_reviews_count", () => {
+    const r = RideDTO.safeParse({
+      ...validRide,
+      driver_avg_stars: 4.5,
+      driver_reviews_count: 12,
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("strips unknown fields in strict mode", () => {
+    const r = RideDTO.strip().safeParse({
+      ...validRide,
+      _secret_internal_field: "oops",
+    });
+    expect(r.success).toBe(true);
+    expect(r.data).not.toHaveProperty("_secret_internal_field");
+  });
 });

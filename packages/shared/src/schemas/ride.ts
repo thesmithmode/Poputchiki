@@ -77,6 +77,8 @@ export const RideDTO = z.object({
   driver_display_name: z.string().nullable().optional(),
   driver_photo_url: z.string().nullable().optional(),
   driver_tg_id: z.number().int().nullable().optional(),
+  driver_avg_stars: z.number().nullable().optional(),
+  driver_reviews_count: z.number().int().min(0).nullable().optional(),
 });
 
 export type RideDTO = z.infer<typeof RideDTO>;

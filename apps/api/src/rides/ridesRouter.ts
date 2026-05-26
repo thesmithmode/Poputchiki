@@ -131,7 +131,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<Record<string, unknown>[]>`
-        SELECT r.*,
+        SELECT r.id, r.driver_id, r.template_id,
+               r.from_label, r.from_lat, r.from_lng,
+               r.to_label, r.to_lat, r.to_lng,
+               r.departure_at, r.price_rub,
+               r.seats_total, r.seats_taken,
+               r.comment, r.status, r.created_at, r.updated_at,
                u.display_name           AS driver_display_name,
                u.avatar_url             AS driver_photo_url,
                to_jsonb(u.tg_id)        AS driver_tg_id,
@@ -195,7 +200,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const rows = await withIdentity(sql, user, async (tx) => {
       if (role === "driver") {
         return tx<Record<string, unknown>[]>`
-          SELECT r.*,
+          SELECT r.id, r.driver_id, r.template_id,
+                 r.from_label, r.from_lat, r.from_lng,
+                 r.to_label, r.to_lat, r.to_lng,
+                 r.departure_at, r.price_rub,
+                 r.seats_total, r.seats_taken,
+                 r.comment, r.status, r.created_at, r.updated_at,
                  u.display_name           AS driver_display_name,
                  u.avatar_url             AS driver_photo_url,
                  to_jsonb(u.tg_id)        AS driver_tg_id,
@@ -210,7 +220,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         `;
       }
       return tx<Record<string, unknown>[]>`
-        SELECT r.*,
+        SELECT r.id, r.driver_id, r.template_id,
+               r.from_label, r.from_lat, r.from_lng,
+               r.to_label, r.to_lat, r.to_lng,
+               r.departure_at, r.price_rub,
+               r.seats_total, r.seats_taken,
+               r.comment, r.status, r.created_at, r.updated_at,
                u.display_name           AS driver_display_name,
                u.avatar_url             AS driver_photo_url,
                to_jsonb(u.tg_id)        AS driver_tg_id,
@@ -241,7 +256,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<Record<string, unknown>[]>`
         SELECT
-          r.*,
+          r.id, r.driver_id, r.template_id,
+          r.from_label, r.from_lat, r.from_lng,
+          r.to_label, r.to_lat, r.to_lng,
+          r.departure_at, r.price_rub,
+          r.seats_total, r.seats_taken,
+          r.comment, r.status, r.created_at, r.updated_at,
           json_build_object(
             'id', u.id,
             'first_name', u.display_name,
@@ -354,7 +374,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
              ${input.from_lat}, ${input.from_lng}, ${input.to_label},
              ${input.to_lat}, ${input.to_lng}, ${input.departure_at},
              ${input.price_rub ?? null}, ${input.seats_total}, ${input.comment ?? null})
-          RETURNING *
+          RETURNING id, driver_id, template_id,
+                    from_label, from_lat, from_lng,
+                    to_label, to_lat, to_lng,
+                    departure_at, price_rub,
+                    seats_total, seats_taken,
+                    comment, status, created_at, updated_at
         `;
         return rows[0] as Record<string, unknown>;
       });
@@ -436,7 +461,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           const [rideRequest] = await tx`
             INSERT INTO ride_requests (ride_id, passenger_id)
             VALUES (${rideId}, ${user.id})
-            RETURNING *
+            RETURNING id, ride_id, passenger_id, status, created_at
           `;
 
           const [passengerUser] = await tx<{ display_name: string; tg_username: string | null }[]>`
@@ -735,7 +760,13 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           `;
 
           const [updated] = await tx<Record<string, unknown>[]>`
-            SELECT * FROM rides WHERE id = ${rideId}
+            SELECT id, driver_id, template_id,
+                   from_label, from_lat, from_lng,
+                   to_label, to_lat, to_lng,
+                   departure_at, price_rub,
+                   seats_total, seats_taken,
+                   comment, status, created_at, updated_at
+            FROM rides WHERE id = ${rideId}
           `;
 
           // H4: audit_log INSERT внутри той же tx — атомарно с UPDATE.

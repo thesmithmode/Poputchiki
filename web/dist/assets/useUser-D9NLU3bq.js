@@ -1,0 +1,1 @@
+import{u as r}from"./vendor-query-4FUOfboV.js";import{a as s}from"./index-DD-13zx8.js";import{q as u}from"./queryKeys-h_4QDp19.js";function m(e){return r({queryKey:u.user.detail(e),queryFn:()=>s(`/users/${e}`),enabled:!!e,staleTime:5*6e4})}export{m as u};

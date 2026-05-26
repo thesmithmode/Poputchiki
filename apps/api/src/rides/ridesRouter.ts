@@ -3,6 +3,10 @@ import {
   MarkParticipantsInput,
   enqueueNotification,
   enqueueNotificationBatch,
+  stripRide,
+  stripRideCore,
+  stripRideDetail,
+  stripRideRequest,
 } from "@poputchiki/shared";
 import { Hono } from "hono";
 import type postgres from "postgres";
@@ -179,9 +183,10 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     });
 
     const hasMore = rows.length === PAGE_SIZE + 1;
-    const rides = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
-    const lastRide = rides[PAGE_SIZE - 1];
+    const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
+    const lastRide = page[page.length - 1];
     const nextCursor = hasMore && lastRide ? encodeCursor(lastRide) : null;
+    const rides = page.map(stripRide);
 
     const payload = { rides, nextCursor };
     if (cacheKey) cache.set(cacheKey, payload);
@@ -243,7 +248,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       `;
     });
 
-    return c.json({ rides: rows });
+    return c.json({ rides: rows.map(stripRide) });
   });
 
   app.get("/:id", async (c) => {
@@ -339,7 +344,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     if (row.driver && (row.driver as { id?: string }).id !== user.id) {
       row.pending_requests = [];
     }
-    return c.json(row);
+    return c.json(stripRideDetail(row));
   });
 
   app.post("/", antiBot(sql), async (c) => {
@@ -415,7 +420,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       );
     })().catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
-    return c.json(ride, 201);
+    return c.json(stripRideCore(ride), 201);
   });
 
   app.post("/:id/request", async (c) => {
@@ -492,7 +497,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         },
       }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
-      return c.json(result.rideRequest, 201);
+      return c.json(stripRideRequest(result.rideRequest as Record<string, unknown>), 201);
     } catch (err) {
       const e = err as { code?: string };
       /* c8 ignore next -- defensive: unknown error codes re-throw; all known codes return above */
@@ -818,7 +823,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "updated" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );
-    return c.json(result.row);
+    return c.json(stripRideCore(result.row));
   });
 
   app.patch("/:id/cancel", async (c) => {

@@ -84,6 +84,72 @@ export const RideDTO = z.object({
 export type RideDTO = z.infer<typeof RideDTO>;
 export type RideStatus = z.infer<typeof RideStatus>;
 
+const RIDE_CORE_KEYS = new Set([
+  "id",
+  "driver_id",
+  "template_id",
+  "from_label",
+  "from_lat",
+  "from_lng",
+  "to_label",
+  "to_lat",
+  "to_lng",
+  "departure_at",
+  "price_rub",
+  "seats_total",
+  "seats_taken",
+  "comment",
+  "status",
+  "created_at",
+  "updated_at",
+]);
+
+const RIDE_LIST_KEYS = new Set([
+  ...RIDE_CORE_KEYS,
+  "driver_display_name",
+  "driver_photo_url",
+  "driver_tg_id",
+  "driver_avg_stars",
+  "driver_reviews_count",
+]);
+
+const RIDE_DETAIL_KEYS = new Set([
+  ...RIDE_CORE_KEYS,
+  "driver",
+  "passengers",
+  "pending_requests",
+  "my_request_id",
+  "my_request_status",
+  "my_subscription_id",
+  "my_subscription_status",
+]);
+
+const RIDE_REQUEST_KEYS = new Set(["id", "ride_id", "passenger_id", "status", "created_at"]);
+
+function pickKeys(row: Record<string, unknown>, allowed: Set<string>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(row)) {
+    if (allowed.has(k)) out[k] = row[k];
+  }
+  return out;
+}
+
+export function stripRide(row: Record<string, unknown>): Record<string, unknown> {
+  return pickKeys(row, RIDE_LIST_KEYS);
+}
+
+export function stripRideCore(row: Record<string, unknown>): Record<string, unknown> {
+  return pickKeys(row, RIDE_CORE_KEYS);
+}
+
+export function stripRideDetail(row: Record<string, unknown>): Record<string, unknown> {
+  return pickKeys(row, RIDE_DETAIL_KEYS);
+}
+
+export function stripRideRequest(row: Record<string, unknown>): Record<string, unknown> {
+  return pickKeys(row, RIDE_REQUEST_KEYS);
+}
+
 export const MarkParticipantsInput = z.object({
   passenger_ids: z.array(z.string().uuid()).min(1).max(50),
 });

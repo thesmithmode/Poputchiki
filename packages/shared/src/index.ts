@@ -4,7 +4,16 @@ export type {
   UserProfileInput as UserProfileInputType,
 } from "./schemas/user.js";
 
-export { CreateRideInput, MarkParticipantsInput, RideDTO, RideStatus } from "./schemas/ride.js";
+export {
+  CreateRideInput,
+  MarkParticipantsInput,
+  RideDTO,
+  RideStatus,
+  stripRide,
+  stripRideCore,
+  stripRideDetail,
+  stripRideRequest,
+} from "./schemas/ride.js";
 export type {
   CreateRideInput as CreateRideInputType,
   MarkParticipantsInput as MarkParticipantsInputType,

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T07:25:31.122Z",
+  "timestamp": "2026-05-27T08:43:09.567Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,10 +18,6 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-25.md"
-    },
-    {
-      "status": "M",
       "path": ".memory/scripts/flush.log"
     },
     {
@@ -29,12 +25,60 @@
       "path": ".memory/scripts/last-flush.json"
     },
     {
-      "status": "MM",
+      "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
+      "status": "M",
+      "path": "apps/api/src/app.ts"
+    },
+    {
+      "status": "M",
+      "path": "packages/shared/src/index.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/AddressAutocomplete.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/lib/queryKeys.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/CreateRideScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/SettingsScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/tests/CreateRideScreen.test.tsx"
+    },
+    {
       "status": "??",
-      "path": ".memory/daily/2026-05-26.md"
+      "path": ".memory/daily/2026-05-27.md"
+    },
+    {
+      "status": "??",
+      "path": "apps/api/src/saved-addresses/"
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/039_saved_addresses.down.sql"
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/039_saved_addresses.sql"
+    },
+    {
+      "status": "??",
+      "path": "packages/shared/src/schemas/saved-address.ts"
     },
     {
       "status": "??",
@@ -127,8 +171,28 @@
     {
       "status": "??",
       "path": "web/dist/workbox-8bb3b1ec.js"
+    },
+    {
+      "status": "??",
+      "path": "web/src/components/SaveAddressDialog.tsx"
+    },
+    {
+      "status": "??",
+      "path": "web/src/hooks/useSavedAddresses.ts"
+    },
+    {
+      "status": "??",
+      "path": "web/src/lib/fuzzyMatch.ts"
+    },
+    {
+      "status": "??",
+      "path": "web/src/screens/SavedAddressesScreen.tsx"
+    },
+    {
+      "status": "??",
+      "path": "web/tests/fuzzyMatch.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nd9b849f chore: добавить memory flush лог сессии\nd7ec8a2 Merge branch 'claude/nice-dirac-SSYWP' into dev\n1a14486 SEC: добавить DTO strip-функции как второй барьер против утечки полей\ne9ef7c6 chore: обновить memory flush лог\n8fdb63f SEC: заменить SELECT r.* / RETURNING * на explicit column lists в ridesRouter"
+  "context_notes": "Recent commits:\n318533b SEC: добавить новые Go stdlib CVEs в trivyignore (oven/bun:1-alpine)\nfbbb9cd CHORE: обновить memory-логи — сессия 2026-05-26/27, sync с origin/dev\nd9b849f chore: добавить memory flush лог сессии\nd7ec8a2 Merge branch 'claude/nice-dirac-SSYWP' into dev\n1a14486 SEC: добавить DTO strip-функции как второй барьер против утечки полей"
 }

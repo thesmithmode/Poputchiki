@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { backfillRoutes } from "../../src/route-backfill";
 
 type Row = Record<string, unknown>;
@@ -55,6 +55,11 @@ function osrmFetch(): typeof fetch {
 }
 
 describe("backfillRoutes", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
   it("fills missing route fields for active templates and active rides", async () => {
     const sql = makeSql([
       [{ id: "tmpl-1", from_lat: 55.81, from_lng: 49.44, to_lat: 55.79, to_lng: 49.12 }],
@@ -98,5 +103,73 @@ describe("backfillRoutes", () => {
       failed: 1,
     });
     expect((sql as unknown as { calls: string[] }).calls.join("\n")).not.toContain("UPDATE rides");
+  });
+
+  it("uses default OSRM env, timeout, fetch, and can skip rides", async () => {
+    vi.stubEnv("OSRM_URL", "http://osrm-env:5000");
+    const fetchFn = osrmFetch();
+    vi.stubGlobal("fetch", fetchFn);
+    const sql = makeSql([
+      [{ id: "tmpl-1", from_lat: 55.81, from_lng: 49.44, to_lat: 55.79, to_lng: 49.12 }],
+      [{ id: "tmpl-1" }],
+    ]);
+
+    const result = await backfillRoutes(sql, { includeRides: false });
+
+    expect(result).toEqual({
+      templatesChecked: 1,
+      templatesUpdated: 1,
+      ridesChecked: 0,
+      ridesUpdated: 0,
+      failed: 0,
+    });
+    expect(fetchFn).toHaveBeenCalledWith(
+      expect.stringContaining("http://osrm-env:5000/route/v1/driving/"),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect((sql as unknown as { calls: string[] }).calls.join("\n")).not.toContain("FROM rides");
+  });
+
+  it("counts OSRM non-ok responses as retryable failures without updates", async () => {
+    const sql = makeSql([
+      [{ id: "ride-1", from_lat: 55.82, from_lng: 49.43, to_lat: 55.78, to_lng: 49.11 }],
+    ]);
+    const fetchFn = vi.fn(async () => new Response("bad gateway", { status: 502 }));
+
+    const result = await backfillRoutes(sql, {
+      fetchFn: fetchFn as unknown as typeof fetch,
+      includeTemplates: false,
+    });
+
+    expect(result).toEqual({
+      templatesChecked: 0,
+      templatesUpdated: 0,
+      ridesChecked: 1,
+      ridesUpdated: 0,
+      failed: 1,
+    });
+    expect((sql as unknown as { calls: string[] }).calls.join("\n")).not.toContain("UPDATE rides");
+  });
+
+  it("does not count an update when another worker already filled the route", async () => {
+    const sql = makeSql([
+      [{ id: "ride-1", from_lat: 55.82, from_lng: 49.43, to_lat: 55.78, to_lng: 49.11 }],
+      [],
+    ]);
+
+    const result = await backfillRoutes(sql, {
+      fetchFn: osrmFetch(),
+      includeTemplates: false,
+      limit: 1,
+    });
+
+    expect(result).toEqual({
+      templatesChecked: 0,
+      templatesUpdated: 0,
+      ridesChecked: 1,
+      ridesUpdated: 0,
+      failed: 0,
+    });
+    expect((sql as unknown as { calls: string[] }).calls.join("\n")).toContain("UPDATE");
   });
 });

@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MeContext } from "../src/contexts/MeContext";
+import type { MeState } from "../src/hooks/useMe";
 import { FeedScreen } from "../src/screens/FeedScreen";
 import type { Ride } from "../src/types/ride";
 
@@ -18,36 +20,22 @@ vi.mock("../src/lib/api", async (importOriginal) => {
   };
 });
 
-vi.mock("leaflet", () => ({
-  default: {
-    map: vi.fn(() => ({
-      setView: vi.fn().mockReturnThis(),
-      remove: vi.fn(),
-      on: vi.fn(),
-    })),
-    tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
-    marker: vi.fn(() => ({
-      addTo: vi.fn().mockReturnThis(),
-      bindPopup: vi.fn().mockReturnThis(),
-    })),
-    icon: vi.fn(),
-  },
-  map: vi.fn(() => ({
-    setView: vi.fn().mockReturnThis(),
-    remove: vi.fn(),
-    on: vi.fn(),
-  })),
-  tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
-  marker: vi.fn(() => ({
-    addTo: vi.fn().mockReturnThis(),
-    bindPopup: vi.fn().mockReturnThis(),
-  })),
-  icon: vi.fn(),
-}));
-
-import { apiFetch } from "../src/lib/api";
+import { ApiError, apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
+
+const ME_STATE: MeState = {
+  status: "ok",
+  user: {
+    id: "current-user",
+    display_name: "Test User",
+    onboarded: true,
+    is_banned: false,
+    ban_reason: null,
+    banned_at: null,
+    role: "user",
+  },
+};
 
 function makeRide(overrides: Partial<Ride> = {}): Ride {
   return {
@@ -59,15 +47,30 @@ function makeRide(overrides: Partial<Ride> = {}): Ride {
     to_label: "ул. Баумана",
     to_lat: 55.7963,
     to_lng: 49.1093,
-    departure_at: new Date(Date.now() + 3600000).toISOString(),
+    departure_at: new Date(Date.now() + 3_600_000).toISOString(),
     price_rub: 150,
     seats_total: 3,
     seats_taken: 1,
     status: "active",
     comment: null,
     created_at: new Date().toISOString(),
+    driver_display_name: "Иван Иванов",
+    driver_avg_stars: null,
+    driver_reviews_count: 0,
     ...overrides,
   };
+}
+
+function mockApi(rides: Ride[] | Error): void {
+  mockedApiFetch.mockImplementation(async (path) => {
+    const url = String(path);
+    if (url.startsWith("/ride-requests/mine")) return { requests: [] };
+    if (url.startsWith("/rides?")) {
+      if (rides instanceof Error) throw rides;
+      return { rides, nextCursor: null };
+    }
+    throw new Error(`Unexpected apiFetch call: ${url}`);
+  });
 }
 
 function renderWithQuery(ui: React.ReactElement) {
@@ -76,7 +79,9 @@ function renderWithQuery(ui: React.ReactElement) {
   });
   return render(
     <MemoryRouter>
-      <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+      <QueryClientProvider client={client}>
+        <MeContext.Provider value={ME_STATE}>{ui}</MeContext.Provider>
+      </QueryClientProvider>
     </MemoryRouter>,
   );
 }
@@ -84,24 +89,31 @@ function renderWithQuery(ui: React.ReactElement) {
 describe("FeedScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
   });
 
-  it("показывает состояние загрузки пока запрос выполняется", async () => {
-    mockedApiFetch.mockReturnValue(new Promise(() => {})); // never resolves
+  it("показывает состояние загрузки пока запрос выполняется", () => {
+    mockedApiFetch.mockImplementation((path) => {
+      if (String(path).startsWith("/ride-requests/mine")) {
+        return Promise.resolve({ requests: [] });
+      }
+      return new Promise(() => {});
+    });
+
     renderWithQuery(<FeedScreen />);
-    expect(
-      screen.getByText(/Загрузка/i) || document.querySelector("[data-testid='loading-skeleton']"),
-    ).toBeTruthy();
+
+    expect(screen.getByTestId("loading-skeleton")).toBeInTheDocument();
   });
 
   it("отображает список поездок когда данные получены", async () => {
-    const rides = [
+    mockApi([
       makeRide({ from_label: "Откуда-1", to_label: "Куда-1" }),
       makeRide({ from_label: "Откуда-2", to_label: "Куда-2" }),
       makeRide({ from_label: "Откуда-3", to_label: "Куда-3" }),
-    ];
-    mockedApiFetch.mockResolvedValueOnce({ rides, nextCursor: null });
+    ]);
+
     renderWithQuery(<FeedScreen />);
+
     await waitFor(() => {
       expect(screen.getByText("Откуда-1")).toBeInTheDocument();
       expect(screen.getByText("Откуда-2")).toBeInTheDocument();
@@ -110,60 +122,50 @@ describe("FeedScreen", () => {
   });
 
   it("показывает сообщение об отсутствии поездок при пустом списке", async () => {
-    mockedApiFetch.mockResolvedValueOnce({ rides: [], nextCursor: null });
+    mockApi([]);
+
     renderWithQuery(<FeedScreen />);
+
     await waitFor(() => {
       expect(screen.getByText(/Ничего не найдено/i)).toBeInTheDocument();
     });
   });
 
   it("показывает сообщение об ошибке при сбое запроса", async () => {
-    const { ApiError } = await import("../src/lib/api");
-    mockedApiFetch.mockRejectedValueOnce(new ApiError(500, { error: "Internal Server Error" }));
+    mockApi(new ApiError(500, { error: "Internal Server Error" }));
+
     renderWithQuery(<FeedScreen />);
+
     await waitFor(() => {
-      expect(screen.getByText(/ошибка/i) || screen.getByText(/что-то пошло не так/i)).toBeTruthy();
+      expect(screen.getByText(/Ошибка/i)).toBeInTheDocument();
     });
   });
 
-  it("переключает вид списка и карты по кнопке", async () => {
-    const rides = [makeRide()];
-    mockedApiFetch.mockResolvedValueOnce({ rides, nextCursor: null });
+  it("переключает плотность списка по кнопке", async () => {
+    mockApi([makeRide()]);
+
     renderWithQuery(<FeedScreen />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /карта|map/i })).toBeInTheDocument();
+      expect(screen.getByTestId("toggle-density")).toBeInTheDocument();
     });
 
-    // Initially list view is visible
-    const listContainer = document.querySelector("[data-testid='ride-list']");
-    const mapContainer = document.querySelector("[data-testid='ride-map']");
-    if (listContainer && mapContainer) {
-      expect(listContainer).toBeVisible();
-    }
+    fireEvent.click(screen.getByTestId("toggle-density"));
 
-    // Click toggle button to switch to map view
-    fireEvent.click(screen.getByRole("button", { name: /карта|map/i }));
-
-    await waitFor(() => {
-      const mapEl = document.querySelector("[data-testid='ride-map']");
-      expect(mapEl).toBeInTheDocument();
-    });
+    expect(localStorage.getItem("pp_density")).toBe("compact");
   });
 
-  it("отображает контейнер карты в режиме карты при наличии поездок", async () => {
-    const rides = [makeRide(), makeRide()];
-    mockedApiFetch.mockResolvedValueOnce({ rides, nextCursor: null });
+  it("открывает панель фильтров по кнопке", async () => {
+    mockApi([makeRide(), makeRide()]);
+
     renderWithQuery(<FeedScreen />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /карта|map/i })).toBeInTheDocument();
+      expect(screen.getByTestId("toggle-filters")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /карта|map/i }));
+    fireEvent.click(screen.getByTestId("toggle-filters"));
 
-    await waitFor(() => {
-      expect(document.querySelector("[data-testid='ride-map']")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("toggle-filters")).toHaveAttribute("aria-pressed", "true");
   });
 });

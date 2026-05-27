@@ -197,6 +197,11 @@ export function SettingsScreen() {
             onClick={() => navigate("/me/rides")}
           />
           <RowLink
+            label="📍 Сохранённые адреса"
+            testId="link-saved-addresses"
+            onClick={() => navigate("/settings/saved-addresses")}
+          />
+          <RowLink
             label="⭐ Пресеты фильтров"
             testId="link-presets"
             onClick={() => navigate("/presets")}

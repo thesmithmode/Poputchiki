@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { SavedAddress } from "../hooks/useSavedAddresses";
 import { byTsarevoFirst } from "../lib/addressBoost";
 import { apiFetch } from "../lib/api";
+import { fuzzyMatchSaved } from "../lib/fuzzyMatch";
 import { getMatchingPresets } from "../lib/tsarevoPresets";
 
 export interface Coords {
@@ -10,12 +12,10 @@ export interface Coords {
 
 export interface AddressSuggestion {
   label: string;
-  source: "geocode" | "preset";
+  source: "geocode" | "preset" | "saved";
   coords: Coords;
-  // Полный display_name от Nominatim — используем для буста по совпадению с
-  // "Царёво/Шигалеево" в полном адресе, label обрезан до 4 частей и совпадение там
-  // не всегда видно. Для preset не заполняется.
   fullDisplay?: string;
+  savedName?: string;
 }
 
 interface NominatimResult {
@@ -30,11 +30,30 @@ interface AddressAutocompleteProps {
   placeholder?: string;
   testId?: string;
   inputStyle?: React.CSSProperties;
+  savedAddresses?: SavedAddress[];
 }
 
 const MIN_GEOCODE_CHARS = 3;
 const DEBOUNCE_MS = 350;
 const MAX_SUGGESTIONS = 12;
+
+function getSavedSuggestions(
+  savedAddresses: SavedAddress[] | undefined,
+  query: string,
+): AddressSuggestion[] {
+  if (!savedAddresses || savedAddresses.length === 0) return [];
+  const trimmed = query.trim();
+  const filtered =
+    trimmed.length === 0
+      ? savedAddresses
+      : savedAddresses.filter((sa) => fuzzyMatchSaved(trimmed, sa.name));
+  return filtered.map((sa) => ({
+    label: sa.address_label,
+    source: "saved" as const,
+    coords: { lat: sa.lat, lng: sa.lng },
+    savedName: sa.name,
+  }));
+}
 
 export function AddressAutocomplete({
   value,
@@ -42,6 +61,7 @@ export function AddressAutocomplete({
   placeholder,
   testId,
   inputStyle,
+  savedAddresses,
 }: AddressAutocompleteProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [geoSuggestions, setGeoSuggestions] = useState<AddressSuggestion[]>([]);
@@ -90,16 +110,18 @@ export function AddressAutocomplete({
     }
   }, []);
 
+  const savedSuggestions = useMemo(
+    () => getSavedSuggestions(savedAddresses, value),
+    [savedAddresses, value],
+  );
+
   useEffect(() => {
     const trimmed = value.trim();
     if (trimmed.length === 0) {
-      // Пустое поле — не показываем выпадашку. Пресеты появляются только когда юзер
-      // начал вводить (см. ниже). Это убирает спам пресетов на focus пустого поля.
       setGeoSuggestions([]);
       setLoading(false);
       return;
     }
-    // Пресеты показываем сразу (синхронно), не ждём debounce — это убирает 'empty' моргание.
     setGeoSuggestions(getMatchingPresets(trimmed));
     if (trimmed.length < MIN_GEOCODE_CHARS) {
       setLoading(false);
@@ -123,11 +145,23 @@ export function AddressAutocomplete({
     setOpen(false);
   }
 
-  const showHint = false; // пресеты заменили hint
-  const showLoading = open && loading && geoSuggestions.length === 0;
+  const allSuggestions = useMemo(() => {
+    const deduped = geoSuggestions.filter(
+      (g) =>
+        !savedSuggestions.some(
+          (s) =>
+            Math.abs(s.coords.lat - g.coords.lat) < 0.0001 &&
+            Math.abs(s.coords.lng - g.coords.lng) < 0.0001,
+        ),
+    );
+    return [...savedSuggestions, ...deduped].slice(0, MAX_SUGGESTIONS);
+  }, [savedSuggestions, geoSuggestions]);
+
+  const showHint = false;
+  const showLoading = open && loading && allSuggestions.length === 0;
   const showEmpty =
-    open && !loading && geoSuggestions.length === 0 && value.trim().length >= MIN_GEOCODE_CHARS;
-  const showList = open && geoSuggestions.length > 0;
+    open && !loading && allSuggestions.length === 0 && value.trim().length >= MIN_GEOCODE_CHARS;
+  const showList = open && allSuggestions.length > 0;
 
   return (
     <div ref={wrapperRef} style={{ position: "relative" }}>
@@ -204,9 +238,9 @@ export function AddressAutocomplete({
             </div>
           )}
           {showList &&
-            geoSuggestions.map((s, idx) => (
+            allSuggestions.map((s, idx) => (
               <button
-                key={`${idx}-${s.label}`}
+                key={`${idx}-${s.label}-${s.source}`}
                 type="button"
                 data-testid={testId ? `${testId}-option-${idx}` : undefined}
                 onMouseDown={(e) => {
@@ -230,14 +264,25 @@ export function AddressAutocomplete({
                 <span
                   aria-hidden="true"
                   style={{
-                    fontSize: 12,
-                    color: "var(--brand-sub)",
+                    fontSize: s.source === "saved" ? 14 : 12,
+                    color: s.source === "saved" ? "#d4a017" : "var(--brand-sub)",
                     minWidth: 16,
                   }}
                 >
-                  ○
+                  {s.source === "saved" ? "★" : "○"}
                 </span>
-                <span>{s.label}</span>
+                <span>
+                  {s.source === "saved" && s.savedName ? (
+                    <>
+                      <strong>{s.savedName}</strong>
+                      <span style={{ color: "var(--brand-sub)", fontSize: 12, marginLeft: 4 }}>
+                        {s.label}
+                      </span>
+                    </>
+                  ) : (
+                    s.label
+                  )}
+                </span>
               </button>
             ))}
         </div>

@@ -14,6 +14,16 @@ vi.mock("../src/lib/telegram", () => ({
   getTelegramWebApp: vi.fn(() => undefined),
 }));
 
+vi.mock("../src/hooks/useSavedAddresses", () => ({
+  useSavedAddresses: () => ({
+    addresses: [],
+    create: vi.fn(),
+    remove: vi.fn(),
+    isCreating: false,
+    isLoading: false,
+  }),
+}));
+
 // Мокаем AddressAutocomplete на простой input с подставленными coords при изменении —
 // поведение dropdown тестируется отдельно в AddressAutocomplete.test.tsx.
 vi.mock("../src/components/AddressAutocomplete", () => {

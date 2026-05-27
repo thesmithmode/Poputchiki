@@ -53,6 +53,9 @@ const ProfileScreen = lazy(() =>
 const RideDetailScreen = lazy(() =>
   import("./screens/RideDetailScreen").then((m) => ({ default: m.RideDetailScreen })),
 );
+const SavedAddressesScreen = lazy(() =>
+  import("./screens/SavedAddressesScreen").then((m) => ({ default: m.SavedAddressesScreen })),
+);
 const SettingsScreen = lazy(() =>
   import("./screens/SettingsScreen").then((m) => ({ default: m.SettingsScreen })),
 );
@@ -224,6 +227,7 @@ function AppShell() {
             <Route path="/me/rides" element={<MyRidesScreen />} />
             <Route path="/me/edit" element={<EditProfileScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/settings/saved-addresses" element={<SavedAddressesScreen />} />
             <Route path="/settings/notifications" element={<NotificationPreferencesScreen />} />
             <Route path="/support" element={<SupportScreen />} />
             <Route path="/admin" element={<AdminScreen />} />

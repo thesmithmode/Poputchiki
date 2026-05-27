@@ -30,6 +30,7 @@ import { createRideRequestsRouter } from "./ride-requests/rideRequestsRouter";
 import { createRideTemplatesRouter } from "./ride-templates/rideTemplatesRouter";
 import { ridesCache } from "./rides/ridesCache";
 import { createRidesRouter } from "./rides/ridesRouter";
+import { createSavedAddressesRouter } from "./saved-addresses/savedAddressesRouter";
 import { createSupportRouter } from "./support/supportRouter";
 import { createInternalTemplateSubscriptionsRouter } from "./template-subscriptions/internalTemplateSubscriptionsRouter";
 import { createTemplateSubscriptionsRouter } from "./template-subscriptions/templateSubscriptionsRouter";
@@ -107,6 +108,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
       app.route("/api/users", createUsersRouter(sql));
       app.route("/api/notifications", createNotificationsRouter(sql));
       app.route("/api/favorites", createFavoritesRouter(sql));
+      app.route("/api/saved-addresses", createSavedAddressesRouter(sql));
       app.route("/api/likes", createLikesRouter(sql));
       app.route("/api/reviews", createReviewsRouter(sql));
       app.route("/api/complaints", createComplaintsRouter(sql));

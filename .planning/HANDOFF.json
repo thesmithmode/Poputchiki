@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T07:25:31.122Z",
+  "timestamp": "2026-05-27T08:54:00.318Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,7 +18,7 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".memory/daily/2026-05-25.md"
+      "path": ".memory/daily/2026-05-27.md"
     },
     {
       "status": "M",
@@ -29,106 +29,18 @@
       "path": ".memory/scripts/last-flush.json"
     },
     {
-      "status": "MM",
+      "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "??",
-      "path": ".memory/daily/2026-05-26.md"
+      "status": "M",
+      "path": "vitest.config.ts"
     },
     {
       "status": "??",
-      "path": "web/dist/assets/AboutScreen-CajjET4B.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/AdminScreen-grqHu_FY.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/BannedScreen-Cq4YpROi.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/BottomTabBar-BK3aTtcl.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/ConfirmParticipationScreen-BFypgEKX.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/CreateRideScreen-DbA2IGct.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/EditProfileScreen-CN3mxKG1.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/EventsScreen-AQkSwI0_.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/FilterPresetsScreen--j9o-ith.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/MyRidesScreen-CXxl-xuv.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/NotificationPreferencesScreen-CAC1SEgG.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/PrivacyScreen-BsDZ4tH6.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/ProfileScreen-D3wT_fqe.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/RideDetailScreen-CGbecCug.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/SettingsScreen-BAqlMhKZ.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/SupportScreen-Cgb0g74S.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/index-0b0RLLtV.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/useNotifications-CbOdMfl0.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/useTelegramBack-CFXb2X-b.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/useUser-DaNE0uW2.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/vendor-query-Cl3KnHkz.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/assets/vendor-router-CE6miFzf.js"
-    },
-    {
-      "status": "??",
-      "path": "web/dist/workbox-8bb3b1ec.js"
+      "path": "packages/shared/tests/schemas/saved-address.test.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nd9b849f chore: добавить memory flush лог сессии\nd7ec8a2 Merge branch 'claude/nice-dirac-SSYWP' into dev\n1a14486 SEC: добавить DTO strip-функции как второй барьер против утечки полей\ne9ef7c6 chore: обновить memory flush лог\n8fdb63f SEC: заменить SELECT r.* / RETURNING * на explicit column lists в ridesRouter"
+  "context_notes": "Recent commits:\n242bc63 CHORE: обновить web/dist артефакты сборки\n57d93b6 CHORE: обновить memory-логи — 2026-05-27\n7bf2e62 FEAT: сохранённые адреса с fuzzy-match и золотой звёздочкой\n318533b SEC: добавить новые Go stdlib CVEs в trivyignore (oven/bun:1-alpine)\nfbbb9cd CHORE: обновить memory-логи — сессия 2026-05-26/27, sync с origin/dev"
 }

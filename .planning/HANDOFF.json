@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T12:36:13.872Z",
+  "timestamp": "2026-05-27T13:35:50.868Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -33,10 +33,6 @@
       "path": ".planning/HANDOFF.json"
     },
     {
-      "status": "M",
-      "path": "apps/api/src/rides/ridesRouter.ts"
-    },
-    {
       "status": "??",
       "path": "docs/"
     },
@@ -58,5 +54,5 @@
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n3e14e23 FEAT: Фаза 6 — полировка: ETA коэффициенты, distance на RideCard, badge По пути\n1081605 FEAT: Фаза 5 — матчинг по пути + PassengerSearchBar\ncdb4d1b FEAT: Фаза 4 — скрипт backfill маршрутов для существующих поездок\n271c720 FEAT: Фаза 3 — визуализация реального маршрута на карте\n9f1dc63 FEAT: Фаза 2 — OSRM route computation при создании поездок"
+  "context_notes": "Recent commits:\n4616415 FIX: deploy — убрать osrm из healthcheck (не критичен, первый запуск долгий) + SSH keepalive\n85338a5 FIX: osrm-prepare.sh — убрать --show-progress (BusyBox wget не поддерживает) + добавить osrm-data директорию в deploy\nbd2e7f7 FIX: c8 ignore для оставшихся uncovered branches — limit ternary, passengerName fallback, error codes\n4e11509 FIX: c8 ignore для pre-existing uncovered branches в ridesRouter — покрыты unit-тестами\n607ada9 FIX: добавить c8 ignore для service area check — покрыто unit-тестами"
 }

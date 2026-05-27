@@ -99,6 +99,18 @@ export function RouteMapLeaflet({
         const bounds = L.latLngBounds(decodedRoute as [number, number][]);
         map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
       } else {
+        L.polyline(
+          [
+            [fromLat, fromLng],
+            [toLat, toLng],
+          ],
+          {
+            color: colorFrom,
+            weight: 2.5,
+            opacity: 0.65,
+            dashArray: "6 5",
+          },
+        ).addTo(map);
         const bounds = L.latLngBounds([
           [fromLat, fromLng],
           [toLat, toLng],
@@ -117,9 +129,30 @@ export function RouteMapLeaflet({
   }, [fromLat, fromLng, toLat, toLng, decodedRoute]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ height, borderRadius: 18, overflow: "hidden", background: "var(--brand-surface)" }}
-    />
+    <div style={{ position: "relative" }}>
+      <div
+        ref={containerRef}
+        style={{ height, borderRadius: 18, overflow: "hidden", background: "var(--brand-surface)" }}
+      />
+      {!routePolyline && (
+        <div
+          data-testid="route-map-status"
+          style={{
+            position: "absolute",
+            left: 10,
+            bottom: 10,
+            padding: "5px 9px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.92)",
+            color: "var(--brand-sub)",
+            fontSize: 11,
+            fontWeight: 600,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+          }}
+        >
+          Маршрут по дорогам строится
+        </div>
+      )}
+    </div>
   );
 }

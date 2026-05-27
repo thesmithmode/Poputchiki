@@ -1,6 +1,7 @@
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
+import polyline from "@mapbox/polyline";
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { applyFilters, resolveDateRange, useFilters } from "../hooks/useFilters";
@@ -132,6 +133,7 @@ export function MapScreen({
   const tileLayerRef = useRef<unknown>(null);
   const markersRef = useRef<unknown[]>([]);
   const clusterGroupRef = useRef<unknown>(null);
+  const selectedRouteRef = useRef<unknown>(null);
   const locateMarkerRef = useRef<unknown>(null);
   const compassMarkerRef = useRef<unknown>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
@@ -140,6 +142,7 @@ export function MapScreen({
   const filtersRef = useRef(filters);
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
+  const [selectedRoutePolyline, setSelectedRoutePolyline] = useState<string | null | undefined>();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
@@ -185,6 +188,57 @@ export function MapScreen({
     loadRidesRef.current?.();
   }, [filters]);
 
+  useEffect(() => {
+    setSelectedRoutePolyline(undefined);
+    if (!selected) return;
+    let cancelled = false;
+    apiFetch<Pick<Ride, "route_polyline">>(`/rides/${selected.id}`)
+      .then((ride) => {
+        if (!cancelled) setSelectedRoutePolyline(ride.route_polyline ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setSelectedRoutePolyline(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected]);
+
+  useEffect(() => {
+    if (!mapRef.current) return;
+    let cancelled = false;
+    import("leaflet").then((L) => {
+      if (cancelled || !mapRef.current) return;
+      const lMap = mapRef.current as ReturnType<typeof L.map>;
+      if (selectedRouteRef.current) {
+        lMap.removeLayer(selectedRouteRef.current as Parameters<typeof lMap.removeLayer>[0]);
+        selectedRouteRef.current = null;
+      }
+      if (!selected) return;
+
+      const routePoints = selectedRoutePolyline
+        ? (polyline.decode(selectedRoutePolyline) as [number, number][])
+        : ([
+            [selected.from_lat, selected.from_lng],
+            [selected.to_lat, selected.to_lng],
+          ] as [number, number][]);
+      const color =
+        getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
+        "#2d5a3d";
+      const line = L.polyline(
+        routePoints,
+        selectedRoutePolyline
+          ? { color, weight: 4, opacity: 0.85, lineCap: "round", lineJoin: "round" }
+          : { color, weight: 2.5, opacity: 0.55, dashArray: "6 5" },
+      ).addTo(lMap);
+      selectedRouteRef.current = line;
+      lMap.fitBounds(L.latLngBounds(routePoints), { padding: [80, 80], maxZoom: 14 });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, selectedRoutePolyline]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: renderMarkers reads current user/request/viewed state through closure
   useEffect(() => {
     if (!mapRef.current || rides.length === 0) return;
@@ -218,6 +272,12 @@ export function MapScreen({
       if (destroyed || !mapContainerRef.current) return;
 
       if (mapRef.current) {
+        if (selectedRouteRef.current) {
+          (mapRef.current as { removeLayer: (l: unknown) => void }).removeLayer(
+            selectedRouteRef.current,
+          );
+          selectedRouteRef.current = null;
+        }
         (mapRef.current as { remove: () => void }).remove();
         mapRef.current = null;
         tileLayerRef.current = null;

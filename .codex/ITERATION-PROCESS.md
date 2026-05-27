@@ -1,6 +1,6 @@
 # Процесс одной итерации Poputchiki (обязательный)
 
-Расширение `CLAUDE.md`. Файл для нейросети, не для людей. Грузить когда выбираешь следующую задачу.
+Расширение `AGENTS.md`. Файл для нейросети, не для людей. Грузить когда выбираешь следующую задачу.
 
 ## 1. Pre-flight
 ```bash
@@ -55,7 +55,7 @@ git commit -m "<TYPE>: <описание на русском>"
 TYPE: `FEAT|FIX|CHORE|DOCS|REFACTOR|TEST`.
 Без AI-подписи и AI-ссылок. Запрещено в commit subject/body, PR, release notes, changelog, issue comments, docs:
 - `Co-Authored-By: Claude` / `Co-Authored-By: Claude Sonnet` / любые `noreply@anthropic.com`
-- `Generated with Claude Code` / `🤖 Generated with`
+- `Generated with <AI tool>` / `🤖 Generated with`
 - URL `https://claude.ai/code/session_*` или любые другие `claude.ai/*`
 Удалить до commit/push. Проверять `git show HEAD` после каждого коммита.
 Кириллица: bash ломает → PowerShell или here-doc для русского.
@@ -90,4 +90,4 @@ git push origin dev
 Security review (отдельно от code review) встроен в CI через `bun run test:security` + nightly OWASP ZAP (TASK-121).
 
 ## 13. Следующая итерация
-Pending-задачи с готовыми deps есть → если Антон сказал «продолжай пока не закончится» / запущен `/loop` → к шагу 1. Иначе → ждать инструкций.
+Pending-задачи с готовыми deps есть → если Антон сказал «продолжай пока не закончится» / запущен `/loop` → к шагу 1. Иначе → ждать инструкций.`n

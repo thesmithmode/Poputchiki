@@ -68,7 +68,7 @@ const PatchInput = z
     to_lng: z.number().gte(-180).lte(180).optional(),
     departure_at: z.string().datetime().optional(),
     price_rub: z.number().int().positive().nullable().optional(),
-    seats_total: z.number().int().gte(1).lte(4).optional(),
+    seats_total: z.number().int().gte(1).lte(100).optional(),
     comment: z.string().max(200).nullable().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: "empty body" });
@@ -80,7 +80,7 @@ const GetRidesQuery = z.object({
   fromAt: z.string().datetime().optional(),
   toAt: z.string().datetime().optional(),
   priceMax: z.coerce.number().int().positive().optional(),
-  seatsMin: z.coerce.number().int().min(1).max(4).optional(),
+  seatsMin: z.coerce.number().int().min(1).max(100).optional(),
   trustMinAccountAgeDays: z.coerce.number().int().min(0).optional(),
   trustMinLikes: z.coerce.number().int().min(0).optional(),
   favoritesOnly: z

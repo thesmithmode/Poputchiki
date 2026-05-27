@@ -124,13 +124,13 @@ describe("POST /api/ride-templates", () => {
     expect(res.status).toBe(422);
   });
 
-  it("422 — seats_total > 4", async () => {
+  it("422 — seats_total > 100", async () => {
     const app = makeApp();
     const token = await makeToken(DRIVER);
     const res = await app.request("/api/ride-templates", {
       method: "POST",
       headers: authHeaders(token),
-      body: JSON.stringify({ ...VALID_BODY, seats_total: 5 }),
+      body: JSON.stringify({ ...VALID_BODY, seats_total: 101 }),
     });
     expect(res.status).toBe(422);
   });

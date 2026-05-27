@@ -13,7 +13,8 @@ async function main() {
 
   const result = await backfillRoutes(sql, { osrmUrl, limit: 500 });
 
-  console.log(JSON.stringify({ msg: "route_backfill_done", ...result }));
+  const msg = result.failed > 0 ? "route_backfill_partial" : "route_backfill_done";
+  console.log(JSON.stringify({ msg, ...result }));
   await sql.end();
 }
 

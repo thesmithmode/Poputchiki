@@ -18,6 +18,7 @@ import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
 import { fetchRoute } from "../routing/osrmClient";
+import { saveRouteFields } from "../routing/routePersistence";
 import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
 
@@ -432,17 +433,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     /* c8 ignore start -- OSRM route compute: no OSRM in integration tests */
     const routeData = await fetchRoute(input.from_lat, input.from_lng, input.to_lat, input.to_lng);
     if (routeData) {
-      await sql`
-        UPDATE rides SET
-          route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
-          route_polyline = ${routeData.polyline},
-          route_distance_m = ${routeData.distanceM},
-          route_duration_s = ${routeData.durationS}
-        WHERE id = ${ride.id as string}
-      `;
-      ride.route_polyline = routeData.polyline;
-      ride.route_distance_m = routeData.distanceM;
-      ride.route_duration_s = routeData.durationS;
+      const saved = await saveRouteFields(sql, "rides", ride.id as string, routeData);
+      if (saved) {
+        ride.route_polyline = routeData.polyline;
+        ride.route_distance_m = routeData.distanceM;
+        ride.route_duration_s = routeData.durationS;
+      }
     }
     /* c8 ignore stop */
 
@@ -896,16 +892,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         row.to_lng as number,
       );
       if (routeData) {
-        await sql`
-          UPDATE rides SET
-            route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
-            route_polyline = ${routeData.polyline},
-            route_distance_m = ${routeData.distanceM},
-            route_duration_s = ${routeData.durationS}
-          WHERE id = ${rideId}
-        `;
-        result.row.route_distance_m = routeData.distanceM;
-        result.row.route_duration_s = routeData.durationS;
+        const saved = await saveRouteFields(sql, "rides", rideId, routeData);
+        if (saved) {
+          result.row.route_polyline = routeData.polyline;
+          result.row.route_distance_m = routeData.distanceM;
+          result.row.route_duration_s = routeData.durationS;
+        }
       }
     }
     /* c8 ignore stop */

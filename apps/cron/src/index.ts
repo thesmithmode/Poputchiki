@@ -101,7 +101,13 @@ async function runExpandTemplates() {
 }
 
 async function runRouteBackfill() {
-  await oncePer(sql, "route_backfill", TEN_MIN, () => backfillRoutes(sql)).catch((err: unknown) =>
+  await oncePer(sql, "route_backfill", TEN_MIN, async () => {
+    const result = await backfillRoutes(sql);
+    const msg = result.failed > 0 ? "route_backfill_partial" : "route_backfill_done";
+    // biome-ignore lint/suspicious/noConsoleLog: structured cron observability
+    console.log(JSON.stringify({ msg, ...result }));
+    return result;
+  }).catch((err: unknown) =>
     console.error(JSON.stringify({ msg: "route_backfill_error", error: String(err) })),
   );
 }

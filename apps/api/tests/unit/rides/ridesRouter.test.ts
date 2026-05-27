@@ -5,13 +5,19 @@ import { createRidesRouter } from "../../../src/rides/ridesRouter";
 
 vi.mock("../../../src/db/with-identity", () => ({
   withIdentity: vi.fn(),
+  withSystem: vi.fn(),
 }));
 
 vi.mock("../../../src/middleware/anti-bot", () => ({
   antiBot: () => async (_c: unknown, next: () => Promise<void>) => next(),
 }));
 
-import { withIdentity } from "../../../src/db/with-identity";
+vi.mock("../../../src/routing/osrmClient", () => ({
+  fetchRoute: vi.fn(),
+}));
+
+import { withIdentity, withSystem } from "../../../src/db/with-identity";
+import { fetchRoute } from "../../../src/routing/osrmClient";
 import { readJson } from "../../helpers/json";
 
 const USER: AppUser = {
@@ -33,6 +39,11 @@ const VALID_BODY = {
 
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockSql = vi.fn() as any;
+const mockSystemTx = vi.fn((strings: TemplateStringsArray | string, ..._values: unknown[]) => {
+  if (!Array.isArray(strings)) return String(strings);
+  return Promise.resolve([{ id: "ride-uuid" }]);
+  // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
+}) as any;
 
 function makeApp(user?: AppUser) {
   const app = new Hono();
@@ -49,6 +60,9 @@ function makeApp(user?: AppUser) {
 describe("POST /rides — validation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSystemTx.mockClear();
+    vi.mocked(fetchRoute).mockResolvedValue(null);
+    vi.mocked(withSystem).mockImplementation(async (_sql, fn) => fn(mockSystemTx));
   });
 
   it("valid body → 201", async () => {

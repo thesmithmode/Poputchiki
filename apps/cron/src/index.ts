@@ -15,6 +15,7 @@ import { expandTemplates } from "./expand-templates";
 import { finalizeRides } from "./finalize-rides";
 import { oncePer } from "./lib/once-per";
 import { refreshUserStats } from "./refresh-user-stats";
+import { backfillRoutes } from "./route-backfill";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) throw new Error("DATABASE_URL required");
@@ -99,6 +100,18 @@ async function runExpandTemplates() {
   );
 }
 
+async function runRouteBackfill() {
+  await oncePer(sql, "route_backfill", TEN_MIN, async () => {
+    const result = await backfillRoutes(sql);
+    const msg = result.failed > 0 ? "route_backfill_partial" : "route_backfill_done";
+    // biome-ignore lint/suspicious/noConsoleLog: structured cron observability
+    console.log(JSON.stringify({ msg, ...result }));
+    return result;
+  }).catch((err: unknown) =>
+    console.error(JSON.stringify({ msg: "route_backfill_error", error: String(err) })),
+  );
+}
+
 async function runDailyBackup() {
   // 03:00 UTC daily
   if (new Date().getUTCHours() !== 3) return;
@@ -147,6 +160,7 @@ expandTemplates(sql).catch((err: unknown) =>
   console.error(JSON.stringify({ msg: "expand_templates_error", error: String(err) })),
 );
 runExpandTemplates();
+runRouteBackfill();
 runAuditLogCleanup();
 runFinalizeRides();
 runConfirmParticipationPush();
@@ -164,6 +178,7 @@ detectAnomalies(sql).catch((err: unknown) =>
 setInterval(runCleanup, FIVE_MIN);
 setInterval(runRefreshUserStats, FIVE_MIN);
 setInterval(runRateLimitBucketsCleanup, TEN_MIN);
+setInterval(runRouteBackfill, TEN_MIN);
 setInterval(runExpandTemplates, ONE_HOUR);
 setInterval(runAuditLogCleanup, ONE_HOUR);
 setInterval(runIdempotencyKeysCleanup, ONE_HOUR);

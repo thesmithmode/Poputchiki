@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as L from "leaflet";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -47,6 +47,7 @@ vi.mock("leaflet", () => {
     remove: vi.fn(),
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
+    fitBounds: vi.fn(),
     flyTo: vi.fn(),
     distanceTo: vi.fn(() => 5000),
   };
@@ -71,6 +72,7 @@ vi.mock("leaflet", () => {
       tileLayer: vi.fn(() => mockTileLayer),
       circleMarker: vi.fn(() => mockCircleMarker),
       divIcon: vi.fn((options) => options),
+      latLngBounds: vi.fn((points) => ({ points })),
     },
     map: vi.fn(() => mockMap),
     marker: vi.fn(() => mockMarker),
@@ -78,6 +80,7 @@ vi.mock("leaflet", () => {
     tileLayer: vi.fn(() => mockTileLayer),
     circleMarker: vi.fn(() => mockCircleMarker),
     divIcon: vi.fn((options) => options),
+    latLngBounds: vi.fn((points) => ({ points })),
   };
 });
 
@@ -235,6 +238,35 @@ describe("MapScreen", () => {
         expect.objectContaining({
           html: expect.stringContaining("background:var(--ride-applied-soft)"),
         }),
+      );
+    });
+  });
+
+  it("draws selected ride route after marker click", async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ rides: MOCK_RIDES })
+      .mockResolvedValueOnce({ ...MOCK_RIDES[0], route_polyline: "mfp_I__vpAYBO@K@" });
+
+    renderScreen();
+
+    await waitFor(() => expect(L.marker).toHaveBeenCalled());
+    const marker = vi.mocked(L.marker).mock.results[0]?.value as
+      | { on: ReturnType<typeof vi.fn> }
+      | undefined;
+    const clickHandler = marker?.on.mock.calls.find(([event]) => event === "click")?.[1] as
+      | (() => void)
+      | undefined;
+    expect(clickHandler).toBeDefined();
+
+    await act(async () => {
+      clickHandler?.();
+    });
+
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith("/rides/ride-1");
+      expect(L.polyline).toHaveBeenCalledWith(
+        expect.any(Array),
+        expect.objectContaining({ weight: 4, opacity: 0.85 }),
       );
     });
   });

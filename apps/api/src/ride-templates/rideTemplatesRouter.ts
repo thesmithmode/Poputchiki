@@ -6,6 +6,7 @@ import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
 import { fetchRoute } from "../routing/osrmClient";
+import { clearRouteFields, saveRouteFields } from "../routing/routePersistence";
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -111,17 +112,12 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
     const template = rows[0] as Row & Record<string, unknown>;
     const routeData = await fetchRoute(d.from_lat, d.from_lng, d.to_lat, d.to_lng);
     if (routeData) {
-      await sql`
-        UPDATE ride_templates SET
-          route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
-          route_polyline = ${routeData.polyline},
-          route_distance_m = ${routeData.distanceM},
-          route_duration_s = ${routeData.durationS}
-        WHERE id = ${template.id}
-      `;
-      template.route_polyline = routeData.polyline;
-      template.route_distance_m = routeData.distanceM;
-      template.route_duration_s = routeData.durationS;
+      const saved = await saveRouteFields(sql, "ride_templates", template.id, routeData);
+      if (saved) {
+        template.route_polyline = routeData.polyline;
+        template.route_distance_m = routeData.distanceM;
+        template.route_duration_s = routeData.durationS;
+      }
     }
 
     return c.json(template, 201);
@@ -202,25 +198,19 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
     if (coordsChanged) {
       const routeData = await fetchRoute(tmpl.from_lat, tmpl.from_lng, tmpl.to_lat, tmpl.to_lng);
       if (routeData) {
-        await sql`
-          UPDATE ride_templates SET
-            route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
-            route_polyline = ${routeData.polyline},
-            route_distance_m = ${routeData.distanceM},
-            route_duration_s = ${routeData.durationS}
-          WHERE id = ${id}
-        `;
-        tmpl.route_polyline = routeData.polyline;
-        tmpl.route_distance_m = routeData.distanceM;
-        tmpl.route_duration_s = routeData.durationS;
+        const saved = await saveRouteFields(sql, "ride_templates", id, routeData);
+        if (saved) {
+          tmpl.route_polyline = routeData.polyline;
+          tmpl.route_distance_m = routeData.distanceM;
+          tmpl.route_duration_s = routeData.durationS;
+        }
       } else {
-        await sql`
-          UPDATE ride_templates SET route_geom = NULL, route_polyline = NULL, route_distance_m = NULL, route_duration_s = NULL
-          WHERE id = ${id}
-        `;
-        tmpl.route_polyline = null;
-        tmpl.route_distance_m = null;
-        tmpl.route_duration_s = null;
+        const cleared = await clearRouteFields(sql, "ride_templates", id);
+        if (cleared) {
+          tmpl.route_polyline = null;
+          tmpl.route_distance_m = null;
+          tmpl.route_duration_s = null;
+        }
       }
     }
 

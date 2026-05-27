@@ -21,11 +21,12 @@ describe("fetchRoute", () => {
     const result = await fetchRoute(55.8, 49.1, 55.9, 49.2, {
       _fetch: mockFetch(VALID_RESPONSE),
     });
-    expect(result).not.toBeNull();
-    expect(result!.polyline).toBe("mfp_I__vpAYBO@K@");
-    expect(result!.distanceM).toBe(1235);
-    expect(result!.durationS).toBe(181);
-    expect(result!.geometryWKT).toContain("LINESTRING(");
+    expect(result).toMatchObject({
+      distanceM: 1235,
+      durationS: 181,
+      polyline: "mfp_I__vpAYBO@K@",
+    });
+    expect(result?.geometryWKT).toContain("LINESTRING(");
   });
 
   it("constructs correct OSRM URL with lng,lat order", async () => {
@@ -98,9 +99,9 @@ describe("fetchRoute", () => {
     const result = await fetchRoute(55.8, 49.1, 55.9, 49.2, {
       _fetch: mockFetch(VALID_RESPONSE),
     });
-    expect(result).not.toBeNull();
-    expect(result!.geometryWKT).toMatch(/^LINESTRING\(.+\)$/);
-    const coordPairs = result!.geometryWKT.slice(11, -1).split(",");
+    const geometryWKT = result?.geometryWKT ?? "";
+    expect(geometryWKT).toMatch(/^LINESTRING\(.+\)$/);
+    const coordPairs = geometryWKT.slice(11, -1).split(",");
     for (const pair of coordPairs) {
       const [lng, lat] = pair.trim().split(" ").map(Number);
       expect(lng).toBeGreaterThanOrEqual(-180);
@@ -114,8 +115,7 @@ describe("fetchRoute", () => {
     const result = await fetchRoute(55.8, 49.1, 55.9, 49.2, {
       _fetch: mockFetch(VALID_RESPONSE),
     });
-    expect(result).not.toBeNull();
-    expect(Number.isInteger(result!.distanceM)).toBe(true);
-    expect(Number.isInteger(result!.durationS)).toBe(true);
+    expect(Number.isInteger(result?.distanceM)).toBe(true);
+    expect(Number.isInteger(result?.durationS)).toBe(true);
   });
 });

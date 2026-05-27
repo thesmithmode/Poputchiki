@@ -5,13 +5,19 @@ import { createRideTemplatesRouter } from "../../../src/ride-templates/rideTempl
 
 vi.mock("../../../src/db/with-identity", () => ({
   withIdentity: vi.fn(),
+  withSystem: vi.fn(),
 }));
 
 vi.mock("../../../src/middleware/anti-bot", () => ({
   antiBot: () => async (_c: unknown, next: () => Promise<void>) => next(),
 }));
 
-import { withIdentity } from "../../../src/db/with-identity";
+vi.mock("../../../src/routing/osrmClient", () => ({
+  fetchRoute: vi.fn(),
+}));
+
+import { withIdentity, withSystem } from "../../../src/db/with-identity";
+import { fetchRoute } from "../../../src/routing/osrmClient";
 import { readJson } from "../../helpers/json";
 
 const USER: AppUser = {
@@ -28,6 +34,11 @@ mockTx.unsafe = vi.fn(() => "COLS_FRAGMENT");
 
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockSql = vi.fn() as any;
+const mockSystemTx = vi.fn((strings: TemplateStringsArray | string, ..._values: unknown[]) => {
+  if (!Array.isArray(strings)) return String(strings);
+  return Promise.resolve([{ id: TMPL_ID }]);
+  // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
+}) as any;
 
 function mockCallThrough() {
   vi.mocked(withIdentity).mockImplementation(async (_sql, _user, fn) => fn(mockTx));
@@ -57,6 +68,13 @@ const VALID = {
   seats_total: 3,
 };
 
+const ROUTE = {
+  polyline: "mfp_I__vpAYBO@K@",
+  geometryWKT: "LINESTRING(49.1 55.1,49.2 55.2)",
+  distanceM: 1234,
+  durationS: 567,
+};
+
 const ROW = {
   id: TMPL_ID,
   driver_id: USER.id,
@@ -81,7 +99,11 @@ const ROW = {
 beforeEach(() => {
   vi.clearAllMocks();
   mockTx.mockReset();
+  mockSystemTx.mockClear();
   vi.mocked(withIdentity).mockReset();
+  vi.mocked(withSystem).mockReset();
+  vi.mocked(fetchRoute).mockResolvedValue(null);
+  vi.mocked(withSystem).mockImplementation(async (_sql, fn) => fn(mockSystemTx));
   mockTx.unsafe = vi.fn(() => "COLS_FRAGMENT");
 });
 
@@ -98,6 +120,26 @@ describe("POST /ride-templates", () => {
     expect(res.status).toBe(201);
     const body = await readJson(res);
     expect(body.id).toBe(TMPL_ID);
+  });
+
+  it("valid with OSRM route → persists road route fields through system role", async () => {
+    mockCallThrough();
+    mockTx.mockResolvedValueOnce([ROW]);
+    vi.mocked(fetchRoute).mockResolvedValueOnce(ROUTE);
+
+    const app = makeApp(USER);
+    const res = await app.request("/ride-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(VALID),
+    });
+
+    expect(res.status).toBe(201);
+    const body = await readJson(res);
+    expect(body.route_polyline).toBe(ROUTE.polyline);
+    expect(body.route_distance_m).toBe(ROUTE.distanceM);
+    expect(body.route_duration_s).toBe(ROUTE.durationS);
+    expect(withSystem).toHaveBeenCalledOnce();
   });
 
   it("invalid weekdays > 6 → 422", async () => {
@@ -305,6 +347,29 @@ describe("PATCH /ride-templates/:id", () => {
       }),
     });
     expect(res.status).toBe(200);
+  });
+
+  it("coords update with OSRM route → refreshes road route fields through system role", async () => {
+    mockCallThrough();
+    mockTx.mockResolvedValueOnce([{ id: TMPL_ID }]); // exists
+    mockTx.mockResolvedValueOnce("HELPER_FRAGMENT"); // tx(updatable, ...keys) helper-call
+    mockTx.mockResolvedValueOnce([]); // combined UPDATE
+    mockTx.mockResolvedValueOnce([{ ...ROW, from_lat: 56 }]); // final SELECT
+    vi.mocked(fetchRoute).mockResolvedValueOnce(ROUTE);
+
+    const app = makeApp(USER);
+    const res = await app.request(`/ride-templates/${TMPL_ID}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from_lat: 56 }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.route_polyline).toBe(ROUTE.polyline);
+    expect(body.route_distance_m).toBe(ROUTE.distanceM);
+    expect(body.route_duration_s).toBe(ROUTE.durationS);
+    expect(withSystem).toHaveBeenCalledOnce();
   });
 
   it("partial update (comment+price) → 200", async () => {

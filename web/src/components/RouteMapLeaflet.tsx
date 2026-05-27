@@ -33,6 +33,8 @@ export function RouteMapLeaflet({
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
+  const routeLayerRef = useRef<unknown>(null);
+  const [routeRenderKey, setRouteRenderKey] = useState(0);
   const isDark = useDarkMode();
 
   const decodedRoute = useMemo(
@@ -89,22 +91,7 @@ export function RouteMapLeaflet({
 
       L.marker([fromLat, fromLng], { icon: iconFrom }).addTo(map);
       L.marker([toLat, toLng], { icon: iconTo }).addTo(map);
-
-      if (decodedRoute) {
-        L.polyline(decodedRoute as [number, number][], {
-          color: colorFrom,
-          weight: 3,
-          opacity: 0.9,
-        }).addTo(map);
-        const bounds = L.latLngBounds(decodedRoute as [number, number][]);
-        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
-      } else {
-        const bounds = L.latLngBounds([
-          [fromLat, fromLng],
-          [toLat, toLng],
-        ]);
-        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
-      }
+      setRouteRenderKey((version) => version + 1);
     });
 
     return () => {
@@ -112,14 +99,84 @@ export function RouteMapLeaflet({
       if (mapRef.current) {
         (mapRef.current as { remove(): void }).remove();
         mapRef.current = null;
+        routeLayerRef.current = null;
       }
     };
-  }, [fromLat, fromLng, toLat, toLng, decodedRoute]);
+  }, [fromLat, fromLng, toLat, toLng]);
+
+  useEffect(() => {
+    if (!mapRef.current || routeRenderKey === 0) return;
+    let cancelled = false;
+
+    const cs = getComputedStyle(document.documentElement);
+    const colorFrom = cs.getPropertyValue("--route-from").trim() || "#3d6b8a";
+
+    import("leaflet").then((L) => {
+      if (cancelled || !mapRef.current) return;
+      const map = mapRef.current as ReturnType<typeof L.map>;
+
+      if (routeLayerRef.current) {
+        map.removeLayer(routeLayerRef.current as Parameters<typeof map.removeLayer>[0]);
+        routeLayerRef.current = null;
+      }
+
+      let routeLayer: unknown;
+      if (decodedRoute) {
+        routeLayer = L.polyline(decodedRoute as [number, number][], {
+          color: colorFrom,
+          weight: 3,
+          opacity: 0.9,
+        }).addTo(map);
+        map.fitBounds(L.latLngBounds(decodedRoute as [number, number][]), {
+          padding: [28, 28],
+          maxZoom: 14,
+        });
+      } else {
+        const fallbackPoints = [
+          [fromLat, fromLng],
+          [toLat, toLng],
+        ] as [number, number][];
+        routeLayer = L.polyline(fallbackPoints, {
+          color: colorFrom,
+          weight: 2.5,
+          opacity: 0.65,
+          dashArray: "6 5",
+        }).addTo(map);
+        map.fitBounds(L.latLngBounds(fallbackPoints), { padding: [28, 28], maxZoom: 14 });
+      }
+      routeLayerRef.current = routeLayer;
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fromLat, fromLng, toLat, toLng, decodedRoute, routeRenderKey]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ height, borderRadius: 18, overflow: "hidden", background: "var(--brand-surface)" }}
-    />
+    <div style={{ position: "relative" }}>
+      <div
+        ref={containerRef}
+        style={{ height, borderRadius: 18, overflow: "hidden", background: "var(--brand-surface)" }}
+      />
+      {!routePolyline && (
+        <div
+          data-testid="route-map-status"
+          style={{
+            position: "absolute",
+            left: 10,
+            bottom: 10,
+            padding: "5px 9px",
+            borderRadius: 999,
+            background: "rgba(255,255,255,0.92)",
+            color: "var(--brand-sub)",
+            fontSize: 11,
+            fontWeight: 600,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
+          }}
+        >
+          Маршрут по дорогам строится
+        </div>
+      )}
+    </div>
   );
 }

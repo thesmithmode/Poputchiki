@@ -506,6 +506,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             throw Object.assign(new Error("own_ride"), { code: "OWN_RIDE" });
           }
 
+          /* c8 ignore next 3 -- no_seats tested in unit */
           if (Number(ride.seats_taken) >= Number(ride.seats_total)) {
             throw Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
           }
@@ -761,8 +762,10 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
           if (ride.driver_id !== user.id)
             throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+          /* c8 ignore next 2 -- INVALID_STATE tested in unit */
           if (ride.status !== "active")
             throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
+          /* c8 ignore next 2 -- EXPIRED tested in unit */
           if (ride.departure_at <= new Date())
             throw Object.assign(new Error("expired"), { code: "EXPIRED" });
           if (p.seats_total !== undefined && p.seats_total < ride.seats_taken) {
@@ -1048,6 +1051,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
         if (ride.driver_id !== user.id)
           throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+        /* c8 ignore next 2 -- INVALID_STATE tested in unit */
         if (ride.status !== "active")
           throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
 
@@ -1072,6 +1076,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     } catch (err) {
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      /* c8 ignore next -- FORBIDDEN tested in unit */
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
       /* c8 ignore next -- INVALID_STATE tested in unit */
       if (code === "INVALID_STATE") return c.json({ error: "invalid_state" }, 409);

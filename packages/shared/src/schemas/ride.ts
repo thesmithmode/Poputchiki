@@ -79,6 +79,9 @@ export const RideDTO = z.object({
   driver_tg_id: z.number().int().nullable().optional(),
   driver_avg_stars: z.number().nullable().optional(),
   driver_reviews_count: z.number().int().min(0).nullable().optional(),
+  route_polyline: z.string().nullable().optional(),
+  route_distance_m: z.number().int().nullable().optional(),
+  route_duration_s: z.number().int().nullable().optional(),
 });
 
 export type RideDTO = z.infer<typeof RideDTO>;
@@ -102,6 +105,8 @@ const RIDE_CORE_KEYS = new Set([
   "status",
   "created_at",
   "updated_at",
+  "route_distance_m",
+  "route_duration_s",
 ]);
 
 const RIDE_LIST_KEYS = new Set([
@@ -122,6 +127,7 @@ const RIDE_DETAIL_KEYS = new Set([
   "my_request_status",
   "my_subscription_id",
   "my_subscription_status",
+  "route_polyline",
 ]);
 
 const RIDE_REQUEST_KEYS = new Set(["id", "ride_id", "passenger_id", "status", "created_at"]);

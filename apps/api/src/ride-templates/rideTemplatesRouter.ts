@@ -5,6 +5,7 @@ import { withIdentity } from "../db/with-identity";
 import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
+import { fetchRoute } from "../routing/osrmClient";
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -72,7 +73,8 @@ type Row = {
 // константу — это бы открыло SQL injection через unsafe.
 const COLS_STATIC = `id, driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
   to_char(departure_time, 'HH24:MI') AS departure_time, weekdays,
-  price_rub, seats_total, comment, active_from, active_to, is_active, created_at, updated_at`;
+  price_rub, seats_total, comment, active_from, active_to, is_active, created_at, updated_at,
+  route_polyline, route_distance_m, route_duration_s`;
 
 export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
   const app = new Hono();
@@ -105,7 +107,24 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
         RETURNING ${tx.unsafe(COLS_STATIC)}
       `;
     });
-    return c.json(rows[0], 201);
+
+    const template = rows[0] as Row & Record<string, unknown>;
+    const routeData = await fetchRoute(d.from_lat, d.from_lng, d.to_lat, d.to_lng);
+    if (routeData) {
+      await sql`
+        UPDATE ride_templates SET
+          route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
+          route_polyline = ${routeData.polyline},
+          route_distance_m = ${routeData.distanceM},
+          route_duration_s = ${routeData.durationS}
+        WHERE id = ${template.id}
+      `;
+      template.route_polyline = routeData.polyline;
+      template.route_distance_m = routeData.distanceM;
+      template.route_duration_s = routeData.durationS;
+    }
+
+    return c.json(template, 201);
   });
 
   app.get("/me", async (c) => {
@@ -172,7 +191,40 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
       `;
     });
     if (rows.length === 0) return c.json({ error: "not_found" }, 404);
-    return c.json(rows[0], 200);
+
+    const coordsChanged =
+      p.from_lat !== undefined ||
+      p.from_lng !== undefined ||
+      p.to_lat !== undefined ||
+      p.to_lng !== undefined;
+
+    const tmpl = rows[0] as Row & Record<string, unknown>;
+    if (coordsChanged) {
+      const routeData = await fetchRoute(tmpl.from_lat, tmpl.from_lng, tmpl.to_lat, tmpl.to_lng);
+      if (routeData) {
+        await sql`
+          UPDATE ride_templates SET
+            route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
+            route_polyline = ${routeData.polyline},
+            route_distance_m = ${routeData.distanceM},
+            route_duration_s = ${routeData.durationS}
+          WHERE id = ${id}
+        `;
+        tmpl.route_polyline = routeData.polyline;
+        tmpl.route_distance_m = routeData.distanceM;
+        tmpl.route_duration_s = routeData.durationS;
+      } else {
+        await sql`
+          UPDATE ride_templates SET route_geom = NULL, route_polyline = NULL, route_distance_m = NULL, route_duration_s = NULL
+          WHERE id = ${id}
+        `;
+        tmpl.route_polyline = null;
+        tmpl.route_distance_m = null;
+        tmpl.route_duration_s = null;
+      }
+    }
+
+    return c.json(tmpl, 200);
   });
 
   app.delete("/:id", async (c) => {

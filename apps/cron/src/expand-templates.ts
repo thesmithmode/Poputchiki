@@ -20,7 +20,8 @@ export async function expandTemplates(
       >`
       INSERT INTO rides
         (driver_id, template_id, from_label, from_lat, from_lng,
-         to_label, to_lat, to_lng, departure_at, price_rub, seats_total, comment)
+         to_label, to_lat, to_lng, departure_at, price_rub, seats_total, comment,
+         route_geom, route_polyline, route_distance_m, route_duration_s)
       SELECT
         t.driver_id,
         t.id,
@@ -33,7 +34,11 @@ export async function expandTemplates(
         (d::date + t.departure_time::time) AT TIME ZONE 'UTC',
         t.price_rub,
         t.seats_total,
-        t.comment
+        t.comment,
+        t.route_geom,
+        t.route_polyline,
+        t.route_distance_m,
+        t.route_duration_s
       FROM ride_templates t
       CROSS JOIN generate_series(
         ${todayIso}::date,

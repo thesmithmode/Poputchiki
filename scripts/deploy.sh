@@ -103,8 +103,8 @@ IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps api notifier cron webhook web
 # H1: единый 120s-дедлайн для всех сервисов создавал ложный rollback —
 # если api занял 110s, notifier получал <10s. Теперь каждый сервис имеет свой таймаут.
 echo "--- [5/7] healthcheck (per-service timeouts) ---"
-SERVICES=(pgbouncer osrm api notifier cron webhook web)
-declare -A SVC_TIMEOUT=([pgbouncer]=30 [osrm]=300 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
+SERVICES=(pgbouncer api notifier cron webhook web)
+declare -A SVC_TIMEOUT=([pgbouncer]=30 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
 for SVC in "${SERVICES[@]}"; do
   TIMEOUT="${SVC_TIMEOUT[$SVC]}"
   DEADLINE=$((SECONDS + TIMEOUT))

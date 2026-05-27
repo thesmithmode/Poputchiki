@@ -223,7 +223,8 @@ jobs:
 
       - name: Deploy
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+          ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=10 \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
             "cd /opt/poputchiki && bash scripts/deploy.sh ${{ github.sha }}"
         env:
           SHA: ${{ github.sha }}

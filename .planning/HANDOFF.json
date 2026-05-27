@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T11:41:37.265Z",
+  "timestamp": "2026-05-27T12:36:13.872Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,18 +18,6 @@
   "uncommitted_files": [
     {
       "status": "M",
-      "path": ".env.example"
-    },
-    {
-      "status": "M",
-      "path": ".github/workflows/ci.yml"
-    },
-    {
-      "status": "D",
-      "path": "\".memory/daily/2026-05-22 (1).md\""
-    },
-    {
-      "status": "M",
       "path": ".memory/daily/2026-05-27.md"
     },
     {
@@ -41,120 +29,12 @@
       "path": ".memory/scripts/last-flush.json"
     },
     {
-      "status": "D",
-      "path": "\".planning/HANDOFF (1).json\""
-    },
-    {
       "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
       "status": "M",
-      "path": "infra/docker-compose.dev.yml"
-    },
-    {
-      "status": "M",
-      "path": "infra/docker-compose.prod.yml"
-    },
-    {
-      "status": "M",
-      "path": "scripts/deploy.sh"
-    },
-    {
-      "status": "??",
-      "path": "\".claude/BACKLOG (1).md\""
-    },
-    {
-      "status": "??",
-      "path": "\".claude/settings (1).local.json\""
-    },
-    {
-      "status": "??",
-      "path": "\".env (1).example\""
-    },
-    {
-      "status": "??",
-      "path": "\".github/workflows/ci (1).yml\""
-    },
-    {
-      "status": "??",
-      "path": "\".github/workflows/deploy (1).yml\""
-    },
-    {
-      "status": "??",
-      "path": "\".github/workflows/nightly (1).yml\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/daily/2026-05-16 (1).md\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/knowledge/index (1).md\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/knowledge/log (1).md\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/scripts/compile (1).log\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/scripts/flush (1).log\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/scripts/last-flush (1).json\""
-    },
-    {
-      "status": "??",
-      "path": "\".memory/scripts/state (1).json\""
-    },
-    {
-      "status": "??",
-      "path": "\".planning/HANDOFF (2).json\""
-    },
-    {
-      "status": "??",
-      "path": "\".trivyignore (1)\""
-    },
-    {
-      "status": "??",
-      "path": "\"CLAUDE (1).md\""
-    },
-    {
-      "status": "??",
-      "path": "\"README (1).md\""
-    },
-    {
-      "status": "??",
-      "path": "\"apps/cron/Dockerfile (1)\""
-    },
-    {
-      "status": "??",
-      "path": "\"apps/cron/package (1).json\""
-    },
-    {
-      "status": "??",
-      "path": "\"apps/notifier/package (1).json\""
-    },
-    {
-      "status": "??",
-      "path": "\"apps/web-server/Dockerfile (1)\""
-    },
-    {
-      "status": "??",
-      "path": "\"bun (1).lock\""
-    },
-    {
-      "status": "??",
-      "path": "db/migrations/041_postgis_route_columns.down.sql"
-    },
-    {
-      "status": "??",
-      "path": "db/migrations/041_postgis_route_columns.sql"
+      "path": "apps/api/src/rides/ridesRouter.ts"
     },
     {
       "status": "??",
@@ -162,81 +42,21 @@
     },
     {
       "status": "??",
-      "path": "\"infra/docker-compose (1).dev.yml\""
-    },
-    {
-      "status": "??",
-      "path": "\"infra/docker-compose (1).observability.yml\""
-    },
-    {
-      "status": "??",
-      "path": "\"infra/docker-compose (1).prod.yml\""
-    },
-    {
-      "status": "??",
-      "path": "\"infra/loki/config (1).yml\""
-    },
-    {
-      "status": "??",
-      "path": "\"infra/postgres/pg_hba (1).conf\""
-    },
-    {
-      "status": "??",
-      "path": "\"infra/prometheus/prometheus (1).yml\""
-    },
-    {
-      "status": "??",
-      "path": "\"lefthook (1).yml\""
-    },
-    {
-      "status": "??",
-      "path": "\"scripts/backup-db (1).sh\""
-    },
-    {
-      "status": "??",
-      "path": "\"scripts/check-coverage (1).js\""
-    },
-    {
-      "status": "??",
-      "path": "\"scripts/deploy (1).sh\""
-    },
-    {
-      "status": "??",
-      "path": "scripts/osrm-prepare.sh"
-    },
-    {
-      "status": "??",
-      "path": "\"scripts/restore-test (1).sh\""
-    },
-    {
-      "status": "??",
-      "path": "\"scripts/rollback (1).sh\""
-    },
-    {
-      "status": "??",
       "path": "scripts/setup-tg-webhook.sh"
     },
     {
       "status": "??",
-      "path": "\"vitest (1).config.ts\""
+      "path": "web/src/hooks/useOnlineStatus.ts"
     },
     {
       "status": "??",
-      "path": "\"web/index (1).html\""
-    },
-    {
-      "status": "??",
-      "path": "\"web/package (1).json\""
+      "path": "web/src/i18n/"
     },
     {
       "status": "??",
       "path": "web/tests/FeedScreen.test.tsx"
-    },
-    {
-      "status": "??",
-      "path": "\"web/vite (1).config.ts\""
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\nfb41d9d CHORE: удалить saas/ из git tracking, сохранить локально\n5424feb CHORE: обновить web/dist артефакты сборки\ndf1b632 FIX: увеличить лимит мест с 4 до 100 на всех уровнях\nf1f4d85 FIX: убрать пример из placeholder + добавить MapPicker в сохранённые адреса\n92d661c FEAT: добавить кнопку Моё местоположение в dropdown Откуда"
+  "context_notes": "Recent commits:\n3e14e23 FEAT: Фаза 6 — полировка: ETA коэффициенты, distance на RideCard, badge По пути\n1081605 FEAT: Фаза 5 — матчинг по пути + PassengerSearchBar\ncdb4d1b FEAT: Фаза 4 — скрипт backfill маршрутов для существующих поездок\n271c720 FEAT: Фаза 3 — визуализация реального маршрута на карте\n9f1dc63 FEAT: Фаза 2 — OSRM route computation при создании поездок"
 }

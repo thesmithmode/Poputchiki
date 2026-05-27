@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.4-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -18,6 +18,46 @@ services:
       start_period: 10s
     networks:
       - poputchiki-dev
+
+  osrm-init:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    restart: "no"
+    volumes:
+      - ./.docker-data/osrm:/data
+      - ../scripts/osrm-prepare.sh:/osrm-prepare.sh:ro
+    entrypoint: ["/bin/sh", "/osrm-prepare.sh"]
+    profiles:
+      - osrm
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    restart: unless-stopped
+    command: osrm-routed --algorithm MLD /data/tatarstan.osrm
+    volumes:
+      - ./.docker-data/osrm:/data:ro
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on:
+      osrm-init:
+        condition: service_completed_successfully
+    profiles:
+      - osrm
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/nearest/v1/driving/49.1,55.8 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - poputchiki-dev
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   nominatim:
     image: mediagis/nominatim:4.4

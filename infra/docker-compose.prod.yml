@@ -46,7 +46,7 @@ services:
           memory: 128m
 
   postgres:
-    image: postgres:16-alpine
+    image: postgis/postgis:16-3.4-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -168,6 +168,7 @@ services:
       # на внутренний URL — после импорта PBF Татарстана (~15-30min при первом
       # старте) запросы пойдут локально. Override через .env при необходимости.
       NOMINATIM_URL: ${NOMINATIM_URL:-http://nominatim:8080}
+      OSRM_URL: ${OSRM_URL:-http://osrm:5000}
     depends_on:
       postgres:
         condition: service_healthy
@@ -175,6 +176,8 @@ services:
         condition: service_healthy
       nominatim:
         condition: service_started
+      osrm:
+        condition: service_healthy
     volumes:
       - /opt/poputchiki/logs:/app/logs
     networks:
@@ -339,6 +342,47 @@ services:
       resources:
         limits:
           memory: 256m
+
+  osrm-init:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    restart: "no"
+    volumes:
+      - /opt/poputchiki/osrm-data:/data
+      - ../scripts/osrm-prepare.sh:/osrm-prepare.sh:ro
+    entrypoint: ["/bin/sh", "/osrm-prepare.sh"]
+    networks:
+      - poputchiki-internal
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:latest
+    restart: unless-stopped
+    command: osrm-routed --algorithm MLD /data/tatarstan.osrm
+    volumes:
+      - /opt/poputchiki/osrm-data:/data:ro
+    depends_on:
+      osrm-init:
+        condition: service_completed_successfully
+    networks:
+      - poputchiki-internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/nearest/v1/driving/49.1,55.8 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
 
   nominatim:
     image: mediagis/nominatim:4.4

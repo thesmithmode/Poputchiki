@@ -39,7 +39,7 @@ $COMPOSE up -d traefik
 # Volume /opt/poputchiki/nominatim-data в норме НЕ удаляется (защита от пере-импорта).
 # Recovery: если предыдущий импорт упал (restartCount>5 ИЛИ контейнер в restart-loop),
 # wipe volume + recreate чтобы fresh-import состоялся при следующем up.
-echo "--- [0.5/7] ensure nominatim ---"
+echo "--- [0.5/7] ensure nominatim + osrm ---"
 NOMINATIM_CID=$(docker ps -a --filter "name=infra-nominatim-1" --format "{{.ID}}" | head -n1)
 if [[ -n "$NOMINATIM_CID" ]]; then
   RC=$(docker inspect -f '{{.RestartCount}}' "$NOMINATIM_CID" 2>/dev/null || echo 0)
@@ -52,6 +52,9 @@ if [[ -n "$NOMINATIM_CID" ]]; then
   fi
 fi
 $COMPOSE up -d nominatim
+# OSRM: osrm-init идемпотентен (skip если данные есть), osrm зависит от osrm-init.
+# При первом запуске скачивание PBF + подготовка ~5-10min.
+$COMPOSE up -d osrm
 
 # Шаг 1: pre-deploy backup
 # CICD-03: между двумя daily-backup'ами (cron: 01:00 UTC = 04:00 MSK) может пройти
@@ -100,8 +103,8 @@ IMAGE_TAG="$SHA" $COMPOSE up -d --no-deps api notifier cron webhook web
 # H1: единый 120s-дедлайн для всех сервисов создавал ложный rollback —
 # если api занял 110s, notifier получал <10s. Теперь каждый сервис имеет свой таймаут.
 echo "--- [5/7] healthcheck (per-service timeouts) ---"
-SERVICES=(pgbouncer api notifier cron webhook web)
-declare -A SVC_TIMEOUT=([pgbouncer]=30 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
+SERVICES=(pgbouncer osrm api notifier cron webhook web)
+declare -A SVC_TIMEOUT=([pgbouncer]=30 [osrm]=300 [api]=90 [webhook]=90 [web]=60 [notifier]=150 [cron]=150)
 for SVC in "${SERVICES[@]}"; do
   TIMEOUT="${SVC_TIMEOUT[$SVC]}"
   DEADLINE=$((SECONDS + TIMEOUT))

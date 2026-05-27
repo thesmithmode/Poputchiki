@@ -120,12 +120,12 @@ describe("POST /ride-templates", () => {
     expect(res.status).toBe(422);
   });
 
-  it("seats_total > 4 → 422", async () => {
+  it("seats_total > 100 → 422", async () => {
     const app = makeApp(USER);
     const res = await app.request("/ride-templates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...VALID, seats_total: 5 }),
+      body: JSON.stringify({ ...VALID, seats_total: 101 }),
     });
     expect(res.status).toBe(422);
   });

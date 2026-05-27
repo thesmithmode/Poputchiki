@@ -400,6 +400,7 @@ export function CreateRideScreen() {
                     placeholder="Адрес отправления"
                     inputStyle={inputStyle}
                     savedAddresses={savedAddresses}
+                    showMyLocation
                   />
                 </div>
                 {fromCoords && (

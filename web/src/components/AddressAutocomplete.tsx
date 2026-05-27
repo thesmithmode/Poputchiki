@@ -3,6 +3,7 @@ import type { SavedAddress } from "../hooks/useSavedAddresses";
 import { byTsarevoFirst } from "../lib/addressBoost";
 import { apiFetch } from "../lib/api";
 import { fuzzyMatchSaved } from "../lib/fuzzyMatch";
+import { getCurrentLocation } from "../lib/geolocation";
 import { getMatchingPresets } from "../lib/tsarevoPresets";
 
 export interface Coords {
@@ -31,6 +32,7 @@ interface AddressAutocompleteProps {
   testId?: string;
   inputStyle?: React.CSSProperties;
   savedAddresses?: SavedAddress[];
+  showMyLocation?: boolean;
 }
 
 const MIN_GEOCODE_CHARS = 3;
@@ -62,11 +64,33 @@ export function AddressAutocomplete({
   testId,
   inputStyle,
   savedAddresses,
+  showMyLocation,
 }: AddressAutocompleteProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [geoSuggestions, setGeoSuggestions] = useState<AddressSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  async function handleMyLocation() {
+    setLocating(true);
+    try {
+      const loc = await getCurrentLocation();
+      if (!loc) return;
+      const res = await apiFetch<{ display_name?: string }>(
+        `/geocode/reverse?lat=${loc.lat}&lon=${loc.lng}`,
+      );
+      const label = res.display_name
+        ? res.display_name.split(",").slice(0, 4).join(",").trim()
+        : `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`;
+      onChange(label, loc);
+      setOpen(false);
+    } catch {
+      // не удалось — ничего не делаем
+    } finally {
+      setLocating(false);
+    }
+  }
 
   const fetchGeoSuggestions = useCallback(async (query: string) => {
     const trimmed = query.trim();
@@ -157,11 +181,19 @@ export function AddressAutocomplete({
     return [...savedSuggestions, ...deduped].slice(0, MAX_SUGGESTIONS);
   }, [savedSuggestions, geoSuggestions]);
 
+  const showMyLocationBtn = open && !!showMyLocation && !locating;
+  const showLocating = open && locating;
   const showHint = false;
   const showLoading = open && loading && allSuggestions.length === 0;
   const showEmpty =
-    open && !loading && allSuggestions.length === 0 && value.trim().length >= MIN_GEOCODE_CHARS;
+    open &&
+    !loading &&
+    allSuggestions.length === 0 &&
+    value.trim().length >= MIN_GEOCODE_CHARS &&
+    !showMyLocationBtn;
   const showList = open && allSuggestions.length > 0;
+  const showDropdown =
+    showMyLocationBtn || showLocating || showList || showLoading || showEmpty || showHint;
 
   return (
     <div ref={wrapperRef} style={{ position: "relative" }}>
@@ -182,7 +214,7 @@ export function AddressAutocomplete({
         aria-autocomplete="list"
         style={inputStyle}
       />
-      {(showList || showLoading || showEmpty || showHint) && (
+      {showDropdown && (
         <div
           data-testid={testId ? `${testId}-listbox` : undefined}
           style={{
@@ -201,6 +233,45 @@ export function AddressAutocomplete({
             zIndex: 50,
           }}
         >
+          {showMyLocationBtn && (
+            <button
+              type="button"
+              data-testid={testId ? `${testId}-my-location` : undefined}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                handleMyLocation();
+              }}
+              style={{
+                width: "100%",
+                textAlign: "left",
+                padding: "10px 12px",
+                background: "transparent",
+                border: "none",
+                borderBottom: allSuggestions.length > 0 ? "1px solid var(--brand-line)" : "none",
+                cursor: "pointer",
+                fontSize: 14,
+                color: "var(--brand-primary)",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>📍</span>
+              Моё местоположение
+            </button>
+          )}
+          {showLocating && (
+            <div
+              style={{
+                padding: "10px 12px",
+                fontSize: 13,
+                color: "var(--brand-sub)",
+              }}
+            >
+              Определение местоположения…
+            </div>
+          )}
           {showHint && (
             <div
               data-testid={testId ? `${testId}-hint` : undefined}

@@ -23,7 +23,7 @@ export const CreateRideInput = z
     to_lng: z.number().min(-180).max(180),
     departure_at: z.string().datetime(),
     price_rub: z.number().int().positive().nullable().optional(),
-    seats_total: z.number().int().min(1).max(4),
+    seats_total: z.number().int().min(1).max(100),
     comment: z
       .string()
       .max(200)
@@ -68,7 +68,7 @@ export const RideDTO = z.object({
   to_lng: z.number().min(-180).max(180),
   departure_at: z.string().datetime(),
   price_rub: z.number().int().positive().nullable(),
-  seats_total: z.number().int().min(1).max(4),
+  seats_total: z.number().int().min(1).max(100),
   seats_taken: z.number().int().min(0),
   comment: z.string().max(200).nullable(),
   status: RideStatus,

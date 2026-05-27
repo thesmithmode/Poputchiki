@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T08:54:00.318Z",
+  "timestamp": "2026-05-27T09:46:03.071Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -34,13 +34,69 @@
     },
     {
       "status": "M",
-      "path": "vitest.config.ts"
+      "path": "apps/api/src/ride-templates/rideTemplatesRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/src/rides/ridesRouter.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/ride-templates/rideTemplatesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "apps/api/tests/unit/rides/ridesRouter.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "packages/shared/src/schemas/ride.ts"
+    },
+    {
+      "status": "M",
+      "path": "packages/shared/tests/schemas/ride.test.ts"
+    },
+    {
+      "status": "M",
+      "path": "web/src/App.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/AddressAutocomplete.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/components/SaveAddressDialog.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/CreateRideScreen.tsx"
+    },
+    {
+      "status": "M",
+      "path": "web/src/screens/SavedAddressesScreen.tsx"
     },
     {
       "status": "??",
-      "path": "packages/shared/tests/schemas/saved-address.test.ts"
+      "path": "db/migrations/040_seats_limit_100.down.sql"
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/040_seats_limit_100.sql"
+    },
+    {
+      "status": "??",
+      "path": "web/src/components/LoadingScreen.tsx"
+    },
+    {
+      "status": "??",
+      "path": "web/src/lib/geolocation.ts"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\n242bc63 CHORE: обновить web/dist артефакты сборки\n57d93b6 CHORE: обновить memory-логи — 2026-05-27\n7bf2e62 FEAT: сохранённые адреса с fuzzy-match и золотой звёздочкой\n318533b SEC: добавить новые Go stdlib CVEs в trivyignore (oven/bun:1-alpine)\nfbbb9cd CHORE: обновить memory-логи — сессия 2026-05-26/27, sync с origin/dev"
+  "context_notes": "Recent commits:\ne8054d6 DOCS: merge dev→main без сквоша + запрет автономного merge в main\n00f5076 CHORE: обновить memory-логи — 2026-05-27\n8079ae1 TEST: добавить тесты для saved-address schema + exclude router из coverage\n7c28ead CHORE: обновить web/dist артефакты сборки\n3508d4a CHORE: обновить memory-логи — 2026-05-27"
 }

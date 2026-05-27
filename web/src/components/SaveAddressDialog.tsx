@@ -116,7 +116,7 @@ export function SaveAddressDialog({
             data-testid="save-custom-name"
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
-            placeholder="Название (напр. Курорт)"
+            placeholder="Название"
             maxLength={50}
             style={{
               width: "100%",

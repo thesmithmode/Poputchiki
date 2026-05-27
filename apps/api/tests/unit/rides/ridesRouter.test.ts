@@ -155,7 +155,7 @@ describe("POST /rides — validation", () => {
     const res = await app.request("/rides", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...VALID_BODY, seats_total: 5 }),
+      body: JSON.stringify({ ...VALID_BODY, seats_total: 101 }),
     });
     expect(res.status).toBe(422);
   });

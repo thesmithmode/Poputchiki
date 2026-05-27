@@ -109,8 +109,8 @@ describe("RideDTO", () => {
     expect(RideDTO.safeParse({ ...validRide, seats_total: 0 }).success).toBe(false);
   });
 
-  it("rejects seats_total = 5 (max 4)", () => {
-    expect(RideDTO.safeParse({ ...validRide, seats_total: 5 }).success).toBe(false);
+  it("rejects seats_total = 101 (max 100)", () => {
+    expect(RideDTO.safeParse({ ...validRide, seats_total: 101 }).success).toBe(false);
   });
 
   it("rejects comment longer than 200 chars", () => {

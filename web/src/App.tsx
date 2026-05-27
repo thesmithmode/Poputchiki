@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, dehydrate, hydrate } from "@tanstack/
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LoadingScreen } from "./components/LoadingScreen";
 import { MeContext } from "./contexts/MeContext";
 import { useBootMe } from "./hooks/useMe";
 import { useRides } from "./hooks/useRides";
@@ -283,83 +284,25 @@ queryClient.getQueryCache().subscribe(() => {
 
 function AppRoutes() {
   const me = useBootMe();
+  const { isPending: feedPending } = useRides("24h", null, null);
+  const [feedGateOpen, setFeedGateOpen] = useState(false);
+
+  const isReady = me.status === "ok" && me.user.onboarded;
+  useEffect(() => {
+    if (!isReady) return;
+    const t = setTimeout(() => setFeedGateOpen(true), 2000);
+    return () => clearTimeout(t);
+  }, [isReady]);
 
   if (me.status === "loading") {
     const phaseConfig = {
-      init: { label: "Запуск приложения…", pct: 15 },
-      auth: { label: "Выполняется вход…", pct: 50 },
-      profile: { label: "Загрузка профиля…", pct: 80 },
-      done: { label: "Готово!", pct: 100 },
+      init: { label: "Запуск приложения…", pct: 10 },
+      auth: { label: "Выполняется вход…", pct: 35 },
+      profile: { label: "Загрузка профиля…", pct: 60 },
+      done: { label: "Почти готово…", pct: 80 },
     };
     const { label, pct } = phaseConfig[me.phase];
-    return (
-      <div
-        style={{
-          background: "var(--brand-bg, #f4f5f4)",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 24,
-          padding: "0 40px",
-        }}
-      >
-        {/* Logo / app name */}
-        <div
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: "var(--brand-primary, #2d5a3d)",
-            letterSpacing: "-0.02em",
-            fontFamily: "inherit",
-          }}
-        >
-          Попутчики
-        </div>
-
-        {/* Progress bar */}
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 280,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: 4,
-              borderRadius: 2,
-              background: "var(--brand-line, rgba(15,23,42,0.1))",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${pct}%`,
-                borderRadius: 2,
-                background: "var(--brand-primary, #2d5a3d)",
-                transition: "width 0.4s ease",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--brand-sub, #6b7a6e)",
-              textAlign: "center",
-              fontWeight: 500,
-            }}
-          >
-            {label}
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen label={label} pct={pct} />;
   }
 
   if (me.status === "banned") {
@@ -414,95 +357,17 @@ function AppRoutes() {
     );
   }
 
-  return (
-    <MeContext.Provider value={me}>
-      <RidesGate>
-        <HashRouter>
-          <AppShell />
-        </HashRouter>
-      </RidesGate>
-    </MeContext.Provider>
-  );
-}
-
-function RidesGate({ children }: { children: React.ReactNode }) {
-  const { isPending } = useRides("24h", null, null);
-  const [gateOpen, setGateOpen] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setGateOpen(true), 2000);
-    return () => clearTimeout(t);
-  }, []);
-
-  if (isPending && !gateOpen) {
-    return (
-      <div
-        style={{
-          background: "var(--brand-bg, #f4f5f4)",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 24,
-          padding: "0 40px",
-        }}
-      >
-        <div
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            color: "var(--brand-primary, #2d5a3d)",
-            letterSpacing: "-0.02em",
-            fontFamily: "inherit",
-          }}
-        >
-          Попутчики
-        </div>
-        <div
-          style={{
-            width: "100%",
-            maxWidth: 280,
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              height: 4,
-              borderRadius: 2,
-              background: "var(--brand-line, rgba(15,23,42,0.1))",
-              overflow: "hidden",
-            }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: "95%",
-                borderRadius: 2,
-                background: "var(--brand-primary, #2d5a3d)",
-                transition: "width 0.4s ease",
-              }}
-            />
-          </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--brand-sub, #6b7a6e)",
-              textAlign: "center",
-              fontWeight: 500,
-            }}
-          >
-            Загрузка ленты…
-          </div>
-        </div>
-      </div>
-    );
+  if (feedPending && !feedGateOpen) {
+    return <LoadingScreen label="Загрузка ленты…" pct={95} />;
   }
 
-  return <>{children}</>;
+  return (
+    <MeContext.Provider value={me}>
+      <HashRouter>
+        <AppShell />
+      </HashRouter>
+    </MeContext.Provider>
+  );
 }
 
 function usePrefetchScreens() {

@@ -369,6 +369,7 @@ export function FeedScreen() {
               isFavorited={isFavorite(ride.driver_id)}
               onToggleFavorite={() => toggleFavorite(ride.driver_id)}
               cardState={getCardState(ride)}
+              isAlongTheWay={passengerCoords != null}
             />
           ))
         )}

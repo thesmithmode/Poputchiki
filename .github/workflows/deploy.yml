@@ -166,6 +166,7 @@ jobs:
                       /opt/poputchiki/scripts \
                       /opt/poputchiki/logs \
                       /opt/poputchiki/backups \
+                      /opt/poputchiki/osrm-data \
                       /opt/poputchiki/letsencrypt && \
              chmod 700 /opt/poputchiki/letsencrypt && \
              touch /opt/poputchiki/letsencrypt/acme.json && \

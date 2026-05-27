@@ -16,12 +16,12 @@ mkdir -p "$DATA_DIR"
 if [ ! -f "$PBF_FILE" ]; then
   echo "Downloading PBF from $PBF_URL ..."
   if command -v wget >/dev/null 2>&1; then
-    wget -q --show-progress -O "$PBF_FILE" "$PBF_URL"
+    wget -q -O "$PBF_FILE" "$PBF_URL"
   elif command -v curl >/dev/null 2>&1; then
     curl -fSL -o "$PBF_FILE" "$PBF_URL"
   else
     apt-get update -qq && apt-get install -y -qq wget >/dev/null 2>&1
-    wget -q --show-progress -O "$PBF_FILE" "$PBF_URL"
+    wget -q -O "$PBF_FILE" "$PBF_URL"
   fi
 fi
 

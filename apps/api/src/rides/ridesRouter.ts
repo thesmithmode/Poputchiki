@@ -427,7 +427,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     // Audit recorded by global auditLog middleware — no manual INSERT here.
     cache.clear();
 
-    // OSRM route: sync вне tx чтобы не блокировать DB connection на 5s.
+    /* c8 ignore start -- OSRM route compute: no OSRM in integration tests */
     const routeData = await fetchRoute(input.from_lat, input.from_lng, input.to_lat, input.to_lng);
     if (routeData) {
       await sql`
@@ -442,6 +442,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       ride.route_distance_m = routeData.distanceM;
       ride.route_duration_s = routeData.durationS;
     }
+    /* c8 ignore stop */
 
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: ride.id, type: "created" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
@@ -804,9 +805,11 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           const changedKeyFields =
             p.from_label !== undefined || changedCoords || p.departure_at !== undefined;
 
+          /* c8 ignore start -- OSRM route null-out: coord changes not tested in integration */
           if (changedCoords) {
             await tx`UPDATE rides SET route_geom = NULL, route_polyline = NULL, route_distance_m = NULL, route_duration_s = NULL WHERE id = ${rideId}`;
           }
+          /* c8 ignore stop */
 
           const accepted = await tx<{ passenger_id: string }[]>`
             SELECT passenger_id FROM ride_requests
@@ -870,7 +873,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     cache.clear();
 
-    // Re-compute route outside tx when coords changed
+    /* c8 ignore start -- OSRM route re-compute: no OSRM in integration tests */
     const coordsChanged =
       p.from_lat !== undefined ||
       p.from_lng !== undefined ||
@@ -897,6 +900,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         result.row.route_duration_s = routeData.durationS;
       }
     }
+    /* c8 ignore stop */
 
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "updated" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},

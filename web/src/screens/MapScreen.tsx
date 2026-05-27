@@ -5,7 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { applyFilters, resolveDateRange, useFilters } from "../hooks/useFilters";
 import type { Filters } from "../hooks/useFilters";
+import { useMe } from "../hooks/useMe";
+import { useMyRideRequests } from "../hooks/useMyRideRequests";
 import { apiFetch } from "../lib/api";
+import {
+  type RideCardState,
+  getRideCardBg,
+  getRideCardBorderColor,
+  getRideCardState,
+  markRideViewed,
+  readViewedRideIds,
+} from "../lib/rideCardState";
 import { getTelegramWebApp } from "../lib/telegram";
 import type { Ride } from "../types/ride";
 
@@ -67,9 +77,15 @@ function markerDateLabel(isoStr: string): string | null {
   return dep.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-function makeRideMarkerHtml(ride: Ride): string {
+function makeRideMarkerHtml(ride: Ride, cardState: RideCardState): string {
   const initials = escapeHtml(getInitials(ride.driver_display_name));
   const avatarColor = getAvatarColor(ride.driver_id);
+  const cardBg = getRideCardBg(cardState);
+  const borderColor = getRideCardBorderColor(cardState) ?? "rgba(0,0,0,.08)";
+  const boxShadow =
+    cardState === "default"
+      ? "0 2px 10px rgba(0,0,0,.22)"
+      : `0 2px 10px rgba(0,0,0,.22), inset 0 0 0 1.5px ${borderColor}`;
   const time = formatTime(ride.departure_at);
   const price = ride.price_rub !== null ? `${ride.price_rub}₽` : "Догов.";
   const rawFirstName = ride.driver_display_name?.trim().split(/\s+/)[0] ?? "";
@@ -83,7 +99,7 @@ function makeRideMarkerHtml(ride: Ride): string {
   const dateLine = dl
     ? `<div style="font-size:9px;font-weight:600;color:#2d5a3d;line-height:1;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">${escapeHtml(dl)}</div>`
     : "";
-  return `<div style="position:relative;background:#fff;border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 10px rgba(0,0,0,.22);cursor:pointer;border:1px solid rgba(0,0,0,.08);white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:#0e1410;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid #fff"></div></div>`;
+  return `<div style="position:relative;background:${cardBg};border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:${boxShadow};cursor:pointer;border:1px solid ${borderColor};white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:var(--brand-text,#0e1410);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${cardBg}"></div></div>`;
 }
 
 function useDarkMode() {
@@ -108,6 +124,9 @@ export function MapScreen({
   const isDark = useDarkMode();
   const internal = useFilters();
   const filters = externalFilters ?? internal.filters;
+  const me = useMe();
+  const myUserId = me.status === "ok" ? me.user.id : null;
+  const requestMap = useMyRideRequests();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
   const tileLayerRef = useRef<unknown>(null);
@@ -119,8 +138,9 @@ export function MapScreen({
   const lastHeadingRef = useRef<number | null>(null);
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
-  const [_rides, setRides] = useState<Ride[]>([]);
+  const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
+  const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
@@ -164,6 +184,18 @@ export function MapScreen({
   useEffect(() => {
     loadRidesRef.current?.();
   }, [filters]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: renderMarkers reads current user/request/viewed state through closure
+  useEffect(() => {
+    if (!mapRef.current || rides.length === 0) return;
+    let cancelled = false;
+    import("leaflet").then((L) => {
+      if (!cancelled && mapRef.current) renderMarkers(mapRef.current, L, rides);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [rides, requestMap, viewedRides, myUserId]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable prop ref, map init runs once
   useEffect(() => {
@@ -263,7 +295,7 @@ export function MapScreen({
         try {
           const data = await apiFetch<{ rides: Ride[] }>(`/rides?${params.toString()}`);
           if (!destroyed) {
-            const filtered = applyFilters(data.rides, filtersRef.current);
+            const filtered = applyFilters(data.rides, filtersRef.current, undefined, myUserId);
             setRides(filtered);
             onRidesCount?.(filtered.length);
             renderMarkers(map, L, filtered);
@@ -518,12 +550,6 @@ export function MapScreen({
       // At high density use simple dots inside clusters for performance
       const cs = getComputedStyle(document.documentElement);
       const colorPrimary = cs.getPropertyValue("--brand-primary").trim() || "#2d5a3d";
-      const dotIcon = L.divIcon({
-        className: "",
-        html: `<div style="width:10px;height:10px;border-radius:50%;background:${colorPrimary};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div>`,
-        iconSize: [10, 10],
-        iconAnchor: [5, 5],
-      });
 
       const winL = (window as unknown as { L?: { MarkerClusterGroup?: unknown } }).L;
       const lAny = L as unknown as { MarkerClusterGroup?: unknown };
@@ -533,6 +559,14 @@ export function MapScreen({
         const GroupClass = MC as new () => { addLayer: (l: unknown) => void };
         const group = new GroupClass();
         for (const ride of rideList) {
+          const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
+          const dotColor = getRideCardBorderColor(cardState) ?? colorPrimary;
+          const dotIcon = L.divIcon({
+            className: "",
+            html: `<div style="width:10px;height:10px;border-radius:50%;background:${dotColor};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25)"></div>`,
+            iconSize: [10, 10],
+            iconAnchor: [5, 5],
+          });
           const marker = L.marker([ride.from_lat, ride.from_lng], { icon: dotIcon });
           marker.on("click", () => setSelected(ride));
           group.addLayer(marker);
@@ -544,9 +578,10 @@ export function MapScreen({
         // MarkerCluster unavailable — render individual rich cards
         clusterGroupRef.current = null;
         for (const ride of rideList) {
+          const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
           const icon = L.divIcon({
             className: "",
-            html: makeRideMarkerHtml(ride),
+            html: makeRideMarkerHtml(ride, cardState),
             iconSize: [134, 46],
             iconAnchor: [67, 51],
           });
@@ -559,9 +594,10 @@ export function MapScreen({
       // Rich ride-card markers — no route polylines on global map
       clusterGroupRef.current = null;
       for (const ride of rideList) {
+        const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
         const icon = L.divIcon({
           className: "",
-          html: makeRideMarkerHtml(ride),
+          html: makeRideMarkerHtml(ride, cardState),
           iconSize: [134, 46],
           iconAnchor: [67, 51],
         });
@@ -573,6 +609,18 @@ export function MapScreen({
   }
 
   const seatsLeft = selected ? selected.seats_total - selected.seats_taken : 0;
+  const selectedCardState = selected
+    ? getRideCardState(selected, myUserId, requestMap, viewedRides)
+    : "default";
+  const selectedCardBg =
+    selectedCardState === "default"
+      ? isDark
+        ? "rgba(28,28,30,0.92)"
+        : "rgba(255,255,255,0.96)"
+      : getRideCardBg(selectedCardState);
+  const selectedBorderColor =
+    getRideCardBorderColor(selectedCardState) ??
+    (isDark ? "rgba(255,255,255,0.08)" : "var(--brand-line, rgba(15,23,42,0.06))");
 
   const glassStyle: React.CSSProperties = {
     background: isDark ? "rgba(28,28,30,0.92)" : "rgba(255,255,255,0.96)",
@@ -692,16 +740,18 @@ export function MapScreen({
           <button
             type="button"
             data-testid="selected-ride-card"
-            onClick={() => navigate(`/rides/${selected.id}`)}
+            onClick={() => {
+              setViewedRides((prev) => markRideViewed(selected.id, prev));
+              navigate(`/rides/${selected.id}`);
+            }}
             style={{
               width: "100%",
               textAlign: "left",
               ...glassStyle,
+              background: selectedCardBg,
               borderRadius: 16,
               padding: "16px 44px 16px 16px",
-              border: isDark
-                ? "1px solid rgba(255,255,255,0.08)"
-                : "1px solid var(--brand-line, rgba(15,23,42,0.06))",
+              border: `1px solid ${selectedBorderColor}`,
               cursor: "pointer",
             }}
           >

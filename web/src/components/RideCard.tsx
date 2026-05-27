@@ -1,8 +1,9 @@
+import { type RideCardState, getRideCardBg, getRideCardBorderColor } from "../lib/rideCardState";
 import type { Ride } from "../types/ride";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
 
-export type RideCardState = "own" | "applied" | "approved" | "viewed" | "default";
+export type { RideCardState } from "../lib/rideCardState";
 
 interface RideCardProps {
   ride: Ride;
@@ -58,34 +59,6 @@ function relativeTime(departureAt: string): string {
   return m > 0 ? `через ${h} ч ${m} мин` : `через ${h} ч`;
 }
 
-function getCardBg(state: RideCardState): string {
-  switch (state) {
-    case "own":
-      return "var(--ride-own-soft)";
-    case "applied":
-      return "var(--ride-applied-soft)";
-    case "approved":
-      return "var(--ride-approved-soft)";
-    case "viewed":
-      return "var(--ride-viewed-soft)";
-    default:
-      return "var(--brand-surface)";
-  }
-}
-
-function getCardBorderColor(state: RideCardState): string | undefined {
-  switch (state) {
-    case "own":
-      return "var(--ride-own)";
-    case "applied":
-      return "var(--ride-applied)";
-    case "approved":
-      return "var(--ride-approved)";
-    default:
-      return undefined;
-  }
-}
-
 function getBadgeConfig(state: RideCardState): { label: string; color: string; bg: string } | null {
   switch (state) {
     case "own":
@@ -119,8 +92,8 @@ export function RideCard({
   const noSeats = seats === 0;
   const rel = relativeTime(ride.departure_at);
   const dateBadge = dateLabel(ride.departure_at);
-  const bg = getCardBg(cardState);
-  const borderColor = getCardBorderColor(cardState);
+  const bg = getRideCardBg(cardState);
+  const borderColor = getRideCardBorderColor(cardState);
   const badge = getBadgeConfig(cardState);
 
   if (density === "compact") {

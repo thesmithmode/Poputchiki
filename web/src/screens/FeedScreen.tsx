@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
 import { PassengerSearchBar } from "../components/PassengerSearchBar";
-import type { RideCardState } from "../components/RideCard";
 import { RideCard } from "../components/RideCard";
 import { useFavorites } from "../hooks/useFavorites";
 import { applyFilters, useFilters } from "../hooks/useFilters";
@@ -11,30 +10,8 @@ import { useMe } from "../hooks/useMe";
 import { useMyRideRequests } from "../hooks/useMyRideRequests";
 import { useRealtime } from "../hooks/useRealtime";
 import { type PassengerCoords, useRides } from "../hooks/useRides";
+import { getRideCardState, markRideViewed, readViewedRideIds } from "../lib/rideCardState";
 import type { Ride } from "../types/ride";
-
-const VIEWED_KEY = "pp_viewed_rides";
-
-function readViewedSet(): Set<string> {
-  try {
-    const raw = localStorage.getItem(VIEWED_KEY);
-    return new Set<string>(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set<string>();
-  }
-}
-
-function writeViewed(id: string, current: Set<string>): Set<string> {
-  const next = new Set<string>(current);
-  next.add(id);
-  try {
-    const arr = [...next].slice(-200);
-    localStorage.setItem(VIEWED_KEY, JSON.stringify(arr));
-    return new Set<string>(arr);
-  } catch {
-    return next;
-  }
-}
 
 const QUICK_CHIPS = [
   { id: "baum", label: "ул. Баумана", query: "Баумана" },
@@ -60,7 +37,7 @@ export function FeedScreen() {
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
-  const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedSet);
+  const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
   const { isFavorite, toggle: toggleFavorite, favoriteIds } = useFavorites();
   const [showFilters, setShowFilters] = useState(false);
   const [density, setDensity] = useState<"compact" | "cozy">(() => {
@@ -125,17 +102,8 @@ export function FeedScreen() {
     );
   }
 
-  function getCardState(ride: Ride): RideCardState {
-    if (myUserId && ride.driver_id === myUserId) return "own";
-    const reqStatus = requestMap.get(ride.id);
-    if (reqStatus === "accepted") return "approved";
-    if (reqStatus === "pending") return "applied";
-    if (viewedRides.has(ride.id)) return "viewed";
-    return "default";
-  }
-
   const handleCardClick = (ride: Ride) => {
-    setViewedRides((prev) => writeViewed(ride.id, prev));
+    setViewedRides((prev) => markRideViewed(ride.id, prev));
     navigate(`/rides/${ride.id}`);
   };
 
@@ -368,7 +336,7 @@ export function FeedScreen() {
               onClick={handleCardClick}
               isFavorited={isFavorite(ride.driver_id)}
               onToggleFavorite={() => toggleFavorite(ride.driver_id)}
-              cardState={getCardState(ride)}
+              cardState={getRideCardState(ride, myUserId, requestMap, viewedRides)}
               isAlongTheWay={passengerCoords != null}
             />
           ))

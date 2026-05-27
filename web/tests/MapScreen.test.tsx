@@ -1,11 +1,31 @@
 import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import * as L from "leaflet";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MapScreen } from "../src/screens/MapScreen";
 
 vi.mock("../src/lib/telegram", () => ({ getTelegramWebApp: () => undefined }));
+
+vi.mock("../src/hooks/useMe", () => ({
+  useMe: vi.fn(() => ({
+    status: "ok",
+    user: {
+      id: "user-1",
+      display_name: "User",
+      onboarded: true,
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      role: "user",
+    },
+  })),
+}));
+
+vi.mock("../src/hooks/useMyRideRequests", () => ({
+  useMyRideRequests: vi.fn(() => new Map()),
+}));
 
 vi.mock("../src/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/lib/api")>();
@@ -50,12 +70,14 @@ vi.mock("leaflet", () => {
       polyline: vi.fn(() => mockPolyline),
       tileLayer: vi.fn(() => mockTileLayer),
       circleMarker: vi.fn(() => mockCircleMarker),
+      divIcon: vi.fn((options) => options),
     },
     map: vi.fn(() => mockMap),
     marker: vi.fn(() => mockMarker),
     polyline: vi.fn(() => mockPolyline),
     tileLayer: vi.fn(() => mockTileLayer),
     circleMarker: vi.fn(() => mockCircleMarker),
+    divIcon: vi.fn((options) => options),
   };
 });
 
@@ -66,9 +88,11 @@ vi.mock("leaflet.markercluster", () => ({
   })),
 }));
 
+import { useMyRideRequests } from "../src/hooks/useMyRideRequests";
 import { apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
+const mockedUseMyRideRequests = vi.mocked(useMyRideRequests);
 
 const MOCK_RIDES = [
   {
@@ -104,7 +128,10 @@ function renderScreen() {
 
 describe("MapScreen", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
+    mockedApiFetch.mockReset();
+    mockedUseMyRideRequests.mockReset();
+    mockedUseMyRideRequests.mockReturnValue(new Map());
   });
 
   it("рендерит контейнер карты", () => {
@@ -195,5 +222,20 @@ describe("MapScreen", () => {
     expect(btn).toBeInTheDocument();
     fireEvent.click(btn);
     await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+  });
+
+  it("paints marker-card with feed state color for pending request", async () => {
+    mockedUseMyRideRequests.mockReturnValue(new Map([["ride-1", "pending"]]));
+    mockedApiFetch.mockResolvedValueOnce({ rides: MOCK_RIDES });
+
+    renderScreen();
+
+    await waitFor(() => {
+      expect(L.divIcon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining("background:var(--ride-applied-soft)"),
+        }),
+      );
+    });
   });
 });

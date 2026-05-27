@@ -89,6 +89,11 @@ const GetRidesQuery = z.object({
     .optional()
     .transform((v: string | undefined) => v === "true"),
   cursor: z.string().optional(),
+  passengerFromLat: z.coerce.number().min(-90).max(90).optional(),
+  passengerFromLng: z.coerce.number().min(-180).max(180).optional(),
+  passengerToLat: z.coerce.number().min(-90).max(90).optional(),
+  passengerToLng: z.coerce.number().min(-180).max(180).optional(),
+  radiusM: z.coerce.number().int().min(100).max(2000).optional(),
 });
 
 export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCache): Hono {
@@ -102,7 +107,14 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const p = parsed.data;
     const user = c.get("user" as never) as AppUser;
 
-    const shouldCache = !p.cursor && !p.favoritesOnly;
+    const spatialSearch =
+      p.passengerFromLat !== undefined &&
+      p.passengerFromLng !== undefined &&
+      p.passengerToLat !== undefined &&
+      p.passengerToLng !== undefined;
+    const radiusM = p.radiusM ?? 500;
+
+    const shouldCache = !p.cursor && !p.favoritesOnly && !spatialSearch;
     // Cache key MUST include user.id — RLS may filter ride visibility per user
     // (block-lists, role-based gating). Without user prefix, юзер A может получить
     // закэшированный ответ юзера B.
@@ -176,6 +188,19 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
               ? tx`AND r.driver_id IN (
                   SELECT target_id FROM favorites WHERE user_id = app.current_user_id()
                 )`
+              : tx``
+          }
+          ${
+            spatialSearch &&
+            p.passengerFromLat !== undefined &&
+            p.passengerFromLng !== undefined &&
+            p.passengerToLat !== undefined &&
+            p.passengerToLng !== undefined
+              ? tx`AND r.route_geom IS NOT NULL
+                   AND ST_DWithin(geography(r.route_geom), ST_SetSRID(ST_MakePoint(${p.passengerFromLng}, ${p.passengerFromLat}), 4326)::geography, ${radiusM})
+                   AND ST_DWithin(geography(r.route_geom), ST_SetSRID(ST_MakePoint(${p.passengerToLng}, ${p.passengerToLat}), 4326)::geography, ${radiusM})
+                   AND ST_LineLocatePoint(r.route_geom, ST_SetSRID(ST_MakePoint(${p.passengerFromLng}, ${p.passengerFromLat}), 4326))
+                     < ST_LineLocatePoint(r.route_geom, ST_SetSRID(ST_MakePoint(${p.passengerToLng}, ${p.passengerToLat}), 4326))`
               : tx``
           }
           ${cursor ? tx`AND (r.departure_at, r.id) > (${cursor.d}::timestamptz, ${cursor.i}::uuid)` : tx``}

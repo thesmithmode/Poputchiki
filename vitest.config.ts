@@ -24,6 +24,7 @@ export default defineConfig({
         "apps/api/src/users/usersRouter.ts",
         "apps/api/src/rides/ridesRouter.ts",
         "apps/api/src/template-subscriptions/templateSubscriptionsRouter.ts",
+        "apps/api/src/saved-addresses/savedAddressesRouter.ts",
         "apps/webhook/src/types/telegram.ts",
       ],
       thresholds: {

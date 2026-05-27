@@ -18,8 +18,18 @@ export const queryKeys = {
   },
   rides: {
     all: ["rides"] as const,
-    list: (preset: string | null, fromAt: string | null, toAt: string | null) =>
-      ["rides", "list", preset, fromAt, toAt] as const,
+    list: (
+      preset: string | null,
+      fromAt: string | null,
+      toAt: string | null,
+      spatial?:
+        | { fromLat: number; fromLng: number; toLat: number; toLng: number }
+        | null
+        | undefined,
+    ) => {
+      const base = ["rides", "list", preset, fromAt, toAt] as const;
+      return spatial ? ([...base, spatial] as const) : base;
+    },
     mine: (role: string, when: string) => ["rides", "mine", role, when] as const,
   },
   ride: {

@@ -20,4 +20,7 @@ export interface Ride {
   driver_tg_id?: number | null;
   driver_avg_stars?: number | null;
   driver_reviews_count?: number | null;
+  route_polyline?: string | null;
+  route_distance_m?: number | null;
+  route_duration_s?: number | null;
 }

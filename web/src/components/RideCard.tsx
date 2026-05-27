@@ -11,6 +11,7 @@ interface RideCardProps {
   cardState?: RideCardState;
   isFavorited?: boolean;
   onToggleFavorite?: () => void;
+  isAlongTheWay?: boolean | undefined;
 }
 
 const MAX_ADDR_LEN = 22;
@@ -107,6 +108,7 @@ export function RideCard({
   density = "cozy",
   onClick,
   cardState = "default",
+  isAlongTheWay,
 }: RideCardProps) {
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
@@ -448,6 +450,36 @@ export function RideCard({
           </span>
         </div>
       </div>
+
+      {/* Route info + along-the-way badge */}
+      {(ride.route_distance_m != null || isAlongTheWay) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {ride.route_distance_m != null && (
+            <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>
+              {ride.route_distance_m >= 1000
+                ? `${(ride.route_distance_m / 1000).toFixed(1)} км`
+                : `${ride.route_distance_m} м`}
+              {ride.route_duration_s != null && ` · ~${Math.ceil(ride.route_duration_s / 60)} мин`}
+            </span>
+          )}
+          {isAlongTheWay && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--brand-primary)",
+                background: "var(--brand-primary-soft, rgba(45,90,61,0.1))",
+                borderRadius: 6,
+                padding: "2px 7px",
+                lineHeight: 1.4,
+                whiteSpace: "nowrap",
+              }}
+            >
+              По пути
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Bottom row: driver + seats + comment */}
       <div

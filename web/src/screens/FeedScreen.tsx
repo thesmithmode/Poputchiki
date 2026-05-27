@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
+import { PassengerSearchBar } from "../components/PassengerSearchBar";
 import type { RideCardState } from "../components/RideCard";
 import { RideCard } from "../components/RideCard";
 import { useFavorites } from "../hooks/useFavorites";
@@ -9,7 +10,7 @@ import { applyFilters, useFilters } from "../hooks/useFilters";
 import { useMe } from "../hooks/useMe";
 import { useMyRideRequests } from "../hooks/useMyRideRequests";
 import { useRealtime } from "../hooks/useRealtime";
-import { useRides } from "../hooks/useRides";
+import { type PassengerCoords, useRides } from "../hooks/useRides";
 import type { Ride } from "../types/ride";
 
 const VIEWED_KEY = "pp_viewed_rides";
@@ -48,7 +49,13 @@ const QUICK_CHIPS = [
 export function FeedScreen() {
   const navigate = useNavigate();
   const { filters, setFilters, resetFilters } = useFilters();
-  const { data, isLoading, isError } = useRides(filters.datePreset, filters.fromAt, filters.toAt);
+  const [passengerCoords, setPassengerCoords] = useState<PassengerCoords | null>(null);
+  const { data, isLoading, isError } = useRides(
+    filters.datePreset,
+    filters.fromAt,
+    filters.toAt,
+    passengerCoords,
+  );
   useRealtime();
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
@@ -233,6 +240,11 @@ export function FeedScreen() {
         </div>
       </div>
 
+      {/* Passenger search */}
+      <div style={{ padding: "10px 16px 0" }}>
+        <PassengerSearchBar onSearch={setPassengerCoords} />
+      </div>
+
       {/* Quick destination chips */}
       <div
         style={{
@@ -357,6 +369,7 @@ export function FeedScreen() {
               isFavorited={isFavorite(ride.driver_id)}
               onToggleFavorite={() => toggleFavorite(ride.driver_id)}
               cardState={getCardState(ride)}
+              isAlongTheWay={passengerCoords != null}
             />
           ))
         )}

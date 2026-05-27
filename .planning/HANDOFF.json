@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T09:46:03.071Z",
+  "timestamp": "2026-05-27T12:36:13.872Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -34,69 +34,29 @@
     },
     {
       "status": "M",
-      "path": "apps/api/src/ride-templates/rideTemplatesRouter.ts"
-    },
-    {
-      "status": "M",
       "path": "apps/api/src/rides/ridesRouter.ts"
     },
     {
-      "status": "M",
-      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/ride-templates/rideTemplatesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/rides/ridesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "packages/shared/src/schemas/ride.ts"
-    },
-    {
-      "status": "M",
-      "path": "packages/shared/tests/schemas/ride.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/App.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/AddressAutocomplete.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/SaveAddressDialog.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/CreateRideScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/SavedAddressesScreen.tsx"
+      "status": "??",
+      "path": "docs/"
     },
     {
       "status": "??",
-      "path": "db/migrations/040_seats_limit_100.down.sql"
+      "path": "scripts/setup-tg-webhook.sh"
     },
     {
       "status": "??",
-      "path": "db/migrations/040_seats_limit_100.sql"
+      "path": "web/src/hooks/useOnlineStatus.ts"
     },
     {
       "status": "??",
-      "path": "web/src/components/LoadingScreen.tsx"
+      "path": "web/src/i18n/"
     },
     {
       "status": "??",
-      "path": "web/src/lib/geolocation.ts"
+      "path": "web/tests/FeedScreen.test.tsx"
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\ne8054d6 DOCS: merge dev→main без сквоша + запрет автономного merge в main\n00f5076 CHORE: обновить memory-логи — 2026-05-27\n8079ae1 TEST: добавить тесты для saved-address schema + exclude router из coverage\n7c28ead CHORE: обновить web/dist артефакты сборки\n3508d4a CHORE: обновить memory-логи — 2026-05-27"
+  "context_notes": "Recent commits:\n3e14e23 FEAT: Фаза 6 — полировка: ETA коэффициенты, distance на RideCard, badge По пути\n1081605 FEAT: Фаза 5 — матчинг по пути + PassengerSearchBar\ncdb4d1b FEAT: Фаза 4 — скрипт backfill маршрутов для существующих поездок\n271c720 FEAT: Фаза 3 — визуализация реального маршрута на карте\n9f1dc63 FEAT: Фаза 2 — OSRM route computation при создании поездок"
 }

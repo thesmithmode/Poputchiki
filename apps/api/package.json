@@ -10,6 +10,7 @@
     "build": "echo 'api: no build step (bun runtime)'"
   },
   "dependencies": {
+    "@mapbox/polyline": "^1.2.1",
     "@poputchiki/shared": "workspace:*",
     "hono": "^4.12.16",
     "pino": "^9.6.0",

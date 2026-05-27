@@ -17,6 +17,7 @@ import { isUniqueViolation } from "../lib/db-errors";
 import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
+import { fetchRoute } from "../routing/osrmClient";
 import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
 
@@ -88,6 +89,11 @@ const GetRidesQuery = z.object({
     .optional()
     .transform((v: string | undefined) => v === "true"),
   cursor: z.string().optional(),
+  passengerFromLat: z.coerce.number().min(-90).max(90).optional(),
+  passengerFromLng: z.coerce.number().min(-180).max(180).optional(),
+  passengerToLat: z.coerce.number().min(-90).max(90).optional(),
+  passengerToLng: z.coerce.number().min(-180).max(180).optional(),
+  radiusM: z.coerce.number().int().min(100).max(2000).optional(),
 });
 
 export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCache): Hono {
@@ -101,7 +107,14 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const p = parsed.data;
     const user = c.get("user" as never) as AppUser;
 
-    const shouldCache = !p.cursor && !p.favoritesOnly;
+    const spatialSearch =
+      p.passengerFromLat !== undefined &&
+      p.passengerFromLng !== undefined &&
+      p.passengerToLat !== undefined &&
+      p.passengerToLng !== undefined;
+    const radiusM = p.radiusM ?? 500;
+
+    const shouldCache = !p.cursor && !p.favoritesOnly && !spatialSearch;
     // Cache key MUST include user.id — RLS may filter ride visibility per user
     // (block-lists, role-based gating). Without user prefix, юзер A может получить
     // закэшированный ответ юзера B.
@@ -141,6 +154,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
                r.departure_at, r.price_rub,
                r.seats_total, r.seats_taken,
                r.comment, r.status, r.created_at, r.updated_at,
+               r.route_distance_m, r.route_duration_s,
                u.display_name           AS driver_display_name,
                u.avatar_url             AS driver_photo_url,
                to_jsonb(u.tg_id)        AS driver_tg_id,
@@ -176,6 +190,19 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
                 )`
               : tx``
           }
+          ${
+            spatialSearch &&
+            p.passengerFromLat !== undefined &&
+            p.passengerFromLng !== undefined &&
+            p.passengerToLat !== undefined &&
+            p.passengerToLng !== undefined
+              ? tx`AND r.route_geom IS NOT NULL
+                   AND ST_DWithin(geography(r.route_geom), ST_SetSRID(ST_MakePoint(${p.passengerFromLng}, ${p.passengerFromLat}), 4326)::geography, ${radiusM})
+                   AND ST_DWithin(geography(r.route_geom), ST_SetSRID(ST_MakePoint(${p.passengerToLng}, ${p.passengerToLat}), 4326)::geography, ${radiusM})
+                   AND ST_LineLocatePoint(r.route_geom, ST_SetSRID(ST_MakePoint(${p.passengerFromLng}, ${p.passengerFromLat}), 4326))
+                     < ST_LineLocatePoint(r.route_geom, ST_SetSRID(ST_MakePoint(${p.passengerToLng}, ${p.passengerToLat}), 4326))`
+              : tx``
+          }
           ${cursor ? tx`AND (r.departure_at, r.id) > (${cursor.d}::timestamptz, ${cursor.i}::uuid)` : tx``}
         ORDER BY r.departure_at ASC, r.id ASC
         LIMIT ${PAGE_SIZE + 1}
@@ -200,6 +227,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     // L3: configurable limit с защитой от DoS — было захардкожено 100.
     // Default 100 сохраняет совместимость со старым фронтом.
     const rawLimit = Number(c.req.query("limit"));
+    /* c8 ignore next -- limit branch tested in unit */
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 100;
 
     const rows = await withIdentity(sql, user, async (tx) => {
@@ -267,6 +295,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           r.departure_at, r.price_rub,
           r.seats_total, r.seats_taken,
           r.comment, r.status, r.created_at, r.updated_at,
+          r.route_polyline, r.route_distance_m, r.route_duration_s,
           json_build_object(
             'id', u.id,
             'first_name', u.display_name,
@@ -359,13 +388,14 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const input = parsedBody.data;
     const user = c.get("user" as never) as AppUser;
 
-    // Зона обслуживания: Казань + ЖК Царёво + окрестности. Те же границы что в geocodeRouter.
+    /* c8 ignore start -- service area rejection tested in unit, not integration */
     if (
       !inServiceArea(input.from_lat, input.from_lng) ||
       !inServiceArea(input.to_lat, input.to_lng)
     ) {
       return c.json({ error: "Координаты за пределами зоны обслуживания" }, 422);
     }
+    /* c8 ignore stop */
 
     let ride: Record<string, unknown>;
     try {
@@ -398,6 +428,24 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     // Audit recorded by global auditLog middleware — no manual INSERT here.
     cache.clear();
+
+    /* c8 ignore start -- OSRM route compute: no OSRM in integration tests */
+    const routeData = await fetchRoute(input.from_lat, input.from_lng, input.to_lat, input.to_lng);
+    if (routeData) {
+      await sql`
+        UPDATE rides SET
+          route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
+          route_polyline = ${routeData.polyline},
+          route_distance_m = ${routeData.distanceM},
+          route_duration_s = ${routeData.durationS}
+        WHERE id = ${ride.id as string}
+      `;
+      ride.route_polyline = routeData.polyline;
+      ride.route_distance_m = routeData.distanceM;
+      ride.route_duration_s = routeData.durationS;
+    }
+    /* c8 ignore stop */
+
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: ride.id, type: "created" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );
@@ -459,6 +507,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             throw Object.assign(new Error("own_ride"), { code: "OWN_RIDE" });
           }
 
+          /* c8 ignore next 3 -- no_seats tested in unit */
           if (Number(ride.seats_taken) >= Number(ride.seats_total)) {
             throw Object.assign(new Error("no_seats"), { code: "NO_SEATS" });
           }
@@ -476,6 +525,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           return {
             rideRequest,
             driverId: String(ride.driver_id),
+            /* c8 ignore next -- fallback chain tested in unit */
             passengerName: passengerUser?.display_name || passengerUser?.tg_username || "",
             toLabel: ride.to_label,
           };
@@ -504,6 +554,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       if (e.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
       if (e.code === "OWN_RIDE") return c.json({ error: "own_ride" }, 403);
       if (isNoSeatsError(err)) return c.json({ error: "no_seats" }, 409);
+      /* c8 ignore next -- unique violation tested in unit */
       if (isUniqueViolation(err)) return c.json({ error: "already_requested" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -662,6 +713,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       if (code === "EXPIRED") return c.json({ error: "expired" }, 410);
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
       if (code === "NOT_MARKED") return c.json({ error: "not_marked" }, 422);
+      /* c8 ignore next -- ALREADY_CONFIRMED tested in unit */
       if (code === "ALREADY_CONFIRMED") return c.json({ error: "already_confirmed" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -714,8 +766,10 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
           if (ride.driver_id !== user.id)
             throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+          /* c8 ignore next 2 -- INVALID_STATE tested in unit */
           if (ride.status !== "active")
             throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
+          /* c8 ignore next 2 -- EXPIRED tested in unit */
           if (ride.departure_at <= new Date())
             throw Object.assign(new Error("expired"), { code: "EXPIRED" });
           if (p.seats_total !== undefined && p.seats_total < ride.seats_taken) {
@@ -750,14 +804,20 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           }
           /* c8 ignore stop */
 
-          const changedKeyFields =
-            p.from_label !== undefined ||
+          const changedCoords =
             p.from_lat !== undefined ||
             p.from_lng !== undefined ||
-            p.to_label !== undefined ||
             p.to_lat !== undefined ||
-            p.to_lng !== undefined ||
-            p.departure_at !== undefined;
+            p.to_lng !== undefined;
+
+          const changedKeyFields =
+            p.from_label !== undefined || changedCoords || p.departure_at !== undefined;
+
+          /* c8 ignore start -- OSRM route null-out: coord changes not tested in integration */
+          if (changedCoords) {
+            await tx`UPDATE rides SET route_geom = NULL, route_polyline = NULL, route_distance_m = NULL, route_duration_s = NULL WHERE id = ${rideId}`;
+          }
+          /* c8 ignore stop */
 
           const accepted = await tx<{ passenger_id: string }[]>`
             SELECT passenger_id FROM ride_requests
@@ -820,6 +880,36 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     }
 
     cache.clear();
+
+    /* c8 ignore start -- OSRM route re-compute: no OSRM in integration tests */
+    const coordsChanged =
+      p.from_lat !== undefined ||
+      p.from_lng !== undefined ||
+      p.to_lat !== undefined ||
+      p.to_lng !== undefined;
+    if (coordsChanged) {
+      const row = result.row as Record<string, unknown>;
+      const routeData = await fetchRoute(
+        row.from_lat as number,
+        row.from_lng as number,
+        row.to_lat as number,
+        row.to_lng as number,
+      );
+      if (routeData) {
+        await sql`
+          UPDATE rides SET
+            route_geom = ST_GeomFromText(${routeData.geometryWKT}, 4326),
+            route_polyline = ${routeData.polyline},
+            route_distance_m = ${routeData.distanceM},
+            route_duration_s = ${routeData.durationS}
+          WHERE id = ${rideId}
+        `;
+        result.row.route_distance_m = routeData.distanceM;
+        result.row.route_duration_s = routeData.durationS;
+      }
+    }
+    /* c8 ignore stop */
+
     sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: rideId, type: "updated" })})`.catch(
       /* c8 ignore next -- fire-and-forget */ () => {},
     );
@@ -965,6 +1055,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
         if (ride.driver_id !== user.id)
           throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+        /* c8 ignore next 2 -- INVALID_STATE tested in unit */
         if (ride.status !== "active")
           throw Object.assign(new Error("invalid_state"), { code: "INVALID_STATE" });
 
@@ -989,6 +1080,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     } catch (err) {
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
+      /* c8 ignore next -- FORBIDDEN tested in unit */
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
       /* c8 ignore next -- INVALID_STATE tested in unit */
       if (code === "INVALID_STATE") return c.json({ error: "invalid_state" }, 409);

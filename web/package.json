@@ -17,6 +17,7 @@
   "dependencies": {
     "@fontsource/onest": "^5.2.11",
     "@fontsource/unbounded": "^5.2.8",
+    "@mapbox/polyline": "^1.2.1",
     "@poputchiki/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
     "@telegram-apps/sdk-react": "^2.0.24",

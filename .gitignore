@@ -30,3 +30,6 @@ __pycache__/
 skills-lock.json
 .claude/scratch/
 
+# Отдельный проект, хранится только локально
+saas/
+

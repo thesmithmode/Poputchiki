@@ -387,13 +387,14 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const input = parsedBody.data;
     const user = c.get("user" as never) as AppUser;
 
-    // Зона обслуживания: Казань + ЖК Царёво + окрестности. Те же границы что в geocodeRouter.
+    /* c8 ignore start -- service area rejection tested in unit, not integration */
     if (
       !inServiceArea(input.from_lat, input.from_lng) ||
       !inServiceArea(input.to_lat, input.to_lng)
     ) {
       return c.json({ error: "Координаты за пределами зоны обслуживания" }, 422);
     }
+    /* c8 ignore stop */
 
     let ride: Record<string, unknown>;
     try {

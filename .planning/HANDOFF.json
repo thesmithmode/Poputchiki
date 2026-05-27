@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-05-27T09:46:03.071Z",
+  "timestamp": "2026-05-27T11:41:37.265Z",
   "source": "auto-postool",
   "partial": false,
   "phase": null,
@@ -18,6 +18,18 @@
   "uncommitted_files": [
     {
       "status": "M",
+      "path": ".env.example"
+    },
+    {
+      "status": "M",
+      "path": ".github/workflows/ci.yml"
+    },
+    {
+      "status": "D",
+      "path": "\".memory/daily/2026-05-22 (1).md\""
+    },
+    {
+      "status": "M",
       "path": ".memory/daily/2026-05-27.md"
     },
     {
@@ -29,74 +41,202 @@
       "path": ".memory/scripts/last-flush.json"
     },
     {
+      "status": "D",
+      "path": "\".planning/HANDOFF (1).json\""
+    },
+    {
       "status": "M",
       "path": ".planning/HANDOFF.json"
     },
     {
       "status": "M",
-      "path": "apps/api/src/ride-templates/rideTemplatesRouter.ts"
+      "path": "infra/docker-compose.dev.yml"
     },
     {
       "status": "M",
-      "path": "apps/api/src/rides/ridesRouter.ts"
+      "path": "infra/docker-compose.prod.yml"
     },
     {
       "status": "M",
-      "path": "apps/api/tests/integration/ride-templates/rideTemplatesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/ride-templates/rideTemplatesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "apps/api/tests/unit/rides/ridesRouter.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "packages/shared/src/schemas/ride.ts"
-    },
-    {
-      "status": "M",
-      "path": "packages/shared/tests/schemas/ride.test.ts"
-    },
-    {
-      "status": "M",
-      "path": "web/src/App.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/AddressAutocomplete.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/components/SaveAddressDialog.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/CreateRideScreen.tsx"
-    },
-    {
-      "status": "M",
-      "path": "web/src/screens/SavedAddressesScreen.tsx"
+      "path": "scripts/deploy.sh"
     },
     {
       "status": "??",
-      "path": "db/migrations/040_seats_limit_100.down.sql"
+      "path": "\".claude/BACKLOG (1).md\""
     },
     {
       "status": "??",
-      "path": "db/migrations/040_seats_limit_100.sql"
+      "path": "\".claude/settings (1).local.json\""
     },
     {
       "status": "??",
-      "path": "web/src/components/LoadingScreen.tsx"
+      "path": "\".env (1).example\""
     },
     {
       "status": "??",
-      "path": "web/src/lib/geolocation.ts"
+      "path": "\".github/workflows/ci (1).yml\""
+    },
+    {
+      "status": "??",
+      "path": "\".github/workflows/deploy (1).yml\""
+    },
+    {
+      "status": "??",
+      "path": "\".github/workflows/nightly (1).yml\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/daily/2026-05-16 (1).md\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/knowledge/index (1).md\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/knowledge/log (1).md\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/scripts/compile (1).log\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/scripts/flush (1).log\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/scripts/last-flush (1).json\""
+    },
+    {
+      "status": "??",
+      "path": "\".memory/scripts/state (1).json\""
+    },
+    {
+      "status": "??",
+      "path": "\".planning/HANDOFF (2).json\""
+    },
+    {
+      "status": "??",
+      "path": "\".trivyignore (1)\""
+    },
+    {
+      "status": "??",
+      "path": "\"CLAUDE (1).md\""
+    },
+    {
+      "status": "??",
+      "path": "\"README (1).md\""
+    },
+    {
+      "status": "??",
+      "path": "\"apps/cron/Dockerfile (1)\""
+    },
+    {
+      "status": "??",
+      "path": "\"apps/cron/package (1).json\""
+    },
+    {
+      "status": "??",
+      "path": "\"apps/notifier/package (1).json\""
+    },
+    {
+      "status": "??",
+      "path": "\"apps/web-server/Dockerfile (1)\""
+    },
+    {
+      "status": "??",
+      "path": "\"bun (1).lock\""
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/041_postgis_route_columns.down.sql"
+    },
+    {
+      "status": "??",
+      "path": "db/migrations/041_postgis_route_columns.sql"
+    },
+    {
+      "status": "??",
+      "path": "docs/"
+    },
+    {
+      "status": "??",
+      "path": "\"infra/docker-compose (1).dev.yml\""
+    },
+    {
+      "status": "??",
+      "path": "\"infra/docker-compose (1).observability.yml\""
+    },
+    {
+      "status": "??",
+      "path": "\"infra/docker-compose (1).prod.yml\""
+    },
+    {
+      "status": "??",
+      "path": "\"infra/loki/config (1).yml\""
+    },
+    {
+      "status": "??",
+      "path": "\"infra/postgres/pg_hba (1).conf\""
+    },
+    {
+      "status": "??",
+      "path": "\"infra/prometheus/prometheus (1).yml\""
+    },
+    {
+      "status": "??",
+      "path": "\"lefthook (1).yml\""
+    },
+    {
+      "status": "??",
+      "path": "\"scripts/backup-db (1).sh\""
+    },
+    {
+      "status": "??",
+      "path": "\"scripts/check-coverage (1).js\""
+    },
+    {
+      "status": "??",
+      "path": "\"scripts/deploy (1).sh\""
+    },
+    {
+      "status": "??",
+      "path": "scripts/osrm-prepare.sh"
+    },
+    {
+      "status": "??",
+      "path": "\"scripts/restore-test (1).sh\""
+    },
+    {
+      "status": "??",
+      "path": "\"scripts/rollback (1).sh\""
+    },
+    {
+      "status": "??",
+      "path": "scripts/setup-tg-webhook.sh"
+    },
+    {
+      "status": "??",
+      "path": "\"vitest (1).config.ts\""
+    },
+    {
+      "status": "??",
+      "path": "\"web/index (1).html\""
+    },
+    {
+      "status": "??",
+      "path": "\"web/package (1).json\""
+    },
+    {
+      "status": "??",
+      "path": "web/tests/FeedScreen.test.tsx"
+    },
+    {
+      "status": "??",
+      "path": "\"web/vite (1).config.ts\""
     }
   ],
   "next_action": null,
-  "context_notes": "Recent commits:\ne8054d6 DOCS: merge dev→main без сквоша + запрет автономного merge в main\n00f5076 CHORE: обновить memory-логи — 2026-05-27\n8079ae1 TEST: добавить тесты для saved-address schema + exclude router из coverage\n7c28ead CHORE: обновить web/dist артефакты сборки\n3508d4a CHORE: обновить memory-логи — 2026-05-27"
+  "context_notes": "Recent commits:\nfb41d9d CHORE: удалить saas/ из git tracking, сохранить локально\n5424feb CHORE: обновить web/dist артефакты сборки\ndf1b632 FIX: увеличить лимит мест с 4 до 100 на всех уровнях\nf1f4d85 FIX: убрать пример из placeholder + добавить MapPicker в сохранённые адреса\n92d661c FEAT: добавить кнопку Моё местоположение в dropdown Откуда"
 }

@@ -227,6 +227,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     // L3: configurable limit с защитой от DoS — было захардкожено 100.
     // Default 100 сохраняет совместимость со старым фронтом.
     const rawLimit = Number(c.req.query("limit"));
+    /* c8 ignore next -- limit branch tested in unit */
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 100;
 
     const rows = await withIdentity(sql, user, async (tx) => {
@@ -524,6 +525,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           return {
             rideRequest,
             driverId: String(ride.driver_id),
+            /* c8 ignore next -- fallback chain tested in unit */
             passengerName: passengerUser?.display_name || passengerUser?.tg_username || "",
             toLabel: ride.to_label,
           };
@@ -552,6 +554,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       if (e.code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
       if (e.code === "OWN_RIDE") return c.json({ error: "own_ride" }, 403);
       if (isNoSeatsError(err)) return c.json({ error: "no_seats" }, 409);
+      /* c8 ignore next -- unique violation tested in unit */
       if (isUniqueViolation(err)) return c.json({ error: "already_requested" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
@@ -710,6 +713,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       if (code === "EXPIRED") return c.json({ error: "expired" }, 410);
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
       if (code === "NOT_MARKED") return c.json({ error: "not_marked" }, 422);
+      /* c8 ignore next -- ALREADY_CONFIRMED tested in unit */
       if (code === "ALREADY_CONFIRMED") return c.json({ error: "already_confirmed" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;

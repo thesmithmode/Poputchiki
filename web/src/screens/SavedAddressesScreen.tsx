@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AddressAutocomplete, type Coords } from "../components/AddressAutocomplete";
+import { MapPicker } from "../components/MapPicker";
 import { type SavedAddress, useSavedAddresses } from "../hooks/useSavedAddresses";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
@@ -17,6 +18,7 @@ export function SavedAddressesScreen() {
   const [addCoords, setAddCoords] = useState<Coords | null>(null);
   const [customName, setCustomName] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const home = addresses.find((a) => a.type === "home");
   const work = addresses.find((a) => a.type === "work");
@@ -184,24 +186,55 @@ export function SavedAddressesScreen() {
                 data-testid="custom-name-input"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
-                placeholder="Название (напр. Курорт)"
+                placeholder="Название"
                 maxLength={50}
                 style={formInputStyle}
               />
             )}
 
-            <div style={{ marginTop: 8 }}>
-              <AddressAutocomplete
-                testId="add-address-input"
-                value={addLabel}
-                onChange={(v, coords) => {
-                  setAddLabel(v);
-                  setAddCoords(coords ?? null);
+            <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "stretch" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <AddressAutocomplete
+                  testId="add-address-input"
+                  value={addLabel}
+                  onChange={(v, coords) => {
+                    setAddLabel(v);
+                    setAddCoords(coords ?? null);
+                  }}
+                  placeholder="Найти адрес..."
+                  inputStyle={formInputStyle}
+                />
+              </div>
+              <button
+                type="button"
+                data-testid="open-map-picker"
+                onClick={() => setPickerOpen(true)}
+                aria-label="Выбрать на карте"
+                title="Выбрать на карте"
+                style={{
+                  flex: "0 0 auto",
+                  width: 44,
+                  border: "1px solid var(--brand-line)",
+                  borderRadius: 8,
+                  background: "var(--brand-surface)",
+                  color: "var(--brand-text)",
+                  fontSize: 18,
+                  cursor: "pointer",
                 }}
-                placeholder="Найти адрес..."
-                inputStyle={formInputStyle}
-              />
+              >
+                🗺
+              </button>
             </div>
+            <MapPicker
+              open={pickerOpen}
+              initialCoords={addCoords}
+              title="Выберите на карте"
+              onClose={() => setPickerOpen(false)}
+              onPick={(label, coords) => {
+                setAddLabel(label);
+                setAddCoords(coords);
+              }}
+            />
 
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button

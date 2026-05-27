@@ -1,1 +1,0 @@
-import{a as o}from"./vendor-query-4FUOfboV.js";import{g as s}from"./index-DD-13zx8.js";function i(e){o.useEffect(()=>{const r=s(),t=r==null?void 0:r.BackButton;if(t)return t.show(),t.onClick(e),()=>{t.offClick(e),t.hide()}},[e])}export{i as u};

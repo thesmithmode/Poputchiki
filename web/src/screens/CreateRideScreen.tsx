@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AddressAutocomplete, type Coords } from "../components/AddressAutocomplete";
 import { MapPicker } from "../components/MapPicker";
+import { SaveAddressDialog } from "../components/SaveAddressDialog";
+import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import { useTelegramBack } from "../hooks/useTelegramBack";
 import { useTelegramHaptic } from "../hooks/useTelegramHaptic";
 import { apiFetch } from "../lib/api";
@@ -55,6 +57,12 @@ export function CreateRideScreen() {
   const qc = useQueryClient();
   useTelegramBack(() => navigate(-1));
   const { notification } = useTelegramHaptic();
+  const {
+    addresses: savedAddresses,
+    create: createSavedAddress,
+    isCreating: isSavingAddress,
+  } = useSavedAddresses();
+  const [saveDialogTarget, setSaveDialogTarget] = useState<null | "from" | "to">(null);
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(() => {
     const def = futureLocalDateTime(60);
@@ -391,8 +399,33 @@ export function CreateRideScreen() {
                     }}
                     placeholder="Адрес отправления"
                     inputStyle={inputStyle}
+                    savedAddresses={savedAddresses}
                   />
                 </div>
+                {fromCoords && (
+                  <button
+                    type="button"
+                    data-testid="save-from-btn"
+                    onClick={() => setSaveDialogTarget("from")}
+                    aria-label="Сохранить адрес"
+                    title="Сохранить адрес"
+                    style={saveButtonStyle(
+                      savedAddresses.some(
+                        (a) =>
+                          Math.abs(a.lat - (fromCoords?.lat ?? 0)) < 0.0001 &&
+                          Math.abs(a.lng - (fromCoords?.lng ?? 0)) < 0.0001,
+                      ),
+                    )}
+                  >
+                    {savedAddresses.some(
+                      (a) =>
+                        Math.abs(a.lat - (fromCoords?.lat ?? 0)) < 0.0001 &&
+                        Math.abs(a.lng - (fromCoords?.lng ?? 0)) < 0.0001,
+                    )
+                      ? "★"
+                      : "☆"}
+                  </button>
+                )}
                 <button
                   type="button"
                   data-testid="open-map-from"
@@ -417,8 +450,33 @@ export function CreateRideScreen() {
                     }}
                     placeholder="Адрес назначения"
                     inputStyle={inputStyle}
+                    savedAddresses={savedAddresses}
                   />
                 </div>
+                {toCoords && (
+                  <button
+                    type="button"
+                    data-testid="save-to-btn"
+                    onClick={() => setSaveDialogTarget("to")}
+                    aria-label="Сохранить адрес"
+                    title="Сохранить адрес"
+                    style={saveButtonStyle(
+                      savedAddresses.some(
+                        (a) =>
+                          Math.abs(a.lat - (toCoords?.lat ?? 0)) < 0.0001 &&
+                          Math.abs(a.lng - (toCoords?.lng ?? 0)) < 0.0001,
+                      ),
+                    )}
+                  >
+                    {savedAddresses.some(
+                      (a) =>
+                        Math.abs(a.lat - (toCoords?.lat ?? 0)) < 0.0001 &&
+                        Math.abs(a.lng - (toCoords?.lng ?? 0)) < 0.0001,
+                    )
+                      ? "★"
+                      : "☆"}
+                  </button>
+                )}
                 <button
                   type="button"
                   data-testid="open-map-to"
@@ -432,6 +490,21 @@ export function CreateRideScreen() {
               </div>
             </Field>
           </Section>
+        )}
+        {saveDialogTarget && (
+          <SaveAddressDialog
+            open
+            addressLabel={saveDialogTarget === "from" ? form.from_label : form.to_label}
+            lat={(saveDialogTarget === "from" ? fromCoords : toCoords)?.lat ?? 0}
+            lng={(saveDialogTarget === "from" ? fromCoords : toCoords)?.lng ?? 0}
+            saving={isSavingAddress}
+            onClose={() => setSaveDialogTarget(null)}
+            onSave={async (data) => {
+              await createSavedAddress(data);
+              setSaveDialogTarget(null);
+              notification("success");
+            }}
+          />
         )}
         <MapPicker
           open={pickerOpen === "from"}
@@ -726,6 +799,20 @@ const mapButtonStyle: React.CSSProperties = {
   fontSize: 18,
   cursor: "pointer",
 };
+
+function saveButtonStyle(isSaved: boolean): React.CSSProperties {
+  return {
+    flex: "0 0 auto",
+    width: 44,
+    border: "1px solid",
+    borderColor: isSaved ? "#d4a017" : "var(--brand-line)",
+    borderRadius: 8,
+    background: isSaved ? "rgba(212,160,23,0.1)" : "var(--brand-surface)",
+    color: isSaved ? "#d4a017" : "var(--brand-sub)",
+    fontSize: 18,
+    cursor: "pointer",
+  };
+}
 
 function Section({ children }: { children: React.ReactNode }) {
   return (

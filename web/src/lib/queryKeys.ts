@@ -52,4 +52,7 @@ export const queryKeys = {
     mine: ["template-subscriptions", "mine"] as const,
     driver: ["template-subscriptions", "driver"] as const,
   },
+  savedAddresses: {
+    all: ["saved-addresses"] as const,
+  },
 } as const;

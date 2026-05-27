@@ -37,6 +37,18 @@ export { SupportMessageInput } from "./schemas/support-message.js";
 export type { SupportMessageInput as SupportMessageInputType } from "./schemas/support-message.js";
 
 export {
+  CreateSavedAddressInput,
+  SavedAddressDTO,
+  SavedAddressType,
+  UpdateSavedAddressInput,
+} from "./schemas/saved-address.js";
+export type {
+  CreateSavedAddressInput as CreateSavedAddressInputType,
+  SavedAddressDTO as SavedAddressDTOType,
+  UpdateSavedAddressInput as UpdateSavedAddressInputType,
+} from "./schemas/saved-address.js";
+
+export {
   NOTIFICATION_CATEGORIES,
   USER_TOGGLEABLE_CATEGORIES,
   isNotificationCategory,

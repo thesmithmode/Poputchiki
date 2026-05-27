@@ -2505,3 +2505,10 @@ Exception: Control request timeout: initialize
 2026-05-27 11:08:05 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
 2026-05-27 11:08:25 INFO Result: saved to daily log (1183 chars)
 2026-05-27 11:08:25 INFO Flush complete for session 7b1d2c82-53d7-493a-9e92-264a369e9768
+2026-05-27 11:47:18 INFO [pre-compact] PreCompact fired: session=9b66cd9b-4c0a-4c95-b381-dbc0012dc143
+2026-05-27 11:47:18 INFO [pre-compact] Spawned flush.py for session 9b66cd9b-4c0a-4c95-b381-dbc0012dc143 (30 turns, 3786 chars)
+2026-05-27 11:47:19 INFO flush.py started for session 9b66cd9b-4c0a-4c95-b381-dbc0012dc143, context: C:\Soft\Projects\Poputchiki\.memory\scripts\flush-context-9b66cd9b-4c0a-4c95-b381-dbc0012dc143-20260527-114718.md
+2026-05-27 11:47:19 INFO Flushing session 9b66cd9b-4c0a-4c95-b381-dbc0012dc143: 3785 chars
+2026-05-27 11:47:20 INFO Using bundled Claude Code CLI: C:\Soft\Projects\Poputchiki\.memory\.venv\Lib\site-packages\claude_agent_sdk\_bundled\claude.exe
+2026-05-27 11:47:41 INFO Result: saved to daily log (1067 chars)
+2026-05-27 11:47:41 INFO Flush complete for session 9b66cd9b-4c0a-4c95-b381-dbc0012dc143

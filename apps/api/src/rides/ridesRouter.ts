@@ -871,7 +871,12 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     cache.clear();
 
     // Re-compute route outside tx when coords changed
-    if (result.changedKeyFields) {
+    const coordsChanged =
+      p.from_lat !== undefined ||
+      p.from_lng !== undefined ||
+      p.to_lat !== undefined ||
+      p.to_lng !== undefined;
+    if (coordsChanged) {
       const row = result.row as Record<string, unknown>;
       const routeData = await fetchRoute(
         row.from_lat as number,

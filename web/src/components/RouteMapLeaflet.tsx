@@ -1,11 +1,13 @@
+import polyline from "@mapbox/polyline";
 import "leaflet/dist/leaflet.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface Props {
   fromLat: number;
   fromLng: number;
   toLat: number;
   toLng: number;
+  routePolyline?: string | null | undefined;
   height?: number;
 }
 
@@ -21,10 +23,22 @@ function useDarkMode() {
   return isDark;
 }
 
-export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }: Props) {
+export function RouteMapLeaflet({
+  fromLat,
+  fromLng,
+  toLat,
+  toLng,
+  routePolyline,
+  height = 180,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
   const isDark = useDarkMode();
+
+  const decodedRoute = useMemo(
+    () => (routePolyline ? polyline.decode(routePolyline) : null),
+    [routePolyline],
+  );
 
   // Toggle dark filter via CSS class — no tile layer swap, no flicker
   useEffect(() => {
@@ -75,24 +89,22 @@ export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }
 
       L.marker([fromLat, fromLng], { icon: iconFrom }).addTo(map);
       L.marker([toLat, toLng], { icon: iconTo }).addTo(map);
-      L.polyline(
-        [
+
+      if (decodedRoute) {
+        L.polyline(decodedRoute as [number, number][], {
+          color: colorFrom,
+          weight: 3,
+          opacity: 0.9,
+        }).addTo(map);
+        const bounds = L.latLngBounds(decodedRoute as [number, number][]);
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+      } else {
+        const bounds = L.latLngBounds([
           [fromLat, fromLng],
           [toLat, toLng],
-        ],
-        {
-          color: colorFrom,
-          weight: 2.5,
-          opacity: 0.7,
-          dashArray: "6 4",
-        },
-      ).addTo(map);
-
-      const bounds = L.latLngBounds([
-        [fromLat, fromLng],
-        [toLat, toLng],
-      ]);
-      map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+        ]);
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 14 });
+      }
     });
 
     return () => {
@@ -102,7 +114,7 @@ export function RouteMapLeaflet({ fromLat, fromLng, toLat, toLng, height = 180 }
         mapRef.current = null;
       }
     };
-  }, [fromLat, fromLng, toLat, toLng]);
+  }, [fromLat, fromLng, toLat, toLng, decodedRoute]);
 
   return (
     <div

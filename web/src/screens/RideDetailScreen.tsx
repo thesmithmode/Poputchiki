@@ -548,6 +548,7 @@ export function RideDetailScreen({ id }: Props) {
             fromLng={ride.from_lng}
             toLat={ride.to_lat}
             toLng={ride.to_lng}
+            routePolyline={ride.route_polyline}
           />
         </div>
 
@@ -562,6 +563,26 @@ export function RideDetailScreen({ id }: Props) {
           }}
         >
           <RouteBlock fromLabel={ride.from_label} toLabel={ride.to_label} />
+
+          {ride.route_distance_m != null && ride.route_duration_s != null && (
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginTop: 8,
+                fontSize: 13,
+                color: "var(--brand-text-secondary)",
+              }}
+            >
+              <span>
+                {ride.route_distance_m >= 1000
+                  ? `${(ride.route_distance_m / 1000).toFixed(1)} км`
+                  : `${ride.route_distance_m} м`}
+              </span>
+              <span>·</span>
+              <span>~{Math.ceil(ride.route_duration_s / 60)} мин</span>
+            </div>
+          )}
 
           <div
             style={{

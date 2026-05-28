@@ -1,14 +1,21 @@
 import type { DatePreset, Filters } from "../hooks/useFilters";
 import { DEFAULT_FILTERS } from "../hooks/useFilters";
+import { type SavedAddress, useSavedAddresses } from "../hooks/useSavedAddresses";
+import { AddressAutocomplete, type Coords } from "./AddressAutocomplete";
 
 interface Props {
   filters: Filters;
   onChange: (partial: Partial<Filters>) => void;
   onReset: () => void;
+  savedAddresses?: SavedAddress[];
 }
 
-export function FiltersPanel({ filters, onChange, onReset }: Props) {
+export function FiltersPanel({ filters, onChange, onReset, savedAddresses }: Props) {
+  const { addresses } = useSavedAddresses();
   const hasActive =
+    filters.fromLabel !== DEFAULT_FILTERS.fromLabel ||
+    filters.fromLat !== DEFAULT_FILTERS.fromLat ||
+    filters.fromLng !== DEFAULT_FILTERS.fromLng ||
     filters.direction !== DEFAULT_FILTERS.direction ||
     filters.priceMin !== DEFAULT_FILTERS.priceMin ||
     filters.priceMax !== DEFAULT_FILTERS.priceMax ||
@@ -35,10 +42,35 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
 
   function fromLocalDateValue(v: string): string | null {
     if (!v) return null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return null;
     return new Date(v).toISOString();
   }
 
   const todayIso = new Date().toISOString().slice(0, 10);
+  const routeInputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "var(--brand-surface)",
+    color: "var(--brand-text)",
+    border: "1px solid var(--brand-line)",
+    borderRadius: 8,
+    padding: "9px 10px",
+    fontSize: 14,
+    boxSizing: "border-box",
+  };
+
+  const addressSuggestions = savedAddresses ?? addresses;
+
+  function handleFromChange(value: string, coords?: Coords) {
+    onChange({
+      fromLabel: value,
+      fromLat: coords?.lat ?? null,
+      fromLng: coords?.lng ?? null,
+    });
+  }
+
+  function handleDirectionChange(value: string) {
+    onChange({ direction: value });
+  }
 
   return (
     <div
@@ -112,19 +144,31 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
         </div>
       </div>
 
-      <input
-        data-testid="filter-direction"
-        type="text"
-        placeholder="Поиск по направлению"
-        value={filters.direction}
-        onChange={(e) => onChange({ direction: e.target.value })}
-        className="w-full rounded-md px-3 py-1.5 text-sm"
-        style={{
-          background: "var(--brand-surface)",
-          color: "var(--brand-text)",
-          border: "1px solid var(--brand-line)",
-        }}
-      />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 12, color: "var(--brand-sub)", marginBottom: 6 }}>Откуда</div>
+          <AddressAutocomplete
+            testId="filter-from"
+            value={filters.fromLabel}
+            onChange={handleFromChange}
+            placeholder="Мое местоположение"
+            savedAddresses={addressSuggestions}
+            showMyLocation
+            inputStyle={routeInputStyle}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: 12, color: "var(--brand-sub)", marginBottom: 6 }}>Куда</div>
+          <AddressAutocomplete
+            testId="filter-direction"
+            value={filters.direction}
+            onChange={handleDirectionChange}
+            placeholder="Адрес назначения"
+            savedAddresses={addressSuggestions}
+            inputStyle={routeInputStyle}
+          />
+        </div>
+      </div>
 
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-sm">Цена, ₽:</span>
@@ -168,14 +212,22 @@ export function FiltersPanel({ filters, onChange, onReset }: Props) {
           <span>Мест мин:</span>
           <input
             data-testid="filter-seats-min"
-            type="range"
+            type="number"
             min={0}
-            max={20}
-            value={filters.seatsMin}
-            onChange={(e) => onChange({ seatsMin: Number(e.target.value) })}
-            className="w-20"
+            max={100}
+            placeholder="любое"
+            value={filters.seatsMin === 0 ? "" : filters.seatsMin}
+            onChange={(e) => {
+              const v = e.target.value === "" ? 0 : Number(e.target.value);
+              onChange({ seatsMin: Number.isFinite(v) ? Math.max(0, Math.min(100, v)) : 0 });
+            }}
+            className="rounded-md px-2 py-1 text-sm w-20"
+            style={{
+              background: "var(--brand-surface)",
+              color: "var(--brand-text)",
+              border: "1px solid var(--brand-line)",
+            }}
           />
-          <span>{filters.seatsMin === 0 ? "любое" : filters.seatsMin}</span>
         </label>
       </div>
 

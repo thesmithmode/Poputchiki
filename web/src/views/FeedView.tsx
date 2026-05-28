@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RideCard } from "../components/RideCard";
@@ -11,21 +11,11 @@ import { useRides } from "../hooks/useRides";
 import { getRideCardState, markRideViewed, readViewedRideIds } from "../lib/rideCardState";
 import type { Ride } from "../types/ride";
 
-const QUICK_CHIPS = [
-  { id: "baum", label: "ул. Баумана", query: "Баумана" },
-  { id: "dubr", label: "м. Дубравная", query: "Дубравная" },
-  { id: "kolts", label: "ТЦ Кольцо", query: "Кольцо" },
-  { id: "apo", label: "Аэропорт", query: "Аэропорт" },
-  { id: "mega", label: "МЕГА", query: "МЕГА" },
-  { id: "rail", label: "Вокзал", query: "Вокзал" },
-  { id: "kfu", label: "КФУ", query: "КФУ" },
-];
-
 interface FeedViewProps {
   filters: Filters;
-  setFilters: (partial: Partial<Filters>) => void;
   density: "compact" | "cozy";
   onRidesCount?: (n: number) => void;
+  onFeedMeta?: (meta: { isFetching: boolean; dataUpdatedAt: number; refetch: () => void }) => void;
 }
 
 function pluralRides(n: number): string {
@@ -37,7 +27,7 @@ function pluralRides(n: number): string {
   return "маршрутов";
 }
 
-export function FeedView({ filters, setFilters, density, onRidesCount }: FeedViewProps) {
+export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedViewProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const mapRideGroup = (
@@ -50,12 +40,17 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
     filters.datePreset,
     filters.fromAt,
     filters.toAt,
+    filters.fromLat !== null && filters.fromLng !== null
+      ? { fromLat: filters.fromLat, fromLng: filters.fromLng, radiusKm: filters.radiusKm }
+      : null,
   );
   useRealtime();
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
 
   const filteredRides = useMemo(() => {
     const base = applyFilters(data?.rides ?? [], filters, undefined, myUserId);
@@ -69,16 +64,21 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
     onRidesCount?.(filteredRides.length);
   }, [filteredRides.length]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: parent owns the callback identity
+  useEffect(() => {
+    onFeedMeta?.({
+      isFetching,
+      dataUpdatedAt,
+      refetch: () => refetchRef.current(),
+    });
+  }, [isFetching, dataUpdatedAt]);
+
   const trustOn =
     filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;
 
   const handleCardClick = (ride: Ride) => {
     setViewedRides((prev) => markRideViewed(ride.id, prev));
     navigate(`/rides/${ride.id}`);
-  };
-
-  const handleChipClick = (query: string) => {
-    setFilters({ direction: filters.direction === query ? "" : query });
   };
 
   if (isPending) {
@@ -117,95 +117,6 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
 
   return (
     <div style={{ display: "flex", flexDirection: "column", background: "var(--brand-bg)" }}>
-      {/* Quick destination chips */}
-      <div
-        style={{
-          padding: "10px 16px 4px",
-          display: "flex",
-          gap: 6,
-          overflowX: "auto",
-          scrollbarWidth: "none",
-        }}
-      >
-        {QUICK_CHIPS.map((chip) => {
-          const active = filters.direction === chip.query;
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => handleChipClick(chip.query)}
-              style={{
-                padding: "8px 14px",
-                borderRadius: 999,
-                border: "none",
-                flexShrink: 0,
-                background: active ? "var(--brand-primary)" : "var(--brand-surface)",
-                color: active ? "var(--brand-primary-ink, #fff)" : "var(--brand-text)",
-                fontSize: 12.5,
-                fontWeight: 600,
-                cursor: "pointer",
-                fontFamily: "inherit",
-                boxShadow: "var(--shadow-sm)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Freshness strip */}
-      {!isPending && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "4px 16px 0",
-            fontSize: 11.5,
-            color: "var(--brand-sub)",
-            fontWeight: 500,
-          }}
-        >
-          {isFetching ? (
-            <span>Обновляется…</span>
-          ) : dataUpdatedAt ? (
-            <span>
-              Лента актуальна на{" "}
-              {new Date(dataUpdatedAt).toLocaleTimeString("ru-RU", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          ) : null}
-          <button
-            type="button"
-            aria-label="Обновить ленту"
-            onClick={() => {
-              refetch();
-            }}
-            disabled={isFetching}
-            style={{
-              marginLeft: "auto",
-              background: "none",
-              border: "none",
-              padding: "2px 4px",
-              cursor: isFetching ? "default" : "pointer",
-              opacity: isFetching ? 0.4 : 1,
-              color: "var(--brand-primary)",
-              fontSize: 14,
-              lineHeight: 1,
-              display: "flex",
-              alignItems: "center",
-            }}
-          >
-            ↻
-          </button>
-        </div>
-      )}
-
-      {/* Trust filter banner */}
       {trustOn && (
         <div
           style={{
@@ -225,20 +136,6 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
           Активны фильтры доверия
         </div>
       )}
-
-      {/* Result count */}
-      <div
-        style={{
-          padding: "6px 16px 0",
-          fontSize: 12,
-          color: "var(--brand-sub)",
-          fontWeight: 500,
-        }}
-      >
-        Найдено{" "}
-        <span style={{ color: "var(--brand-text)", fontWeight: 700 }}>{filteredRides.length}</span>{" "}
-        {pluralRides(filteredRides.length)}
-      </div>
 
       {mapRideGroup?.rideIds?.length ? (
         <div
@@ -276,7 +173,6 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
         </div>
       ) : null}
 
-      {/* Ride list */}
       <div
         data-testid="ride-list"
         style={{

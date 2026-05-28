@@ -117,6 +117,15 @@ describe("CreateRideScreen", () => {
     expect(screen.getByTestId("input-time")).toBeInTheDocument();
   });
 
+  it("step 2: ignores date values with year longer than 4 digits", () => {
+    renderScreen();
+    goToStep2();
+    const input = screen.getByTestId("input-date") as HTMLInputElement;
+    const previous = input.value;
+    fireEvent.change(input, { target: { value: "12345-01-01" } });
+    expect(input.value).toBe(previous);
+  });
+
   it("step 3: показывает поле ввода количества мест", () => {
     renderScreen();
     goToStep3();

@@ -9,6 +9,10 @@ export interface Filters {
   verifiedOnly: boolean;
   hideMyRides: boolean;
   favoritesOnly: boolean;
+  fromLabel: string;
+  fromLat: number | null;
+  fromLng: number | null;
+  radiusKm: number;
   direction: string;
   priceMin: number | null;
   priceMax: number | null;
@@ -24,6 +28,10 @@ export const DEFAULT_FILTERS: Filters = {
   verifiedOnly: false,
   hideMyRides: false,
   favoritesOnly: false,
+  fromLabel: "",
+  fromLat: null,
+  fromLng: null,
+  radiusKm: 2,
   direction: "",
   priceMin: null,
   priceMax: null,
@@ -50,7 +58,16 @@ function loadFilters(): Filters {
 
 function saveFilters(f: Filters): void {
   // datePreset/fromAt/toAt не персистим — при новой сессии всегда дефолт "24h"
-  const { direction, datePreset: _dp, fromAt: _fa, toAt: _ta, ...rest } = f;
+  const {
+    direction,
+    datePreset: _dp,
+    fromAt: _fa,
+    toAt: _ta,
+    fromLabel: _fl,
+    fromLat: _flat,
+    fromLng: _flng,
+    ...rest
+  } = f;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
   if (direction) {
     sessionStorage.setItem(SESSION_DIRECTION_KEY, direction);

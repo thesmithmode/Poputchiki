@@ -15,4 +15,11 @@ describe("backend Dockerfiles", () => {
       expect(dockerfile, file).toContain("bun install --frozen-lockfile --production");
     }
   });
+
+  it("remove Bun install cache from runtime images", () => {
+    for (const file of BACKEND_DOCKERFILES) {
+      const dockerfile = readFileSync(file, "utf8");
+      expect(dockerfile, file).toContain("rm -rf /root/.bun/install/cache");
+    }
+  });
 });

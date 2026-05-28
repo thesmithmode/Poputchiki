@@ -6,7 +6,7 @@ function stripNoise(label: string): string {
   return (
     label
       // Region/country noise (project-specific)
-      // NB: \b is not reliable for Cyrillic in JS without unicode rules → use plain substr matches.
+      // NB: JS \\b для кириллицы ненадёжен без unicode rules → не используем границы слова.
       .replace(/,?\s*г\.?\s*Казань/gi, "")
       .replace(/,?\s*Казань/gi, "")
       .replace(/,?\s*Республика\s+Татарстан/gi, "")
@@ -19,6 +19,9 @@ function stripNoise(label: string): string {
       .replace(/\bбульвар\b/gi, "бул.")
       .replace(/\bшоссе\b/gi, "ш.")
       .replace(/\bнабережная\b/gi, "наб.")
+      // Cleanup punctuation/spacing
+      .replace(/\s*,\s*/g, ", ")
+      .replace(/\s{2,}/g, " ")
       .replace(/^\s*,\s*/, "")
       .replace(/,\s*$/, "")
       .trim()

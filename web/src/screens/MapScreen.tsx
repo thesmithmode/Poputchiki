@@ -183,6 +183,8 @@ export function MapScreen({
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+  const selectedCardRef = useRef<HTMLButtonElement>(null);
+  const [selectedCardHeight, setSelectedCardHeight] = useState<number>(0);
 
   // Keep filtersRef in sync so loadRides always reads current filters without remounting map
   filtersRef.current = filters;
@@ -290,7 +292,7 @@ export function MapScreen({
       selectedRouteRef.current = line;
       const topPad = 70;
       const sidePad = 60;
-      const bottomPad = 260; // keep route visible above the selected card
+      const bottomPad = Math.min(420, Math.max(220, selectedCardHeight + 36)); // keep route visible above the selected card
       lMap.fitBounds(L.latLngBounds(routePoints), {
         paddingTopLeft: [sidePad, topPad],
         paddingBottomRight: [sidePad, bottomPad],
@@ -300,7 +302,27 @@ export function MapScreen({
     return () => {
       cancelled = true;
     };
-  }, [selected, selectedRouteDetails, clearRideMarkers]);
+  }, [selected, selectedRouteDetails, clearRideMarkers, selectedCardHeight]);
+
+  useEffect(() => {
+    if (!selected) {
+      setSelectedCardHeight(0);
+      return;
+    }
+    if (!selectedCardRef.current) return;
+
+    const el = selectedCardRef.current;
+    const update = () => setSelectedCardHeight(el.getBoundingClientRect().height);
+    update();
+
+    const ro = new ResizeObserver(() => update());
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [selected]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: renderMarkers reads current user/request/viewed state through closure
   useEffect(() => {
@@ -811,9 +833,9 @@ export function MapScreen({
       )
     : null;
   const selectedFromLabel = selected
-    ? compactAddressLabel(selected.from_label, { maxLen: 42 })
+    ? compactAddressLabel(selected.from_label, { maxLen: 28 })
     : "";
-  const selectedToLabel = selected ? compactAddressLabel(selected.to_label, { maxLen: 42 }) : "";
+  const selectedToLabel = selected ? compactAddressLabel(selected.to_label, { maxLen: 28 }) : "";
   const selectedFromTitle = selected
     ? compactAddressTitle(selected.from_label, selectedFromLabel)
     : undefined;
@@ -939,6 +961,7 @@ export function MapScreen({
           <button
             type="button"
             data-testid="selected-ride-card"
+            ref={selectedCardRef}
             onClick={() => {
               setViewedRides((prev) => markRideViewed(selected.id, prev));
               navigate(`/rides/${selected.id}`);
@@ -949,16 +972,16 @@ export function MapScreen({
               ...glassStyle,
               background: selectedCardBg,
               borderRadius: 16,
-              padding: "16px 44px 16px 16px",
+              padding: "12px 44px 12px 12px",
               border: `1px solid ${selectedBorderColor}`,
               cursor: "pointer",
             }}
           >
             <div
               style={{
-                fontSize: 13.5,
+                fontSize: 13,
                 fontWeight: 650,
-                marginBottom: 8,
+                marginBottom: 6,
                 lineHeight: 1.25,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
@@ -970,9 +993,9 @@ export function MapScreen({
             </div>
             <div
               style={{
-                fontSize: 13,
+                fontSize: 12.5,
                 color: "var(--brand-sub, #6b716e)",
-                marginBottom: 10,
+                marginBottom: 8,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",

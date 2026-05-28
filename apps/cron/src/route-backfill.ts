@@ -129,7 +129,13 @@ async function updateRoute(
         route_polyline = ${route.polyline},
         route_distance_m = ${route.distanceM},
         route_duration_s = ${route.durationS}
-      WHERE id = ${row.id} AND route_polyline IS NULL
+      WHERE id = ${row.id}
+        AND (
+          route_geom IS NULL OR
+          route_polyline IS NULL OR
+          route_distance_m IS NULL OR
+          route_duration_s IS NULL
+        )
       RETURNING id
     `;
   });
@@ -181,7 +187,13 @@ export async function backfillRoutes(
       return tx<RouteRow[]>`
         SELECT id, from_lat, from_lng, to_lat, to_lng
         FROM ride_templates
-        WHERE route_polyline IS NULL AND is_active = true
+        WHERE is_active = true
+          AND (
+            route_geom IS NULL OR
+            route_polyline IS NULL OR
+            route_distance_m IS NULL OR
+            route_duration_s IS NULL
+          )
         ORDER BY updated_at ASC
         LIMIT ${limit}
       `;
@@ -197,7 +209,13 @@ export async function backfillRoutes(
       return tx<RouteRow[]>`
         SELECT id, from_lat, from_lng, to_lat, to_lng
         FROM rides
-        WHERE route_polyline IS NULL AND status = 'active'
+        WHERE status = 'active'
+          AND (
+            route_geom IS NULL OR
+            route_polyline IS NULL OR
+            route_distance_m IS NULL OR
+            route_duration_s IS NULL
+          )
         ORDER BY departure_at ASC
         LIMIT ${limit}
       `;

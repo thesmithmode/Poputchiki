@@ -122,6 +122,7 @@ const MOCK_RIDES = [
     comment: null,
     template_id: null,
     created_at: new Date().toISOString(),
+    route_duration_s: 35 * 60,
   },
 ];
 
@@ -277,6 +278,66 @@ describe("MapScreen", () => {
         expect.objectContaining({ weight: 4, opacity: 0.85 }),
       );
     });
+  });
+
+  it("hides other ride markers while a selected route is open", async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ rides: MOCK_RIDES })
+      .mockResolvedValueOnce({ ...MOCK_RIDES[0], route_polyline: "mfp_I__vpAYBO@K@" });
+
+    renderScreen();
+
+    await waitFor(() => expect(L.marker).toHaveBeenCalled());
+    const map = vi.mocked(L.map).mock.results[0]?.value as
+      | { removeLayer: ReturnType<typeof vi.fn> }
+      | undefined;
+    const marker = vi.mocked(L.marker).mock.results[0]?.value as
+      | { on: ReturnType<typeof vi.fn> }
+      | undefined;
+    const clickHandler = marker?.on.mock.calls.find(([event]) => event === "click")?.[1] as
+      | (() => void)
+      | undefined;
+
+    await act(async () => {
+      clickHandler?.();
+    });
+
+    await waitFor(() => {
+      expect(map?.removeLayer).toHaveBeenCalledWith(marker);
+    });
+  });
+
+  it("does not reload rides on map zoom while selected route is open", async () => {
+    mockedApiFetch
+      .mockResolvedValueOnce({ rides: MOCK_RIDES })
+      .mockResolvedValueOnce({ ...MOCK_RIDES[0], route_polyline: "mfp_I__vpAYBO@K@" });
+
+    renderScreen();
+
+    await waitFor(() => expect(L.marker).toHaveBeenCalled());
+    const map = vi.mocked(L.map).mock.results[0]?.value as
+      | { on: ReturnType<typeof vi.fn> }
+      | undefined;
+    const marker = vi.mocked(L.marker).mock.results[0]?.value as
+      | { on: ReturnType<typeof vi.fn> }
+      | undefined;
+    const markerClick = marker?.on.mock.calls.find(([event]) => event === "click")?.[1] as
+      | (() => void)
+      | undefined;
+
+    await act(async () => {
+      markerClick?.();
+    });
+    await waitFor(() => expect(mockedApiFetch).toHaveBeenCalledWith("/rides/ride-1"));
+    mockedApiFetch.mockClear();
+
+    const moveEndHandler = map?.on.mock.calls.find(([event]) => event === "moveend")?.[1] as
+      | (() => void)
+      | undefined;
+    moveEndHandler?.();
+
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(mockedApiFetch).not.toHaveBeenCalled();
   });
 
   it("REGRESSION: collapses overlapping regular rides into a group marker and opens grouped feed", async () => {

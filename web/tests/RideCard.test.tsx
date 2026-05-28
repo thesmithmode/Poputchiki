@@ -117,6 +117,11 @@ describe("RideCard", () => {
     expect(screen.getByText("2")).toBeInTheDocument();
   });
 
+  it("показывает расчетное время поездки даже без дистанции", () => {
+    render(<RideCard ride={{ ...mockRide, route_duration_s: 35 * 60 }} />);
+    expect(screen.getByText(/35/)).toBeInTheDocument();
+  });
+
   it("cardState='own' показывает бейдж 'Ваша поездка'", () => {
     render(<RideCard ride={mockRide} cardState="own" />);
     expect(screen.getByText("Ваша поездка")).toBeInTheDocument();

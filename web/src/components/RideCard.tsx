@@ -1,4 +1,5 @@
 import { type RideCardState, getRideCardBg, getRideCardBorderColor } from "../lib/rideCardState";
+import { formatRouteMetrics } from "../lib/routeMetrics";
 import type { Ride } from "../types/ride";
 import { Avatar } from "./Avatar";
 import { Icon } from "./Icon";
@@ -95,6 +96,7 @@ export function RideCard({
   const bg = getRideCardBg(cardState);
   const borderColor = getRideCardBorderColor(cardState);
   const badge = getBadgeConfig(cardState);
+  const routeMetrics = formatRouteMetrics(ride.route_distance_m, ride.route_duration_s);
 
   if (density === "compact") {
     return (
@@ -425,15 +427,10 @@ export function RideCard({
       </div>
 
       {/* Route info + along-the-way badge */}
-      {(ride.route_distance_m != null || isAlongTheWay) && (
+      {(routeMetrics || isAlongTheWay) && (
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {ride.route_distance_m != null && (
-            <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>
-              {ride.route_distance_m >= 1000
-                ? `${(ride.route_distance_m / 1000).toFixed(1)} км`
-                : `${ride.route_distance_m} м`}
-              {ride.route_duration_s != null && ` · ~${Math.ceil(ride.route_duration_s / 60)} мин`}
-            </span>
+          {routeMetrics && (
+            <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>{routeMetrics}</span>
           )}
           {isAlongTheWay && (
             <span

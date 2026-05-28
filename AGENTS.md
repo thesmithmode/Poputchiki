@@ -34,7 +34,7 @@ RLS identity: НЕТ Supabase `auth.uid()`/`auth.jwt()`. GUC `app.current_user_i
 - Никаких внешних managed: Supabase / Neon / Vercel / Cloudflare Pages / Fly.io / PostHog Cloud в коде запрещено. Задача требует external service → BLOCKED + согласование
 - Threat model: каждый юзер = потенциальный взломщик. Deny-by-default везде (RLS, auth, валидация)
 - Bun не Node: `bun run`, `bun test`, `bun add`, `bun install`
-- Локальные проверки ДО push (без Docker, быстро): `bun run typecheck` (~2с) + `bun run lint` (~0.1с) + `bun run test:unit` (~4с, unit-only без DB). Интеграция/E2E/security — только CI. Запускать обязательно перед каждым push.
+- Локально запускать только быстрый linter: `bun run lint`. Все тесты, typecheck, build, coverage, integration/E2E/security — только CI.
 - Самоостанов: 5 итераций подряд BLOCKED → стоп, доложи Антону
 - Нет idle CI waiting: пока CI бежит — бери следующую pending задачу и работай. Нет задач → читай код и исправляй найденные проблемы. Никогда не пиши "жду CI" без параллельной работы
 

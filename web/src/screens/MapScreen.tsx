@@ -29,6 +29,7 @@ interface MapScreenProps {
 const DEFAULT_CENTER: [number, number] = [55.76, 49.1];
 const DEFAULT_ZOOM = 11;
 const CLUSTER_THRESHOLD = 50;
+const GROUP_MIN_SIZE = 2;
 
 const AVATAR_COLORS = ["#2d5a3d", "#e67e22", "#2980b9", "#8e44ad", "#c0392b", "#16a085"];
 
@@ -78,6 +79,24 @@ function markerDateLabel(isoStr: string): string | null {
   return dep.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+function pluralTrip(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return "поездок";
+  if (mod10 === 1) return "поездка";
+  if (mod10 >= 2 && mod10 <= 4) return "поездки";
+  return "поездок";
+}
+
+function pluralDriver(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod100 >= 11 && mod100 <= 14) return "водителей";
+  if (mod10 === 1) return "водитель";
+  if (mod10 >= 2 && mod10 <= 4) return "водителя";
+  return "водителей";
+}
+
 function makeRideMarkerHtml(ride: Ride, cardState: RideCardState): string {
   const initials = escapeHtml(getInitials(ride.driver_display_name));
   const avatarColor = getAvatarColor(ride.driver_id);
@@ -101,6 +120,17 @@ function makeRideMarkerHtml(ride: Ride, cardState: RideCardState): string {
     ? `<div style="font-size:9px;font-weight:600;color:#2d5a3d;line-height:1;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">${escapeHtml(dl)}</div>`
     : "";
   return `<div style="position:relative;background:${cardBg};border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:${boxShadow};cursor:pointer;border:1px solid ${borderColor};white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:var(--brand-text,#0e1410);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${cardBg}"></div></div>`;
+}
+
+function makeRideGroupMarkerHtml(rides: Ride[]): string {
+  const driverCount = new Set(rides.map((ride) => ride.driver_id)).size;
+  const firstDeparture = rides
+    .map((ride) => new Date(ride.departure_at).getTime())
+    .sort((a, b) => a - b)[0];
+  const firstTime = firstDeparture ? formatTime(new Date(firstDeparture).toISOString()) : "";
+  const label = `${rides.length} ${pluralTrip(rides.length)}`;
+  const subLabel = `${driverCount} ${pluralDriver(driverCount)}${firstTime ? ` · с ${firstTime}` : ""}`;
+  return `<div style="position:relative;background:var(--brand-primary,#2d5a3d);border-radius:12px;padding:7px 10px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 3px 14px rgba(0,0,0,.28);cursor:pointer;border:2px solid #fff;white-space:nowrap;max-width:190px;color:var(--brand-primary-ink,#fff)"><div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${rides.length}</div><div style="min-width:0;overflow:hidden"><div style="font-size:12px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(label)}</div><div style="font-size:10px;font-weight:600;opacity:.86;line-height:1.25;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(subLabel)}</div></div><div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid var(--brand-primary,#2d5a3d)"></div></div>`;
 }
 
 function useDarkMode() {
@@ -606,7 +636,71 @@ export function MapScreen({
     }
     markersRef.current = [];
 
-    if (rideList.length >= CLUSTER_THRESHOLD) {
+    const zoom = (lMap as unknown as { getZoom?: () => number }).getZoom?.() ?? DEFAULT_ZOOM;
+    const groupRadiusPx = Math.max(24, 80 - Math.max(0, zoom - DEFAULT_ZOOM) * 8);
+    const toPoint = (ride: Ride): { x: number; y: number } => {
+      const projector = lMap as unknown as {
+        latLngToLayerPoint?: (coords: [number, number]) => { x: number; y: number };
+      };
+      const projected = projector.latLngToLayerPoint?.([ride.from_lat, ride.from_lng]);
+      if (projected) return projected;
+      return { x: ride.from_lng * 100000, y: ride.from_lat * 100000 };
+    };
+
+    const groups: { rides: Ride[]; x: number; y: number; lat: number; lng: number }[] = [];
+    for (const ride of rideList) {
+      const point = toPoint(ride);
+      const existing = groups.find(
+        (group) => Math.hypot(group.x - point.x, group.y - point.y) <= groupRadiusPx,
+      );
+      if (existing) {
+        existing.rides.push(ride);
+        const n = existing.rides.length;
+        existing.x = (existing.x * (n - 1) + point.x) / n;
+        existing.y = (existing.y * (n - 1) + point.y) / n;
+        existing.lat = (existing.lat * (n - 1) + ride.from_lat) / n;
+        existing.lng = (existing.lng * (n - 1) + ride.from_lng) / n;
+      } else {
+        groups.push({
+          rides: [ride],
+          x: point.x,
+          y: point.y,
+          lat: ride.from_lat,
+          lng: ride.from_lng,
+        });
+      }
+    }
+
+    const singles: Ride[] = [];
+    for (const group of groups) {
+      if (group.rides.length < GROUP_MIN_SIZE) {
+        singles.push(...group.rides);
+        continue;
+      }
+      const icon = L.divIcon({
+        className: "",
+        html: makeRideGroupMarkerHtml(group.rides),
+        iconSize: [142, 52],
+        iconAnchor: [71, 58],
+      });
+      const marker = L.marker([group.lat, group.lng], { icon }).addTo(lMap);
+      marker.on("click", () => {
+        navigate("/", {
+          state: {
+            mapRideGroup: {
+              rideIds: group.rides.map((ride) => ride.id),
+              fromLabel: group.rides[0]?.from_label ?? "",
+              count: group.rides.length,
+            },
+          },
+        });
+      });
+      markersRef.current.push(marker);
+    }
+
+    if (!singles.length) return;
+
+    if (singles.length >= CLUSTER_THRESHOLD) {
       // At high density use simple dots inside clusters for performance
       const cs = getComputedStyle(document.documentElement);
       const colorPrimary = cs.getPropertyValue("--brand-primary").trim() || "#2d5a3d";
@@ -618,7 +712,7 @@ export function MapScreen({
       if (MC) {
         const GroupClass = MC as new () => { addLayer: (l: unknown) => void };
         const group = new GroupClass();
-        for (const ride of rideList) {
+        for (const ride of singles) {
           const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
           const dotColor = getRideCardBorderColor(cardState) ?? colorPrimary;
           const dotIcon = L.divIcon({
@@ -637,7 +731,7 @@ export function MapScreen({
       } else {
         // MarkerCluster unavailable — render individual rich cards
         clusterGroupRef.current = null;
-        for (const ride of rideList) {
+        for (const ride of singles) {
           const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
           const icon = L.divIcon({
             className: "",
@@ -653,7 +747,7 @@ export function MapScreen({
     } else {
       // Rich ride-card markers — no route polylines on global map
       clusterGroupRef.current = null;
-      for (const ride of rideList) {
+      for (const ride of singles) {
         const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
         const icon = L.divIcon({
           className: "",

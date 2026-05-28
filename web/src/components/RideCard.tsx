@@ -1,3 +1,4 @@
+import { compactAddressLabel, compactAddressTitle } from "../lib/addressFormat";
 import { type RideCardState, getRideCardBg, getRideCardBorderColor } from "../lib/rideCardState";
 import { formatRouteMetrics } from "../lib/routeMetrics";
 import type { Ride } from "../types/ride";
@@ -17,27 +18,6 @@ interface RideCardProps {
 }
 
 const MAX_ADDR_LEN = 22;
-
-function formatAddress(label: string): string {
-  if (!label) return label;
-  const cleaned = label
-    .replace(/,?\s*г\.?\s*Казань\b/gi, "")
-    .replace(/,?\s*\bКазань\b/gi, "")
-    .replace(/,?\s*Республика\s+Татарстан\b/gi, "")
-    .replace(/,?\s*\bТатарстан\b/gi, "")
-    .replace(/,?\s*\bРоссия\b/gi, "")
-    .replace(/\bулица\b/gi, "ул.")
-    .replace(/\bпроспект\b/gi, "пр.")
-    .replace(/\bпереулок\b/gi, "пер.")
-    .replace(/\bбульвар\b/gi, "бул.")
-    .replace(/\bшоссе\b/gi, "ш.")
-    .replace(/\bнабережная\b/gi, "наб.")
-    .replace(/^\s*,\s*/, "")
-    .replace(/,\s*$/, "")
-    .trim();
-  const result = cleaned || label;
-  return result.length > MAX_ADDR_LEN ? `${result.slice(0, MAX_ADDR_LEN - 1)}…` : result;
-}
 
 function dateLabel(departureAt: string): string | null {
   const dep = new Date(departureAt);
@@ -97,6 +77,10 @@ export function RideCard({
   const borderColor = getRideCardBorderColor(cardState);
   const badge = getBadgeConfig(cardState);
   const routeMetrics = formatRouteMetrics(ride.route_distance_m, ride.route_duration_s);
+  const fromLabel = compactAddressLabel(ride.from_label, { maxLen: MAX_ADDR_LEN });
+  const toLabel = compactAddressLabel(ride.to_label, { maxLen: MAX_ADDR_LEN });
+  const fromTitle = compactAddressTitle(ride.from_label, fromLabel);
+  const toTitle = compactAddressTitle(ride.to_label, toLabel);
 
   if (density === "compact") {
     return (
@@ -189,7 +173,7 @@ export function RideCard({
               textOverflow: "ellipsis",
             }}
           >
-            {formatAddress(ride.from_label)}
+            <span title={fromTitle}>{fromLabel}</span>
           </span>
           <span
             style={{
@@ -214,7 +198,7 @@ export function RideCard({
               textAlign: "right",
             }}
           >
-            {formatAddress(ride.to_label)}
+            <span title={toTitle}>{toLabel}</span>
           </span>
         </div>
 
@@ -392,7 +376,7 @@ export function RideCard({
               minWidth: 0,
             }}
           >
-            {formatAddress(ride.from_label)}
+            <span title={fromTitle}>{fromLabel}</span>
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
@@ -421,7 +405,7 @@ export function RideCard({
               minWidth: 0,
             }}
           >
-            {formatAddress(ride.to_label)}
+            <span title={toTitle}>{toLabel}</span>
           </span>
         </div>
       </div>

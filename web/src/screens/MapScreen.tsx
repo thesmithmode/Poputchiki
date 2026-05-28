@@ -253,7 +253,8 @@ export function MapScreen({
     };
     setSelectedRouteDetails(seeded);
 
-    const needsHydration = !seeded.route_polyline || !seeded.route_distance_m || !seeded.route_duration_s;
+    const needsHydration =
+      !seeded.route_polyline || !seeded.route_distance_m || !seeded.route_duration_s;
     if (!needsHydration) {
       setSelectedRouteLoading(false);
       return;
@@ -328,7 +329,7 @@ export function MapScreen({
     return () => {
       cancelled = true;
     };
-  }, [selected, selectedRouteDetails, clearRideMarkers, selectedCardHeight]);
+  }, [selected, selectedRouteDetails, selectedRouteLoading, clearRideMarkers, selectedCardHeight]);
 
   useEffect(() => {
     if (!selected) {

@@ -315,11 +315,12 @@ export function MapScreen({
     const update = () => setSelectedCardHeight(el.getBoundingClientRect().height);
     update();
 
-    const ro = new ResizeObserver(() => update());
-    ro.observe(el);
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => update()) : null;
+    resizeObserver?.observe(el);
     window.addEventListener("resize", update);
     return () => {
-      ro.disconnect();
+      resizeObserver?.disconnect();
       window.removeEventListener("resize", update);
     };
   }, [selected]);

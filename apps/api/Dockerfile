@@ -7,7 +7,7 @@ COPY --chown=bun:bun package.json bun.lockb* ./
 COPY --chown=bun:bun packages/shared/package.json packages/shared/
 COPY --chown=bun:bun apps/api/package.json apps/api/
 COPY --chown=bun:bun web/package.json web/
-RUN bun install --frozen-lockfile --production
+RUN bun install --frozen-lockfile --production && rm -rf /root/.bun/install/cache
 
 COPY --chown=bun:bun packages/shared packages/shared
 COPY --chown=bun:bun apps/api apps/api

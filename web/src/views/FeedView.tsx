@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RideCard } from "../components/RideCard";
 import type { Filters } from "../hooks/useFilters";
@@ -39,6 +39,13 @@ function pluralRides(n: number): string {
 
 export function FeedView({ filters, setFilters, density, onRidesCount }: FeedViewProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const mapRideGroup = (
+    location.state as
+      | { mapRideGroup?: { rideIds?: string[]; fromLabel?: string; count?: number } }
+      | null
+      | undefined
+  )?.mapRideGroup;
   const { data, isPending, isError, isFetching, dataUpdatedAt, refetch } = useRides(
     filters.datePreset,
     filters.fromAt,
@@ -50,10 +57,12 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
   const requestMap = useMyRideRequests();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
 
-  const filteredRides = useMemo(
-    () => applyFilters(data?.rides ?? [], filters, undefined, myUserId),
-    [data, filters, myUserId],
-  );
+  const filteredRides = useMemo(() => {
+    const base = applyFilters(data?.rides ?? [], filters, undefined, myUserId);
+    const groupIds = new Set(mapRideGroup?.rideIds ?? []);
+    if (!groupIds.size) return base;
+    return base.filter((ride) => groupIds.has(ride.id));
+  }, [data, filters, myUserId, mapRideGroup?.rideIds]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable callback ref
   useEffect(() => {
@@ -230,6 +239,42 @@ export function FeedView({ filters, setFilters, density, onRidesCount }: FeedVie
         <span style={{ color: "var(--brand-text)", fontWeight: 700 }}>{filteredRides.length}</span>{" "}
         {pluralRides(filteredRides.length)}
       </div>
+
+      {mapRideGroup?.rideIds?.length ? (
+        <div
+          data-testid="map-group-filter"
+          style={{
+            margin: "10px 16px 0",
+            padding: "10px 12px",
+            borderRadius: 12,
+            background: "var(--brand-primary-tint)",
+            color: "var(--brand-primary)",
+            fontSize: 12.5,
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            Группа с карты: {mapRideGroup.rideIds.length} {pluralRides(mapRideGroup.rideIds.length)}
+          </span>
+          <button
+            type="button"
+            onClick={() => navigate("/", { replace: true, state: null })}
+            style={{
+              border: "none",
+              background: "transparent",
+              color: "inherit",
+              font: "inherit",
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            Сбросить
+          </button>
+        </div>
+      ) : null}
 
       {/* Ride list */}
       <div

@@ -6,6 +6,13 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MapScreen } from "../src/screens/MapScreen";
 
+const mockNavigate = vi.hoisted(() => vi.fn());
+
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
+
 vi.mock("../src/lib/telegram", () => ({ getTelegramWebApp: () => undefined }));
 
 vi.mock("../src/hooks/useMe", () => ({
@@ -132,6 +139,7 @@ function renderScreen() {
 describe("MapScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockReset();
     mockedApiFetch.mockReset();
     mockedUseMyRideRequests.mockReset();
     mockedUseMyRideRequests.mockReturnValue(new Map());
@@ -269,5 +277,50 @@ describe("MapScreen", () => {
         expect.objectContaining({ weight: 4, opacity: 0.85 }),
       );
     });
+  });
+
+  it("REGRESSION: collapses overlapping regular rides into a group marker and opens grouped feed", async () => {
+    const groupedRides = Array.from({ length: 5 }, (_, i) => ({
+      ...MOCK_RIDES[0],
+      id: `ride-group-${i + 1}`,
+      driver_id: i < 3 ? `driver-${i + 1}` : "driver-1",
+      departure_at: new Date(Date.now() + (i + 1) * 3_600_000).toISOString(),
+      from_lat: 55.75,
+      from_lng: 37.61,
+    }));
+    mockedApiFetch.mockResolvedValueOnce({ rides: groupedRides });
+
+    renderScreen();
+
+    await waitFor(() => {
+      expect(L.divIcon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining("5 поездок"),
+        }),
+      );
+    });
+
+    const groupMarker = vi.mocked(L.marker).mock.results[0]?.value as
+      | { on: ReturnType<typeof vi.fn> }
+      | undefined;
+    const clickHandler = groupMarker?.on.mock.calls.find(([event]) => event === "click")?.[1] as
+      | (() => void)
+      | undefined;
+    expect(clickHandler).toBeDefined();
+
+    await act(async () => {
+      clickHandler?.();
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/",
+      expect.objectContaining({
+        state: expect.objectContaining({
+          mapRideGroup: expect.objectContaining({
+            rideIds: groupedRides.map((ride) => ride.id),
+          }),
+        }),
+      }),
+    );
   });
 });

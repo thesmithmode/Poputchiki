@@ -1,1 +1,0 @@
-import{r as o}from"./vendor-react-yFfUPFCB.js";import{g as r}from"./index-C7gmp1__.js";function t(t){o.useEffect(()=>{const o=r(),e=o?.BackButton;if(e)return e.show(),e.onClick(t),()=>{e.offClick(t),e.hide()}},[t])}export{t as u};

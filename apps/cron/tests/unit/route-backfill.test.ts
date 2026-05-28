@@ -172,4 +172,22 @@ describe("backfillRoutes", () => {
     });
     expect((sql as unknown as { calls: string[] }).calls.join("\n")).toContain("UPDATE");
   });
+
+  it("backfills active rides with partial route fields, not only missing polylines", async () => {
+    const sql = makeSql([
+      [{ id: "ride-1", from_lat: 55.82, from_lng: 49.43, to_lat: 55.78, to_lng: 49.11 }],
+      [{ id: "ride-1" }],
+    ]);
+
+    const result = await backfillRoutes(sql, {
+      fetchFn: osrmFetch(),
+      includeTemplates: false,
+      limit: 1,
+    });
+
+    expect(result.ridesUpdated).toBe(1);
+    const calls = (sql as unknown as { calls: string[] }).calls.join("\n");
+    expect(calls).toContain("route_duration_s IS NULL");
+    expect(calls).toContain("route_distance_m IS NULL");
+  });
 });

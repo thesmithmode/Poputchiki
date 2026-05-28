@@ -2,7 +2,8 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
 import polyline from "@mapbox/polyline";
-import { useEffect, useRef, useState } from "react";
+import type { Map as LeafletMap } from "leaflet";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { applyFilters, resolveDateRange, useFilters } from "../hooks/useFilters";
 import type { Filters } from "../hooks/useFilters";
@@ -17,6 +18,7 @@ import {
   markRideViewed,
   readViewedRideIds,
 } from "../lib/rideCardState";
+import { formatRouteMetrics } from "../lib/routeMetrics";
 import { getTelegramWebApp } from "../lib/telegram";
 import type { Ride } from "../types/ride";
 
@@ -30,6 +32,8 @@ const DEFAULT_CENTER: [number, number] = [55.76, 49.1];
 const DEFAULT_ZOOM = 11;
 const CLUSTER_THRESHOLD = 50;
 const GROUP_MIN_SIZE = 2;
+
+type SelectedRouteDetails = Pick<Ride, "route_polyline" | "route_distance_m" | "route_duration_s">;
 
 const AVATAR_COLORS = ["#2d5a3d", "#e67e22", "#2980b9", "#8e44ad", "#c0392b", "#16a085"];
 
@@ -170,9 +174,10 @@ export function MapScreen({
   const lastHeadingRef = useRef<number | null>(null);
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
+  const selectedRef = useRef<Ride | null>(null);
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
-  const [selectedRoutePolyline, setSelectedRoutePolyline] = useState<string | null | undefined>();
+  const [selectedRouteDetails, setSelectedRouteDetails] = useState<SelectedRouteDetails | null>();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
@@ -180,6 +185,18 @@ export function MapScreen({
 
   // Keep filtersRef in sync so loadRides always reads current filters without remounting map
   filtersRef.current = filters;
+  selectedRef.current = selected;
+
+  const clearRideMarkers = useCallback((map: LeafletMap) => {
+    for (const marker of markersRef.current) {
+      map.removeLayer(marker as Parameters<typeof map.removeLayer>[0]);
+    }
+    if (clusterGroupRef.current) {
+      map.removeLayer(clusterGroupRef.current as Parameters<typeof map.removeLayer>[0]);
+    }
+    markersRef.current = [];
+    clusterGroupRef.current = null;
+  }, []);
 
   // Карта живёт постоянно (не демонтируется). При возврате на /map — пересчитать размер.
   useEffect(() => {
@@ -219,15 +236,21 @@ export function MapScreen({
   }, [filters]);
 
   useEffect(() => {
-    setSelectedRoutePolyline(undefined);
+    setSelectedRouteDetails(undefined);
     if (!selected) return;
     let cancelled = false;
-    apiFetch<Pick<Ride, "route_polyline">>(`/rides/${selected.id}`)
+    apiFetch<SelectedRouteDetails>(`/rides/${selected.id}`)
       .then((ride) => {
-        if (!cancelled) setSelectedRoutePolyline(ride.route_polyline ?? null);
+        if (!cancelled) {
+          setSelectedRouteDetails({
+            route_polyline: ride.route_polyline ?? null,
+            route_distance_m: ride.route_distance_m ?? null,
+            route_duration_s: ride.route_duration_s ?? null,
+          });
+        }
       })
       .catch(() => {
-        if (!cancelled) setSelectedRoutePolyline(null);
+        if (!cancelled) setSelectedRouteDetails(null);
       });
     return () => {
       cancelled = true;
@@ -245,7 +268,9 @@ export function MapScreen({
         selectedRouteRef.current = null;
       }
       if (!selected) return;
+      clearRideMarkers(lMap);
 
+      const selectedRoutePolyline = selectedRouteDetails?.route_polyline;
       const routePoints = selectedRoutePolyline
         ? (polyline.decode(selectedRoutePolyline) as [number, number][])
         : ([
@@ -267,19 +292,22 @@ export function MapScreen({
     return () => {
       cancelled = true;
     };
-  }, [selected, selectedRoutePolyline]);
+  }, [selected, selectedRouteDetails, clearRideMarkers]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: renderMarkers reads current user/request/viewed state through closure
   useEffect(() => {
     if (!mapRef.current || rides.length === 0) return;
     let cancelled = false;
     import("leaflet").then((L) => {
-      if (!cancelled && mapRef.current) renderMarkers(mapRef.current, L, rides);
+      if (!cancelled && mapRef.current) {
+        if (selectedRef.current) clearRideMarkers(mapRef.current as LeafletMap);
+        else renderMarkers(mapRef.current, L, rides);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [rides, requestMap, viewedRides, myUserId]);
+  }, [rides, requestMap, viewedRides, myUserId, selected, clearRideMarkers]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable prop ref, map init runs once
   useEffect(() => {
@@ -362,7 +390,7 @@ export function MapScreen({
       mapRef.current = map;
 
       const loadRides = async () => {
-        if (destroyed) return;
+        if (destroyed || selectedRef.current) return;
         const bounds = map.getBounds();
         const center = bounds.getCenter();
         const ne = bounds.getNorthEast();
@@ -402,6 +430,7 @@ export function MapScreen({
       // 400ms — пользователь успевает отпустить палец, запрос идёт один раз.
       let debounceTimer: ReturnType<typeof setTimeout> | null = null;
       const debouncedLoadRides = () => {
+        if (selectedRef.current) return;
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(() => {
           debounceTimer = null;
@@ -626,15 +655,7 @@ export function MapScreen({
   function renderMarkers(map: unknown, L: typeof import("leaflet"), rideList: Ride[]) {
     const lMap = map as ReturnType<typeof L.map>;
 
-    for (const m of markersRef.current) {
-      lMap.removeLayer(m as Parameters<typeof lMap.removeLayer>[0]);
-    }
-    if (clusterGroupRef.current) {
-      lMap.removeLayer(
-        clusterGroupRef.current as unknown as Parameters<typeof lMap.removeLayer>[0],
-      );
-    }
-    markersRef.current = [];
+    clearRideMarkers(lMap);
 
     const zoom = (lMap as unknown as { getZoom?: () => number }).getZoom?.() ?? DEFAULT_ZOOM;
     const groupRadiusPx = Math.max(24, 80 - Math.max(0, zoom - DEFAULT_ZOOM) * 8);
@@ -775,6 +796,12 @@ export function MapScreen({
   const selectedBorderColor =
     getRideCardBorderColor(selectedCardState) ??
     (isDark ? "rgba(255,255,255,0.08)" : "var(--brand-line, rgba(15,23,42,0.06))");
+  const selectedRouteMetrics = selected
+    ? formatRouteMetrics(
+        selectedRouteDetails?.route_distance_m ?? selected.route_distance_m,
+        selectedRouteDetails?.route_duration_s ?? selected.route_duration_s,
+      )
+    : null;
 
   const glassStyle: React.CSSProperties = {
     background: isDark ? "rgba(28,28,30,0.92)" : "rgba(255,255,255,0.96)",
@@ -922,6 +949,9 @@ export function MapScreen({
               >
                 {seatsLeft === 0 ? "Нет мест" : `${seatsLeft} мест`}
               </span>
+              {selectedRouteMetrics && (
+                <span style={{ color: "var(--brand-sub, #6b716e)" }}>{selectedRouteMetrics}</span>
+              )}
             </div>
           </button>
           <button

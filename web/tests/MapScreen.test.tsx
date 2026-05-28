@@ -277,7 +277,9 @@ describe("MapScreen", () => {
         expect.any(Array),
         expect.objectContaining({ weight: 4, opacity: 0.85 }),
       );
-      const map = vi.mocked(L.map).mock.results[0]?.value as { fitBounds: ReturnType<typeof vi.fn> };
+      const map = vi.mocked(L.map).mock.results[0]?.value as {
+        fitBounds: ReturnType<typeof vi.fn>;
+      };
       expect(map.fitBounds).toHaveBeenCalledWith(
         expect.any(Object),
         expect.objectContaining({ paddingBottomRight: expect.any(Array) }),

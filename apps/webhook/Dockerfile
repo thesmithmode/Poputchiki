@@ -7,7 +7,7 @@ COPY --chown=bun:bun package.json bun.lockb* ./
 COPY --chown=bun:bun packages/shared/package.json packages/shared/
 COPY --chown=bun:bun apps/webhook/package.json apps/webhook/
 COPY --chown=bun:bun web/package.json web/
-RUN bun install --frozen-lockfile
+RUN bun install --frozen-lockfile --production
 
 COPY --chown=bun:bun packages/shared packages/shared
 COPY --chown=bun:bun apps/webhook apps/webhook

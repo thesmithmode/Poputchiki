@@ -179,6 +179,7 @@ export function MapScreen({
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
   const [selectedRouteDetails, setSelectedRouteDetails] = useState<SelectedRouteDetails | null>();
+  const [selectedRouteLoading, setSelectedRouteLoading] = useState(false);
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
@@ -239,8 +240,26 @@ export function MapScreen({
   }, [filters]);
 
   useEffect(() => {
-    setSelectedRouteDetails(undefined);
-    if (!selected) return;
+    if (!selected) {
+      setSelectedRouteDetails(undefined);
+      setSelectedRouteLoading(false);
+      return;
+    }
+
+    const seeded: SelectedRouteDetails = {
+      route_polyline: selected.route_polyline ?? null,
+      route_distance_m: selected.route_distance_m ?? null,
+      route_duration_s: selected.route_duration_s ?? null,
+    };
+    setSelectedRouteDetails(seeded);
+
+    const needsHydration = !seeded.route_polyline || !seeded.route_distance_m || !seeded.route_duration_s;
+    if (!needsHydration) {
+      setSelectedRouteLoading(false);
+      return;
+    }
+
+    setSelectedRouteLoading(true);
     let cancelled = false;
     apiFetch<SelectedRouteDetails>(`/rides/${selected.id}`)
       .then((ride) => {
@@ -250,10 +269,13 @@ export function MapScreen({
             route_distance_m: ride.route_distance_m ?? null,
             route_duration_s: ride.route_duration_s ?? null,
           });
+          setSelectedRouteLoading(false);
         }
       })
       .catch(() => {
-        if (!cancelled) setSelectedRouteDetails(null);
+        if (!cancelled) {
+          setSelectedRouteLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -272,6 +294,8 @@ export function MapScreen({
       }
       if (!selected) return;
       clearRideMarkers(lMap);
+
+      if (selectedRouteLoading && !selectedRouteDetails?.route_polyline) return;
 
       const selectedRoutePolyline = selectedRouteDetails?.route_polyline;
       const routePoints = selectedRoutePolyline
@@ -292,7 +316,9 @@ export function MapScreen({
       selectedRouteRef.current = line;
       const topPad = 70;
       const sidePad = 60;
-      const bottomPad = Math.min(420, Math.max(220, selectedCardHeight + 36)); // keep route visible above the selected card
+      const viewportH = window.innerHeight || 800;
+      const safeBottomPad = Math.min(Math.floor(viewportH * 0.55), selectedCardHeight + 44);
+      const bottomPad = Math.min(420, Math.max(220, safeBottomPad)); // keep route visible above the selected card
       lMap.fitBounds(L.latLngBounds(routePoints), {
         paddingTopLeft: [sidePad, topPad],
         paddingBottomRight: [sidePad, bottomPad],

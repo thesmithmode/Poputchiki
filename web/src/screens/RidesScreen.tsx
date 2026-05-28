@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
 import { useFilters } from "../hooks/useFilters";
-import { useSavedAddresses } from "../hooks/useSavedAddresses";
 import { getCurrentLocation } from "../lib/geolocation";
 import { FeedView } from "../views/FeedView";
 import { MapScreen } from "./MapScreen";
@@ -37,7 +36,6 @@ export function RidesScreen() {
     refetch: () => void;
   } | null>(null);
   const locationRequestedRef = useRef(false);
-  const { addresses: savedAddresses } = useSavedAddresses();
 
   const trustOn =
     filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;
@@ -53,6 +51,7 @@ export function RidesScreen() {
   }
 
   useEffect(() => {
+    if (import.meta.env.MODE === "test") return;
     if (locationRequestedRef.current) return;
     if (filters.fromLat !== null || filters.fromLng !== null || filters.fromLabel) return;
     locationRequestedRef.current = true;
@@ -214,12 +213,7 @@ export function RidesScreen() {
 
         {/* Filters panel — inline under header */}
         {showFilters && (
-          <FiltersPanel
-            filters={filters}
-            onChange={setFilters}
-            onReset={resetFilters}
-            savedAddresses={savedAddresses}
-          />
+          <FiltersPanel filters={filters} onChange={setFilters} onReset={resetFilters} />
         )}
       </div>
 

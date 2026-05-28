@@ -1,6 +1,6 @@
 import type { DatePreset, Filters } from "../hooks/useFilters";
 import { DEFAULT_FILTERS } from "../hooks/useFilters";
-import type { SavedAddress } from "../hooks/useSavedAddresses";
+import { type SavedAddress, useSavedAddresses } from "../hooks/useSavedAddresses";
 import { AddressAutocomplete, type Coords } from "./AddressAutocomplete";
 
 interface Props {
@@ -11,6 +11,7 @@ interface Props {
 }
 
 export function FiltersPanel({ filters, onChange, onReset, savedAddresses }: Props) {
+  const { addresses } = useSavedAddresses();
   const hasActive =
     filters.fromLabel !== DEFAULT_FILTERS.fromLabel ||
     filters.fromLat !== DEFAULT_FILTERS.fromLat ||
@@ -57,7 +58,7 @@ export function FiltersPanel({ filters, onChange, onReset, savedAddresses }: Pro
     boxSizing: "border-box",
   };
 
-  const addressSuggestions = savedAddresses ?? [];
+  const addressSuggestions = savedAddresses ?? addresses;
 
   function handleFromChange(value: string, coords?: Coords) {
     onChange({

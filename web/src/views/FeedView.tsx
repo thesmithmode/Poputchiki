@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RideCard } from "../components/RideCard";
@@ -49,6 +49,8 @@ export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedVie
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
 
   const filteredRides = useMemo(() => {
     const base = applyFilters(data?.rides ?? [], filters, undefined, myUserId);
@@ -64,8 +66,12 @@ export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedVie
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: parent owns the callback identity
   useEffect(() => {
-    onFeedMeta?.({ isFetching, dataUpdatedAt, refetch });
-  }, [isFetching, dataUpdatedAt, refetch]);
+    onFeedMeta?.({
+      isFetching,
+      dataUpdatedAt,
+      refetch: () => refetchRef.current(),
+    });
+  }, [isFetching, dataUpdatedAt]);
 
   const trustOn =
     filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;

@@ -28,6 +28,17 @@ vi.mock("../src/components/AddressAutocomplete", () => ({
   ),
 }));
 
+vi.mock("../src/hooks/useSavedAddresses", () => ({
+  useSavedAddresses: () => ({
+    addresses: [],
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    isCreating: false,
+    isLoading: false,
+  }),
+}));
+
 describe("FiltersPanel", () => {
   it("рендерится с дефолтными фильтрами", () => {
     render(<FiltersPanel filters={DEFAULT_FILTERS} onChange={vi.fn()} onReset={vi.fn()} />);

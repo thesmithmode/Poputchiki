@@ -24,6 +24,7 @@ export const queryKeys = {
       toAt: string | null,
       spatial?:
         | { fromLat: number; fromLng: number; toLat: number; toLng: number }
+        | { fromLat: number; fromLng: number; radiusKm: number }
         | null
         | undefined,
     ) => {

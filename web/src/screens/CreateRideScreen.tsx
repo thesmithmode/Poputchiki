@@ -40,6 +40,10 @@ function todayStr() {
   return formatLocalDate(new Date());
 }
 
+function isDateInputValue(value: string): boolean {
+  return value === "" || /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 // Возвращает date+time как local-time компоненты от now+minutes.
 // Раньше todayStr использовал toISOString (UTC), а nowTimePlus — getHours (local),
 // что в TZ=UTC при late-night рендере давало date=сегодня + time=завтрашнее → past departure.
@@ -536,7 +540,11 @@ export function CreateRideScreen() {
                   data-testid="input-date"
                   type="date"
                   value={form.date}
-                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                  onChange={(e) => {
+                    if (isDateInputValue(e.target.value)) {
+                      setForm((f) => ({ ...f, date: e.target.value }));
+                    }
+                  }}
                   style={inputStyle}
                 />
               </Field>
@@ -696,7 +704,11 @@ export function CreateRideScreen() {
                         data-testid="input-active-from"
                         type="date"
                         value={form.active_from}
-                        onChange={(e) => setForm((f) => ({ ...f, active_from: e.target.value }))}
+                        onChange={(e) => {
+                          if (isDateInputValue(e.target.value)) {
+                            setForm((f) => ({ ...f, active_from: e.target.value }));
+                          }
+                        }}
                         style={inputStyle}
                       />
                     </Field>
@@ -705,7 +717,11 @@ export function CreateRideScreen() {
                         data-testid="input-active-to"
                         type="date"
                         value={form.active_to}
-                        onChange={(e) => setForm((f) => ({ ...f, active_to: e.target.value }))}
+                        onChange={(e) => {
+                          if (isDateInputValue(e.target.value)) {
+                            setForm((f) => ({ ...f, active_to: e.target.value }));
+                          }
+                        }}
                         style={inputStyle}
                       />
                     </Field>

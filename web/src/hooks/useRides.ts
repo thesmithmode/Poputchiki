@@ -17,14 +17,20 @@ export interface PassengerCoords {
   toLng: number;
 }
 
+export interface NearbyFromCoords {
+  fromLat: number;
+  fromLng: number;
+  radiusKm: number;
+}
+
 export function useRides(
   preset: DatePreset,
   customFromAt: string | null = null,
   customToAt: string | null = null,
-  passengerCoords: PassengerCoords | null = null,
+  spatialCoords: PassengerCoords | NearbyFromCoords | null = null,
 ) {
   return useQuery({
-    queryKey: queryKeys.rides.list(preset, customFromAt, customToAt, passengerCoords),
+    queryKey: queryKeys.rides.list(preset, customFromAt, customToAt, spatialCoords),
     queryFn: () => {
       const { fromAt, toAt } = resolveDateRange({
         datePreset: preset,
@@ -34,11 +40,17 @@ export function useRides(
       const params = new URLSearchParams();
       if (fromAt) params.set("fromAt", fromAt);
       if (toAt) params.set("toAt", toAt);
-      if (passengerCoords) {
-        params.set("passengerFromLat", String(passengerCoords.fromLat));
-        params.set("passengerFromLng", String(passengerCoords.fromLng));
-        params.set("passengerToLat", String(passengerCoords.toLat));
-        params.set("passengerToLng", String(passengerCoords.toLng));
+      if (spatialCoords) {
+        if ("toLat" in spatialCoords) {
+          params.set("passengerFromLat", String(spatialCoords.fromLat));
+          params.set("passengerFromLng", String(spatialCoords.fromLng));
+          params.set("passengerToLat", String(spatialCoords.toLat));
+          params.set("passengerToLng", String(spatialCoords.toLng));
+        } else {
+          params.set("fromLat", String(spatialCoords.fromLat));
+          params.set("fromLng", String(spatialCoords.fromLng));
+          params.set("radiusKm", String(spatialCoords.radiusKm));
+        }
       }
       return apiFetch<RidesResponse>(`/rides?${params.toString()}`);
     },

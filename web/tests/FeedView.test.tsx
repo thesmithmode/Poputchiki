@@ -69,7 +69,7 @@ function renderGroupedFeed(rides: Ride[], rideIds: string[]) {
     <MemoryRouter initialEntries={[{ pathname: "/", state: { mapRideGroup: { rideIds } } }]}>
       <QueryClientProvider client={client}>
         <MeContext.Provider value={ME_STATE}>
-          <FeedView filters={DEFAULT_FILTERS} setFilters={vi.fn()} density="cozy" />
+          <FeedView filters={DEFAULT_FILTERS} density="cozy" />
         </MeContext.Provider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -92,5 +92,15 @@ describe("FeedView map group filter", () => {
       expect(screen.getByText("group-hit")).toBeInTheDocument();
     });
     expect(screen.queryByText("outside")).not.toBeInTheDocument();
+  });
+
+  it("does not render quick destination chips or a second result count inside the feed", async () => {
+    renderGroupedFeed([makeRide({ from_label: "group-hit" })], []);
+
+    await waitFor(() => {
+      expect(screen.getByText("group-hit")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("ул. Баумана")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Найдено/i)).not.toBeInTheDocument();
   });
 });

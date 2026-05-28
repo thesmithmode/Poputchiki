@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
 import { useFilters } from "../hooks/useFilters";
+import { useSavedAddresses } from "../hooks/useSavedAddresses";
+import { getCurrentLocation } from "../lib/geolocation";
 import { FeedView } from "../views/FeedView";
 import { MapScreen } from "./MapScreen";
 
@@ -29,6 +31,13 @@ export function RidesScreen() {
   );
   const [showFilters, setShowFilters] = useState(false);
   const [ridesCount, setRidesCount] = useState<number | null>(null);
+  const [feedMeta, setFeedMeta] = useState<{
+    isFetching: boolean;
+    dataUpdatedAt: number;
+    refetch: () => void;
+  } | null>(null);
+  const locationRequestedRef = useRef(false);
+  const { addresses: savedAddresses } = useSavedAddresses();
 
   const trustOn =
     filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;
@@ -42,6 +51,25 @@ export function RidesScreen() {
     setDensity(next);
     localStorage.setItem(DENSITY_KEY, next);
   }
+
+  useEffect(() => {
+    if (locationRequestedRef.current) return;
+    if (filters.fromLat !== null || filters.fromLng !== null || filters.fromLabel) return;
+    locationRequestedRef.current = true;
+    let cancelled = false;
+    getCurrentLocation().then((loc) => {
+      if (cancelled || !loc) return;
+      setFilters({
+        fromLabel: "Мое местоположение",
+        fromLat: loc.lat,
+        fromLng: loc.lng,
+        radiusKm: 2,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.fromLat, filters.fromLng, filters.fromLabel, setFilters]);
 
   return (
     <div
@@ -94,7 +122,45 @@ export function RidesScreen() {
                 {ridesCount} {pluralRides(ridesCount)}
               </span>
             )}
+            {feedMeta?.isFetching ? (
+              <span style={{ fontSize: 11, color: "var(--brand-sub)", whiteSpace: "nowrap" }}>
+                Обновляется
+              </span>
+            ) : feedMeta?.dataUpdatedAt ? (
+              <span style={{ fontSize: 11, color: "var(--brand-sub)", whiteSpace: "nowrap" }}>
+                {new Date(feedMeta.dataUpdatedAt).toLocaleTimeString("ru-RU", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            ) : null}
           </div>
+
+          {feedMeta && (
+            <button
+              type="button"
+              data-testid="refresh-rides"
+              aria-label="Обновить ленту"
+              onClick={() => feedMeta.refetch()}
+              disabled={feedMeta.isFetching}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 12,
+                border: "none",
+                background: "var(--brand-surface-2)",
+                color: "var(--brand-text)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: feedMeta.isFetching ? "default" : "pointer",
+                opacity: feedMeta.isFetching ? 0.45 : 1,
+                boxShadow: "var(--shadow-sm)",
+              }}
+            >
+              <Icon name="repeat" size={16} />
+            </button>
+          )}
 
           {/* Filter button */}
           <button
@@ -148,7 +214,12 @@ export function RidesScreen() {
 
         {/* Filters panel — inline under header */}
         {showFilters && (
-          <FiltersPanel filters={filters} onChange={setFilters} onReset={resetFilters} />
+          <FiltersPanel
+            filters={filters}
+            onChange={setFilters}
+            onReset={resetFilters}
+            savedAddresses={savedAddresses}
+          />
         )}
       </div>
 
@@ -166,9 +237,9 @@ export function RidesScreen() {
         >
           <FeedView
             filters={filters}
-            setFilters={setFilters}
             density={density}
             onRidesCount={setRidesCount}
+            onFeedMeta={setFeedMeta}
           />
         </div>
 

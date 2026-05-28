@@ -1,3 +1,4 @@
+import { compactAddressLabel, compactAddressTitle } from "../lib/addressFormat";
 import { Icon } from "./Icon";
 
 interface RouteBlockProps {
@@ -21,6 +22,11 @@ export function RouteBlock({
   const lineColor = dark ? "rgba(255,255,255,0.15)" : "var(--brand-line)";
   const fontMain = compact ? 12.5 : 13.5;
   const lineH = compact ? 12 : 16;
+  const maxLen = compact ? 28 : 42;
+  const fromCompact = compactAddressLabel(fromLabel, { maxLen });
+  const toCompact = compactAddressLabel(toLabel, { maxLen });
+  const fromTitle = compactAddressTitle(fromLabel, fromCompact);
+  const toTitle = compactAddressTitle(toLabel, toCompact);
 
   return (
     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -64,8 +70,9 @@ export function RouteBlock({
             lineHeight: 1.3,
             marginBottom: compact ? 4 : 6,
           }}
+          title={fromTitle}
         >
-          {fromLabel}
+          {fromCompact}
         </div>
         <div
           style={{
@@ -77,8 +84,9 @@ export function RouteBlock({
             whiteSpace: "nowrap",
             lineHeight: 1.3,
           }}
+          title={toTitle}
         >
-          {toLabel}
+          {toCompact}
         </div>
       </div>
     </div>

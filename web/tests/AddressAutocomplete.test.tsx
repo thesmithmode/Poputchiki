@@ -187,7 +187,7 @@ describe("AddressAutocomplete", () => {
     const input = screen.getByTestId("addr");
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: "Аэропорт" } });
-    await screen.findByText(/Аэропорт Казань/, undefined, { timeout: 2000 });
+    await screen.findByTestId("addr-option-0", undefined, { timeout: 2000 });
     fireEvent.change(input, { target: { value: "" } });
     await waitFor(() => {
       expect(screen.queryByText(/Аэропорт Казань/)).not.toBeInTheDocument();

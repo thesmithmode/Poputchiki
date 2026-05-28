@@ -9,6 +9,7 @@ import { applyFilters, resolveDateRange, useFilters } from "../hooks/useFilters"
 import type { Filters } from "../hooks/useFilters";
 import { useMe } from "../hooks/useMe";
 import { useMyRideRequests } from "../hooks/useMyRideRequests";
+import { compactAddressLabel, compactAddressTitle } from "../lib/addressFormat";
 import { apiFetch } from "../lib/api";
 import {
   type RideCardState,
@@ -182,6 +183,8 @@ export function MapScreen({
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+  const selectedCardRef = useRef<HTMLButtonElement>(null);
+  const [selectedCardHeight, setSelectedCardHeight] = useState<number>(0);
 
   // Keep filtersRef in sync so loadRides always reads current filters without remounting map
   filtersRef.current = filters;
@@ -287,12 +290,40 @@ export function MapScreen({
           : { color, weight: 2.5, opacity: 0.55, dashArray: "6 5" },
       ).addTo(lMap);
       selectedRouteRef.current = line;
-      lMap.fitBounds(L.latLngBounds(routePoints), { padding: [80, 80], maxZoom: 14 });
+      const topPad = 70;
+      const sidePad = 60;
+      const bottomPad = Math.min(420, Math.max(220, selectedCardHeight + 36)); // keep route visible above the selected card
+      lMap.fitBounds(L.latLngBounds(routePoints), {
+        paddingTopLeft: [sidePad, topPad],
+        paddingBottomRight: [sidePad, bottomPad],
+        maxZoom: 14,
+      });
     });
     return () => {
       cancelled = true;
     };
-  }, [selected, selectedRouteDetails, clearRideMarkers]);
+  }, [selected, selectedRouteDetails, clearRideMarkers, selectedCardHeight]);
+
+  useEffect(() => {
+    if (!selected) {
+      setSelectedCardHeight(0);
+      return;
+    }
+    if (!selectedCardRef.current) return;
+
+    const el = selectedCardRef.current;
+    const update = () => setSelectedCardHeight(el.getBoundingClientRect().height);
+    update();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => update()) : null;
+    resizeObserver?.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      resizeObserver?.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [selected]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: renderMarkers reads current user/request/viewed state through closure
   useEffect(() => {
@@ -802,6 +833,16 @@ export function MapScreen({
         selectedRouteDetails?.route_duration_s ?? selected.route_duration_s,
       )
     : null;
+  const selectedFromLabel = selected
+    ? compactAddressLabel(selected.from_label, { maxLen: 28 })
+    : "";
+  const selectedToLabel = selected ? compactAddressLabel(selected.to_label, { maxLen: 28 }) : "";
+  const selectedFromTitle = selected
+    ? compactAddressTitle(selected.from_label, selectedFromLabel)
+    : undefined;
+  const selectedToTitle = selected
+    ? compactAddressTitle(selected.to_label, selectedToLabel)
+    : undefined;
 
   const glassStyle: React.CSSProperties = {
     background: isDark ? "rgba(28,28,30,0.92)" : "rgba(255,255,255,0.96)",
@@ -912,7 +953,7 @@ export function MapScreen({
         <div
           style={{
             position: "absolute",
-            bottom: 88,
+            bottom: 76,
             left: 12,
             right: 12,
             zIndex: 1000,
@@ -921,6 +962,7 @@ export function MapScreen({
           <button
             type="button"
             data-testid="selected-ride-card"
+            ref={selectedCardRef}
             onClick={() => {
               setViewedRides((prev) => markRideViewed(selected.id, prev));
               navigate(`/rides/${selected.id}`);
@@ -931,16 +973,37 @@ export function MapScreen({
               ...glassStyle,
               background: selectedCardBg,
               borderRadius: 16,
-              padding: "16px 44px 16px 16px",
+              padding: "12px 44px 12px 12px",
               border: `1px solid ${selectedBorderColor}`,
               cursor: "pointer",
             }}
           >
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-              {selected.from_label}
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 650,
+                marginBottom: 6,
+                lineHeight: 1.25,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={selectedFromTitle}
+            >
+              {selectedFromLabel}
             </div>
-            <div style={{ fontSize: 13, color: "var(--brand-sub, #6b716e)", marginBottom: 10 }}>
-              → {selected.to_label}
+            <div
+              style={{
+                fontSize: 12.5,
+                color: "var(--brand-sub, #6b716e)",
+                marginBottom: 8,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+              title={selectedToTitle}
+            >
+              → {selectedToLabel}
             </div>
             <div style={{ display: "flex", gap: 12, fontSize: 13, fontWeight: 600 }}>
               <span>{selected.price_rub !== null ? `${selected.price_rub} ₽` : "Договорная"}</span>

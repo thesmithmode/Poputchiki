@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SavedAddress } from "../hooks/useSavedAddresses";
 import { byTsarevoFirst } from "../lib/addressBoost";
+import { compactAddressLabel } from "../lib/addressFormat";
 import { apiFetch } from "../lib/api";
 import { fuzzyMatchSaved } from "../lib/fuzzyMatch";
 import { getCurrentLocation } from "../lib/geolocation";
@@ -81,7 +82,7 @@ export function AddressAutocomplete({
         `/geocode/reverse?lat=${loc.lat}&lon=${loc.lng}`,
       );
       const label = res.display_name
-        ? res.display_name.split(",").slice(0, 4).join(",").trim()
+        ? compactAddressLabel(res.display_name, { maxLen: 64 })
         : `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)}`;
       onChange(label, loc);
       setOpen(false);
@@ -112,7 +113,7 @@ export function AddressAutocomplete({
             const fullName = r.display_name ?? "";
             return [
               {
-                label: fullName.split(",").slice(0, 4).join(",").trim() || trimmed,
+                label: compactAddressLabel(fullName || trimmed, { maxLen: 64 }),
                 source: "geocode" as const,
                 coords: { lat, lng },
                 fullDisplay: fullName,

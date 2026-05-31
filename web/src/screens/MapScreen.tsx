@@ -228,10 +228,6 @@ export function MapScreen({
   filtersRef.current = filters;
   selectedRef.current = selected;
 
-  useEffect(() => {
-    ridesRef.current = rides;
-  }, [rides]);
-
   function setLocationMode(mode: LocationMode) {
     locationModeRef.current = mode;
     setLocationModeState(mode);

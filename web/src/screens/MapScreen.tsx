@@ -16,10 +16,10 @@ import {
   type LocationFix,
   arrowRotationFromHeading,
   calculateMapOverscanSize,
+  closestEquivalentRotation,
   extractCompassHeading,
   getCompassCapability,
   mapBearingFromHeading,
-  uprightRotationFromHeading,
 } from "../lib/geolocation";
 import {
   type RideCardState,
@@ -153,18 +153,16 @@ function makeRideGroupMarkerHtml(rides: Ride[]): string {
 function makeCompactRideMarkerHtml(
   ride: Ride,
   cardState: RideCardState,
-  headingDeg: number,
+  rotationDeg: number,
 ): string {
   const bg = getRideCardBorderColor(cardState) ?? "var(--brand-primary,#2d5a3d)";
   const borderColor = "var(--brand-surface,#fff)";
-  const rotation = uprightRotationFromHeading(headingDeg);
   const time = escapeHtml(formatTime(ride.departure_at));
-  return `<div data-map-upright="true" data-compact-ride-marker="true" style="width:46px;height:46px;transform-origin:23px 23px;transform:rotate(${rotation}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 7px rgba(0,0,0,.28))"><div style="width:38px;height:38px;border-radius:50% 50% 50% 10px;transform:rotate(-45deg);background:${bg};border:2px solid ${borderColor};display:flex;align-items:center;justify-content:center;color:var(--brand-primary-ink,#fff)"><span style="transform:rotate(45deg);font-size:10px;font-weight:800;line-height:1">${time}</span></div></div>`;
+  return `<div data-map-upright="true" data-compact-ride-marker="true" style="width:46px;height:46px;transform-origin:23px 23px;transform:rotate(${rotationDeg}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 7px rgba(0,0,0,.28))"><div style="width:38px;height:38px;border-radius:50% 50% 50% 10px;transform:rotate(-45deg);background:${bg};border:2px solid ${borderColor};display:flex;align-items:center;justify-content:center;color:var(--brand-primary-ink,#fff)"><span style="transform:rotate(45deg);font-size:10px;font-weight:800;line-height:1">${time}</span></div></div>`;
 }
 
-function makeCompactRideGroupMarkerHtml(count: number, headingDeg: number): string {
-  const rotation = uprightRotationFromHeading(headingDeg);
-  return `<div data-map-upright="true" data-compact-group-marker="true" style="width:48px;height:48px;transform-origin:24px 24px;transform:rotate(${rotation}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))"><div style="width:40px;height:40px;border-radius:50%;background:var(--brand-primary,#2d5a3d);border:2px solid #fff;color:var(--brand-primary-ink,#fff);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900">${count}</div></div>`;
+function makeCompactRideGroupMarkerHtml(count: number, rotationDeg: number): string {
+  return `<div data-map-upright="true" data-compact-group-marker="true" style="width:48px;height:48px;transform-origin:24px 24px;transform:rotate(${rotationDeg}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))"><div style="width:40px;height:40px;border-radius:50%;background:var(--brand-primary,#2d5a3d);border:2px solid #fff;color:var(--brand-primary-ink,#fff);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900">${count}</div></div>`;
 }
 
 function useDarkMode() {
@@ -207,6 +205,8 @@ export function MapScreen({
   const orientationCleanupRef = useRef<(() => void) | null>(null);
   const continuousLocationCleanupRef = useRef<(() => void) | null>(null);
   const latestCompassHeadingRef = useRef<CompassHeading | null>(null);
+  const currentMapBearingDegRef = useRef(0);
+  const currentHeadingRotationDegRef = useRef(0);
   const locationModeRef = useRef<LocationMode>("idle");
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
@@ -617,9 +617,8 @@ export function MapScreen({
     return `<svg width="100" height="100" viewBox="0 0 100 100" style="transform-origin:50px 50px;transform:rotate(${headingDeg}deg)"><defs><radialGradient id="cg" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.24" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0.55"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M50 50 L11 18 A50 50 0 0 1 89 18 Z" fill="url(#cg)"/></svg>`;
   }
 
-  function locationArrowHtml(locateColor: string, headingDeg: number): string {
-    const rotation = arrowRotationFromHeading(headingDeg);
-    return `<svg data-heading-arrow="true" width="34" height="34" viewBox="0 0 34 34" style="transform-origin:17px 17px;transform:rotate(${rotation}deg);filter:drop-shadow(0 1px 4px rgba(0,0,0,0.35))"><path d="M17 3 L28 30 L17 24 L6 30 Z" fill="${locateColor}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  function locationArrowHtml(locateColor: string, rotationDeg: number): string {
+    return `<svg data-heading-arrow="true" width="34" height="34" viewBox="0 0 34 34" style="transform-origin:17px 17px;transform:rotate(${rotationDeg}deg);filter:drop-shadow(0 1px 4px rgba(0,0,0,0.35))"><path d="M17 3 L28 30 L17 24 L6 30 Z" fill="${locateColor}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`;
   }
 
   function locationDotHtml(locateColor: string): string {
@@ -629,7 +628,7 @@ export function MapScreen({
   function locationMarkerHtml(locateColor: string): string {
     if (locationModeRef.current !== "headingUp") return locationDotHtml(locateColor);
     const heading = latestCompassHeadingRef.current;
-    return locationArrowHtml(locateColor, heading ? heading.headingDeg : 0);
+    return locationArrowHtml(locateColor, heading ? currentHeadingRotationDegRef.current : 0);
   }
 
   function getMapViewportSize(): { width: number; height: number } {
@@ -675,14 +674,28 @@ export function MapScreen({
 
   function applyMapBearing(heading: CompassHeading) {
     if (locationModeRef.current !== "headingUp" || !mapContainerRef.current) return;
-    const bearing = mapBearingFromHeading(heading.headingDeg);
+    const targetBearing = mapBearingFromHeading(heading.headingDeg);
+    const bearing = closestEquivalentRotation(targetBearing, currentMapBearingDegRef.current);
+    currentMapBearingDegRef.current = bearing;
     applyMapStageLayout();
     mapContainerRef.current.style.transformOrigin = "50% 50%";
     mapContainerRef.current.style.transition = "transform 120ms linear";
     mapContainerRef.current.style.transform = `rotate(${bearing}deg)`;
   }
 
+  function resolveHeadingRotation(heading: CompassHeading): number {
+    const targetRotation = arrowRotationFromHeading(heading.headingDeg);
+    const rotation = closestEquivalentRotation(
+      targetRotation,
+      currentHeadingRotationDegRef.current,
+    );
+    currentHeadingRotationDegRef.current = rotation;
+    return rotation;
+  }
+
   function resetMapBearing() {
+    currentMapBearingDegRef.current = 0;
+    currentHeadingRotationDegRef.current = 0;
     if (!mapContainerRef.current) return;
     applyMapStageLayout();
     mapContainerRef.current.style.transformOrigin = "50% 50%";
@@ -699,20 +712,19 @@ export function MapScreen({
     else lMap?.dragging?.disable?.();
   }
 
-  function updateLocationArrow(heading: CompassHeading) {
+  function updateLocationArrow(rotationDeg: number) {
     const markerEl = (locateMarkerRef.current as { getElement?: () => HTMLElement | null } | null)
       ?.getElement?.()
       ?.querySelector("[data-heading-arrow]") as SVGElement | null;
     if (!markerEl) return;
-    markerEl.style.transform = `rotate(${arrowRotationFromHeading(heading.headingDeg)}deg)`;
+    markerEl.style.transform = `rotate(${rotationDeg}deg)`;
   }
 
-  function updateUprightMarkerRotation(heading: CompassHeading) {
-    const rotation = uprightRotationFromHeading(heading.headingDeg);
+  function updateUprightMarkerRotation(rotationDeg: number) {
     const uprightMarkers =
       mapContainerRef.current?.querySelectorAll<HTMLElement>("[data-map-upright]") ?? [];
     for (const el of uprightMarkers) {
-      el.style.transform = `rotate(${rotation}deg)`;
+      el.style.transform = `rotate(${rotationDeg}deg)`;
     }
   }
 
@@ -731,8 +743,9 @@ export function MapScreen({
         });
       }
       applyMapBearing(heading);
-      updateLocationArrow(heading);
-      updateUprightMarkerRotation(heading);
+      const headingRotation = resolveHeadingRotation(heading);
+      updateLocationArrow(headingRotation);
+      updateUprightMarkerRotation(headingRotation);
       return;
     }
 
@@ -882,6 +895,7 @@ export function MapScreen({
     setLocationMode("headingUp");
     setMapDragging(false);
     applyMapBearing(heading);
+    resolveHeadingRotation(heading);
     invalidateMapStage(true);
     applyLocationOnMap(fix);
     window.setTimeout(() => rerenderRideMarkers(), 0);
@@ -897,6 +911,8 @@ export function MapScreen({
     orientationCleanupRef.current?.();
     orientationCleanupRef.current = null;
     latestCompassHeadingRef.current = null;
+    currentMapBearingDegRef.current = 0;
+    currentHeadingRotationDegRef.current = 0;
     compassSvgRef.current = null;
 
     if (!getCompassCapability().eligible) return;
@@ -1096,7 +1112,7 @@ export function MapScreen({
     clearRideMarkers(lMap);
 
     const isHeadingUp = locationModeRef.current === "headingUp";
-    const headingDeg = latestCompassHeadingRef.current?.headingDeg ?? 0;
+    const headingRotationDeg = isHeadingUp ? currentHeadingRotationDegRef.current : 0;
     const zoom = (lMap as unknown as { getZoom?: () => number }).getZoom?.() ?? DEFAULT_ZOOM;
     const groupRadiusPx = Math.max(24, 80 - Math.max(0, zoom - DEFAULT_ZOOM) * 8);
     const toPoint = (ride: Ride): { x: number; y: number } => {
@@ -1141,7 +1157,7 @@ export function MapScreen({
       const icon = L.divIcon({
         className: "",
         html: isHeadingUp
-          ? makeCompactRideGroupMarkerHtml(group.rides.length, headingDeg)
+          ? makeCompactRideGroupMarkerHtml(group.rides.length, headingRotationDeg)
           : makeRideGroupMarkerHtml(group.rides),
         iconSize: isHeadingUp ? [48, 48] : [142, 52],
         iconAnchor: isHeadingUp ? [24, 48] : [71, 58],
@@ -1199,7 +1215,7 @@ export function MapScreen({
           const icon = L.divIcon({
             className: "",
             html: isHeadingUp
-              ? makeCompactRideMarkerHtml(ride, cardState, headingDeg)
+              ? makeCompactRideMarkerHtml(ride, cardState, headingRotationDeg)
               : makeRideMarkerHtml(ride, cardState),
             iconSize: isHeadingUp ? [46, 46] : [134, 46],
             iconAnchor: isHeadingUp ? [23, 46] : [67, 51],
@@ -1217,7 +1233,7 @@ export function MapScreen({
         const icon = L.divIcon({
           className: "",
           html: isHeadingUp
-            ? makeCompactRideMarkerHtml(ride, cardState, headingDeg)
+            ? makeCompactRideMarkerHtml(ride, cardState, headingRotationDeg)
             : makeRideMarkerHtml(ride, cardState),
           iconSize: isHeadingUp ? [46, 46] : [134, 46],
           iconAnchor: isHeadingUp ? [23, 46] : [67, 51],

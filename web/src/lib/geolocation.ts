@@ -60,6 +60,14 @@ export function normalizeDegrees(value: number): number {
   return ((value % 360) + 360) % 360;
 }
 
+export function shortestAngleDelta(fromDeg: number, toDeg: number): number {
+  return normalizeDegrees(toDeg - fromDeg + 180) - 180;
+}
+
+export function closestEquivalentRotation(targetDeg: number, currentDeg: number): number {
+  return currentDeg + shortestAngleDelta(currentDeg, targetDeg);
+}
+
 export function mapBearingFromHeading(headingDeg: number): number {
   return -normalizeDegrees(headingDeg);
 }

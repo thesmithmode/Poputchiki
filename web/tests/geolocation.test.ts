@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   arrowRotationFromHeading,
   calculateMapOverscanSize,
+  closestEquivalentRotation,
   detectDeviceClass,
   extractCompassHeading,
   getCompassCapability,
@@ -37,6 +38,13 @@ describe("geolocation sensor helpers", () => {
     expect(mapBearingFromHeading(90)).toBe(-90);
     expect(arrowRotationFromHeading(90)).toBe(90);
     expect(uprightRotationFromHeading(90)).toBe(90);
+  });
+
+  it("keeps equivalent rotations on the shortest path across circular boundaries", () => {
+    expect(closestEquivalentRotation(-350, 0)).toBe(10);
+    expect(closestEquivalentRotation(-359, 10)).toBe(1);
+    expect(closestEquivalentRotation(0, 1)).toBe(0);
+    expect(closestEquivalentRotation(179, -179)).toBe(-181);
   });
 
   it("marks Telegram Desktop as ineligible for heading-up compass mode", () => {

@@ -227,7 +227,10 @@ export function MapScreen({
   // Keep filtersRef in sync so loadRides always reads current filters without remounting map
   filtersRef.current = filters;
   selectedRef.current = selected;
-  ridesRef.current = rides;
+
+  useEffect(() => {
+    ridesRef.current = rides;
+  }, [rides]);
 
   function setLocationMode(mode: LocationMode) {
     locationModeRef.current = mode;

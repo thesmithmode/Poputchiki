@@ -56,11 +56,17 @@ vi.mock("leaflet", () => {
     zoomOut: vi.fn(),
     fitBounds: vi.fn(),
     flyTo: vi.fn(),
+    setView: vi.fn(),
     distanceTo: vi.fn(() => 5000),
   };
-  const mockMarker = {
-    on: vi.fn().mockReturnThis(),
-    addTo: vi.fn().mockReturnThis(),
+  const createMarker = (_coords?: unknown, options?: { icon?: { html?: string } }) => {
+    const element = document.createElement("div");
+    if (options?.icon?.html) element.innerHTML = options.icon.html;
+    return {
+      on: vi.fn().mockReturnThis(),
+      addTo: vi.fn().mockReturnThis(),
+      getElement: vi.fn(() => element),
+    };
   };
   const mockPolyline = {
     addTo: vi.fn().mockReturnThis(),
@@ -68,24 +74,26 @@ vi.mock("leaflet", () => {
   const mockTileLayer = {
     addTo: vi.fn().mockReturnThis(),
   };
-  const mockCircleMarker = {
+  const mockCircle = {
     addTo: vi.fn().mockReturnThis(),
   };
   return {
     default: {
       map: vi.fn(() => mockMap),
-      marker: vi.fn(() => mockMarker),
+      marker: vi.fn(createMarker),
       polyline: vi.fn(() => mockPolyline),
       tileLayer: vi.fn(() => mockTileLayer),
-      circleMarker: vi.fn(() => mockCircleMarker),
+      circle: vi.fn(() => mockCircle),
+      circleMarker: vi.fn(() => mockCircle),
       divIcon: vi.fn((options) => options),
       latLngBounds: vi.fn((points) => ({ points })),
     },
     map: vi.fn(() => mockMap),
-    marker: vi.fn(() => mockMarker),
+    marker: vi.fn(createMarker),
     polyline: vi.fn(() => mockPolyline),
     tileLayer: vi.fn(() => mockTileLayer),
-    circleMarker: vi.fn(() => mockCircleMarker),
+    circle: vi.fn(() => mockCircle),
+    circleMarker: vi.fn(() => mockCircle),
     divIcon: vi.fn((options) => options),
     latLngBounds: vi.fn((points) => ({ points })),
   };
@@ -139,6 +147,7 @@ function renderScreen() {
 
 describe("MapScreen", () => {
   beforeEach(() => {
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
     mockNavigate.mockReset();
     mockedApiFetch.mockReset();
@@ -234,6 +243,164 @@ describe("MapScreen", () => {
     expect(btn).toBeInTheDocument();
     fireEvent.click(btn);
     await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+  });
+
+  it("REGRESSION: locate draws the exact returned point and its accuracy radius", async () => {
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    vi.mocked(L.marker).mockClear();
+    vi.mocked(L.circle).mockClear();
+    const map = vi.mocked(L.map).mock.results[0]?.value as
+      | { setView: ReturnType<typeof vi.fn> }
+      | undefined;
+
+    fireEvent.click(screen.getByTestId("locate-me"));
+
+    await waitFor(() => {
+      expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled();
+      expect(L.marker).toHaveBeenCalledWith(
+        [55.801, 49.123],
+        expect.objectContaining({ zIndexOffset: 10 }),
+      );
+      expect(L.circle).toHaveBeenCalledWith(
+        [55.801, 49.123],
+        expect.objectContaining({ radius: 42 }),
+      );
+      expect(map?.setView).toHaveBeenCalledWith([55.801, 49.123], 15, {
+        animate: true,
+        duration: 0.4,
+      });
+    });
+  });
+
+  it("REGRESSION: locate keeps the dot but does not draw a compass cone without real heading", async () => {
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    vi.mocked(L.marker).mockClear();
+    fireEvent.click(screen.getByTestId("locate-me"));
+
+    await waitFor(() => {
+      expect(L.marker).toHaveBeenCalledWith(
+        [55.801, 49.123],
+        expect.objectContaining({ zIndexOffset: 10 }),
+      );
+    });
+    expect(L.marker).not.toHaveBeenCalledWith(
+      [55.801, 49.123],
+      expect.objectContaining({ zIndexOffset: -10 }),
+    );
+  });
+
+  it("REGRESSION: locate draws a compass cone after a real webkit compass heading", async () => {
+    class MockDeviceOrientationEvent extends Event {
+      alpha: number | null;
+      absolute: boolean;
+      webkitCompassHeading?: number;
+
+      constructor(
+        type: string,
+        init: { alpha?: number | null; absolute?: boolean; webkitCompassHeading?: number } = {},
+      ) {
+        super(type);
+        this.alpha = init.alpha ?? null;
+        this.absolute = init.absolute ?? false;
+        this.webkitCompassHeading = init.webkitCompassHeading;
+      }
+    }
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    vi.mocked(L.marker).mockClear();
+    fireEvent.click(screen.getByTestId("locate-me"));
+    await waitFor(() => {
+      expect(L.marker).toHaveBeenCalledWith(
+        [55.801, 49.123],
+        expect.objectContaining({ zIndexOffset: 10 }),
+      );
+    });
+    expect(L.marker).not.toHaveBeenCalledWith(
+      [55.801, 49.123],
+      expect.objectContaining({ zIndexOffset: -10 }),
+    );
+
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+
+    await waitFor(() => {
+      expect(L.marker).toHaveBeenCalledWith(
+        [55.801, 49.123],
+        expect.objectContaining({ zIndexOffset: -10 }),
+      );
+      expect(L.divIcon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining("rotate(90deg)"),
+        }),
+      );
+    });
   });
 
   it("paints marker-card with feed state color for pending request", async () => {

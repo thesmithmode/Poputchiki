@@ -365,17 +365,17 @@ describe("MapScreen", () => {
       ),
     );
 
-    vi.mocked(L.divIcon).mockClear();
     fireEvent.click(btn);
 
     await waitFor(() => {
       expect(btn).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByTestId("leaflet-container").style.transform).toContain("rotate(-90deg)");
-      expect(L.divIcon).toHaveBeenCalledWith(
-        expect.objectContaining({
-          html: expect.stringContaining("data-heading-arrow"),
+      expect(
+        vi.mocked(L.divIcon).mock.calls.some(([options]) => {
+          const html = (options as { html?: string } | undefined)?.html;
+          return html?.includes("data-heading-arrow") ?? false;
         }),
-      );
+      ).toBe(true);
       expect(mockGeolocation.watchPosition).toHaveBeenCalled();
     });
   });

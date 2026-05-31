@@ -44,6 +44,11 @@ function row(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function restoreEnv(name: string, value: string | undefined): void {
+  Reflect.deleteProperty(process.env, name);
+  if (value !== undefined) process.env[name] = value;
+}
+
 beforeEach(async () => {
   dir = await mkdtemp(join(tmpdir(), "pp-avatar-route-"));
   oldAvatarDir = process.env.AVATAR_DIR;
@@ -53,8 +58,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   syncTelegramAvatarMock.mockReset();
-  if (oldAvatarDir === undefined) delete process.env.AVATAR_DIR;
-  else process.env.AVATAR_DIR = oldAvatarDir;
+  restoreEnv("AVATAR_DIR", oldAvatarDir);
   await rm(dir, { recursive: true, force: true });
 });
 
@@ -72,6 +76,17 @@ describe("GET /:id/avatar", () => {
 
   it("returns 404 when user has no cached avatar", async () => {
     const res = await createAvatarRouter(makeSql(null) as never).request(`/${USER_ID}/avatar`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when the database wrapper returns a non-array value", async () => {
+    const tx = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce({ id: USER_ID });
+    const sql = {
+      begin: vi.fn((fn: (arg: unknown) => unknown) => fn(tx)),
+    };
+
+    const res = await createAvatarRouter(sql as never).request(`/${USER_ID}/avatar`);
 
     expect(res.status).toBe(404);
   });
@@ -123,6 +138,14 @@ describe("GET /:id/avatar", () => {
 
   it("returns 404 when refresh cannot restore a missing local file", async () => {
     const res = await createAvatarRouter(makeSqlRows([row(), row()]) as never).request(
+      `/${USER_ID}/avatar`,
+    );
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when refresh removes missing-file metadata", async () => {
+    const res = await createAvatarRouter(makeSqlRows([row(), null]) as never).request(
       `/${USER_ID}/avatar`,
     );
 

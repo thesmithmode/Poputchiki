@@ -36,6 +36,15 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
+function clearEnv(name: string): void {
+  Reflect.deleteProperty(process.env, name);
+}
+
+function restoreEnv(name: string, value: string | undefined): void {
+  clearEnv(name);
+  if (value !== undefined) process.env[name] = value;
+}
+
 function userRow(overrides: Record<string, unknown> = {}) {
   return {
     id: USER_ID,
@@ -60,12 +69,9 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.unstubAllGlobals();
-  if (oldAvatarDir === undefined) delete process.env.AVATAR_DIR;
-  else process.env.AVATAR_DIR = oldAvatarDir;
-  if (oldBotToken === undefined) delete process.env.BOT_TOKEN;
-  else process.env.BOT_TOKEN = oldBotToken;
-  if (oldDomain === undefined) delete process.env.DOMAIN;
-  else process.env.DOMAIN = oldDomain;
+  restoreEnv("AVATAR_DIR", oldAvatarDir);
+  restoreEnv("BOT_TOKEN", oldBotToken);
+  restoreEnv("DOMAIN", oldDomain);
   await rm(dir, { recursive: true, force: true });
 });
 
@@ -81,13 +87,13 @@ describe("syncTelegramAvatar", () => {
     expect(buildAvatarUrl(USER_ID, "file unique/id")).toBe(
       `https://api.example.test/api/users/${USER_ID}/avatar?v=file%20unique%2Fid`,
     );
-    delete process.env.DOMAIN;
+    clearEnv("DOMAIN");
     expect(buildAvatarUrl(USER_ID, "u1")).toBe(`/api/users/${USER_ID}/avatar?v=u1`);
   });
 
   it("returns early without Telegram token, finite tg id, or user row", async () => {
     const { sql: withoutTokenSql, tx: withoutTokenTx } = makeSql([]);
-    delete process.env.BOT_TOKEN;
+    clearEnv("BOT_TOKEN");
     await syncTelegramAvatar(withoutTokenSql as never, USER_ID, TG_ID);
     expect(withoutTokenTx).not.toHaveBeenCalled();
 
@@ -211,6 +217,27 @@ describe("syncTelegramAvatar", () => {
     await expect(readFile(join(dir, `${USER_ID}.jpg`))).rejects.toThrow();
   });
 
+  it("clears avatar when Telegram profile response is unavailable or malformed", async () => {
+    for (const response of [
+      new Response("telegram down", { status: 500 }),
+      new Response("not-json", { status: 200, headers: { "content-type": "application/json" } }),
+      jsonResponse({ ok: false, description: "not found" }),
+    ]) {
+      await writeFile(join(dir, `${USER_ID}.jpg`), new Uint8Array([9]));
+      const { sql } = makeSql([
+        [],
+        [userRow({ avatar_file_unique_id: "old", avatar_mime: "image/jpeg" })],
+        [],
+        [],
+      ]);
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response));
+
+      await syncTelegramAvatar(sql as never, USER_ID, TG_ID);
+
+      await expect(readFile(join(dir, `${USER_ID}.jpg`))).rejects.toThrow();
+    }
+  });
+
   it("updates checked_at without storing a file when Telegram cannot resolve a file path", async () => {
     const { sql, tx } = makeSql([[], [userRow()], []]);
     vi.stubGlobal(
@@ -236,6 +263,32 @@ describe("syncTelegramAvatar", () => {
       USER_ID,
     );
     await expect(readFile(join(dir, `${USER_ID}.jpg`))).rejects.toThrow();
+  });
+
+  it("updates checked_at when Telegram getFile response is unavailable", async () => {
+    const { sql, tx } = makeSql([[], [userRow()], []]);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({
+            ok: true,
+            result: {
+              total_count: 1,
+              photos: [[{ file_id: "photo", file_unique_id: "u1", width: 120, height: 120 }]],
+            },
+          }),
+        )
+        .mockResolvedValueOnce(new Response("telegram down", { status: 500 })),
+    );
+
+    await syncTelegramAvatar(sql as never, USER_ID, TG_ID);
+
+    expect(tx).toHaveBeenLastCalledWith(
+      expect.arrayContaining([expect.stringContaining("avatar_checked_at")]),
+      USER_ID,
+    );
   });
 
   it("clears avatar when Telegram reports an oversized file", async () => {

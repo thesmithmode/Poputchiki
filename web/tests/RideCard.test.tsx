@@ -150,7 +150,7 @@ describe("RideCard", () => {
     expect(screen.queryByText("Заявка подана")).not.toBeInTheDocument();
     expect(screen.queryByText("Одобрено")).not.toBeInTheDocument();
   });
-  it("cozy layout stays compact while preserving expanded ride data", () => {
+  it("cozy layout matches dense route-card structure and preserves expanded ride data", () => {
     const richRide: Ride = {
       ...mockRide,
       driver_display_name: "Driver Test",
@@ -159,11 +159,20 @@ describe("RideCard", () => {
       route_duration_s: 38 * 60,
     };
 
-    render(<RideCard ride={richRide} cardState="approved" isAlongTheWay />);
+    render(<RideCard ride={richRide} cardState="own" isAlongTheWay />);
 
     const card = screen.getByTestId("ride-card");
+    const grid = screen.getByTestId("ride-card-expanded-grid");
     const text = card.textContent ?? "";
-    expect(card).toHaveStyle({ padding: "12px", gap: "8px" });
+    expect(card).toHaveStyle({ borderRadius: "12px", padding: "0px" });
+    expect(grid).toHaveStyle({
+      display: "grid",
+      gridTemplateColumns: "72px 24px minmax(0, 1fr) 58px",
+    });
+    expect(screen.getByTestId("ride-card-route-rail")).toBeInTheDocument();
+    expect(screen.getByTestId("ride-card-side-meta")).toBeInTheDocument();
+    expect(screen.getByTestId("ride-card-footer")).toBeInTheDocument();
+    expect(screen.getByTestId("ride-card-chevron")).toBeInTheDocument();
     expect(screen.getByText(mockRide.from_label)).toBeInTheDocument();
     expect(screen.getByText(mockRide.to_label)).toBeInTheDocument();
     expect(text).toContain("150");
@@ -172,7 +181,7 @@ describe("RideCard", () => {
     expect(screen.getByText(mockRide.comment ?? "")).toBeInTheDocument();
     expect(text).toContain("12.3");
     expect(text).toContain("38");
-    expect(text).toContain("Одобрено");
+    expect(text).toContain("Ваша поездка");
     expect(text).toContain("По пути");
   });
 });

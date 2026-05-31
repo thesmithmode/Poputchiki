@@ -103,4 +103,26 @@ describe("FeedView map group filter", () => {
     expect(screen.queryByText("ул. Баумана")).not.toBeInTheDocument();
     expect(screen.queryByText(/Найдено/i)).not.toBeInTheDocument();
   });
+
+  it("groups expanded feed cards by departure day", async () => {
+    const today = new Date();
+    today.setHours(today.getHours() + 1, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    renderGroupedFeed(
+      [
+        makeRide({ from_label: "today-start", departure_at: today.toISOString() }),
+        makeRide({ from_label: "tomorrow-start", departure_at: tomorrow.toISOString() }),
+      ],
+      [],
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("today-start")).toBeInTheDocument();
+    });
+    expect(screen.getByText("tomorrow-start")).toBeInTheDocument();
+    expect(screen.getByText(/^Сегодня,/)).toBeInTheDocument();
+    expect(screen.getByText(/^Завтра,/)).toBeInTheDocument();
+  });
 });

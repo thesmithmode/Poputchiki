@@ -27,6 +27,42 @@ function pluralRides(n: number): string {
   return "маршрутов";
 }
 
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function dayDiffFromToday(iso: string): number {
+  const d = new Date(iso);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const rideDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((rideDay.getTime() - today.getTime()) / 86400000);
+}
+
+function feedDayLabel(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  const diff = dayDiffFromToday(iso);
+  if (diff === 0) return `Сегодня, ${date}`;
+  if (diff === 1) return `Завтра, ${date}`;
+  const weekday = d.toLocaleDateString("ru-RU", { weekday: "long" });
+  return `${weekday[0]?.toUpperCase() ?? ""}${weekday.slice(1)}, ${date}`;
+}
+
+function groupRidesByDepartureDay(
+  rides: Ride[],
+): Array<{ key: string; label: string; rides: Ride[] }> {
+  const groups = new Map<string, { key: string; label: string; rides: Ride[] }>();
+  for (const ride of rides) {
+    const key = dayKey(ride.departure_at);
+    const group = groups.get(key) ?? { key, label: feedDayLabel(ride.departure_at), rides: [] };
+    group.rides.push(ride);
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
 export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedViewProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,6 +94,8 @@ export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedVie
     if (!groupIds.size) return base;
     return base.filter((ride) => groupIds.has(ride.id));
   }, [data, filters, myUserId, mapRideGroup?.rideIds]);
+
+  const rideGroups = useMemo(() => groupRidesByDepartureDay(filteredRides), [filteredRides]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable callback ref
   useEffect(() => {
@@ -194,6 +232,34 @@ export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedVie
               Попробуйте изменить фильтры
             </div>
           </div>
+        ) : density === "cozy" ? (
+          rideGroups.map((group) => (
+            <section key={group.key} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div
+                data-testid="feed-day-heading"
+                style={{
+                  padding: "3px 2px 8px",
+                  color: "var(--brand-sub)",
+                  fontSize: 13,
+                  fontWeight: 650,
+                  lineHeight: 1.2,
+                }}
+              >
+                {group.label}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {group.rides.map((ride) => (
+                  <RideCard
+                    key={ride.id}
+                    ride={ride}
+                    density={density}
+                    onClick={handleCardClick}
+                    cardState={getRideCardState(ride, myUserId, requestMap, viewedRides)}
+                  />
+                ))}
+              </div>
+            </section>
+          ))
         ) : (
           filteredRides.map((ride) => (
             <RideCard

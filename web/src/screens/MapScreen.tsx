@@ -11,6 +11,7 @@ import { useMe } from "../hooks/useMe";
 import { useMyRideRequests } from "../hooks/useMyRideRequests";
 import { compactAddressLabel, compactAddressTitle } from "../lib/addressFormat";
 import { apiFetch } from "../lib/api";
+import { type CompassHeading, type LocationFix, extractCompassHeading } from "../lib/geolocation";
 import {
   type RideCardState,
   getRideCardBg,
@@ -170,9 +171,12 @@ export function MapScreen({
   const clusterGroupRef = useRef<unknown>(null);
   const selectedRouteRef = useRef<unknown>(null);
   const locateMarkerRef = useRef<unknown>(null);
+  const accuracyCircleRef = useRef<unknown>(null);
   const compassMarkerRef = useRef<unknown>(null);
+  const compassSvgRef = useRef<SVGSVGElement | null>(null);
+  const currentLocationFixRef = useRef<LocationFix | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
-  const lastHeadingRef = useRef<number | null>(null);
+  const latestCompassHeadingRef = useRef<CompassHeading | null>(null);
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
   const selectedRef = useRef<Ride | null>(null);
@@ -428,14 +432,7 @@ export function MapScreen({
         }
       });
 
-      // Local dev → OSM directly. Production → own caching proxy on same origin.
-      const h = window.location.hostname;
-      const tileUrl =
-        h === "localhost" || h.startsWith("127.")
-          ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          : `${window.location.origin}/tiles/{s}/{z}/{x}/{y}.png`;
-
-      const tile = L.tileLayer(tileUrl, {
+      const tile = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         minZoom: 9,
         maxZoom: 17,
         subdomains: "abc",
@@ -545,6 +542,10 @@ export function MapScreen({
       destroyed = true;
       ro?.disconnect();
       orientationCleanupRef.current?.();
+      orientationCleanupRef.current = null;
+      currentLocationFixRef.current = null;
+      latestCompassHeadingRef.current = null;
+      compassSvgRef.current = null;
       if (mapRef.current) {
         (mapRef.current as { remove: () => void }).remove();
         mapRef.current = null;
@@ -553,46 +554,128 @@ export function MapScreen({
     };
   }, []);
 
-  function applyLocationOnMap(lat: number, lng: number) {
-    const lMap = mapRef.current as {
-      addLayer: (l: unknown) => void;
-      removeLayer: (l: unknown) => void;
-    };
+  function compassConeHtml(locateColor: string, headingDeg: number): string {
+    return `<svg width="100" height="100" viewBox="0 0 100 100" style="transform-origin:50px 50px;transform:rotate(${headingDeg}deg)"><defs><radialGradient id="cg" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.24" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0.55"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M50 50 L11 18 A50 50 0 0 1 89 18 Z" fill="url(#cg)"/></svg>`;
+  }
+
+  function renderCompassHeading(heading: CompassHeading) {
+    latestCompassHeadingRef.current = heading;
+    const fix = currentLocationFixRef.current;
+    if (!fix || !mapRef.current) return;
+
     import("leaflet").then((L) => {
-      // Cleanup previous orientation listener + markers
-      orientationCleanupRef.current?.();
-      orientationCleanupRef.current = null;
+      if (!mapRef.current || currentLocationFixRef.current !== fix) return;
+      const lMap = mapRef.current as ReturnType<typeof L.map>;
+      const rotate = `rotate(${heading.headingDeg}deg)`;
+
+      if (compassSvgRef.current) {
+        compassSvgRef.current.style.transform = rotate;
+        return;
+      }
+      if (compassMarkerRef.current) {
+        lMap.removeLayer(compassMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
+        compassMarkerRef.current = null;
+      }
+
+      const locateColor =
+        getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
+        "#2d5a3d";
+      const coneIcon = L.divIcon({
+        html: compassConeHtml(locateColor, heading.headingDeg),
+        className: "",
+        iconSize: [100, 100],
+        iconAnchor: [50, 50],
+      });
+      const compassMarker = L.marker([fix.lat, fix.lng], {
+        icon: coneIcon,
+        interactive: false,
+        zIndexOffset: -10,
+      }).addTo(lMap);
+      compassMarkerRef.current = compassMarker;
+      const svgEl = (compassMarker as { getElement?: () => HTMLElement | null })
+        .getElement?.()
+        ?.querySelector("svg");
+      compassSvgRef.current = svgEl as SVGSVGElement | null;
+      if (compassSvgRef.current) {
+        compassSvgRef.current.style.transform = rotate;
+      }
+    });
+  }
+
+  function startCompassTracking() {
+    orientationCleanupRef.current?.();
+    orientationCleanupRef.current = null;
+    latestCompassHeadingRef.current = null;
+    compassSvgRef.current = null;
+
+    if (typeof DeviceOrientationEvent === "undefined") return;
+
+    const start = () => {
+      const handler = (event: Event) => {
+        const heading = extractCompassHeading(event as DeviceOrientationEvent);
+        if (heading) renderCompassHeading(heading);
+      };
+      window.addEventListener("deviceorientation", handler);
+      window.addEventListener("deviceorientationabsolute", handler);
+      orientationCleanupRef.current = () => {
+        window.removeEventListener("deviceorientation", handler);
+        window.removeEventListener("deviceorientationabsolute", handler);
+      };
+    };
+
+    const orientationEvent = DeviceOrientationEvent as unknown as {
+      requestPermission?: () => Promise<string>;
+    };
+    if (typeof orientationEvent.requestPermission === "function") {
+      void orientationEvent
+        .requestPermission()
+        .then((permission) => {
+          if (permission === "granted") start();
+        })
+        .catch(() => {});
+      return;
+    }
+
+    start();
+  }
+
+  function applyLocationOnMap(fix: LocationFix) {
+    currentLocationFixRef.current = fix;
+    import("leaflet").then((L) => {
+      if (!mapRef.current || currentLocationFixRef.current !== fix) return;
+      const lMap = mapRef.current as ReturnType<typeof L.map>;
+      // Cleanup previous location layers; the active compass subscription stays alive.
       if (compassMarkerRef.current) {
         lMap.removeLayer(compassMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
         compassMarkerRef.current = null;
       }
       if (locateMarkerRef.current) {
         lMap.removeLayer(locateMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
+        locateMarkerRef.current = null;
       }
+      if (accuracyCircleRef.current) {
+        lMap.removeLayer(accuracyCircleRef.current as Parameters<typeof lMap.removeLayer>[0]);
+        accuracyCircleRef.current = null;
+      }
+      compassSvgRef.current = null;
 
       const locateColor =
         getComputedStyle(document.documentElement).getPropertyValue("--brand-primary").trim() ||
         "#2d5a3d";
 
-      // Cone: 100° arc, radial gradient — transparent inside dot (r=13px), peak at dot edge, fades to 0
-      // SVG 100×100, center 50,50: dot edge = 13/50 = 0.26; peak at 0.30; arc 50° each side of up
-      const coneHtml = `<svg width="100" height="100" viewBox="0 0 100 100" style="transform-origin:50px 50px"><defs><radialGradient id="cg" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.24" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0.55"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M50 50 L11 18 A50 50 0 0 1 89 18 Z" fill="url(#cg)"/></svg>`;
-      const coneIcon = L.divIcon({
-        html: coneHtml,
-        className: "",
-        iconSize: [100, 100],
-        iconAnchor: [50, 50],
-      });
-      const compassMarker = L.marker([lat, lng], {
-        icon: coneIcon,
-        interactive: false,
-        zIndexOffset: -10,
-      });
-      compassMarker.addTo(lMap as ReturnType<typeof L.map>);
-      compassMarkerRef.current = compassMarker;
-      const svgEl = (compassMarker as { getElement?: () => HTMLElement | null })
-        .getElement?.()
-        ?.querySelector("svg");
+      // Accuracy radius: show coarse fixes as coarse, not as an exact point.
+      if (fix.accuracyM !== null && fix.accuracyM > 0) {
+        const accuracyCircle = L.circle([fix.lat, fix.lng], {
+          radius: fix.accuracyM,
+          color: locateColor,
+          opacity: 0.28,
+          weight: 1,
+          fillColor: locateColor,
+          fillOpacity: 0.08,
+          interactive: false,
+        }).addTo(lMap);
+        accuracyCircleRef.current = accuracyCircle;
+      }
 
       // Dot: divIcon (DOM layer) — stays fixed pixel size during zoom animation, unlike circleMarker (SVG layer)
       const dotHtml = `<div style="width:20px;height:20px;border-radius:50%;background:${locateColor};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);box-sizing:content-box;"></div>`;
@@ -602,48 +685,22 @@ export function MapScreen({
         iconSize: [26, 26],
         iconAnchor: [13, 13],
       });
-      const dotMarker = L.marker([lat, lng], {
+      const dotMarker = L.marker([fix.lat, fix.lng], {
         icon: dotIcon,
         interactive: false,
         zIndexOffset: 10,
-      }).addTo(lMap as ReturnType<typeof L.map>);
+      }).addTo(lMap);
       locateMarkerRef.current = dotMarker;
 
-      (lMap as ReturnType<typeof L.map>).setView([lat, lng], 15, { animate: true, duration: 0.4 });
+      lMap.setView([fix.lat, fix.lng], 15, {
+        animate: true,
+        duration: 0.4,
+      });
       setLocating(false);
 
-      // Device orientation → rotate compass cone
-      if (!svgEl) return;
-
-      // Apply last known heading immediately so cone doesn't flash to north on re-press
-      if (lastHeadingRef.current !== null) {
-        (svgEl as SVGSVGElement).style.transform = `rotate(${lastHeadingRef.current}deg)`;
-      }
-
-      function startOrientation() {
-        const handler = (e: DeviceOrientationEvent) => {
-          if (e.alpha !== null) {
-            lastHeadingRef.current = e.alpha;
-            (svgEl as SVGSVGElement).style.transform = `rotate(${e.alpha}deg)`;
-          }
-        };
-        window.addEventListener("deviceorientation", handler);
-        orientationCleanupRef.current = () =>
-          window.removeEventListener("deviceorientation", handler);
-      }
-      const DOE = DeviceOrientationEvent as unknown as {
-        requestPermission?: () => Promise<string>;
-      };
-      if (typeof DOE.requestPermission === "function") {
-        // iOS 13+ requires explicit permission from user gesture
-        DOE.requestPermission()
-          .then((perm) => {
-            if (perm === "granted") startOrientation();
-          })
-          .catch(() => {});
-      } else if (typeof DeviceOrientationEvent !== "undefined") {
-        startOrientation();
-      }
+      // Compass cone appears only after a real heading event.
+      const heading = latestCompassHeadingRef.current;
+      if (heading) renderCompassHeading(heading);
     });
   }
 
@@ -662,12 +719,29 @@ export function MapScreen({
       return;
     }
 
+    if (!lm && !navigator.geolocation) {
+      setLocating(false);
+      setLocateError("Геолокация не поддерживается Вашим браузером");
+      return;
+    }
+
+    startCompassTracking();
+
     if (lm) {
       // Telegram LocationManager API (Bot API 8.0+)
       const doRequest = () => {
         lm.getLocation((loc) => {
           if (loc) {
-            applyLocationOnMap(loc.latitude, loc.longitude);
+            applyLocationOnMap({
+              lat: loc.latitude,
+              lng: loc.longitude,
+              accuracyM:
+                typeof loc.horizontal_accuracy === "number" &&
+                Number.isFinite(loc.horizontal_accuracy)
+                  ? loc.horizontal_accuracy
+                  : null,
+              source: "telegram",
+            });
           } else {
             setLocating(false);
             setLocateError(
@@ -694,7 +768,15 @@ export function MapScreen({
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        applyLocationOnMap(pos.coords.latitude, pos.coords.longitude);
+        applyLocationOnMap({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracyM:
+            typeof pos.coords.accuracy === "number" && Number.isFinite(pos.coords.accuracy)
+              ? pos.coords.accuracy
+              : null,
+          source: "browser",
+        });
       },
       (err) => {
         setLocating(false);

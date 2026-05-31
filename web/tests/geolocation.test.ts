@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  arrowRotationFromHeading,
   extractCompassHeading,
   getCurrentLocationFix,
+  mapBearingFromHeading,
   normalizeDegrees,
 } from "../src/lib/geolocation";
 import type { TelegramWebApp } from "../src/lib/telegram";
@@ -25,6 +27,11 @@ describe("geolocation sensor helpers", () => {
     expect(normalizeDegrees(360)).toBe(0);
     expect(normalizeDegrees(-90)).toBe(270);
     expect(normalizeDegrees(725)).toBe(5);
+  });
+
+  it("derives heading-up map and arrow rotations from compass heading", () => {
+    expect(mapBearingFromHeading(90)).toBe(-90);
+    expect(arrowRotationFromHeading(90)).toBe(90);
   });
 
   it("uses iOS webkitCompassHeading as the real compass heading", () => {

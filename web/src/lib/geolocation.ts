@@ -27,6 +27,14 @@ export function normalizeDegrees(value: number): number {
   return ((value % 360) + 360) % 360;
 }
 
+export function mapBearingFromHeading(headingDeg: number): number {
+  return -normalizeDegrees(headingDeg);
+}
+
+export function arrowRotationFromHeading(headingDeg: number): number {
+  return normalizeDegrees(headingDeg);
+}
+
 export function extractCompassHeading(event: DeviceOrientationEvent): CompassHeading | null {
   const webkitEvent = event as WebKitDeviceOrientationEvent;
   const webkitHeading = finiteNumberOrNull(webkitEvent.webkitCompassHeading);

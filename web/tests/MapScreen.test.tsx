@@ -54,6 +54,10 @@ vi.mock("leaflet", () => {
     remove: vi.fn(),
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
+    dragging: {
+      disable: vi.fn(),
+      enable: vi.fn(),
+    },
     fitBounds: vi.fn(),
     flyTo: vi.fn(),
     setView: vi.fn(),
@@ -111,6 +115,24 @@ import { apiFetch } from "../src/lib/api";
 
 const mockedApiFetch = vi.mocked(apiFetch);
 const mockedUseMyRideRequests = vi.mocked(useMyRideRequests);
+
+class MockDeviceOrientationEvent extends Event {
+  alpha: number | null;
+  absolute: boolean;
+  webkitCompassHeading?: number;
+
+  constructor(
+    type: string,
+    init: { alpha?: number | null; absolute?: boolean; webkitCompassHeading?: number } = {},
+  ) {
+    super(type);
+    this.alpha = init.alpha ?? null;
+    this.absolute = init.absolute ?? false;
+    if (init.webkitCompassHeading !== undefined) {
+      this.webkitCompassHeading = init.webkitCompassHeading;
+    }
+  }
+}
 
 const MOCK_RIDES = [
   {
@@ -291,7 +313,160 @@ describe("MapScreen", () => {
         animate: true,
         duration: 0.4,
       });
+      expect(screen.getByTestId("leaflet-container").style.transform).not.toContain("rotate(");
     });
+  });
+
+  it("REGRESSION: second locate tap enables heading-up mode with arrow marker and rotated map", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn((success) => {
+        success({
+          coords: {
+            latitude: 55.802,
+            longitude: 49.124,
+            accuracy: 24,
+          },
+        });
+        return 77;
+      }),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    await waitFor(() =>
+      expect(L.divIcon).toHaveBeenCalledWith(
+        expect.objectContaining({ html: expect.stringContaining("rotate(90deg)") }),
+      ),
+    );
+
+    vi.mocked(L.divIcon).mockClear();
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      expect(btn).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByTestId("leaflet-container").style.transform).toContain("rotate(-90deg)");
+      expect(L.divIcon).toHaveBeenCalledWith(
+        expect.objectContaining({
+          html: expect.stringContaining("data-heading-arrow"),
+        }),
+      );
+      expect(mockGeolocation.watchPosition).toHaveBeenCalled();
+    });
+  });
+
+  it("REGRESSION: heading-up follows compass updates and stops browser watch on third tap", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 91),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    fireEvent.click(btn);
+    await waitFor(() => expect(btn).toHaveAttribute("aria-pressed", "true"));
+
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 180 }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("leaflet-container").style.transform).toContain("rotate(-180deg)");
+    });
+
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      expect(mockGeolocation.clearWatch).toHaveBeenCalledWith(91);
+      expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("leaflet-container").style.transform).toBe("rotate(0deg)");
+    });
+  });
+
+  it("REGRESSION: second locate tap without real compass does not enable heading-up", async () => {
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 42),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    fireEvent.click(btn);
+
+    await waitFor(() => expect(screen.getByText("Компас недоступен")).toBeInTheDocument());
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+    expect(mockGeolocation.watchPosition).not.toHaveBeenCalled();
+    expect(screen.getByTestId("leaflet-container").style.transform).not.toContain("rotate(");
   });
 
   it("REGRESSION: locate keeps the dot but does not draw a compass cone without real heading", async () => {
@@ -334,23 +509,6 @@ describe("MapScreen", () => {
   });
 
   it("REGRESSION: locate draws a compass cone after a real webkit compass heading", async () => {
-    class MockDeviceOrientationEvent extends Event {
-      alpha: number | null;
-      absolute: boolean;
-      webkitCompassHeading?: number;
-
-      constructor(
-        type: string,
-        init: { alpha?: number | null; absolute?: boolean; webkitCompassHeading?: number } = {},
-      ) {
-        super(type);
-        this.alpha = init.alpha ?? null;
-        this.absolute = init.absolute ?? false;
-        if (init.webkitCompassHeading !== undefined) {
-          this.webkitCompassHeading = init.webkitCompassHeading;
-        }
-      }
-    }
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     const mockGeolocation = {
@@ -453,6 +611,65 @@ describe("MapScreen", () => {
         expect.any(Object),
         expect.objectContaining({ paddingBottomRight: expect.any(Array) }),
       );
+    });
+  });
+
+  it("REGRESSION: selecting a ride turns off heading-up before fitting the route", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 52),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+    mockedApiFetch
+      .mockResolvedValueOnce({ rides: MOCK_RIDES })
+      .mockResolvedValueOnce({ ...MOCK_RIDES[0], route_polyline: "mfp_I__vpAYBO@K@" });
+
+    renderScreen();
+
+    await waitFor(() => expect(L.marker).toHaveBeenCalled());
+    const rideMarker = vi.mocked(L.marker).mock.results[0]?.value as
+      | { on: ReturnType<typeof vi.fn> }
+      | undefined;
+    const map = vi.mocked(L.map).mock.results[0]?.value as
+      | { dragging: { disable: ReturnType<typeof vi.fn>; enable: ReturnType<typeof vi.fn> } }
+      | undefined;
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    fireEvent.click(btn);
+    await waitFor(() => expect(btn).toHaveAttribute("aria-pressed", "true"));
+
+    const clickHandler = rideMarker?.on.mock.calls.find(([event]) => event === "click")?.[1] as
+      | (() => void)
+      | undefined;
+
+    await act(async () => {
+      clickHandler?.();
+    });
+
+    await waitFor(() => {
+      expect(mockedApiFetch).toHaveBeenCalledWith("/rides/ride-1");
+      expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("leaflet-container").style.transform).toBe("rotate(0deg)");
+      expect(map?.dragging.enable).toHaveBeenCalled();
     });
   });
 

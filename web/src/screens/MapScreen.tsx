@@ -11,7 +11,13 @@ import { useMe } from "../hooks/useMe";
 import { useMyRideRequests } from "../hooks/useMyRideRequests";
 import { compactAddressLabel, compactAddressTitle } from "../lib/addressFormat";
 import { apiFetch } from "../lib/api";
-import { type CompassHeading, type LocationFix, extractCompassHeading } from "../lib/geolocation";
+import {
+  type CompassHeading,
+  type LocationFix,
+  arrowRotationFromHeading,
+  extractCompassHeading,
+  mapBearingFromHeading,
+} from "../lib/geolocation";
 import {
   type RideCardState,
   getRideCardBg,
@@ -22,6 +28,7 @@ import {
 } from "../lib/rideCardState";
 import { formatRouteMetrics } from "../lib/routeMetrics";
 import { getTelegramWebApp } from "../lib/telegram";
+import type { TelegramLocationData, TelegramLocationManager } from "../lib/telegram";
 import type { Ride } from "../types/ride";
 
 interface MapScreenProps {
@@ -36,6 +43,7 @@ const CLUSTER_THRESHOLD = 50;
 const GROUP_MIN_SIZE = 2;
 
 type SelectedRouteDetails = Pick<Ride, "route_polyline" | "route_distance_m" | "route_duration_s">;
+type LocationMode = "idle" | "centered" | "headingUp";
 
 const AVATAR_COLORS = ["#2d5a3d", "#e67e22", "#2980b9", "#8e44ad", "#c0392b", "#16a085"];
 
@@ -176,7 +184,9 @@ export function MapScreen({
   const compassSvgRef = useRef<SVGSVGElement | null>(null);
   const currentLocationFixRef = useRef<LocationFix | null>(null);
   const orientationCleanupRef = useRef<(() => void) | null>(null);
+  const continuousLocationCleanupRef = useRef<(() => void) | null>(null);
   const latestCompassHeadingRef = useRef<CompassHeading | null>(null);
+  const locationModeRef = useRef<LocationMode>("idle");
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
   const selectedRef = useRef<Ride | null>(null);
@@ -188,12 +198,18 @@ export function MapScreen({
   const [loading, setLoading] = useState(true);
   const [locating, setLocating] = useState(false);
   const [locateError, setLocateError] = useState<string | null>(null);
+  const [locationMode, setLocationModeState] = useState<LocationMode>("idle");
   const selectedCardRef = useRef<HTMLButtonElement>(null);
   const [selectedCardHeight, setSelectedCardHeight] = useState<number>(0);
 
   // Keep filtersRef in sync so loadRides always reads current filters without remounting map
   filtersRef.current = filters;
   selectedRef.current = selected;
+
+  function setLocationMode(mode: LocationMode) {
+    locationModeRef.current = mode;
+    setLocationModeState(mode);
+  }
 
   const clearRideMarkers = useCallback((map: LeafletMap) => {
     for (const marker of markersRef.current) {
@@ -298,6 +314,9 @@ export function MapScreen({
         selectedRouteRef.current = null;
       }
       if (!selected) return;
+      if (locationModeRef.current === "headingUp") {
+        stopHeadingUpMode({ recenter: false });
+      }
       clearRideMarkers(lMap);
 
       if (selectedRouteLoading && !selectedRouteDetails?.route_polyline) return;
@@ -542,7 +561,9 @@ export function MapScreen({
       destroyed = true;
       ro?.disconnect();
       orientationCleanupRef.current?.();
+      continuousLocationCleanupRef.current?.();
       orientationCleanupRef.current = null;
+      continuousLocationCleanupRef.current = null;
       currentLocationFixRef.current = null;
       latestCompassHeadingRef.current = null;
       compassSvgRef.current = null;
@@ -558,10 +579,70 @@ export function MapScreen({
     return `<svg width="100" height="100" viewBox="0 0 100 100" style="transform-origin:50px 50px;transform:rotate(${headingDeg}deg)"><defs><radialGradient id="cg" cx="50" cy="50" r="50" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.24" stop-color="${locateColor}" stop-opacity="0"/><stop offset="0.30" stop-color="${locateColor}" stop-opacity="0.55"/><stop offset="1" stop-color="${locateColor}" stop-opacity="0"/></radialGradient></defs><path d="M50 50 L11 18 A50 50 0 0 1 89 18 Z" fill="url(#cg)"/></svg>`;
   }
 
+  function locationArrowHtml(locateColor: string, headingDeg: number): string {
+    const rotation = arrowRotationFromHeading(headingDeg);
+    return `<svg data-heading-arrow="true" width="34" height="34" viewBox="0 0 34 34" style="transform-origin:17px 17px;transform:rotate(${rotation}deg);filter:drop-shadow(0 1px 4px rgba(0,0,0,0.35))"><path d="M17 3 L28 30 L17 24 L6 30 Z" fill="${locateColor}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>`;
+  }
+
+  function locationDotHtml(locateColor: string): string {
+    return `<div style="width:20px;height:20px;border-radius:50%;background:${locateColor};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);box-sizing:content-box;"></div>`;
+  }
+
+  function locationMarkerHtml(locateColor: string): string {
+    if (locationModeRef.current !== "headingUp") return locationDotHtml(locateColor);
+    const heading = latestCompassHeadingRef.current;
+    return locationArrowHtml(locateColor, heading ? heading.headingDeg : 0);
+  }
+
+  function applyMapBearing(heading: CompassHeading) {
+    if (locationModeRef.current !== "headingUp" || !mapContainerRef.current) return;
+    const bearing = mapBearingFromHeading(heading.headingDeg);
+    mapContainerRef.current.style.transformOrigin = "50% 50%";
+    mapContainerRef.current.style.transition = "transform 120ms linear";
+    mapContainerRef.current.style.transform = `rotate(${bearing}deg) scale(1.42)`;
+  }
+
+  function resetMapBearing() {
+    if (!mapContainerRef.current) return;
+    mapContainerRef.current.style.transformOrigin = "50% 50%";
+    mapContainerRef.current.style.transition = "transform 120ms linear";
+    mapContainerRef.current.style.transform = "rotate(0deg)";
+  }
+
+  function setMapDragging(enabled: boolean) {
+    const lMap = mapRef.current as {
+      dragging?: { enable?: () => void; disable?: () => void };
+    } | null;
+    if (enabled) lMap?.dragging?.enable?.();
+    else lMap?.dragging?.disable?.();
+  }
+
+  function updateLocationArrow(heading: CompassHeading) {
+    const markerEl = (locateMarkerRef.current as { getElement?: () => HTMLElement | null } | null)
+      ?.getElement?.()
+      ?.querySelector("[data-heading-arrow]") as SVGElement | null;
+    if (!markerEl) return;
+    markerEl.style.transform = `rotate(${arrowRotationFromHeading(heading.headingDeg)}deg)`;
+  }
+
   function renderCompassHeading(heading: CompassHeading) {
     latestCompassHeadingRef.current = heading;
     const fix = currentLocationFixRef.current;
     if (!fix || !mapRef.current) return;
+    if (locationModeRef.current === "headingUp") {
+      if (compassMarkerRef.current) {
+        import("leaflet").then((L) => {
+          if (!mapRef.current || !compassMarkerRef.current) return;
+          const lMap = mapRef.current as ReturnType<typeof L.map>;
+          lMap.removeLayer(compassMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
+          compassMarkerRef.current = null;
+          compassSvgRef.current = null;
+        });
+      }
+      applyMapBearing(heading);
+      updateLocationArrow(heading);
+      return;
+    }
 
     import("leaflet").then((L) => {
       if (!mapRef.current || currentLocationFixRef.current !== fix) return;
@@ -602,6 +683,106 @@ export function MapScreen({
     });
   }
 
+  function stopContinuousLocationTracking() {
+    continuousLocationCleanupRef.current?.();
+    continuousLocationCleanupRef.current = null;
+  }
+
+  function telegramLocationToFix(loc: TelegramLocationData): LocationFix {
+    return {
+      lat: loc.latitude,
+      lng: loc.longitude,
+      accuracyM:
+        typeof loc.horizontal_accuracy === "number" && Number.isFinite(loc.horizontal_accuracy)
+          ? loc.horizontal_accuracy
+          : null,
+      source: "telegram",
+    };
+  }
+
+  function browserPositionToFix(pos: GeolocationPosition): LocationFix {
+    return {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      accuracyM:
+        typeof pos.coords.accuracy === "number" && Number.isFinite(pos.coords.accuracy)
+          ? pos.coords.accuracy
+          : null,
+      source: "browser",
+    };
+  }
+
+  function startContinuousLocationTracking(lm: TelegramLocationManager | undefined) {
+    stopContinuousLocationTracking();
+
+    if (lm) {
+      const pollTelegramLocation = () => {
+        lm.getLocation((loc) => {
+          if (!loc || locationModeRef.current !== "headingUp") return;
+          applyLocationOnMap(telegramLocationToFix(loc));
+        });
+      };
+      pollTelegramLocation();
+      const id = window.setInterval(pollTelegramLocation, 2000);
+      continuousLocationCleanupRef.current = () => window.clearInterval(id);
+      return;
+    }
+
+    const geo = navigator.geolocation;
+    if (!geo) return;
+
+    if (typeof geo.watchPosition === "function") {
+      const watchId = geo.watchPosition(
+        (pos) => {
+          if (locationModeRef.current !== "headingUp") return;
+          applyLocationOnMap(browserPositionToFix(pos));
+        },
+        () => {},
+        { timeout: 10000, enableHighAccuracy: true, maximumAge: 1000 },
+      );
+      continuousLocationCleanupRef.current = () => geo.clearWatch(watchId);
+      return;
+    }
+
+    const pollBrowserLocation = () => {
+      geo.getCurrentPosition(
+        (pos) => {
+          if (locationModeRef.current !== "headingUp") return;
+          applyLocationOnMap(browserPositionToFix(pos));
+        },
+        () => {},
+        { timeout: 10000, enableHighAccuracy: true, maximumAge: 1000 },
+      );
+    };
+    pollBrowserLocation();
+    const id = window.setInterval(pollBrowserLocation, 2000);
+    continuousLocationCleanupRef.current = () => window.clearInterval(id);
+  }
+
+  function stopHeadingUpMode(options: { recenter?: boolean } = {}) {
+    stopContinuousLocationTracking();
+    setMapDragging(true);
+    resetMapBearing();
+    setLocationMode("idle");
+    const fix = currentLocationFixRef.current;
+    if (fix) applyLocationOnMap(fix, { recenter: options.recenter ?? true });
+  }
+
+  function enableHeadingUpMode(lm: TelegramLocationManager | undefined) {
+    const fix = currentLocationFixRef.current;
+    const heading = latestCompassHeadingRef.current;
+    if (!fix || !heading) {
+      setLocateError("Компас недоступен");
+      return;
+    }
+
+    setLocationMode("headingUp");
+    setMapDragging(false);
+    applyMapBearing(heading);
+    applyLocationOnMap(fix);
+    startContinuousLocationTracking(lm);
+  }
+
   function startCompassTracking() {
     orientationCleanupRef.current?.();
     orientationCleanupRef.current = null;
@@ -639,8 +820,9 @@ export function MapScreen({
     start();
   }
 
-  function applyLocationOnMap(fix: LocationFix) {
+  function applyLocationOnMap(fix: LocationFix, options: { recenter?: boolean } = {}) {
     currentLocationFixRef.current = fix;
+    if (locationModeRef.current === "idle") setLocationMode("centered");
     import("leaflet").then((L) => {
       if (!mapRef.current || currentLocationFixRef.current !== fix) return;
       const lMap = mapRef.current as ReturnType<typeof L.map>;
@@ -678,12 +860,12 @@ export function MapScreen({
       }
 
       // Dot: divIcon (DOM layer) — stays fixed pixel size during zoom animation, unlike circleMarker (SVG layer)
-      const dotHtml = `<div style="width:20px;height:20px;border-radius:50%;background:${locateColor};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.3);box-sizing:content-box;"></div>`;
+      const isHeadingUp = locationModeRef.current === "headingUp";
       const dotIcon = L.divIcon({
-        html: dotHtml,
+        html: locationMarkerHtml(locateColor),
         className: "",
-        iconSize: [26, 26],
-        iconAnchor: [13, 13],
+        iconSize: isHeadingUp ? [34, 34] : [26, 26],
+        iconAnchor: isHeadingUp ? [17, 17] : [13, 13],
       });
       const dotMarker = L.marker([fix.lat, fix.lng], {
         icon: dotIcon,
@@ -692,10 +874,12 @@ export function MapScreen({
       }).addTo(lMap);
       locateMarkerRef.current = dotMarker;
 
-      lMap.setView([fix.lat, fix.lng], 15, {
-        animate: true,
-        duration: 0.4,
-      });
+      if (options.recenter ?? true) {
+        lMap.setView([fix.lat, fix.lng], 15, {
+          animate: true,
+          duration: 0.4,
+        });
+      }
       setLocating(false);
 
       // Compass cone appears only after a real heading event.
@@ -706,11 +890,24 @@ export function MapScreen({
 
   function handleLocate() {
     if (!mapRef.current || locating) return;
-    setLocating(true);
-    setLocateError(null);
 
     const tgWA = getTelegramWebApp();
     const lm = tgWA?.LocationManager;
+
+    if (locationModeRef.current === "headingUp") {
+      stopHeadingUpMode();
+      setLocateError(null);
+      return;
+    }
+
+    if (locationModeRef.current === "centered") {
+      setLocateError(null);
+      enableHeadingUpMode(lm);
+      return;
+    }
+
+    setLocating(true);
+    setLocateError(null);
 
     // Telegram Desktop не имеет LocationManager — геолокация только в мобильном приложении
     if (tgWA && !lm) {
@@ -732,16 +929,7 @@ export function MapScreen({
       const doRequest = () => {
         lm.getLocation((loc) => {
           if (loc) {
-            applyLocationOnMap({
-              lat: loc.latitude,
-              lng: loc.longitude,
-              accuracyM:
-                typeof loc.horizontal_accuracy === "number" &&
-                Number.isFinite(loc.horizontal_accuracy)
-                  ? loc.horizontal_accuracy
-                  : null,
-              source: "telegram",
-            });
+            applyLocationOnMap(telegramLocationToFix(loc));
           } else {
             setLocating(false);
             setLocateError(
@@ -768,15 +956,7 @@ export function MapScreen({
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        applyLocationOnMap({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracyM:
-            typeof pos.coords.accuracy === "number" && Number.isFinite(pos.coords.accuracy)
-              ? pos.coords.accuracy
-              : null,
-          source: "browser",
-        });
+        applyLocationOnMap(browserPositionToFix(pos));
       },
       (err) => {
         setLocating(false);
@@ -994,7 +1174,7 @@ export function MapScreen({
       <div
         ref={mapContainerRef}
         data-testid="leaflet-container"
-        style={{ position: "absolute", inset: 0, zIndex: 0 }}
+        style={{ position: "absolute", inset: 0, zIndex: 0, willChange: "transform" }}
       />
 
       {/* Geolocation error toast */}
@@ -1034,10 +1214,22 @@ export function MapScreen({
           type="button"
           data-testid="locate-me"
           aria-label="Моё местоположение"
+          aria-pressed={locationMode === "headingUp"}
           onClick={handleLocate}
-          style={{ ...zoomBtnBase, ...glassStyle, fontSize: 16 }}
+          style={{
+            ...zoomBtnBase,
+            ...glassStyle,
+            fontSize: 16,
+            ...(locationMode === "headingUp"
+              ? {
+                  background: "var(--brand-primary, #2d5a3d)",
+                  color: "var(--brand-primary-ink, #fff)",
+                  borderColor: "var(--brand-primary, #2d5a3d)",
+                }
+              : null),
+          }}
         >
-          {locating ? "…" : "◎"}
+          {locating ? "…" : locationMode === "headingUp" ? "▲" : "◎"}
         </button>
         <button
           type="button"

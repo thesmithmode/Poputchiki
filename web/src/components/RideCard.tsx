@@ -304,12 +304,12 @@ export function RideCard({
                 style={{
                   marginBottom: 3,
                   fontSize: 10,
-                fontWeight: 700,
-                color: isViewed ? "var(--brand-faint)" : railColor,
-                lineHeight: 1.1,
-                textTransform: "uppercase",
-              }}
-            >
+                  fontWeight: 700,
+                  color: isViewed ? "var(--brand-faint)" : railColor,
+                  lineHeight: 1.1,
+                  textTransform: "uppercase",
+                }}
+              >
                 {dateBadge}
               </div>
             ) : null}

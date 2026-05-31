@@ -68,6 +68,7 @@ export interface TelegramLocationManager {
 
 export interface TelegramWebApp {
   colorScheme: TelegramColorScheme;
+  platform?: string;
   themeParams?: TelegramThemeParams;
   BackButton?: TelegramBackButton;
   MainButton?: TelegramMainButton;

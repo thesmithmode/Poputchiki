@@ -4,16 +4,18 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import * as L from "leaflet";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { TelegramWebApp } from "../src/lib/telegram";
 import { MapScreen } from "../src/screens/MapScreen";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
+const telegramWebApp = vi.hoisted(() => ({ current: undefined as TelegramWebApp | undefined }));
 
 vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock("../src/lib/telegram", () => ({ getTelegramWebApp: () => undefined }));
+vi.mock("../src/lib/telegram", () => ({ getTelegramWebApp: () => telegramWebApp.current }));
 
 vi.mock("../src/hooks/useMe", () => ({
   useMe: vi.fn(() => ({
@@ -49,11 +51,14 @@ vi.mock("leaflet", () => {
     })),
     on: vi.fn(),
     addLayer: vi.fn(),
-    removeLayer: vi.fn(),
+    removeLayer: vi.fn((layer?: { getElement?: () => HTMLElement | null }) => {
+      layer?.getElement?.()?.remove();
+    }),
     invalidateSize: vi.fn(),
     remove: vi.fn(),
     zoomIn: vi.fn(),
     zoomOut: vi.fn(),
+    getZoom: vi.fn(() => 15),
     dragging: {
       disable: vi.fn(),
       enable: vi.fn(),
@@ -66,11 +71,20 @@ vi.mock("leaflet", () => {
   const createMarker = (_coords?: unknown, options?: { icon?: { html?: string } }) => {
     const element = document.createElement("div");
     if (options?.icon?.html) element.innerHTML = options.icon.html;
-    return {
+    const marker: {
+      on: ReturnType<typeof vi.fn>;
+      addTo: ReturnType<typeof vi.fn>;
+      getElement: ReturnType<typeof vi.fn>;
+    } = {
       on: vi.fn().mockReturnThis(),
-      addTo: vi.fn().mockReturnThis(),
+      addTo: vi.fn(),
       getElement: vi.fn(() => element),
     };
+    marker.addTo.mockImplementation(() => {
+      document.querySelector('[data-testid="leaflet-container"]')?.appendChild(element);
+      return marker;
+    });
+    return marker;
   };
   const mockPolyline = {
     addTo: vi.fn().mockReturnThis(),
@@ -171,6 +185,9 @@ describe("MapScreen", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+    telegramWebApp.current = undefined;
+    Object.defineProperty(window, "innerWidth", { value: 1024, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 768, configurable: true });
     mockNavigate.mockReset();
     mockedApiFetch.mockReset();
     mockedUseMyRideRequests.mockReset();
@@ -319,6 +336,14 @@ describe("MapScreen", () => {
 
   it("REGRESSION: second locate tap enables heading-up mode with arrow marker and rotated map", async () => {
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+    Object.defineProperty(window, "innerWidth", { value: 535, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 947, configurable: true });
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     const mockGeolocation = {
       getCurrentPosition: vi.fn((success) =>
@@ -370,6 +395,10 @@ describe("MapScreen", () => {
     await waitFor(() => {
       expect(btn).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByTestId("leaflet-container").style.transform).toContain("rotate(-90deg)");
+      expect(screen.getByTestId("leaflet-viewport").style.transform).not.toContain("rotate(");
+      expect(
+        Number.parseFloat(screen.getByTestId("leaflet-container").style.width),
+      ).toBeGreaterThan(Math.ceil(Math.hypot(535, 947)));
       expect(
         vi.mocked(L.divIcon).mock.calls.some(([options]) => {
           const html = (options as { html?: string } | undefined)?.html;
@@ -380,8 +409,130 @@ describe("MapScreen", () => {
     });
   });
 
+  it("REGRESSION: desktop second locate tap recenters but never enables heading-up", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "tdesktop",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 42),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalledTimes(1));
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    fireEvent.click(btn);
+
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalledTimes(2));
+    expect(btn).toHaveAttribute("aria-pressed", "false");
+    expect(mockGeolocation.watchPosition).not.toHaveBeenCalled();
+    expect(screen.getByTestId("leaflet-container").style.transform).not.toContain("rotate(");
+  });
+
+  it("REGRESSION: heading-up renders compact upright ride markers and updates counter-rotation", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+    mockedApiFetch.mockResolvedValueOnce({ rides: MOCK_RIDES });
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 77),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() =>
+      expect(
+        vi.mocked(L.divIcon).mock.calls.some(([options]) => {
+          const html = (options as { html?: string } | undefined)?.html;
+          return html?.includes("data-ride-card-marker") ?? false;
+        }),
+      ).toBe(true),
+    );
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    fireEvent.click(btn);
+
+    const stage = screen.getByTestId("leaflet-container");
+    await waitFor(() => {
+      const marker = stage.querySelector("[data-compact-ride-marker]") as HTMLElement | null;
+      expect(marker).not.toBeNull();
+      expect(marker?.dataset.mapUpright).toBe("true");
+      expect(marker?.style.transform).toBe("rotate(90deg)");
+    });
+
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 180 }),
+    );
+    await waitFor(() => {
+      const marker = stage.querySelector("[data-compact-ride-marker]") as HTMLElement | null;
+      expect(marker?.style.transform).toBe("rotate(180deg)");
+    });
+
+    fireEvent.click(btn);
+    await waitFor(() => {
+      expect(stage.querySelector("[data-compact-ride-marker]")).toBeNull();
+      expect(stage.querySelector("[data-ride-card-marker]")).not.toBeNull();
+    });
+  });
+
   it("REGRESSION: heading-up follows compass updates and stops browser watch on third tap", async () => {
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     const mockGeolocation = {
       getCurrentPosition: vi.fn((success) =>
@@ -433,6 +584,13 @@ describe("MapScreen", () => {
   });
 
   it("REGRESSION: second locate tap without real compass does not enable heading-up", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     const mockGeolocation = {
       getCurrentPosition: vi.fn((success) =>
@@ -510,6 +668,12 @@ describe("MapScreen", () => {
 
   it("REGRESSION: locate draws a compass cone after a real webkit compass heading", async () => {
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     const mockGeolocation = {
       getCurrentPosition: vi.fn((success) =>
@@ -616,6 +780,12 @@ describe("MapScreen", () => {
 
   it("REGRESSION: selecting a ride turns off heading-up before fitting the route", async () => {
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
     const mockGeolocation = {
       getCurrentPosition: vi.fn((success) =>
         success({

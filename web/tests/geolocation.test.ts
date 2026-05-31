@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   arrowRotationFromHeading,
+  calculateMapOverscanSize,
+  detectDeviceClass,
   extractCompassHeading,
+  getCompassCapability,
   getCurrentLocationFix,
   mapBearingFromHeading,
   normalizeDegrees,
+  uprightRotationFromHeading,
 } from "../src/lib/geolocation";
 import type { TelegramWebApp } from "../src/lib/telegram";
 
@@ -32,6 +36,46 @@ describe("geolocation sensor helpers", () => {
   it("derives heading-up map and arrow rotations from compass heading", () => {
     expect(mapBearingFromHeading(90)).toBe(-90);
     expect(arrowRotationFromHeading(90)).toBe(90);
+    expect(uprightRotationFromHeading(90)).toBe(90);
+  });
+
+  it("marks Telegram Desktop as ineligible for heading-up compass mode", () => {
+    expect(
+      getCompassCapability({
+        platform: "tdesktop",
+        maxTouchPoints: 0,
+        hasTouchEvent: false,
+        hasDeviceOrientation: true,
+      }),
+    ).toEqual({ eligible: false, reason: "desktop" });
+  });
+
+  it("keeps tablets eligible by sensors instead of viewport width", () => {
+    expect(
+      detectDeviceClass({
+        platform: "ios",
+        maxTouchPoints: 5,
+        hasTouchEvent: true,
+        hasDeviceOrientation: true,
+        userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15",
+      }),
+    ).toBe("mobileOrTablet");
+    expect(
+      getCompassCapability({
+        platform: "ios",
+        maxTouchPoints: 5,
+        hasTouchEvent: true,
+        hasDeviceOrientation: true,
+      }),
+    ).toEqual({ eligible: true });
+  });
+
+  it("computes a rotated map stage large enough for phone and tablet viewports", () => {
+    const phone = calculateMapOverscanSize(535, 947);
+    const tabletLandscape = calculateMapOverscanSize(1366, 1024);
+
+    expect(phone).toBeGreaterThan(Math.ceil(Math.hypot(535, 947)));
+    expect(tabletLandscape).toBeGreaterThan(Math.ceil(Math.hypot(1366, 1024)));
   });
 
   it("uses iOS webkitCompassHeading as the real compass heading", () => {

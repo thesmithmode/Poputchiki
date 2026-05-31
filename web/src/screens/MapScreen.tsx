@@ -15,8 +15,11 @@ import {
   type CompassHeading,
   type LocationFix,
   arrowRotationFromHeading,
+  calculateMapOverscanSize,
   extractCompassHeading,
+  getCompassCapability,
   mapBearingFromHeading,
+  uprightRotationFromHeading,
 } from "../lib/geolocation";
 import {
   type RideCardState,
@@ -133,7 +136,7 @@ function makeRideMarkerHtml(ride: Ride, cardState: RideCardState): string {
   const dateLine = dl
     ? `<div style="font-size:9px;font-weight:600;color:#2d5a3d;line-height:1;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">${escapeHtml(dl)}</div>`
     : "";
-  return `<div style="position:relative;background:${cardBg};border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:${boxShadow};cursor:pointer;border:1px solid ${borderColor};white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:var(--brand-text,#0e1410);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${cardBg}"></div></div>`;
+  return `<div data-ride-card-marker="true" style="position:relative;background:${cardBg};border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:${boxShadow};cursor:pointer;border:1px solid ${borderColor};white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:var(--brand-text,#0e1410);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${cardBg}"></div></div>`;
 }
 
 function makeRideGroupMarkerHtml(rides: Ride[]): string {
@@ -144,7 +147,24 @@ function makeRideGroupMarkerHtml(rides: Ride[]): string {
   const firstTime = firstDeparture ? formatTime(new Date(firstDeparture).toISOString()) : "";
   const label = `${rides.length} ${pluralTrip(rides.length)}`;
   const subLabel = `${driverCount} ${pluralDriver(driverCount)}${firstTime ? ` · с ${firstTime}` : ""}`;
-  return `<div style="position:relative;background:var(--brand-primary,#2d5a3d);border-radius:12px;padding:7px 10px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 3px 14px rgba(0,0,0,.28);cursor:pointer;border:2px solid #fff;white-space:nowrap;max-width:190px;color:var(--brand-primary-ink,#fff)"><div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${rides.length}</div><div style="min-width:0;overflow:hidden"><div style="font-size:12px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(label)}</div><div style="font-size:10px;font-weight:600;opacity:.86;line-height:1.25;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(subLabel)}</div></div><div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid var(--brand-primary,#2d5a3d)"></div></div>`;
+  return `<div data-ride-group-marker="true" style="position:relative;background:var(--brand-primary,#2d5a3d);border-radius:12px;padding:7px 10px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 3px 14px rgba(0,0,0,.28);cursor:pointer;border:2px solid #fff;white-space:nowrap;max-width:190px;color:var(--brand-primary-ink,#fff)"><div style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;flex-shrink:0">${rides.length}</div><div style="min-width:0;overflow:hidden"><div style="font-size:12px;font-weight:800;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(label)}</div><div style="font-size:10px;font-weight:600;opacity:.86;line-height:1.25;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(subLabel)}</div></div><div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:6px solid var(--brand-primary,#2d5a3d)"></div></div>`;
+}
+
+function makeCompactRideMarkerHtml(
+  ride: Ride,
+  cardState: RideCardState,
+  headingDeg: number,
+): string {
+  const borderColor = getRideCardBorderColor(cardState) ?? "#fff";
+  const bg = cardState === "default" ? "var(--brand-primary,#2d5a3d)" : getRideCardBg(cardState);
+  const rotation = uprightRotationFromHeading(headingDeg);
+  const time = escapeHtml(formatTime(ride.departure_at));
+  return `<div data-map-upright="true" data-compact-ride-marker="true" style="width:46px;height:46px;transform-origin:23px 23px;transform:rotate(${rotation}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 7px rgba(0,0,0,.28))"><div style="width:38px;height:38px;border-radius:50% 50% 50% 10px;transform:rotate(-45deg);background:${bg};border:2px solid ${borderColor};display:flex;align-items:center;justify-content:center;color:var(--brand-primary-ink,#fff)"><span style="transform:rotate(45deg);font-size:10px;font-weight:800;line-height:1">${time}</span></div></div>`;
+}
+
+function makeCompactRideGroupMarkerHtml(count: number, headingDeg: number): string {
+  const rotation = uprightRotationFromHeading(headingDeg);
+  return `<div data-map-upright="true" data-compact-group-marker="true" style="width:48px;height:48px;transform-origin:24px 24px;transform:rotate(${rotation}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))"><div style="width:40px;height:40px;border-radius:50%;background:var(--brand-primary,#2d5a3d);border:2px solid #fff;color:var(--brand-primary-ink,#fff);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900">${count}</div></div>`;
 }
 
 function useDarkMode() {
@@ -172,6 +192,7 @@ export function MapScreen({
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
+  const mapViewportRef = useRef<HTMLDivElement>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<unknown>(null);
   const tileLayerRef = useRef<unknown>(null);
@@ -445,9 +466,8 @@ export function MapScreen({
       // Re-invalidate when Telegram resizes the viewport (common on PC during animation)
       tg?.onEvent?.("viewportChanged", () => {
         if (mapRef.current) {
-          (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
-            animate: false,
-          });
+          applyMapStageLayout();
+          invalidateMapStage(locationModeRef.current === "headingUp");
         }
       });
 
@@ -517,7 +537,7 @@ export function MapScreen({
       // orientation change, PC window resize) without relying on fixed timeouts.
       let prevW = 0;
       let prevH = 0;
-      if (typeof ResizeObserver !== "undefined" && mapContainerRef.current) {
+      if (typeof ResizeObserver !== "undefined" && mapViewportRef.current) {
         ro = new ResizeObserver((entries) => {
           const entry = entries[0];
           if (!entry || destroyed) return;
@@ -526,17 +546,17 @@ export function MapScreen({
           prevW = width;
           prevH = height;
           if (mapRef.current) {
-            (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
-              animate: false,
-            });
+            applyMapStageLayout();
+            invalidateMapStage(locationModeRef.current === "headingUp");
           }
         });
-        ro.observe(mapContainerRef.current);
+        ro.observe(mapViewportRef.current);
       }
 
       // Start loading tiles + data, but keep overlay until 600ms (Telegram expand animation).
       setTimeout(() => {
         if (!destroyed) {
+          applyMapStageLayout();
           map.invalidateSize();
           loadRides();
         }
@@ -545,6 +565,7 @@ export function MapScreen({
       // 600ms: Telegram has finished expanding → map is correctly sized → safe to hide overlay.
       setTimeout(() => {
         if (!destroyed && mapRef.current) {
+          applyMapStageLayout();
           (mapRef.current as { invalidateSize: (o: unknown) => void }).invalidateSize({
             animate: false,
           });
@@ -594,19 +615,63 @@ export function MapScreen({
     return locationArrowHtml(locateColor, heading ? heading.headingDeg : 0);
   }
 
+  function getMapViewportSize(): { width: number; height: number } {
+    const viewport = mapViewportRef.current;
+    const rect = viewport?.getBoundingClientRect();
+    const width = rect?.width || viewport?.clientWidth || window.innerWidth || 0;
+    const height = rect?.height || viewport?.clientHeight || window.innerHeight || 0;
+    return { width, height };
+  }
+
+  function applyMapStageLayout() {
+    const stage = mapContainerRef.current;
+    if (!stage) return;
+
+    if (locationModeRef.current !== "headingUp") {
+      stage.style.width = "100%";
+      stage.style.height = "100%";
+      stage.style.left = "0px";
+      stage.style.top = "0px";
+      return;
+    }
+
+    const { width, height } = getMapViewportSize();
+    const stageSize = calculateMapOverscanSize(width, height);
+    stage.style.width = `${stageSize}px`;
+    stage.style.height = `${stageSize}px`;
+    stage.style.left = `${(width - stageSize) / 2}px`;
+    stage.style.top = `${(height - stageSize) / 2}px`;
+  }
+
+  function invalidateMapStage(recenter = false) {
+    const lMap = mapRef.current as {
+      invalidateSize?: (options: unknown) => void;
+      getZoom?: () => number;
+      setView?: (coords: [number, number], zoom: number, options: unknown) => void;
+    } | null;
+    lMap?.invalidateSize?.({ animate: false });
+    const fix = currentLocationFixRef.current;
+    if (recenter && fix) {
+      lMap?.setView?.([fix.lat, fix.lng], lMap.getZoom?.() ?? 15, { animate: false });
+    }
+  }
+
   function applyMapBearing(heading: CompassHeading) {
     if (locationModeRef.current !== "headingUp" || !mapContainerRef.current) return;
     const bearing = mapBearingFromHeading(heading.headingDeg);
+    applyMapStageLayout();
     mapContainerRef.current.style.transformOrigin = "50% 50%";
     mapContainerRef.current.style.transition = "transform 120ms linear";
-    mapContainerRef.current.style.transform = `rotate(${bearing}deg) scale(1.42)`;
+    mapContainerRef.current.style.transform = `rotate(${bearing}deg)`;
   }
 
   function resetMapBearing() {
     if (!mapContainerRef.current) return;
+    applyMapStageLayout();
     mapContainerRef.current.style.transformOrigin = "50% 50%";
     mapContainerRef.current.style.transition = "transform 120ms linear";
     mapContainerRef.current.style.transform = "rotate(0deg)";
+    invalidateMapStage(false);
   }
 
   function setMapDragging(enabled: boolean) {
@@ -625,6 +690,15 @@ export function MapScreen({
     markerEl.style.transform = `rotate(${arrowRotationFromHeading(heading.headingDeg)}deg)`;
   }
 
+  function updateUprightMarkerRotation(heading: CompassHeading) {
+    const rotation = uprightRotationFromHeading(heading.headingDeg);
+    const uprightMarkers =
+      mapContainerRef.current?.querySelectorAll<HTMLElement>("[data-map-upright]") ?? [];
+    for (const el of uprightMarkers) {
+      el.style.transform = `rotate(${rotation}deg)`;
+    }
+  }
+
   function renderCompassHeading(heading: CompassHeading) {
     latestCompassHeadingRef.current = heading;
     const fix = currentLocationFixRef.current;
@@ -641,6 +715,7 @@ export function MapScreen({
       }
       applyMapBearing(heading);
       updateLocationArrow(heading);
+      updateUprightMarkerRotation(heading);
       return;
     }
 
@@ -759,13 +834,22 @@ export function MapScreen({
     continuousLocationCleanupRef.current = () => window.clearInterval(id);
   }
 
+  function rerenderRideMarkers() {
+    if (!mapRef.current) return;
+    import("leaflet").then((L) => {
+      if (!mapRef.current || selectedRef.current) return;
+      renderMarkers(mapRef.current, L, rides);
+    });
+  }
+
   function stopHeadingUpMode(options: { recenter?: boolean } = {}) {
     stopContinuousLocationTracking();
     setMapDragging(true);
-    resetMapBearing();
     setLocationMode("idle");
+    resetMapBearing();
     const fix = currentLocationFixRef.current;
     if (fix) applyLocationOnMap(fix, { recenter: options.recenter ?? true });
+    rerenderRideMarkers();
   }
 
   function enableHeadingUpMode(lm: TelegramLocationManager | undefined) {
@@ -779,7 +863,9 @@ export function MapScreen({
     setLocationMode("headingUp");
     setMapDragging(false);
     applyMapBearing(heading);
+    invalidateMapStage(true);
     applyLocationOnMap(fix);
+    rerenderRideMarkers();
     const trackingStartId = window.setTimeout(() => {
       if (locationModeRef.current === "headingUp") {
         startContinuousLocationTracking(lm);
@@ -794,6 +880,7 @@ export function MapScreen({
     latestCompassHeadingRef.current = null;
     compassSvgRef.current = null;
 
+    if (!getCompassCapability().eligible) return;
     if (typeof DeviceOrientationEvent === "undefined") return;
 
     const start = () => {
@@ -906,16 +993,23 @@ export function MapScreen({
     }
 
     if (locationModeRef.current === "centered") {
-      setLocateError(null);
-      enableHeadingUpMode(lm);
-      return;
+      const capability = getCompassCapability();
+      if (capability.eligible) {
+        setLocateError(null);
+        if (latestCompassHeadingRef.current) {
+          enableHeadingUpMode(lm);
+        } else {
+          setLocateError("Компас недоступен");
+        }
+        return;
+      }
     }
 
     setLocating(true);
     setLocateError(null);
 
     // Telegram Desktop не имеет LocationManager — геолокация только в мобильном приложении
-    if (tgWA && !lm) {
+    if (tgWA && !lm && !navigator.geolocation) {
       setLocating(false);
       setLocateError("Геолокация доступна только в мобильном Telegram");
       return;
@@ -927,7 +1021,7 @@ export function MapScreen({
       return;
     }
 
-    startCompassTracking();
+    if (getCompassCapability().eligible) startCompassTracking();
 
     if (lm) {
       // Telegram LocationManager API (Bot API 8.0+)
@@ -982,6 +1076,8 @@ export function MapScreen({
 
     clearRideMarkers(lMap);
 
+    const isHeadingUp = locationModeRef.current === "headingUp";
+    const headingDeg = latestCompassHeadingRef.current?.headingDeg ?? 0;
     const zoom = (lMap as unknown as { getZoom?: () => number }).getZoom?.() ?? DEFAULT_ZOOM;
     const groupRadiusPx = Math.max(24, 80 - Math.max(0, zoom - DEFAULT_ZOOM) * 8);
     const toPoint = (ride: Ride): { x: number; y: number } => {
@@ -1025,9 +1121,11 @@ export function MapScreen({
       }
       const icon = L.divIcon({
         className: "",
-        html: makeRideGroupMarkerHtml(group.rides),
-        iconSize: [142, 52],
-        iconAnchor: [71, 58],
+        html: isHeadingUp
+          ? makeCompactRideGroupMarkerHtml(group.rides.length, headingDeg)
+          : makeRideGroupMarkerHtml(group.rides),
+        iconSize: isHeadingUp ? [48, 48] : [142, 52],
+        iconAnchor: isHeadingUp ? [24, 48] : [71, 58],
       });
       const marker = L.marker([group.lat, group.lng], { icon }).addTo(lMap);
       marker.on("click", () => {
@@ -1081,9 +1179,11 @@ export function MapScreen({
           const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
           const icon = L.divIcon({
             className: "",
-            html: makeRideMarkerHtml(ride, cardState),
-            iconSize: [134, 46],
-            iconAnchor: [67, 51],
+            html: isHeadingUp
+              ? makeCompactRideMarkerHtml(ride, cardState, headingDeg)
+              : makeRideMarkerHtml(ride, cardState),
+            iconSize: isHeadingUp ? [46, 46] : [134, 46],
+            iconAnchor: isHeadingUp ? [23, 46] : [67, 51],
           });
           const marker = L.marker([ride.from_lat, ride.from_lng], { icon }).addTo(lMap);
           marker.on("click", () => setSelected(ride));
@@ -1097,9 +1197,11 @@ export function MapScreen({
         const cardState = getRideCardState(ride, myUserId, requestMap, viewedRides);
         const icon = L.divIcon({
           className: "",
-          html: makeRideMarkerHtml(ride, cardState),
-          iconSize: [134, 46],
-          iconAnchor: [67, 51],
+          html: isHeadingUp
+            ? makeCompactRideMarkerHtml(ride, cardState, headingDeg)
+            : makeRideMarkerHtml(ride, cardState),
+          iconSize: isHeadingUp ? [46, 46] : [134, 46],
+          iconAnchor: isHeadingUp ? [23, 46] : [67, 51],
         });
         const marker = L.marker([ride.from_lat, ride.from_lng], { icon }).addTo(lMap);
         marker.on("click", () => setSelected(ride));
@@ -1177,10 +1279,23 @@ export function MapScreen({
       )}
 
       <div
-        ref={mapContainerRef}
-        data-testid="leaflet-container"
-        style={{ position: "absolute", inset: 0, zIndex: 0, willChange: "transform" }}
-      />
+        ref={mapViewportRef}
+        data-testid="leaflet-viewport"
+        style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}
+      >
+        <div
+          ref={mapContainerRef}
+          data-testid="leaflet-container"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            willChange: "transform",
+          }}
+        />
+      </div>
 
       {/* Geolocation error toast */}
       {locateError && (

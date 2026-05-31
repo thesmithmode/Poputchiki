@@ -346,7 +346,9 @@ describe("MapScreen", () => {
         super(type);
         this.alpha = init.alpha ?? null;
         this.absolute = init.absolute ?? false;
-        this.webkitCompassHeading = init.webkitCompassHeading;
+        if (init.webkitCompassHeading !== undefined) {
+          this.webkitCompassHeading = init.webkitCompassHeading;
+        }
       }
     }
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);

@@ -573,7 +573,7 @@ export function MapScreen({
         return;
       }
       if (compassMarkerRef.current) {
-        lMap.removeLayer(compassMarkerRef.current);
+        lMap.removeLayer(compassMarkerRef.current as Parameters<typeof lMap.removeLayer>[0]);
         compassMarkerRef.current = null;
       }
 

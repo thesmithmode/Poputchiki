@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAuthRouter } from "../../../src/auth/authRouter";
+import { syncTelegramAvatar } from "../../../src/users/avatarCache";
 import { readJson } from "../../helpers/json";
 
 vi.mock("../../../src/auth/verifyInitData", () => ({
@@ -10,6 +11,10 @@ vi.mock("../../../src/auth/verifyInitData", () => ({
   TelegramAuthError: class extends Error {
     reason = "test";
   },
+}));
+
+vi.mock("../../../src/users/avatarCache", () => ({
+  syncTelegramAvatar: vi.fn(() => Promise.resolve()),
 }));
 
 vi.stubEnv("BOT_TOKEN", "1234567890:ABCDEFGHIJKLMNabcdefghijklmn123456");
@@ -81,5 +86,16 @@ describe("POST /auth/telegram — response body содержит профиль 
     expect(body.user.display_name.length).toBeGreaterThan(0);
     expect(body.user.is_banned).toBe(false);
     expect(body.user.onboarded).toBe(false);
+  });
+
+  it("запускает best-effort синхронизацию Telegram-аватара при логине", async () => {
+    vi.mocked(syncTelegramAvatar).mockClear();
+    const res = await createAuthRouter(makeSql()).request("/telegram", REQUEST_OPTS);
+    expect(res.status).toBe(200);
+    expect(syncTelegramAvatar).toHaveBeenCalledWith(
+      expect.anything(),
+      "aaaaaaaa-0000-4000-a000-000000000001",
+      99999,
+    );
   });
 });

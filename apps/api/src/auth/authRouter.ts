@@ -10,6 +10,7 @@ import {
   verifySessionBinding,
 } from "../lib/cookie";
 import { logger } from "../lib/logger";
+import { syncTelegramAvatar } from "../users/avatarCache";
 import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 
 const ACCESS_TTL = 15 * 60; // 15 минут: короткое окно компрометации, refresh transparent для UX
@@ -111,6 +112,10 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     if (!authUser) {
       return c.json({ error: "replay" }, 401);
     }
+
+    await syncTelegramAvatar(sql, authUser.id, tgUser.id).catch((err) => {
+      logger.warn({ event: "auth.avatar_sync_failed", uid: authUser?.id, err: String(err) });
+    });
 
     const now = Math.floor(Date.now() / 1000);
     const jwtBase = { sub: String(tgUser.id), uid: authUser.id, role: authUser.role };

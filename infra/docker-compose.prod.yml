@@ -169,6 +169,7 @@ services:
       # старте) запросы пойдут локально. Override через .env при необходимости.
       NOMINATIM_URL: ${NOMINATIM_URL:-http://nominatim:8080}
       OSRM_URL: ${OSRM_URL:-http://osrm:5000}
+      AVATAR_DIR: /app/avatars
     depends_on:
       postgres:
         condition: service_healthy
@@ -180,6 +181,7 @@ services:
         condition: service_healthy
     volumes:
       - /opt/poputchiki/logs:/app/logs
+      - /opt/poputchiki/avatars:/app/avatars
     networks:
       - traefik-public
       - poputchiki-internal
@@ -418,4 +420,3 @@ services:
           # 4g — безопасный предел; после импорта потребление падает до ~400MB.
           # При OOM: wipe nominatim-data volume → fresh import при следующем up.
           memory: 4g
-

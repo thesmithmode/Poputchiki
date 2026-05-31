@@ -79,15 +79,16 @@ describe("RideCard", () => {
     expect(screen.getByText("Откуда")).toBeInTheDocument();
     expect(screen.getByText("Куда")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-route-lines")).toHaveStyle({
-      gridTemplateColumns: "38px minmax(0, 1fr)",
-      gridTemplateRows: "minmax(0, 1fr) 18px minmax(0, 1fr)",
+      gridTemplateColumns: "14px 38px minmax(0, 1fr)",
+      gridTemplateRows: "minmax(44px, auto) 18px minmax(44px, auto)",
     });
   });
 
-  it("renders relative time for hours", () => {
-    const inTwoHours = new Date(Date.now() + 2 * 3600000).toISOString();
+  it("renders departure countdown in two compact lines", () => {
+    const inTwoHours = new Date(Date.now() + 2 * 3600000 + 15 * 60000).toISOString();
     render(<RideCard ride={{ ...mockRide, departure_at: inTwoHours }} />);
-    expect(screen.getByText(/через 2 ч/)).toBeInTheDocument();
+    expect(screen.getByText("до отправления")).toBeInTheDocument();
+    expect(screen.getByText(/2 ч 15 м/)).toBeInTheDocument();
   });
 
   it("marks urgent near departure time in red", () => {
@@ -96,6 +97,7 @@ describe("RideCard", () => {
     expect(screen.getByTestId("ride-card-relative-time")).toHaveStyle({
       color: "var(--brand-danger)",
     });
+    expect(screen.getByText("15 м")).toBeInTheDocument();
   });
 
   it("renders past departure label", () => {
@@ -150,13 +152,14 @@ describe("RideCard", () => {
     expect(card).toHaveStyle({ borderRadius: "12px", padding: "0px" });
     expect(grid).toHaveStyle({
       display: "grid",
-      gridTemplateColumns: "82px 14px minmax(0, 1fr) 50px",
+      gridTemplateColumns: "82px minmax(0, 1fr) 50px",
     });
-    expect(screen.getByTestId("ride-card-route-rail")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-route-body")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-side-meta")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-driver-meta")).toBeInTheDocument();
-    expect(screen.getByTestId("ride-card-chevron")).toBeInTheDocument();
+    expect(screen.queryByTestId("ride-card-chevron")).not.toBeInTheDocument();
+    expect(screen.getByTestId("ride-card-from-dot")).toBeInTheDocument();
+    expect(screen.getByTestId("ride-card-to-dot")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-seats-chip")).toHaveTextContent("2/3");
     expect(screen.getByTestId("ride-card-seats-chip")).toHaveStyle({
       fontSize: "12.5px",

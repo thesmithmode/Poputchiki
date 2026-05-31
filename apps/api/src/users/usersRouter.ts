@@ -8,6 +8,7 @@ import { withIdentity } from "../db/with-identity";
 import { UUID_RE } from "../lib/uuid";
 import { invalidateUserState } from "../middleware/banned-user";
 import type { AppUser } from "../middleware/identity-guard";
+import { deleteAvatarFiles } from "./avatarCache";
 
 const PatchMeInput = z.object({
   display_name: z
@@ -320,6 +321,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     // продолжал бы пропускать юзера. После invalidate следующий запрос с этим access
     // токеном попадёт в SELECT и вернёт 401.
     invalidateUserState(user.id);
+    await deleteAvatarFiles(user.id);
 
     // Notify affected passengers — feed row + TG push
     for (const { passenger_id, ride_id } of affectedPassengers) {

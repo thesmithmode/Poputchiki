@@ -34,6 +34,7 @@ import { createSavedAddressesRouter } from "./saved-addresses/savedAddressesRout
 import { createSupportRouter } from "./support/supportRouter";
 import { createInternalTemplateSubscriptionsRouter } from "./template-subscriptions/internalTemplateSubscriptionsRouter";
 import { createTemplateSubscriptionsRouter } from "./template-subscriptions/templateSubscriptionsRouter";
+import { createAvatarRouter } from "./users/avatarRouter";
 import { createUsersRouter } from "./users/usersRouter";
 
 export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: Dispatcher): Hono {
@@ -73,6 +74,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
     app.route("/api/client-errors", createClientErrorsRouter(sql));
     app.use("/auth/*", authRateLimit(sql, { ipLimit: 10 }));
     app.route("/auth", createAuthRouter(sql));
+    app.route("/api/users", createAvatarRouter(sql));
 
     // Internal endpoint для webhook callback_query — НЕ под /api/* (минует JWT
     // identityGuard). Защита: X-Internal-Secret. Выставляется только внутри

@@ -212,6 +212,7 @@ export function MapScreen({
   const filtersRef = useRef(filters);
   const selectedRef = useRef<Ride | null>(null);
   const ridesRef = useRef<Ride[]>([]);
+  const renderedRidesRef = useRef<Ride[]>([]);
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
   const [selectedRouteDetails, setSelectedRouteDetails] = useState<SelectedRouteDetails | null>();
@@ -523,6 +524,7 @@ export function MapScreen({
           if (!destroyed) {
             const filtered = applyFilters(data.rides, filtersRef.current, undefined, myUserId);
             ridesRef.current = filtered;
+            renderedRidesRef.current = filtered;
             setRides(filtered);
             onRidesCount?.(filtered.length);
             renderMarkers(map, L, filtered);
@@ -853,7 +855,9 @@ export function MapScreen({
     if (!mapRef.current) return;
     import("leaflet").then((L) => {
       if (!mapRef.current || selectedRef.current) return;
-      renderMarkers(mapRef.current, L, ridesRef.current);
+      const rideList = ridesRef.current.length > 0 ? ridesRef.current : renderedRidesRef.current;
+      if (rideList.length === 0) return;
+      renderMarkers(mapRef.current, L, rideList);
     });
   }
 
@@ -864,6 +868,7 @@ export function MapScreen({
     resetMapBearing();
     const fix = currentLocationFixRef.current;
     if (fix) applyLocationOnMap(fix, { recenter: options.recenter ?? true });
+    window.setTimeout(() => rerenderRideMarkers(), 0);
   }
 
   function enableHeadingUpMode(lm: TelegramLocationManager | undefined) {
@@ -879,6 +884,7 @@ export function MapScreen({
     applyMapBearing(heading);
     invalidateMapStage(true);
     applyLocationOnMap(fix);
+    window.setTimeout(() => rerenderRideMarkers(), 0);
     const trackingStartId = window.setTimeout(() => {
       if (locationModeRef.current === "headingUp") {
         startContinuousLocationTracking(lm);

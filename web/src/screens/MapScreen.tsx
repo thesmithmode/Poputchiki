@@ -118,7 +118,7 @@ function makeRideMarkerHtml(ride: Ride, cardState: RideCardState): string {
   const initials = escapeHtml(getInitials(ride.driver_display_name));
   const avatarColor = getAvatarColor(ride.driver_id);
   const cardBg = getRideCardBg(cardState);
-  const borderColor = getRideCardBorderColor(cardState) ?? "rgba(0,0,0,.08)";
+  const borderColor = getRideCardBorderColor(cardState) ?? "var(--brand-line,rgba(0,0,0,.08))";
   const boxShadow =
     cardState === "default"
       ? "0 2px 10px rgba(0,0,0,.22)"
@@ -130,11 +130,11 @@ function makeRideMarkerHtml(ride: Ride, cardState: RideCardState): string {
   const hasRating = ride.driver_reviews_count != null && ride.driver_reviews_count > 0;
   const ratingStr = hasRating ? `★ ${Number(ride.driver_avg_stars).toFixed(1)}` : "новый";
   const subLine = firstName
-    ? `<div style="font-size:10px;color:#6b716e;line-height:1.3;margin-top:1px;overflow:hidden;text-overflow:ellipsis">${ratingStr} · ${firstName}</div>`
+    ? `<div style="font-size:10px;color:var(--brand-sub,#6b716e);line-height:1.3;margin-top:1px;overflow:hidden;text-overflow:ellipsis">${ratingStr} · ${firstName}</div>`
     : "";
   const dl = markerDateLabel(ride.departure_at);
   const dateLine = dl
-    ? `<div style="font-size:9px;font-weight:600;color:#2d5a3d;line-height:1;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">${escapeHtml(dl)}</div>`
+    ? `<div style="font-size:9px;font-weight:600;color:var(--brand-primary,#2d5a3d);line-height:1;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">${escapeHtml(dl)}</div>`
     : "";
   return `<div data-ride-card-marker="true" style="position:relative;background:${cardBg};border-radius:10px;padding:5px 8px;display:inline-flex;align-items:center;gap:6px;box-shadow:${boxShadow};cursor:pointer;border:1px solid ${borderColor};white-space:nowrap;max-width:180px"><div style="width:28px;height:28px;border-radius:50%;background:${avatarColor};color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div><div style="min-width:0;overflow:hidden">${dateLine}<div style="font-size:12px;font-weight:700;color:var(--brand-text,#0e1410);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${time}&nbsp;&nbsp;${price}</div>${subLine}</div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:5px solid ${cardBg}"></div></div>`;
 }
@@ -155,8 +155,8 @@ function makeCompactRideMarkerHtml(
   cardState: RideCardState,
   headingDeg: number,
 ): string {
-  const borderColor = getRideCardBorderColor(cardState) ?? "#fff";
-  const bg = cardState === "default" ? "var(--brand-primary,#2d5a3d)" : getRideCardBg(cardState);
+  const bg = getRideCardBorderColor(cardState) ?? "var(--brand-primary,#2d5a3d)";
+  const borderColor = "var(--brand-surface,#fff)";
   const rotation = uprightRotationFromHeading(headingDeg);
   const time = escapeHtml(formatTime(ride.departure_at));
   return `<div data-map-upright="true" data-compact-ride-marker="true" style="width:46px;height:46px;transform-origin:23px 23px;transform:rotate(${rotation}deg);display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 2px 7px rgba(0,0,0,.28))"><div style="width:38px;height:38px;border-radius:50% 50% 50% 10px;transform:rotate(-45deg);background:${bg};border:2px solid ${borderColor};display:flex;align-items:center;justify-content:center;color:var(--brand-primary-ink,#fff)"><span style="transform:rotate(45deg);font-size:10px;font-weight:800;line-height:1">${time}</span></div></div>`;

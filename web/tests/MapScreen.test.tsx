@@ -181,10 +181,19 @@ function renderScreen() {
   );
 }
 
+function findDivIconHtml(fragment: string): string | null {
+  const call = vi.mocked(L.divIcon).mock.calls.find(([options]) => {
+    const html = (options as { html?: string } | undefined)?.html;
+    return html?.includes(fragment) ?? false;
+  });
+  return (call?.[0] as { html?: string } | undefined)?.html ?? null;
+}
+
 describe("MapScreen", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+    document.documentElement.classList.remove("dark");
     telegramWebApp.current = undefined;
     Object.defineProperty(window, "innerWidth", { value: 1024, configurable: true });
     Object.defineProperty(window, "innerHeight", { value: 768, configurable: true });
@@ -759,6 +768,78 @@ describe("MapScreen", () => {
           html: expect.stringContaining("background:var(--ride-applied-soft)"),
         }),
       );
+    });
+  });
+
+  it("REGRESSION: regular map marker text uses theme-aware colors instead of light-only hardcoded colors", async () => {
+    mockedApiFetch.mockResolvedValueOnce({
+      rides: [
+        {
+          ...MOCK_RIDES[0],
+          departure_at: new Date(Date.now() + 26 * 3_600_000).toISOString(),
+          driver_display_name: "Driver Dark",
+          driver_reviews_count: 0,
+        },
+      ],
+    });
+
+    renderScreen();
+
+    await waitFor(() => {
+      const html = findDivIconHtml("data-ride-card-marker");
+      expect(html).toContain("color:var(--brand-sub");
+      expect(html).toContain("color:var(--brand-primary");
+      expect(html).not.toContain("color:#6b716e");
+      expect(html).not.toContain("color:#2d5a3d");
+    });
+  });
+
+  it("REGRESSION: compact heading-up status markers use solid readable state fills", async () => {
+    document.documentElement.classList.add("dark");
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "dark",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+    mockedUseMyRideRequests.mockReturnValue(new Map([["ride-1", "pending"]]));
+    mockedApiFetch.mockResolvedValueOnce({ rides: MOCK_RIDES });
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 77),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(findDivIconHtml("data-ride-card-marker")).not.toBeNull());
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    fireEvent.click(btn);
+
+    await waitFor(() => {
+      const html = findDivIconHtml("data-compact-ride-marker");
+      expect(html).toContain("background:var(--ride-applied)");
+      expect(html).not.toContain("background:var(--ride-applied-soft)");
+      expect(html).toContain("color:var(--brand-primary-ink");
     });
   });
 

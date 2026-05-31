@@ -53,7 +53,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   syncTelegramAvatarMock.mockReset();
-  if (oldAvatarDir === undefined) process.env.AVATAR_DIR = undefined;
+  if (oldAvatarDir === undefined) delete process.env.AVATAR_DIR;
   else process.env.AVATAR_DIR = oldAvatarDir;
   await rm(dir, { recursive: true, force: true });
 });

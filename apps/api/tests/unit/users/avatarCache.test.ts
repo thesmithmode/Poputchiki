@@ -60,11 +60,11 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.unstubAllGlobals();
-  if (oldAvatarDir === undefined) process.env.AVATAR_DIR = undefined;
+  if (oldAvatarDir === undefined) delete process.env.AVATAR_DIR;
   else process.env.AVATAR_DIR = oldAvatarDir;
-  if (oldBotToken === undefined) process.env.BOT_TOKEN = undefined;
+  if (oldBotToken === undefined) delete process.env.BOT_TOKEN;
   else process.env.BOT_TOKEN = oldBotToken;
-  if (oldDomain === undefined) process.env.DOMAIN = undefined;
+  if (oldDomain === undefined) delete process.env.DOMAIN;
   else process.env.DOMAIN = oldDomain;
   await rm(dir, { recursive: true, force: true });
 });
@@ -81,13 +81,13 @@ describe("syncTelegramAvatar", () => {
     expect(buildAvatarUrl(USER_ID, "file unique/id")).toBe(
       `https://api.example.test/api/users/${USER_ID}/avatar?v=file%20unique%2Fid`,
     );
-    process.env.DOMAIN = undefined;
+    delete process.env.DOMAIN;
     expect(buildAvatarUrl(USER_ID, "u1")).toBe(`/api/users/${USER_ID}/avatar?v=u1`);
   });
 
   it("returns early without Telegram token, finite tg id, or user row", async () => {
     const { sql: withoutTokenSql, tx: withoutTokenTx } = makeSql([]);
-    process.env.BOT_TOKEN = undefined;
+    delete process.env.BOT_TOKEN;
     await syncTelegramAvatar(withoutTokenSql as never, USER_ID, TG_ID);
     expect(withoutTokenTx).not.toHaveBeenCalled();
 
@@ -104,12 +104,7 @@ describe("syncTelegramAvatar", () => {
   });
 
   it("downloads the smallest useful Telegram profile photo and updates metadata", async () => {
-    const { sql, tx } = makeSql([
-      [],
-      [userRow()],
-      [],
-      [],
-    ]);
+    const { sql, tx } = makeSql([[], [userRow()], [], []]);
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -217,11 +212,7 @@ describe("syncTelegramAvatar", () => {
   });
 
   it("updates checked_at without storing a file when Telegram cannot resolve a file path", async () => {
-    const { sql, tx } = makeSql([
-      [],
-      [userRow()],
-      [],
-    ]);
+    const { sql, tx } = makeSql([[], [userRow()], []]);
     vi.stubGlobal(
       "fetch",
       vi
@@ -282,11 +273,7 @@ describe("syncTelegramAvatar", () => {
   });
 
   it("keeps old metadata checked when Telegram file download is unavailable", async () => {
-    const { sql, tx } = makeSql([
-      [],
-      [userRow()],
-      [],
-    ]);
+    const { sql, tx } = makeSql([[], [userRow()], []]);
     vi.stubGlobal(
       "fetch",
       vi

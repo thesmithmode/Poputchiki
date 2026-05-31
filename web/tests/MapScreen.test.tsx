@@ -612,6 +612,68 @@ describe("MapScreen", () => {
     });
   });
 
+  it("REGRESSION: heading-up crosses north using the shortest rotation path", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 92),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 350 }),
+    );
+    fireEvent.click(btn);
+    await waitFor(() => expect(btn).toHaveAttribute("aria-pressed", "true"));
+
+    const stage = screen.getByTestId("leaflet-container");
+    await waitFor(() => {
+      expect(stage.style.transform).toBe("rotate(10deg)");
+    });
+
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 359 }),
+    );
+    await waitFor(() => {
+      expect(stage.style.transform).toBe("rotate(1deg)");
+    });
+
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 0 }),
+    );
+    await waitFor(() => {
+      expect(stage.style.transform).toBe("rotate(0deg)");
+    });
+  });
+
   it("REGRESSION: second locate tap without real compass does not enable heading-up", async () => {
     vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
     telegramWebApp.current = {

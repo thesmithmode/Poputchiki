@@ -30,6 +30,7 @@ describe("stripRide", () => {
       driver_tg_id: 12345,
       driver_avg_stars: 4.5,
       driver_reviews_count: 3,
+      driver_likes_received_count: 128,
     };
     const result = stripRide(input);
     expect(result).toEqual(input);

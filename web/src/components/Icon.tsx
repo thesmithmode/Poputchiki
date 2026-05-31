@@ -341,6 +341,16 @@ export function Icon({ name, size = 22, stroke = 1.8, style = {} }: IconProps) {
           <path d="M7 19v2M17 19v2" />
         </svg>
       );
+    case "car":
+      return (
+        <svg {...common}>
+          <path d="M5 12l1.5-4.5A2 2 0 0 1 8.4 6h7.2a2 2 0 0 1 1.9 1.5L19 12" />
+          <path d="M4 12h16v5H4v-5z" />
+          <circle cx="7" cy="17" r="1.5" />
+          <circle cx="17" cy="17" r="1.5" />
+          <path d="M7 10h10" />
+        </svg>
+      );
     default:
       return null;
   }

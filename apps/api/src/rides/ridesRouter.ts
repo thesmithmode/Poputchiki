@@ -160,7 +160,8 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
                u.avatar_url             AS driver_photo_url,
                to_jsonb(u.tg_id)        AS driver_tg_id,
                u.driver_avg_stars       AS driver_avg_stars,
-               u.driver_reviews_count   AS driver_reviews_count
+               u.driver_reviews_count   AS driver_reviews_count,
+               u.likes_received_count   AS driver_likes_received_count
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         WHERE r.status = 'active'
@@ -244,7 +245,8 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
                  u.avatar_url             AS driver_photo_url,
                  to_jsonb(u.tg_id)        AS driver_tg_id,
                  u.driver_avg_stars       AS driver_avg_stars,
-                 u.driver_reviews_count   AS driver_reviews_count
+                 u.driver_reviews_count   AS driver_reviews_count,
+                 u.likes_received_count   AS driver_likes_received_count
           FROM rides r
           JOIN users u ON r.driver_id = u.id
           WHERE r.driver_id = app.current_user_id()
@@ -264,7 +266,8 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
                u.avatar_url             AS driver_photo_url,
                to_jsonb(u.tg_id)        AS driver_tg_id,
                u.driver_avg_stars       AS driver_avg_stars,
-               u.driver_reviews_count   AS driver_reviews_count
+               u.driver_reviews_count   AS driver_reviews_count,
+               u.likes_received_count   AS driver_likes_received_count
         FROM rides r
         JOIN users u ON r.driver_id = u.id
         WHERE r.id IN (

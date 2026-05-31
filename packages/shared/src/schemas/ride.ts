@@ -79,6 +79,7 @@ export const RideDTO = z.object({
   driver_tg_id: z.number().int().nullable().optional(),
   driver_avg_stars: z.number().nullable().optional(),
   driver_reviews_count: z.number().int().min(0).nullable().optional(),
+  driver_likes_received_count: z.number().int().min(0).nullable().optional(),
   route_polyline: z.string().nullable().optional(),
   route_distance_m: z.number().int().nullable().optional(),
   route_duration_s: z.number().int().nullable().optional(),
@@ -116,6 +117,7 @@ const RIDE_LIST_KEYS = new Set([
   "driver_tg_id",
   "driver_avg_stars",
   "driver_reviews_count",
+  "driver_likes_received_count",
 ]);
 
 const RIDE_DETAIL_KEYS = new Set([

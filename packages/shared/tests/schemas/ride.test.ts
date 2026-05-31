@@ -140,6 +140,7 @@ describe("RideDTO", () => {
       ...validRide,
       driver_avg_stars: 4.5,
       driver_reviews_count: 12,
+      driver_likes_received_count: 128,
     });
     expect(r.success).toBe(true);
   });

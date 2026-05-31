@@ -40,21 +40,12 @@ function relativeTime(departureAt: string): string {
   return m > 0 ? `через ${h} ч ${m} мин` : `через ${h} ч`;
 }
 
-function getBadgeConfig(state: RideCardState): { label: string; color: string; bg: string } | null {
-  switch (state) {
-    case "own":
-      return { label: "Ваша поездка", color: "var(--ride-own)", bg: "var(--ride-own-soft)" };
-    case "applied":
-      return {
-        label: "Заявка подана",
-        color: "var(--ride-applied)",
-        bg: "var(--ride-applied-soft)",
-      };
-    case "approved":
-      return { label: "Одобрено", color: "var(--ride-approved)", bg: "var(--ride-approved-soft)" };
-    default:
-      return null;
-  }
+function formatDriverRating(value: number | null | undefined): string {
+  return typeof value === "number" && Number.isFinite(value) ? value.toFixed(1) : "—";
+}
+
+function clampNonNegative(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
 }
 
 export function RideCard({
@@ -76,8 +67,9 @@ export function RideCard({
   const bg = getRideCardBg(cardState);
   const borderColor = getRideCardBorderColor(cardState);
   const railColor = borderColor ?? "var(--brand-faint)";
-  const badge = getBadgeConfig(cardState);
   const routeMetrics = formatRouteMetrics(ride.route_distance_m, ride.route_duration_s);
+  const driverRating = formatDriverRating(ride.driver_avg_stars);
+  const driverLikes = clampNonNegative(ride.driver_likes_received_count);
   const fromLabel = compactAddressLabel(ride.from_label, { maxLen: MAX_ADDR_LEN });
   const toLabel = compactAddressLabel(ride.to_label, { maxLen: MAX_ADDR_LEN });
   const fromTitle = compactAddressTitle(ride.from_label, fromLabel);
@@ -153,7 +145,7 @@ export function RideCard({
           </span>
         </div>
 
-        {/* From → To inline, split 50/50 */}
+        {/* From to To inline, split 50/50 */}
         <div
           style={{
             minWidth: 0,
@@ -256,7 +248,7 @@ export function RideCard({
         cursor: onClick ? "pointer" : "default",
         border: `1px solid ${borderColor ?? "var(--brand-line)"}`,
         boxShadow: borderColor
-          ? `inset 2px 0 0 ${borderColor}, var(--shadow-sm)`
+          ? `inset 3px 0 0 ${borderColor}, var(--shadow-sm)`
           : "var(--shadow-sm)",
         fontFamily: "inherit",
         transition: "transform 0.08s",
@@ -276,68 +268,143 @@ export function RideCard({
         data-testid="ride-card-expanded-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "72px 24px minmax(0, 1fr) 58px",
-          columnGap: 10,
-          padding: "12px 12px 10px",
-          alignItems: "start",
+          gridTemplateColumns: "104px 24px minmax(0, 1fr) 66px",
+          columnGap: 12,
+          padding: "13px 12px",
+          alignItems: "stretch",
         }}
       >
-        <div style={{ minWidth: 0 }}>
-          {dateBadge ? (
+        <div
+          data-testid="ride-card-driver-meta"
+          style={{
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <div>
+            {dateBadge ? (
+              <div
+                style={{
+                  marginBottom: 3,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: railColor,
+                  lineHeight: 1.1,
+                  textTransform: "uppercase",
+                }}
+              >
+                {dateBadge}
+              </div>
+            ) : null}
             <div
               style={{
-                marginBottom: 3,
-                fontSize: 10,
-                fontWeight: 700,
-                color: railColor,
-                lineHeight: 1.1,
-                textTransform: "uppercase",
+                fontSize: 22,
+                fontWeight: 800,
+                color: borderColor ?? "var(--brand-text)",
+                letterSpacing: 0,
+                lineHeight: 1,
+                fontVariantNumeric: "tabular-nums",
               }}
             >
-              {dateBadge}
+              {time}
+            </div>
+            <div
+              style={{
+                marginTop: 7,
+                fontSize: 12.5,
+                color: "var(--brand-sub)",
+                lineHeight: 1.2,
+              }}
+            >
+              {rel}
+            </div>
+          </div>
+
+          {ride.driver_display_name ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  minWidth: 0,
+                  fontSize: 12.5,
+                  color: "var(--brand-sub)",
+                  fontWeight: 600,
+                }}
+              >
+                <Avatar
+                  tgId={ride.driver_tg_id ?? 0}
+                  photoUrl={ride.driver_photo_url ?? null}
+                  displayName={ride.driver_display_name}
+                  size={22}
+                />
+                <span
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {ride.driver_display_name}
+                </span>
+              </div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                <span
+                  data-testid="driver-rating"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    color: "#6B7280",
+                    fontSize: 12.5,
+                    fontWeight: 650,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  <Icon name="star-fill" size={15} style={{ color: "#F5B301" }} />
+                  {driverRating}
+                </span>
+                <span
+                  data-testid="driver-likes"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                    color: "#6B7280",
+                    fontSize: 12.5,
+                    fontWeight: 650,
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  <Icon name="heart-fill" size={15} style={{ color: "#E03131" }} />
+                  {driverLikes}
+                </span>
+              </div>
             </div>
           ) : null}
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              color: borderColor ?? "var(--brand-text)",
-              letterSpacing: 0,
-              lineHeight: 1,
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {time}
-          </div>
-          <div
-            style={{
-              marginTop: 8,
-              fontSize: 12,
-              color: "var(--brand-sub)",
-              lineHeight: 1.2,
-            }}
-          >
-            {rel}
-          </div>
         </div>
 
         <div
           data-testid="ride-card-route-rail"
           style={{
             width: 24,
-            height: 56,
+            minHeight: 92,
             position: "relative",
-            marginTop: dateBadge ? 19 : 3,
+            marginTop: dateBadge ? 18 : 2,
             color: railColor,
           }}
         >
           <span
             style={{
               position: "absolute",
-              top: 6,
-              left: 9,
-              width: 6,
-              height: 6,
+              top: 5,
+              left: 8,
+              width: 8,
+              height: 8,
               borderRadius: "50%",
               background: "currentColor",
               boxShadow: `0 0 0 2px ${bg}`,
@@ -346,22 +413,22 @@ export function RideCard({
           <span
             style={{
               position: "absolute",
-              top: 12,
-              bottom: 12,
+              top: 13,
+              bottom: 13,
               left: 11,
               width: 2,
               borderRadius: 2,
               background: "currentColor",
-              opacity: 0.72,
+              opacity: 0.78,
             }}
           />
           <span
             style={{
               position: "absolute",
-              bottom: 6,
-              left: 9,
-              width: 6,
-              height: 6,
+              bottom: 5,
+              left: 8,
+              width: 8,
+              height: 8,
               borderRadius: "50%",
               background: "currentColor",
               boxShadow: `0 0 0 2px ${bg}`,
@@ -370,37 +437,47 @@ export function RideCard({
         </div>
 
         <div
+          data-testid="ride-card-route-body"
           style={{
             minWidth: 0,
             display: "flex",
             flexDirection: "column",
-            gap: 7,
-            paddingTop: dateBadge ? 0 : 1,
+            justifyContent: "space-between",
+            gap: 8,
           }}
         >
-          <div style={{ display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: 8 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "58px minmax(0, 1fr)",
+              columnGap: 10,
+              rowGap: 9,
+            }}
+          >
             <span
               style={{
-                fontSize: 10.5,
-                fontWeight: 600,
+                fontSize: 11,
+                fontWeight: 700,
                 color: "var(--brand-sub)",
                 textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                lineHeight: 1.3,
+                letterSpacing: "0.03em",
+                lineHeight: 1.25,
               }}
             >
               Откуда
             </span>
             <span
+              data-testid="ride-card-from-address"
               style={{
                 minWidth: 0,
-                fontSize: 13,
-                fontWeight: 650,
+                fontSize: 14,
+                fontWeight: 700,
                 color: "var(--brand-text)",
-                lineHeight: 1.3,
-                whiteSpace: "nowrap",
+                lineHeight: 1.25,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                textOverflow: "ellipsis",
               }}
               title={fromTitle}
             >
@@ -408,57 +485,83 @@ export function RideCard({
             </span>
             <span
               style={{
-                fontSize: 10.5,
-                fontWeight: 600,
+                fontSize: 11,
+                fontWeight: 700,
                 color: "var(--brand-sub)",
                 textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                lineHeight: 1.3,
+                letterSpacing: "0.03em",
+                lineHeight: 1.25,
               }}
             >
               Куда
             </span>
             <span
+              data-testid="ride-card-to-address"
               style={{
                 minWidth: 0,
-                fontSize: 13,
-                fontWeight: 650,
+                fontSize: 14,
+                fontWeight: 700,
                 color: "var(--brand-text)",
-                lineHeight: 1.3,
-                whiteSpace: "nowrap",
+                lineHeight: 1.25,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
                 overflow: "hidden",
-                textOverflow: "ellipsis",
               }}
               title={toTitle}
             >
               {ride.to_label}
             </span>
           </div>
-          {(routeMetrics || isAlongTheWay) && (
-            <div style={{ display: "flex", alignItems: "center", gap: 7, minHeight: 16 }}>
-              {routeMetrics ? (
-                <span style={{ fontSize: 12, color: "var(--brand-sub)", lineHeight: 1.25 }}>
-                  {routeMetrics}
-                </span>
-              ) : null}
-              {isAlongTheWay ? (
-                <span
-                  style={{
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    color: "var(--brand-primary)",
-                    background: "var(--brand-primary-soft, rgba(45,90,61,0.1))",
-                    borderRadius: 5,
-                    padding: "1px 5px",
-                    lineHeight: 1.25,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  По пути
-                </span>
-              ) : null}
-            </div>
-          )}
+
+          <div
+            style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 18, minWidth: 0 }}
+          >
+            {routeMetrics ? (
+              <span
+                style={{
+                  fontSize: 12.5,
+                  color: "var(--brand-sub)",
+                  lineHeight: 1.25,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {routeMetrics}
+              </span>
+            ) : null}
+            {isAlongTheWay ? (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "var(--brand-primary)",
+                  background: "var(--brand-primary-soft, rgba(45,90,61,0.1))",
+                  borderRadius: 5,
+                  padding: "1px 5px",
+                  lineHeight: 1.25,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                По пути
+              </span>
+            ) : null}
+            {ride.comment ? (
+              <span
+                style={{
+                  minWidth: 0,
+                  flex: 1,
+                  fontSize: 12.5,
+                  color: "var(--brand-sub)",
+                  fontStyle: "italic",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {ride.comment}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div
@@ -467,29 +570,15 @@ export function RideCard({
             display: "flex",
             flexDirection: "column",
             alignItems: "flex-end",
-            gap: 10,
+            justifyContent: "space-between",
+            gap: 12,
             minWidth: 0,
           }}
         >
-          {badge ? (
-            <span
-              style={{
-                maxWidth: 82,
-                fontSize: 11,
-                fontWeight: 700,
-                color: badge.color,
-                lineHeight: 1.2,
-                textAlign: "right",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {badge.label}
-            </span>
-          ) : null}
           <div
             style={{
-              fontSize: 14,
-              fontWeight: 800,
+              fontSize: 20,
+              fontWeight: 850,
               color: noSeats ? "var(--brand-danger)" : "var(--brand-text)",
               lineHeight: 1,
               whiteSpace: "nowrap",
@@ -499,107 +588,39 @@ export function RideCard({
             {priceLabel}
           </div>
           <div
+            data-testid="ride-card-seats-chip"
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 4,
-              minHeight: 28,
-              padding: "0 8px",
+              justifyContent: "center",
+              gap: 7,
+              minWidth: 48,
+              minHeight: 34,
+              padding: "0 9px",
               borderRadius: 9,
-              background: "rgba(255,255,255,0.45)",
+              background: "rgba(255,255,255,0.56)",
               color: noSeats ? "var(--brand-danger)" : "var(--brand-ink-2)",
-              fontSize: 12,
-              fontWeight: 650,
+              fontSize: 14,
+              fontWeight: 700,
               boxShadow: "inset 0 0 0 1px var(--brand-line-soft)",
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            <Icon name="user" size={14} />
+            <Icon name="car" size={18} />
             {seats}
           </div>
-        </div>
-      </div>
-
-      <div
-        data-testid="ride-card-footer"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          minHeight: 40,
-          padding: "9px 12px",
-          borderTop: "1px solid var(--brand-line-soft)",
-        }}
-      >
-        {ride.driver_display_name && (
           <div
-            data-testid="driver-info"
+            data-testid="ride-card-chevron"
+            aria-hidden="true"
             style={{
+              color: "var(--brand-sub)",
               display: "inline-flex",
               alignItems: "center",
-              gap: 7,
-              fontSize: 12,
-              color: "var(--brand-sub)",
-              fontWeight: 500,
-              minWidth: 0,
+              flexShrink: 0,
             }}
           >
-            <Avatar
-              tgId={ride.driver_tg_id ?? 0}
-              photoUrl={ride.driver_photo_url ?? null}
-              displayName={ride.driver_display_name}
-              size={18}
-            />
-            <span
-              style={{
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {ride.driver_display_name}
-            </span>
+            <Icon name="chevron-r" size={20} />
           </div>
-        )}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            fontSize: 12,
-            color: noSeats ? "var(--brand-danger)" : "var(--brand-sub)",
-            fontWeight: 500,
-            flexShrink: 0,
-          }}
-        >
-          <Icon name="seat" size={13} />
-          {noSeats ? "нет мест" : `${seats} мест`}
-        </div>
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            fontSize: 12,
-            color: "var(--brand-sub)",
-            fontStyle: ride.comment ? "italic" : "normal",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {ride.comment ?? ""}
-        </div>
-        <div
-          data-testid="ride-card-chevron"
-          aria-hidden="true"
-          style={{
-            color: "var(--brand-sub)",
-            display: "inline-flex",
-            alignItems: "center",
-            flexShrink: 0,
-          }}
-        >
-          <Icon name="chevron-r" size={18} />
         </div>
       </div>
     </article>

@@ -64,6 +64,7 @@ export function RideCard({
   onClick,
   cardState = "default",
 }: RideCardProps) {
+  const isViewed = cardState === "viewed";
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
@@ -283,6 +284,8 @@ export function RideCard({
           columnGap: 8,
           padding: "9px 10px",
           alignItems: "stretch",
+          opacity: isViewed ? 0.68 : 1,
+          filter: isViewed ? "saturate(0.76)" : "none",
         }}
       >
         <div
@@ -301,12 +304,12 @@ export function RideCard({
                 style={{
                   marginBottom: 3,
                   fontSize: 10,
-                  fontWeight: 700,
-                  color: railColor,
-                  lineHeight: 1.1,
-                  textTransform: "uppercase",
-                }}
-              >
+                fontWeight: 700,
+                color: isViewed ? "var(--brand-faint)" : railColor,
+                lineHeight: 1.1,
+                textTransform: "uppercase",
+              }}
+            >
                 {dateBadge}
               </div>
             ) : null}
@@ -467,7 +470,7 @@ export function RideCard({
                 alignSelf: "center",
                 fontSize: 9,
                 fontWeight: 750,
-                color: "var(--brand-sub)",
+                color: isViewed ? "var(--brand-faint)" : "var(--brand-sub)",
                 textTransform: "uppercase",
                 letterSpacing: "0.02em",
                 lineHeight: 1.1,
@@ -543,7 +546,7 @@ export function RideCard({
                 alignSelf: "center",
                 fontSize: 9,
                 fontWeight: 750,
-                color: "var(--brand-sub)",
+                color: isViewed ? "var(--brand-faint)" : "var(--brand-sub)",
                 textTransform: "uppercase",
                 letterSpacing: "0.02em",
                 lineHeight: 1.1,

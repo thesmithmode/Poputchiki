@@ -137,6 +137,25 @@ describe("RideCard", () => {
     expect(screen.queryByText("Одобрено")).not.toBeInTheDocument();
   });
 
+  it("applies stronger dimming only for viewed expanded cards", () => {
+    const { rerender } = render(<RideCard ride={mockRide} cardState="viewed" />);
+    const viewedGrid = screen.getByTestId("ride-card-expanded-grid");
+    expect(viewedGrid).toHaveStyle({
+      opacity: "0.68",
+      filter: "saturate(0.76)",
+    });
+    expect(screen.getByText(mockRide.from_label)).toBeInTheDocument();
+    expect(screen.getByText(mockRide.to_label)).toBeInTheDocument();
+    expect(screen.getByText(/150/)).toBeInTheDocument();
+
+    rerender(<RideCard ride={mockRide} cardState="own" />);
+    const ownGrid = screen.getByTestId("ride-card-expanded-grid");
+    expect(ownGrid).toHaveStyle({
+      opacity: "1",
+      filter: "none",
+    });
+  });
+
   it("cozy layout uses denser service columns and preserves primary ride data", () => {
     const richRide: Ride = {
       ...mockRide,

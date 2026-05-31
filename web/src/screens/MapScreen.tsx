@@ -780,7 +780,12 @@ export function MapScreen({
     setMapDragging(false);
     applyMapBearing(heading);
     applyLocationOnMap(fix);
-    startContinuousLocationTracking(lm);
+    const trackingStartId = window.setTimeout(() => {
+      if (locationModeRef.current === "headingUp") {
+        startContinuousLocationTracking(lm);
+      }
+    }, 0);
+    continuousLocationCleanupRef.current = () => window.clearTimeout(trackingStartId);
   }
 
   function startCompassTracking() {

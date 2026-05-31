@@ -211,6 +211,7 @@ export function MapScreen({
   const loadRidesRef = useRef<(() => void) | null>(null);
   const filtersRef = useRef(filters);
   const selectedRef = useRef<Ride | null>(null);
+  const ridesRef = useRef<Ride[]>([]);
   const [rides, setRides] = useState<Ride[]>([]);
   const [selected, setSelected] = useState<Ride | null>(null);
   const [selectedRouteDetails, setSelectedRouteDetails] = useState<SelectedRouteDetails | null>();
@@ -226,6 +227,7 @@ export function MapScreen({
   // Keep filtersRef in sync so loadRides always reads current filters without remounting map
   filtersRef.current = filters;
   selectedRef.current = selected;
+  ridesRef.current = rides;
 
   function setLocationMode(mode: LocationMode) {
     locationModeRef.current = mode;
@@ -508,6 +510,7 @@ export function MapScreen({
           const data = await apiFetch<{ rides: Ride[] }>(`/rides?${params.toString()}`);
           if (!destroyed) {
             const filtered = applyFilters(data.rides, filtersRef.current, undefined, myUserId);
+            ridesRef.current = filtered;
             setRides(filtered);
             onRidesCount?.(filtered.length);
             renderMarkers(map, L, filtered);
@@ -838,7 +841,7 @@ export function MapScreen({
     if (!mapRef.current) return;
     import("leaflet").then((L) => {
       if (!mapRef.current || selectedRef.current) return;
-      renderMarkers(mapRef.current, L, rides);
+      renderMarkers(mapRef.current, L, ridesRef.current);
     });
   }
 

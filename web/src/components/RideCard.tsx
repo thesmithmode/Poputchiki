@@ -274,9 +274,9 @@ export function RideCard({
         data-testid="ride-card-expanded-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "84px 16px minmax(0, 1fr) 58px",
-          columnGap: 8,
-          padding: "10px 10px",
+          gridTemplateColumns: "82px 14px minmax(0, 1fr) 50px",
+          columnGap: 7,
+          padding: "9px 10px",
           alignItems: "stretch",
         }}
       >
@@ -398,8 +398,8 @@ export function RideCard({
         <div
           data-testid="ride-card-route-rail"
           style={{
-            width: 16,
-            minHeight: 86,
+            width: 14,
+            minHeight: 112,
             position: "relative",
             marginTop: dateBadge ? 18 : 2,
             color: railColor,
@@ -409,7 +409,7 @@ export function RideCard({
             style={{
               position: "absolute",
               top: 5,
-              left: 4,
+              left: 3,
               width: 8,
               height: 8,
               borderRadius: "50%",
@@ -422,7 +422,7 @@ export function RideCard({
               position: "absolute",
               top: 13,
               bottom: 13,
-              left: 7,
+              left: 6,
               width: 2,
               borderRadius: 2,
               background: "currentColor",
@@ -433,7 +433,7 @@ export function RideCard({
             style={{
               position: "absolute",
               bottom: 5,
-              left: 4,
+              left: 3,
               width: 8,
               height: 8,
               borderRadius: "50%",
@@ -447,29 +447,30 @@ export function RideCard({
           data-testid="ride-card-route-body"
           style={{
             minWidth: 0,
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-            gap: 8,
+            display: "block",
           }}
         >
           <div
             data-testid="ride-card-route-lines"
             style={{
               display: "grid",
-              gridTemplateColumns: "42px minmax(0, 1fr)",
-              columnGap: 7,
-              rowGap: 7,
+              gridTemplateColumns: "38px minmax(0, 1fr)",
+              gridTemplateRows: "minmax(0, 1fr) 18px minmax(0, 1fr)",
+              columnGap: 6,
+              rowGap: 2,
+              minHeight: 112,
             }}
           >
             <span
               style={{
-                fontSize: 9.5,
+                alignSelf: "start",
+                paddingTop: 2,
+                fontSize: 9,
                 fontWeight: 750,
                 color: "var(--brand-sub)",
                 textTransform: "uppercase",
                 letterSpacing: "0.02em",
-                lineHeight: 1.2,
+                lineHeight: 1.1,
               }}
             >
               Откуда
@@ -477,13 +478,14 @@ export function RideCard({
             <span
               data-testid="ride-card-from-address"
               style={{
+                alignSelf: "start",
                 minWidth: 0,
-                fontSize: 13.5,
-                fontWeight: 700,
+                fontSize: 12.5,
+                fontWeight: 650,
                 color: "var(--brand-text)",
-                lineHeight: 1.18,
+                lineHeight: 1.15,
                 display: "-webkit-box",
-                WebkitLineClamp: 2,
+                WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
@@ -491,14 +493,40 @@ export function RideCard({
             >
               {ride.from_label}
             </span>
+            <span aria-hidden="true" />
+            <div
+              data-testid="ride-card-route-metrics"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                minWidth: 0,
+                minHeight: 18,
+              }}
+            >
+              {routeMetrics ? (
+                <span
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 550,
+                    color: "var(--brand-sub)",
+                    lineHeight: 1,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {routeMetrics}
+                </span>
+              ) : null}
+            </div>
             <span
               style={{
-                fontSize: 9.5,
+                alignSelf: "start",
+                paddingTop: 2,
+                fontSize: 9,
                 fontWeight: 750,
                 color: "var(--brand-sub)",
                 textTransform: "uppercase",
                 letterSpacing: "0.02em",
-                lineHeight: 1.2,
+                lineHeight: 1.1,
               }}
             >
               Куда
@@ -506,13 +534,14 @@ export function RideCard({
             <span
               data-testid="ride-card-to-address"
               style={{
+                alignSelf: "start",
                 minWidth: 0,
-                fontSize: 13.5,
-                fontWeight: 700,
+                fontSize: 12.5,
+                fontWeight: 650,
                 color: "var(--brand-text)",
-                lineHeight: 1.18,
+                lineHeight: 1.15,
                 display: "-webkit-box",
-                WebkitLineClamp: 2,
+                WebkitLineClamp: 3,
                 WebkitBoxOrient: "vertical",
                 overflow: "hidden",
               }}
@@ -520,23 +549,6 @@ export function RideCard({
             >
               {ride.to_label}
             </span>
-          </div>
-
-          <div
-            style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 18, minWidth: 0 }}
-          >
-            {routeMetrics ? (
-              <span
-                style={{
-                  fontSize: 12.5,
-                  color: "var(--brand-sub)",
-                  lineHeight: 1.25,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {routeMetrics}
-              </span>
-            ) : null}
           </div>
         </div>
 
@@ -569,20 +581,17 @@ export function RideCard({
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 7,
-              minWidth: 48,
-              minHeight: 34,
-              padding: "0 9px",
-              borderRadius: 9,
-              background: "rgba(255,255,255,0.56)",
+              gap: 5,
+              minWidth: 40,
+              minHeight: 24,
+              padding: 0,
               color: noSeats ? "var(--brand-danger)" : "var(--brand-ink-2)",
-              fontSize: 14,
-              fontWeight: 700,
-              boxShadow: "inset 0 0 0 1px var(--brand-line-soft)",
+              fontSize: 12.5,
+              fontWeight: 650,
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            <Icon name="car" size={18} />
+            <Icon name="car" size={15} />
             {seatsLabel}
           </div>
           <div

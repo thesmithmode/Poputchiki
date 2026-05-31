@@ -79,7 +79,8 @@ describe("RideCard", () => {
     expect(screen.getByText("Откуда")).toBeInTheDocument();
     expect(screen.getByText("Куда")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-route-lines")).toHaveStyle({
-      gridTemplateColumns: "42px minmax(0, 1fr)",
+      gridTemplateColumns: "38px minmax(0, 1fr)",
+      gridTemplateRows: "minmax(0, 1fr) 18px minmax(0, 1fr)",
     });
   });
 
@@ -149,7 +150,7 @@ describe("RideCard", () => {
     expect(card).toHaveStyle({ borderRadius: "12px", padding: "0px" });
     expect(grid).toHaveStyle({
       display: "grid",
-      gridTemplateColumns: "84px 16px minmax(0, 1fr) 58px",
+      gridTemplateColumns: "82px 14px minmax(0, 1fr) 50px",
     });
     expect(screen.getByTestId("ride-card-route-rail")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-route-body")).toBeInTheDocument();
@@ -157,10 +158,23 @@ describe("RideCard", () => {
     expect(screen.getByTestId("ride-card-driver-meta")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-chevron")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-seats-chip")).toHaveTextContent("2/3");
+    expect(screen.getByTestId("ride-card-seats-chip")).toHaveStyle({
+      fontSize: "12.5px",
+      minHeight: "24px",
+    });
     expect(screen.getByTestId("driver-rating")).toHaveTextContent("4.7");
     expect(screen.getByTestId("driver-likes")).toHaveTextContent("128");
-    expect(screen.getByTestId("ride-card-from-address")).toHaveStyle({ WebkitLineClamp: "2" });
-    expect(screen.getByTestId("ride-card-to-address")).toHaveStyle({ WebkitLineClamp: "2" });
+    expect(screen.getByTestId("ride-card-route-metrics")).toHaveTextContent("12.3");
+    expect(screen.getByTestId("ride-card-from-address")).toHaveStyle({
+      WebkitLineClamp: "3",
+      fontSize: "12.5px",
+      fontWeight: "650",
+    });
+    expect(screen.getByTestId("ride-card-to-address")).toHaveStyle({
+      WebkitLineClamp: "3",
+      fontSize: "12.5px",
+      fontWeight: "650",
+    });
     expect(screen.getByText(mockRide.from_label)).toBeInTheDocument();
     expect(screen.getByText(mockRide.to_label)).toBeInTheDocument();
     expect(screen.getByText("Driver Test")).toBeInTheDocument();

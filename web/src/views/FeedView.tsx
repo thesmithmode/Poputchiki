@@ -238,11 +238,14 @@ export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedVie
               <div
                 data-testid="feed-day-heading"
                 style={{
-                  padding: "3px 2px 8px",
-                  color: "var(--brand-sub)",
+                  padding: "7px 10px",
+                  color: "var(--brand-text)",
+                  background: "var(--brand-surface-2)",
+                  borderRadius: 10,
+                  boxShadow: "inset 0 0 0 1px var(--brand-line-soft)",
                   fontSize: 13,
-                  fontWeight: 650,
-                  lineHeight: 1.2,
+                  fontWeight: 750,
+                  lineHeight: 1.15,
                 }}
               >
                 {group.label}

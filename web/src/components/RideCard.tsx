@@ -18,6 +18,7 @@ interface RideCardProps {
 }
 
 const MAX_ADDR_LEN = 22;
+const URGENT_DEPARTURE_MINUTES = 20;
 
 function dateLabel(departureAt: string): string | null {
   const dep = new Date(departureAt);
@@ -39,6 +40,10 @@ function relativeTime(departureAt: string): string {
   const m = diff % 60;
   return m > 0 ? `через ${h} ч ${m} мин` : `через ${h} ч`;
 }
+function isDepartureUrgent(departureAt: string): boolean {
+  const diff = Math.round((new Date(departureAt).getTime() - Date.now()) / 60000);
+  return diff >= 0 && diff <= URGENT_DEPARTURE_MINUTES;
+}
 
 function formatDriverRating(value: number | null | undefined): string {
   return typeof value === "number" && Number.isFinite(value) ? value.toFixed(1) : "—";
@@ -53,16 +58,17 @@ export function RideCard({
   density = "cozy",
   onClick,
   cardState = "default",
-  isAlongTheWay,
 }: RideCardProps) {
   const time = new Date(ride.departure_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
   });
   const seats = ride.seats_total - ride.seats_taken;
+  const seatsLabel = `${seats}/${ride.seats_total}`;
   const priceLabel = ride.price_rub !== null ? `${ride.price_rub} ₽` : "0 ₽";
   const noSeats = seats === 0;
   const rel = relativeTime(ride.departure_at);
+  const urgentDeparture = isDepartureUrgent(ride.departure_at);
   const dateBadge = dateLabel(ride.departure_at);
   const bg = getRideCardBg(cardState);
   const borderColor = getRideCardBorderColor(cardState);
@@ -230,7 +236,7 @@ export function RideCard({
     );
   }
 
-  // Cozy mode — expanded dense route-card layout.
+  // Cozy mode - expanded dense route-card layout.
   return (
     <article
       data-testid="ride-card"
@@ -268,9 +274,9 @@ export function RideCard({
         data-testid="ride-card-expanded-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "104px 24px minmax(0, 1fr) 66px",
-          columnGap: 12,
-          padding: "13px 12px",
+          gridTemplateColumns: "84px 16px minmax(0, 1fr) 58px",
+          columnGap: 8,
+          padding: "10px 10px",
           alignItems: "stretch",
         }}
       >
@@ -281,7 +287,7 @@ export function RideCard({
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            gap: 10,
+            gap: 8,
           }}
         >
           <div>
@@ -301,7 +307,7 @@ export function RideCard({
             ) : null}
             <div
               style={{
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 800,
                 color: borderColor ?? "var(--brand-text)",
                 letterSpacing: 0,
@@ -312,10 +318,11 @@ export function RideCard({
               {time}
             </div>
             <div
+              data-testid="ride-card-relative-time"
               style={{
                 marginTop: 7,
-                fontSize: 12.5,
-                color: "var(--brand-sub)",
+                fontSize: 12,
+                color: urgentDeparture ? "var(--brand-danger)" : "var(--brand-sub)",
                 lineHeight: 1.2,
               }}
             >
@@ -391,8 +398,8 @@ export function RideCard({
         <div
           data-testid="ride-card-route-rail"
           style={{
-            width: 24,
-            minHeight: 92,
+            width: 16,
+            minHeight: 86,
             position: "relative",
             marginTop: dateBadge ? 18 : 2,
             color: railColor,
@@ -402,7 +409,7 @@ export function RideCard({
             style={{
               position: "absolute",
               top: 5,
-              left: 8,
+              left: 4,
               width: 8,
               height: 8,
               borderRadius: "50%",
@@ -415,7 +422,7 @@ export function RideCard({
               position: "absolute",
               top: 13,
               bottom: 13,
-              left: 11,
+              left: 7,
               width: 2,
               borderRadius: 2,
               background: "currentColor",
@@ -426,7 +433,7 @@ export function RideCard({
             style={{
               position: "absolute",
               bottom: 5,
-              left: 8,
+              left: 4,
               width: 8,
               height: 8,
               borderRadius: "50%",
@@ -447,21 +454,22 @@ export function RideCard({
           }}
         >
           <div
+            data-testid="ride-card-route-lines"
             style={{
               display: "grid",
-              gridTemplateColumns: "58px minmax(0, 1fr)",
-              columnGap: 10,
-              rowGap: 9,
+              gridTemplateColumns: "42px minmax(0, 1fr)",
+              columnGap: 7,
+              rowGap: 7,
             }}
           >
             <span
               style={{
-                fontSize: 11,
-                fontWeight: 700,
+                fontSize: 9.5,
+                fontWeight: 750,
                 color: "var(--brand-sub)",
                 textTransform: "uppercase",
-                letterSpacing: "0.03em",
-                lineHeight: 1.25,
+                letterSpacing: "0.02em",
+                lineHeight: 1.2,
               }}
             >
               Откуда
@@ -470,10 +478,10 @@ export function RideCard({
               data-testid="ride-card-from-address"
               style={{
                 minWidth: 0,
-                fontSize: 14,
+                fontSize: 13.5,
                 fontWeight: 700,
                 color: "var(--brand-text)",
-                lineHeight: 1.25,
+                lineHeight: 1.18,
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
@@ -485,12 +493,12 @@ export function RideCard({
             </span>
             <span
               style={{
-                fontSize: 11,
-                fontWeight: 700,
+                fontSize: 9.5,
+                fontWeight: 750,
                 color: "var(--brand-sub)",
                 textTransform: "uppercase",
-                letterSpacing: "0.03em",
-                lineHeight: 1.25,
+                letterSpacing: "0.02em",
+                lineHeight: 1.2,
               }}
             >
               Куда
@@ -499,10 +507,10 @@ export function RideCard({
               data-testid="ride-card-to-address"
               style={{
                 minWidth: 0,
-                fontSize: 14,
+                fontSize: 13.5,
                 fontWeight: 700,
                 color: "var(--brand-text)",
-                lineHeight: 1.25,
+                lineHeight: 1.18,
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
@@ -527,38 +535,6 @@ export function RideCard({
                 }}
               >
                 {routeMetrics}
-              </span>
-            ) : null}
-            {isAlongTheWay ? (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: "var(--brand-primary)",
-                  background: "var(--brand-primary-soft, rgba(45,90,61,0.1))",
-                  borderRadius: 5,
-                  padding: "1px 5px",
-                  lineHeight: 1.25,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                По пути
-              </span>
-            ) : null}
-            {ride.comment ? (
-              <span
-                style={{
-                  minWidth: 0,
-                  flex: 1,
-                  fontSize: 12.5,
-                  color: "var(--brand-sub)",
-                  fontStyle: "italic",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {ride.comment}
               </span>
             ) : null}
           </div>
@@ -607,7 +583,7 @@ export function RideCard({
             }}
           >
             <Icon name="car" size={18} />
-            {seats}
+            {seatsLabel}
           </div>
           <div
             data-testid="ride-card-chevron"

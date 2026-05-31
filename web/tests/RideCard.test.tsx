@@ -7,10 +7,10 @@ import type { Ride } from "../src/types/ride";
 const mockRide: Ride = {
   id: "550e8400-e29b-41d4-a716-446655440000",
   driver_id: "550e8400-e29b-41d4-a716-446655440001",
-  from_label: "Start address, building 5",
+  from_label: "Long start address, building 5, Kazan, Republic of Tatarstan",
   from_lat: 55.7558,
   from_lng: 37.6173,
-  to_label: "Destination street, house 10",
+  to_label: "Long destination street, house 10, Kazan, Republic of Tatarstan",
   to_lat: 55.7963,
   to_lng: 49.1093,
   departure_at: new Date(Date.now() + 3600000).toISOString(),
@@ -18,7 +18,7 @@ const mockRide: Ride = {
   seats_total: 3,
   seats_taken: 1,
   status: "active",
-  comment: "Quiet ride",
+  comment: "Extra private detail should stay on details screen",
   created_at: new Date().toISOString(),
   driver_display_name: "Driver Test",
   driver_tg_id: 123,
@@ -30,8 +30,8 @@ const mockRide: Ride = {
 describe("RideCard", () => {
   it("renders from_label and to_label", () => {
     render(<RideCard ride={mockRide} />);
-    expect(screen.getByText("Start address, building 5")).toBeInTheDocument();
-    expect(screen.getByText("Destination street, house 10")).toBeInTheDocument();
+    expect(screen.getByText(mockRide.from_label)).toBeInTheDocument();
+    expect(screen.getByText(mockRide.to_label)).toBeInTheDocument();
   });
 
   it("renders departure time in HH:MM format", () => {
@@ -44,9 +44,9 @@ describe("RideCard", () => {
     expect(screen.getByText(/150/)).toBeInTheDocument();
   });
 
-  it("renders free seats only in the right car chip in cozy mode", () => {
+  it("renders free and total seats only in the right car chip in cozy mode", () => {
     render(<RideCard ride={mockRide} />);
-    expect(screen.getByTestId("ride-card-seats-chip")).toHaveTextContent("2");
+    expect(screen.getByTestId("ride-card-seats-chip")).toHaveTextContent("2/3");
     expect(screen.queryByText(/2\s+мест/)).not.toBeInTheDocument();
   });
 
@@ -63,14 +63,10 @@ describe("RideCard", () => {
     expect(onClick).toHaveBeenCalledWith(mockRide);
   });
 
-  it("renders comment when present", () => {
-    render(<RideCard ride={mockRide} />);
-    expect(screen.getByText("Quiet ride")).toBeInTheDocument();
-  });
-
-  it("does not render comment text when comment is null", () => {
-    render(<RideCard ride={{ ...mockRide, comment: null }} />);
-    expect(screen.queryByText("Quiet ride")).not.toBeInTheDocument();
+  it("keeps extra ride detail off the feed card", () => {
+    render(<RideCard ride={mockRide} isAlongTheWay />);
+    expect(screen.queryByText(mockRide.comment ?? "")).not.toBeInTheDocument();
+    expect(screen.queryByText("По пути")).not.toBeInTheDocument();
   });
 
   it("does not render favorite toggle", () => {
@@ -78,10 +74,13 @@ describe("RideCard", () => {
     expect(screen.queryByTestId("fav-toggle")).not.toBeInTheDocument();
   });
 
-  it("renders route labels in cozy mode", () => {
+  it("renders route labels in compact label columns", () => {
     render(<RideCard ride={mockRide} />);
     expect(screen.getByText("Откуда")).toBeInTheDocument();
     expect(screen.getByText("Куда")).toBeInTheDocument();
+    expect(screen.getByTestId("ride-card-route-lines")).toHaveStyle({
+      gridTemplateColumns: "42px minmax(0, 1fr)",
+    });
   });
 
   it("renders relative time for hours", () => {
@@ -90,16 +89,12 @@ describe("RideCard", () => {
     expect(screen.getByText(/через 2 ч/)).toBeInTheDocument();
   });
 
-  it("renders relative time with minutes", () => {
-    const in90Min = new Date(Date.now() + 90 * 60000).toISOString();
-    render(<RideCard ride={{ ...mockRide, departure_at: in90Min }} />);
-    expect(screen.getByText(/через 1 ч \d+ мин/)).toBeInTheDocument();
-  });
-
-  it("renders relative time for close departures", () => {
-    const in30Min = new Date(Date.now() + 30 * 60000).toISOString();
-    render(<RideCard ride={{ ...mockRide, departure_at: in30Min }} />);
-    expect(screen.getByText(/через \d+ мин/)).toBeInTheDocument();
+  it("marks urgent near departure time in red", () => {
+    const in15Min = new Date(Date.now() + 15 * 60000).toISOString();
+    render(<RideCard ride={{ ...mockRide, departure_at: in15Min }} />);
+    expect(screen.getByTestId("ride-card-relative-time")).toHaveStyle({
+      color: "var(--brand-danger)",
+    });
   });
 
   it("renders past departure label", () => {
@@ -110,7 +105,7 @@ describe("RideCard", () => {
 
   it("compact mode renders destination and price", () => {
     render(<RideCard ride={mockRide} density="compact" />);
-    expect(screen.getByTitle("Destination street, house 10")).toBeInTheDocument();
+    expect(screen.getByTitle(mockRide.to_label)).toBeInTheDocument();
     expect(screen.getByText(/150/)).toBeInTheDocument();
   });
 
@@ -139,7 +134,7 @@ describe("RideCard", () => {
     expect(screen.queryByText("Одобрено")).not.toBeInTheDocument();
   });
 
-  it("cozy layout matches the denser reference structure and preserves data", () => {
+  it("cozy layout uses denser service columns and preserves primary ride data", () => {
     const richRide: Ride = {
       ...mockRide,
       route_distance_m: 12300,
@@ -154,14 +149,14 @@ describe("RideCard", () => {
     expect(card).toHaveStyle({ borderRadius: "12px", padding: "0px" });
     expect(grid).toHaveStyle({
       display: "grid",
-      gridTemplateColumns: "104px 24px minmax(0, 1fr) 66px",
+      gridTemplateColumns: "84px 16px minmax(0, 1fr) 58px",
     });
     expect(screen.getByTestId("ride-card-route-rail")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-route-body")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-side-meta")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-driver-meta")).toBeInTheDocument();
     expect(screen.getByTestId("ride-card-chevron")).toBeInTheDocument();
-    expect(screen.getByTestId("ride-card-seats-chip")).toHaveTextContent("2");
+    expect(screen.getByTestId("ride-card-seats-chip")).toHaveTextContent("2/3");
     expect(screen.getByTestId("driver-rating")).toHaveTextContent("4.7");
     expect(screen.getByTestId("driver-likes")).toHaveTextContent("128");
     expect(screen.getByTestId("ride-card-from-address")).toHaveStyle({ WebkitLineClamp: "2" });
@@ -169,11 +164,11 @@ describe("RideCard", () => {
     expect(screen.getByText(mockRide.from_label)).toBeInTheDocument();
     expect(screen.getByText(mockRide.to_label)).toBeInTheDocument();
     expect(screen.getByText("Driver Test")).toBeInTheDocument();
-    expect(screen.getByText("Quiet ride")).toBeInTheDocument();
     expect(text).toContain("150");
     expect(text).toContain("12.3");
     expect(text).toContain("38");
-    expect(text).toContain("По пути");
+    expect(text).not.toContain("По пути");
+    expect(text).not.toContain(mockRide.comment ?? "");
     expect(text).not.toContain("Ваша поездка");
     expect(text).not.toContain("мест");
   });

@@ -125,4 +125,31 @@ describe("FeedView map group filter", () => {
     expect(screen.getByText(/^Сегодня,/)).toBeInTheDocument();
     expect(screen.getByText(/^Завтра,/)).toBeInTheDocument();
   });
+
+  it("renders visible day separators between expanded feed groups", async () => {
+    const today = new Date();
+    today.setHours(today.getHours() + 1, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    renderGroupedFeed(
+      [
+        makeRide({ from_label: "today-start", departure_at: today.toISOString() }),
+        makeRide({ from_label: "tomorrow-start", departure_at: tomorrow.toISOString() }),
+      ],
+      [],
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("today-start")).toBeInTheDocument();
+    });
+    const headings = screen.getAllByTestId("feed-day-heading");
+    expect(headings).toHaveLength(2);
+    for (const heading of headings) {
+      expect(heading).toHaveStyle({
+        background: "var(--brand-surface-2)",
+        borderRadius: "10px",
+      });
+    }
+  });
 });

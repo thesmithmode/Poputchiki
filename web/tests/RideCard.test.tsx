@@ -150,4 +150,29 @@ describe("RideCard", () => {
     expect(screen.queryByText("Заявка подана")).not.toBeInTheDocument();
     expect(screen.queryByText("Одобрено")).not.toBeInTheDocument();
   });
+  it("cozy layout stays compact while preserving expanded ride data", () => {
+    const richRide: Ride = {
+      ...mockRide,
+      driver_display_name: "Driver Test",
+      driver_tg_id: 123,
+      route_distance_m: 12300,
+      route_duration_s: 38 * 60,
+    };
+
+    render(<RideCard ride={richRide} cardState="approved" isAlongTheWay />);
+
+    const card = screen.getByTestId("ride-card");
+    const text = card.textContent ?? "";
+    expect(card).toHaveStyle({ padding: "12px", gap: "8px" });
+    expect(screen.getByText(mockRide.from_label)).toBeInTheDocument();
+    expect(screen.getByText(mockRide.to_label)).toBeInTheDocument();
+    expect(text).toContain("150");
+    expect(text).toContain("2");
+    expect(screen.getByText("Driver Test")).toBeInTheDocument();
+    expect(screen.getByText(mockRide.comment ?? "")).toBeInTheDocument();
+    expect(text).toContain("12.3");
+    expect(text).toContain("38");
+    expect(text).toContain("Одобрено");
+    expect(text).toContain("По пути");
+  });
 });

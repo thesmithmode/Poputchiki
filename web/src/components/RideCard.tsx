@@ -250,19 +250,17 @@ export function RideCard({
         width: "100%",
         textAlign: "left",
         background: bg,
-        borderRadius: 18,
-        padding: 14,
+        borderRadius: 14,
+        padding: 12,
         cursor: onClick ? "pointer" : "default",
-        boxShadow: "var(--shadow-sm)",
+        boxShadow: borderColor
+          ? `inset 3px 0 0 ${borderColor}, var(--shadow-sm)`
+          : "var(--shadow-sm)",
         fontFamily: "inherit",
         transition: "transform 0.08s",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
-        ...(borderColor && {
-          borderLeft: `3px solid ${borderColor}`,
-          paddingLeft: 11,
-        }),
+        gap: 8,
       }}
       onMouseDown={(e) => {
         (e.currentTarget as HTMLElement).style.transform = "scale(0.98)";
@@ -275,12 +273,12 @@ export function RideCard({
       }}
     >
       {/* Top row: time + relative + [state badge] + price */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0 }}>
           {dateBadge && (
             <span
               style={{
-                fontSize: 10,
+                fontSize: 9.5,
                 fontWeight: 600,
                 color: "var(--brand-primary)",
                 lineHeight: 1,
@@ -293,7 +291,7 @@ export function RideCard({
           )}
           <div
             style={{
-              fontSize: 18,
+              fontSize: 17,
               fontWeight: 700,
               color: "var(--brand-text)",
               letterSpacing: "-0.01em",
@@ -318,13 +316,13 @@ export function RideCard({
         {badge && (
           <span
             style={{
-              fontSize: 11,
+              fontSize: 10.5,
               fontWeight: 600,
               color: badge.color,
               background: badge.bg,
               borderRadius: 6,
-              padding: "2px 7px",
-              lineHeight: 1.4,
+              padding: "2px 6px",
+              lineHeight: 1.3,
               whiteSpace: "nowrap",
               flexShrink: 0,
             }}
@@ -334,7 +332,7 @@ export function RideCard({
         )}
         <div
           style={{
-            fontSize: 15,
+            fontSize: 14.5,
             fontWeight: 700,
             color: "var(--brand-text)",
             letterSpacing: -0.3,
@@ -349,24 +347,24 @@ export function RideCard({
       </div>
 
       {/* Route: two labelled rows — "Откуда: <addr>" and "Куда: <addr>" */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: 600,
               color: "var(--brand-faint)",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
               flexShrink: 0,
-              minWidth: 54,
+              minWidth: 46,
             }}
           >
             Откуда
           </span>
           <span
             style={{
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 500,
               color: "var(--brand-text)",
               whiteSpace: "nowrap",
@@ -382,20 +380,20 @@ export function RideCard({
         <div style={{ display: "flex", alignItems: "baseline", gap: 6, minWidth: 0 }}>
           <span
             style={{
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: 600,
               color: "var(--brand-faint)",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
               flexShrink: 0,
-              minWidth: 54,
+              minWidth: 46,
             }}
           >
             Куда
           </span>
           <span
             style={{
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 500,
               color: "var(--brand-text)",
               whiteSpace: "nowrap",
@@ -412,20 +410,20 @@ export function RideCard({
 
       {/* Route info + along-the-way badge */}
       {(routeMetrics || isAlongTheWay) && (
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 18 }}>
           {routeMetrics && (
-            <span style={{ fontSize: 12, color: "var(--brand-sub)" }}>{routeMetrics}</span>
+            <span style={{ fontSize: 11.5, color: "var(--brand-sub)" }}>{routeMetrics}</span>
           )}
           {isAlongTheWay && (
             <span
               style={{
-                fontSize: 11,
+                fontSize: 10.5,
                 fontWeight: 600,
                 color: "var(--brand-primary)",
                 background: "var(--brand-primary-soft, rgba(45,90,61,0.1))",
                 borderRadius: 6,
-                padding: "2px 7px",
-                lineHeight: 1.4,
+                padding: "1px 6px",
+                lineHeight: 1.35,
                 whiteSpace: "nowrap",
               }}
             >
@@ -440,8 +438,8 @@ export function RideCard({
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 10,
-          paddingTop: 8,
+          gap: 8,
+          paddingTop: 6,
           borderTop: "1px solid var(--brand-line-soft)",
         }}
       >
@@ -451,8 +449,8 @@ export function RideCard({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 6,
-              fontSize: 12,
+              gap: 5,
+              fontSize: 11.5,
               color: "var(--brand-sub)",
               fontWeight: 500,
               minWidth: 0,
@@ -462,7 +460,7 @@ export function RideCard({
               tgId={ride.driver_tg_id ?? 0}
               photoUrl={ride.driver_photo_url ?? null}
               displayName={ride.driver_display_name}
-              size={18}
+              size={16}
             />
             <span
               style={{
@@ -480,20 +478,20 @@ export function RideCard({
             display: "inline-flex",
             alignItems: "center",
             gap: 4,
-            fontSize: 12,
+            fontSize: 11.5,
             color: noSeats ? "var(--brand-danger)" : "var(--brand-sub)",
             fontWeight: 500,
             flexShrink: 0,
           }}
         >
-          <Icon name="seat" size={13} />
+          <Icon name="seat" size={12} />
           {noSeats ? "нет мест" : `${seats} мест`}
         </div>
         {ride.comment !== null && (
           <div
             style={{
               flex: 1,
-              fontSize: 12,
+              fontSize: 11.5,
               color: "var(--brand-sub)",
               fontStyle: "italic",
               overflow: "hidden",

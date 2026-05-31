@@ -502,26 +502,46 @@ describe("MapScreen", () => {
     );
     fireEvent.click(btn);
 
-    const stage = screen.getByTestId("leaflet-container");
+    const compactIconHtml = () => {
+      const call = vi.mocked(L.divIcon).mock.calls.find(([options]) => {
+        const html = (options as { html?: string } | undefined)?.html;
+        return html?.includes("data-compact-ride-marker") ?? false;
+      });
+      return (call?.[0] as { html?: string } | undefined)?.html ?? null;
+    };
+
     await waitFor(() => {
-      const marker = stage.querySelector("[data-compact-ride-marker]") as HTMLElement | null;
-      expect(marker).not.toBeNull();
-      expect(marker?.dataset.mapUpright).toBe("true");
-      expect(marker?.style.transform).toBe("rotate(90deg)");
+      const html = compactIconHtml();
+      expect(html).toContain('data-map-upright="true"');
+      expect(html).toContain('data-compact-ride-marker="true"');
+      expect(html).toContain("rotate(90deg)");
     });
+
+    const stage = screen.getByTestId("leaflet-container");
+    const markerHost = document.createElement("div");
+    markerHost.innerHTML = compactIconHtml() ?? "";
+    const marker = markerHost.firstElementChild as HTMLElement;
+    stage.appendChild(marker);
 
     window.dispatchEvent(
       new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 180 }),
     );
     await waitFor(() => {
-      const marker = stage.querySelector("[data-compact-ride-marker]") as HTMLElement | null;
-      expect(marker?.style.transform).toBe("rotate(180deg)");
+      expect(marker.style.transform).toBe("rotate(180deg)");
     });
 
+    const richCardCallsBeforeExit = vi.mocked(L.divIcon).mock.calls.filter(([options]) => {
+      const html = (options as { html?: string } | undefined)?.html;
+      return html?.includes("data-ride-card-marker") ?? false;
+    }).length;
     fireEvent.click(btn);
     await waitFor(() => {
-      expect(stage.querySelector("[data-compact-ride-marker]")).toBeNull();
-      expect(stage.querySelector("[data-ride-card-marker]")).not.toBeNull();
+      const richCardCalls = vi.mocked(L.divIcon).mock.calls.filter(([options]) => {
+        const html = (options as { html?: string } | undefined)?.html;
+        return html?.includes("data-ride-card-marker") ?? false;
+      }).length;
+      expect(richCardCalls).toBeGreaterThan(richCardCallsBeforeExit);
+      expect(btn).toHaveAttribute("aria-pressed", "false");
     });
   });
 

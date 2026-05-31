@@ -412,6 +412,19 @@ export function MapScreen({
     };
   }, [rides, requestMap, viewedRides, myUserId, selected, clearRideMarkers]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Leaflet DOM must be refreshed after React commits locationMode.
+  useEffect(() => {
+    if (!mapRef.current || selectedRef.current) return;
+    const id = window.setTimeout(() => {
+      if (!mapRef.current || selectedRef.current) return;
+      if (locationModeRef.current === "headingUp" && currentLocationFixRef.current) {
+        applyLocationOnMap(currentLocationFixRef.current, { recenter: false });
+      }
+      rerenderRideMarkers();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [locationMode]);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: onRidesCount is a stable prop ref, map init runs once
   useEffect(() => {
     let destroyed = false;
@@ -851,7 +864,6 @@ export function MapScreen({
     resetMapBearing();
     const fix = currentLocationFixRef.current;
     if (fix) applyLocationOnMap(fix, { recenter: options.recenter ?? true });
-    rerenderRideMarkers();
   }
 
   function enableHeadingUpMode(lm: TelegramLocationManager | undefined) {
@@ -867,7 +879,6 @@ export function MapScreen({
     applyMapBearing(heading);
     invalidateMapStage(true);
     applyLocationOnMap(fix);
-    rerenderRideMarkers();
     const trackingStartId = window.setTimeout(() => {
       if (locationModeRef.current === "headingUp") {
         startContinuousLocationTracking(lm);

@@ -234,8 +234,13 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
       `;
 
       for (const req of futureRequests) {
-        await tx`UPDATE ride_requests SET status = 'cancelled' WHERE id = ${req.id}`;
-        if (req.status === "accepted") {
+        await tx`SELECT pg_advisory_xact_lock(hashtext(${req.ride_id}::text))`;
+        const updated = await tx<{ id: string }[]>`
+          UPDATE ride_requests SET status = 'cancelled'
+          WHERE id = ${req.id} AND status = ${req.status}
+          RETURNING id
+        `;
+        if (updated.length > 0 && req.status === "accepted") {
           await tx`SELECT app.unbook_seat(${req.ride_id}::uuid)`;
         }
       }
@@ -288,8 +293,13 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
             AND rr.status IN ('pending', 'accepted')
         `;
         for (const req of futureRequests) {
-          await tx`UPDATE ride_requests SET status = 'cancelled' WHERE id = ${req.id}`;
-          if (req.status === "accepted") {
+          await tx`SELECT pg_advisory_xact_lock(hashtext(${req.ride_id}::text))`;
+          const updated = await tx<{ id: string }[]>`
+            UPDATE ride_requests SET status = 'cancelled'
+            WHERE id = ${req.id} AND status = ${req.status}
+            RETURNING id
+          `;
+          if (updated.length > 0 && req.status === "accepted") {
             await tx`SELECT app.unbook_seat(${req.ride_id}::uuid)`;
           }
         }

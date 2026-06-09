@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Verify CI green for this SHA or dev tip
+      - name: Verify CI green for this SHA or matching dev tip
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -44,17 +44,18 @@ jobs:
             echo "CI success for $SHA"
             exit 0
           fi
+
           DEV_SHA=$(git rev-parse origin/dev 2>/dev/null || echo "")
-          if [[ -n "$DEV_SHA" ]] && check_sha "$DEV_SHA"; then
-            echo "CI success for dev tip $DEV_SHA (squash-merge SHA changed)"
-            exit 0
+          if [[ -n "$DEV_SHA" ]]; then
+            DEPLOY_TREE=$(git rev-parse "$SHA^{tree}" 2>/dev/null || echo "")
+            DEV_TREE=$(git rev-parse "$DEV_SHA^{tree}" 2>/dev/null || echo "")
+            if [[ -n "$DEPLOY_TREE" ]] && [[ "$DEPLOY_TREE" == "$DEV_TREE" ]] && check_sha "$DEV_SHA"; then
+              echo "CI success for matching dev tip $DEV_SHA (same tree as $SHA)"
+              exit 0
+            fi
           fi
-          LATEST_DEV_CI=$(gh run list --workflow ci.yml --branch dev --status success --limit 1 --json headSha --jq '.[0].headSha' 2>/dev/null || echo "")
-          if [[ -n "$LATEST_DEV_CI" ]]; then
-            echo "CI success for latest green dev run $LATEST_DEV_CI (fallback)"
-            exit 0
-          fi
-          echo "ERROR: no successful CI run for $SHA, dev tip $DEV_SHA, or any dev branch — refusing to deploy" >&2
+
+          echo "ERROR: no successful CI run for deploy SHA $SHA (or matching dev tip) — refusing to deploy" >&2
           exit 1
 
   build-and-push:

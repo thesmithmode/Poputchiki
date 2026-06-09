@@ -162,6 +162,7 @@ describe("identityGuard: jti revocation check", () => {
     const jti = "revoked-test-jti";
     // biome-ignore lint/suspicious/noExplicitAny: mock sql
     const sql = vi.fn().mockResolvedValueOnce([{ jti }]) as any;
+    sql.begin = vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(sql));
     const app = new Hono();
     app.use("/api/*", identityGuard(SECRET, sql));
     app.get("/api/me", (c) => c.json(c.get("user" as never)));
@@ -179,6 +180,7 @@ describe("identityGuard: jti revocation check", () => {
       .mockResolvedValueOnce([])
       // biome-ignore lint/suspicious/noExplicitAny: mock sql for testing
       .mockResolvedValueOnce([{ display_name: "Test User" }]) as any;
+    sql.begin = vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(sql));
     const app = new Hono();
     app.use("/api/*", identityGuard(SECRET, sql));
     app.get("/api/me", (c) => c.json(c.get("user" as never)));

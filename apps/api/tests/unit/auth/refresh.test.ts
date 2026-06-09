@@ -31,13 +31,15 @@ function makeSql(
   userRows: unknown[] = [DEFAULT_USER_ROW],
   insertClaimRows: unknown[] = [{ jti: "ok" }],
 ) {
-  return (
+  const sql = (
     vi
       .fn()
       .mockResolvedValueOnce(userRows)
       // biome-ignore lint/suspicious/noExplicitAny: mock
       .mockResolvedValueOnce(insertClaimRows) as any
   );
+  sql.begin = vi.fn((fn: (tx: unknown) => Promise<unknown>) => fn(sql));
+  return sql;
 }
 
 describe("POST /auth/refresh", () => {

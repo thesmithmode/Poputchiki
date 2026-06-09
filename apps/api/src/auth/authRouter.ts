@@ -194,12 +194,14 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     // Verify user still exists, is not soft-deleted AND not banned.
     // banned/deleted users must not be able to refresh tokens indefinitely.
-    const [userRow] = await sql<{ id: string; tg_id: string | number; role: string }[]>`
-      SELECT id, tg_id, role FROM users
-      WHERE id = ${userId} AND tg_id = ${subTgId}
-        AND deleted_at IS NULL AND is_banned = false
-      LIMIT 1
-    `;
+    const [userRow] = await withSystem(sql, (tx) =>
+      tx<{ id: string; tg_id: string | number; role: string }[]>`
+        SELECT id, tg_id, role FROM users
+        WHERE id = ${userId} AND tg_id = ${subTgId}
+          AND deleted_at IS NULL AND is_banned = false
+        LIMIT 1
+      `,
+    );
     if (!userRow) {
       return c.json({ error: "user not found" }, 401);
     }
@@ -209,12 +211,14 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     // → no row inserted → 401. Closes race between SELECT check and INSERT.
     /* c8 ignore next -- oldJti always non-null for issued refresh tokens */
     if (oldJti) {
-      const claimed = await sql<{ jti: string }[]>`
-        INSERT INTO revoked_tokens (jti, user_id)
-        VALUES (${oldJti}, ${userId})
-        ON CONFLICT (jti) DO NOTHING
-        RETURNING jti
-      `;
+      const claimed = await withSystem(sql, (tx) =>
+        tx<{ jti: string }[]>`
+          INSERT INTO revoked_tokens (jti, user_id)
+          VALUES (${oldJti}, ${userId})
+          ON CONFLICT (jti) DO NOTHING
+          RETURNING jti
+        `,
+      );
       if (claimed.length === 0) {
         return c.json({ error: "token revoked" }, 401);
       }
@@ -281,7 +285,9 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
 
     /* c8 ignore next -- defensive: signed JWT always has jti */
     if (refreshJti) {
-      const [already] = await sql`SELECT 1 FROM revoked_tokens WHERE jti = ${refreshJti} LIMIT 1`;
+      const [already] = await withSystem(sql, (tx) =>
+        tx`SELECT 1 FROM revoked_tokens WHERE jti = ${refreshJti} LIMIT 1`,
+      );
       if (already) return c.json({ error: "token already revoked" }, 401);
     }
 
@@ -319,7 +325,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const jtiList = [refreshJti, accessJti].filter((j): j is string => Boolean(j));
     if (jtiList.length > 0) {
       try {
-        await sql.begin(async (tx) => {
+        await withSystem(sql, async (tx) => {
           for (const jti of jtiList) {
             await tx`
               INSERT INTO revoked_tokens (jti, user_id)

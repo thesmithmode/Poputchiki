@@ -1,6 +1,2 @@
-[mcp_servers.caveman-shrink]
-args = [
-    "-y",
-    "caveman-shrink",
-]
-command = "npx"
+# Security hardening: do not auto-run repository-defined MCP servers.
+# Developers can configure MCP servers in personal/user-level Codex config if needed.

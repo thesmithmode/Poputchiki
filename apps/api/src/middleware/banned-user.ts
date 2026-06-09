@@ -33,8 +33,10 @@ async function getUserState(sql: postgres.Sql, userId: string): Promise<UserStat
   const hit = cache.get(userId);
   if (hit && hit.expires > now) return hit.state;
 
-  const [row] = await withSystem(sql, (tx) =>
-    tx<UserState[]>`
+  const [row] = await withSystem(
+    sql,
+    (tx) =>
+      tx<UserState[]>`
       SELECT is_banned, ban_reason, banned_at, deleted_at FROM users WHERE id = ${userId} LIMIT 1
     `,
   );

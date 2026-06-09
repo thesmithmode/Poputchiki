@@ -42,10 +42,28 @@ export function createInternalRideRequestsRouter(sql: postgres.Sql, internalSecr
         return c.json({ error: "tg_id required" }, 400);
       }
 
-      const [userRow] = await sql<{ id: string; role: string }[]>`
-        SELECT id, role FROM users WHERE tg_id = ${tgId}
+      const [userRow] = await sql<
+        {
+          id: string;
+          role: string;
+          is_banned: boolean;
+          ban_reason: string | null;
+          banned_at: string | null;
+          deleted_at: string | null;
+        }[]
+      >`
+        SELECT id, role, is_banned, ban_reason, banned_at::text, deleted_at::text
+        FROM users
+        WHERE tg_id = ${tgId}
       `;
       if (!userRow) return c.json({ error: "user_not_found" }, 404);
+      if (userRow.deleted_at) return c.json({ error: "unauthorized" }, 401);
+      if (userRow.is_banned) {
+        return c.json(
+          { error: "banned", reason: userRow.ban_reason, banned_at: userRow.banned_at },
+          403,
+        );
+      }
 
       const user: AppUser = {
         id: userRow.id,

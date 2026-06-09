@@ -38,7 +38,16 @@ function post(path: string, body: unknown, secret = SECRET) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockSql.mockReset();
-  mockSql.mockResolvedValue([{ id: USER_ID, role: "user" }]);
+  mockSql.mockResolvedValue([
+    {
+      id: USER_ID,
+      role: "user",
+      is_banned: false,
+      ban_reason: null,
+      banned_at: null,
+      deleted_at: null,
+    },
+  ]);
   vi.mocked(respondToRideRequest).mockReset();
 });
 
@@ -96,6 +105,43 @@ describe("internalRideRequestsRouter — input validation", () => {
     expect(res.status).toBe(404);
     const body = await readJson(res);
     expect(body.error).toBe("user_not_found");
+  });
+});
+
+describe("internalRideRequestsRouter — user sanctions", () => {
+  it("401 — deleted user cannot mutate", async () => {
+    mockSql.mockResolvedValueOnce([
+      {
+        id: USER_ID,
+        role: "user",
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        deleted_at: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    const res = await post(`/${REQ_ID}/accept`, { tg_id: TG_ID });
+    expect(res.status).toBe(401);
+    const body = await readJson(res);
+    expect(body.error).toBe("unauthorized");
+  });
+
+  it("403 — banned user cannot mutate", async () => {
+    mockSql.mockResolvedValueOnce([
+      {
+        id: USER_ID,
+        role: "user",
+        is_banned: true,
+        ban_reason: "safety",
+        banned_at: "2026-01-01T00:00:00.000Z",
+        deleted_at: null,
+      },
+    ]);
+    const res = await post(`/${REQ_ID}/accept`, { tg_id: TG_ID });
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("banned");
+    expect(body.reason).toBe("safety");
   });
 });
 

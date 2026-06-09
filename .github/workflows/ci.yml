@@ -64,9 +64,9 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4-alpine
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: ci_db
         ports:
           - 5432:5432
         options: >-
@@ -75,15 +75,15 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ci_user
+      POSTGRES_PASSWORD: ci_password
+      POSTGRES_DB: ci_db
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
+      DATABASE_URL: postgres://ci_user:ci_password@localhost:5432/ci_db
+      JWT_SECRET: ci_jwt_secret_32_bytes_minimum_x
+      BOT_TOKEN: ci_bot_token_placeholder
+      PGCRYPTO_KEY: ci_pgcrypto_key_placeholder
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -92,9 +92,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Init Postgres roles
         env:
-          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PGPASSWORD: ci_password
         run: |
-          psql -h localhost -U "${{ secrets.POSTGRES_USER }}" -d "${{ secrets.POSTGRES_DB }}" -c "
+          psql -h localhost -U "ci_user" -d "ci_db" -c "
             DO \$\$ BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
                 CREATE ROLE poputchiki_service NOLOGIN;
@@ -117,9 +117,9 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4-alpine
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: ci_db
         ports:
           - 5432:5432
         options: >-
@@ -128,15 +128,15 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: ci_user
+      POSTGRES_PASSWORD: ci_password
+      POSTGRES_DB: ci_db
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
+      DATABASE_URL: postgres://ci_user:ci_password@localhost:5432/ci_db
+      JWT_SECRET: ci_jwt_secret_32_bytes_minimum_x
+      BOT_TOKEN: ci_bot_token_placeholder
+      PGCRYPTO_KEY: ci_pgcrypto_key_placeholder
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -145,9 +145,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Init Postgres roles
         env:
-          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PGPASSWORD: ci_password
         run: |
-          psql -h localhost -U "${{ secrets.POSTGRES_USER }}" -d "${{ secrets.POSTGRES_DB }}" -c "
+          psql -h localhost -U "ci_user" -d "ci_db" -c "
             DO \$\$ BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
                 CREATE ROLE poputchiki_service NOLOGIN;

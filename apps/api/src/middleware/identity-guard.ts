@@ -2,6 +2,7 @@ import type { MiddlewareHandler } from "hono";
 import { getCookie, setCookie } from "hono/cookie";
 import { verify } from "hono/jwt";
 import type postgres from "postgres";
+import { withSystem } from "../db/with-identity";
 import { verifySessionBinding } from "../lib/cookie";
 
 export type AppUser = { id: string; tgId: number; role: string; displayName?: string };
@@ -43,17 +44,19 @@ export function identityGuard(jwtSecret: string, sql?: postgres.Sql): Middleware
     // Проверка отозванности jti
     let displayName: string | undefined;
     if (sql) {
-      const [revoked] = await sql`
-        SELECT 1 FROM revoked_tokens WHERE jti = ${jti} LIMIT 1
-      `;
+      const userId = String(payload.uid);
+      const { revoked, userRow } = await withSystem(sql, async (tx) => {
+        const [revokedRow] = await tx`
+          SELECT 1 FROM revoked_tokens WHERE jti = ${jti} LIMIT 1
+        `;
+        const [row] = await tx<{ display_name: string }[]>`
+          SELECT display_name FROM users WHERE id = ${userId}::uuid LIMIT 1
+        `;
+        return { revoked: revokedRow, userRow: row };
+      });
       if (revoked) {
         return c.json({ error: "unauthorized" }, 401);
       }
-
-      const userId = String(payload.uid);
-      const [userRow] = await sql<{ display_name: string }[]>`
-        SELECT display_name FROM users WHERE id = ${userId}::uuid LIMIT 1
-      `;
       displayName = userRow?.display_name;
     }
 

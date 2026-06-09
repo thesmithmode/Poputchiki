@@ -1,5 +1,6 @@
 import type { MiddlewareHandler } from "hono";
 import type postgres from "postgres";
+import { withSystem } from "../db/with-identity";
 import type { AppUser } from "./identity-guard";
 
 interface UserState {
@@ -32,9 +33,11 @@ async function getUserState(sql: postgres.Sql, userId: string): Promise<UserStat
   const hit = cache.get(userId);
   if (hit && hit.expires > now) return hit.state;
 
-  const [row] = await sql<UserState[]>`
-    SELECT is_banned, ban_reason, banned_at, deleted_at FROM users WHERE id = ${userId} LIMIT 1
-  `;
+  const [row] = await withSystem(sql, (tx) =>
+    tx<UserState[]>`
+      SELECT is_banned, ban_reason, banned_at, deleted_at FROM users WHERE id = ${userId} LIMIT 1
+    `,
+  );
   const state = row ?? null;
 
   /* c8 ignore start -- defensive eviction; не покрываем тестом 50k entries */

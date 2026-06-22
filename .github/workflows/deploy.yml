@@ -25,7 +25,7 @@ jobs:
   verify-ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Verify CI green for this SHA or dev tip
@@ -79,7 +79,7 @@ jobs:
             context: .
             dockerfile: apps/web-server/Dockerfile
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Log in to GHCR
         run: |
@@ -115,7 +115,7 @@ jobs:
       matrix:
         service: [api, notifier, cron, webhook, web]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Pull image with retry
         run: |
@@ -145,7 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.10.0
@@ -279,7 +279,7 @@ jobs:
     if: failure()
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.10.0

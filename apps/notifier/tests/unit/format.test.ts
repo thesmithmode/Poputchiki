@@ -125,6 +125,19 @@ describe("formatMessage", () => {
     ).toContain("регулярно");
   });
 
+  it("template_subscription_request escapes passenger_name for Telegram HTML", () => {
+    const msg = formatMessage(
+      "template_subscription_request",
+      payload("template_subscription_request", {
+        passenger_name: '<a href="https://evil.example">Пассажир & Co</a>',
+      }),
+    );
+
+    expect(msg).toBe(
+      "&lt;a href=&quot;https://evil.example&quot;&gt;Пассажир &amp; Co&lt;/a&gt; хочет ездить с Вами регулярно",
+    );
+  });
+
   it("template_subscription_accepted", () => {
     expect(
       formatMessage("template_subscription_accepted", payload("template_subscription_accepted")),

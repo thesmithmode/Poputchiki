@@ -3,6 +3,17 @@ import { useEffect, useState } from "react";
 export type ThemePref = "system" | "light" | "dark";
 
 const STORAGE_KEY = "pp_theme";
+const SYSTEM_QUERY = "(prefers-color-scheme: dark)";
+
+type LegacyMediaQueryList = MediaQueryList & {
+  addListener?: (listener: () => void) => void;
+  removeListener?: (listener: () => void) => void;
+};
+
+function getSystemMediaQuery(): LegacyMediaQueryList | null {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return null;
+  return window.matchMedia(SYSTEM_QUERY) as LegacyMediaQueryList;
+}
 
 // Для "system" приоритет — Telegram WebApp colorScheme (PC Telegram использует свою
 // тему, не Windows), и только если Telegram недоступен — браузерный prefers-color-scheme.
@@ -16,8 +27,7 @@ function getSystemDark(): boolean {
       return wa.colorScheme === "dark";
     }
   }
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  return getSystemMediaQuery()?.matches ?? false;
 }
 
 function isTelegramEnv(): boolean {
@@ -52,10 +62,17 @@ export function useThemePreference(): {
     // через wa.onEvent("themeChanged"). Подписываться на browser MQ здесь — значит
     // конфликтовать с Telegram colorScheme (Windows dark vs Telegram light).
     if (isTelegramEnv()) return;
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const mq = getSystemMediaQuery();
+    if (!mq) return;
     const handler = () => applyTheme("system");
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    }
+    if (typeof mq.addListener === "function") {
+      mq.addListener(handler);
+      return () => mq.removeListener?.(handler);
+    }
   }, [pref]);
 
   const setPref = (p: ThemePref) => {

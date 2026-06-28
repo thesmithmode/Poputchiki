@@ -8,7 +8,7 @@ import type { AppUser } from "../middleware/identity-guard";
 
 const PostComplaintInput = z.object({
   target_user_id: z.string().regex(UUID_RE, "invalid uuid"),
-  target_ride_id: z.string().regex(UUID_RE, "invalid uuid").optional(),
+  target_ride_id: z.string().regex(UUID_RE, "invalid uuid"),
   reason_code: z.enum(["spam", "fraud", "offense", "other"]),
   text: z.string().max(1000).optional(),
 });
@@ -33,6 +33,21 @@ export function createComplaintsRouter(sql: postgres.Sql): Hono {
     try {
       const reason = text ? `${reason_code}: ${text}` : reason_code;
       const rows = await withIdentity(sql, user, async (tx) => {
+        const confirmed = await tx<{ ok: number }[]>`
+          SELECT 1 AS ok
+          FROM ride_participation rp
+          JOIN rides r ON r.id = rp.ride_id
+          WHERE rp.ride_id = ${target_ride_id}
+            AND rp.driver_marked = true
+            AND rp.passenger_confirmed = true
+            AND (
+              (rp.passenger_id = ${user.id} AND r.driver_id = ${target_user_id})
+              OR (rp.passenger_id = ${target_user_id} AND r.driver_id = ${user.id})
+            )
+          LIMIT 1
+        `;
+        if (confirmed.length === 0) return [];
+
         return tx<
           {
             id: string;
@@ -43,10 +58,11 @@ export function createComplaintsRouter(sql: postgres.Sql): Hono {
           }[]
         >`
           INSERT INTO complaints (reporter_id, target_id, ride_id, reason, status)
-          VALUES (${user.id}, ${target_user_id}, ${target_ride_id ?? null}, ${reason}, 'open')
+          VALUES (${user.id}, ${target_user_id}, ${target_ride_id}, ${reason}, 'open')
           RETURNING id, reporter_id, target_id, status, created_at
         `;
       });
+      if (rows.length === 0) return c.json({ error: "not_confirmed" }, 403);
       return c.json(rows[0], 201);
     } catch (err) {
       if (isUniqueViolation(err)) return c.json({ error: "already_reported_this_week" }, 409);

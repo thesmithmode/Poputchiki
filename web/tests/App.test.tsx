@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
 
@@ -129,6 +129,34 @@ describe("App", () => {
     });
     // Loading screen отсутствует
     expect(screen.queryByText("Запуск приложения…")).not.toBeInTheDocument();
+  });
+
+  it("SECURITY: first-time users see consent onboarding instead of silent auto-onboarding", async () => {
+    const { useBootMe } = await import("../src/hooks/useMe");
+    const { apiFetch } = await import("../src/lib/api");
+    vi.mocked(useBootMe).mockReturnValue({
+      status: "ok",
+      user: {
+        id: "u-new",
+        display_name: "Новый пользователь",
+        onboarded: false,
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+        role: "user",
+      },
+    });
+
+    render(<App />);
+
+    expect(await screen.findByTestId("onboarding-screen")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("onboarding-next-1"));
+    expect(screen.getByTestId("onboarding-consent")).not.toBeChecked();
+    expect(screen.getByTestId("onboarding-finish")).toBeDisabled();
+    expect(apiFetch).not.toHaveBeenCalledWith(
+      "/users/me",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ onboarded: true }) }),
+    );
   });
 });
 

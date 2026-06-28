@@ -11,11 +11,32 @@
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://api.{$DOMAIN} https://*.tile.openstreetmap.org https://t.me https://api.telegram.org; script-src 'self' https://telegram.org https://*.telegram.org 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.{$DOMAIN} https://*.tile.openstreetmap.org; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'self'; form-action 'self'"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data: https://api.{$DOMAIN} https://t.me https://api.telegram.org; script-src 'self' https://telegram.org https://*.telegram.org 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.{$DOMAIN}; frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'self'; form-action 'self'"
 		Permissions-Policy "geolocation=(self), camera=(), microphone=(), payment=()"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		X-Content-Type-Options "nosniff"
 		-X-Frame-Options
+	}
+
+	handle_path /tiles/a/* {
+		reverse_proxy https://a.tile.openstreetmap.org {
+			header_up Host a.tile.openstreetmap.org
+			header_up Referer ""
+		}
+	}
+
+	handle_path /tiles/b/* {
+		reverse_proxy https://b.tile.openstreetmap.org {
+			header_up Host b.tile.openstreetmap.org
+			header_up Referer ""
+		}
+	}
+
+	handle_path /tiles/c/* {
+		reverse_proxy https://c.tile.openstreetmap.org {
+			header_up Host c.tile.openstreetmap.org
+			header_up Referer ""
+		}
 	}
 
 	handle /health {

@@ -75,9 +75,9 @@ describe("secureHeadersMiddleware", () => {
 
   // --- SPEC §11.1 full CSP sentinel ---
 
-  it("SENTINEL: img-src contains https://*.tile.openstreetmap.org", async () => {
+  it("SENTINEL: CSP does not allow direct browser requests to OSM tile origins", async () => {
     const csp = (await getHeaders()).get("content-security-policy") ?? "";
-    expect(csp).toContain("https://*.tile.openstreetmap.org");
+    expect(csp).not.toContain("https://*.tile.openstreetmap.org");
   });
 
   it("SENTINEL: img-src contains https://t.me", async () => {

@@ -74,6 +74,27 @@ describe("POST /auth/telegram — response body содержит профиль 
     expect(body.user.banned_at).toBeNull();
   });
 
+  it("SENTINEL: возвращает banned_at как ISO-строку для забаненного пользователя", async () => {
+    const bannedAt = new Date("2026-01-01T00:00:00.000Z");
+    const res = await createAuthRouter(
+      makeSql({
+        id: "cccccccc-0000-4000-a000-000000000003",
+        role: "user",
+        display_name: "Иван Петров",
+        onboarded: true,
+        is_banned: true,
+        ban_reason: "spam",
+        banned_at: bannedAt,
+      }),
+    ).request("/telegram", REQUEST_OPTS);
+
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.user.is_banned).toBe(true);
+    expect(body.user.ban_reason).toBe("spam");
+    expect(body.user.banned_at).toBe("2026-01-01T00:00:00.000Z");
+  });
+
   it("SENTINEL: display_name fallback к tgUser first_name если RETURNING не вернул display_name", async () => {
     // Старый SQL ответ без display_name (обратная совместимость)
     const res = await createAuthRouter(

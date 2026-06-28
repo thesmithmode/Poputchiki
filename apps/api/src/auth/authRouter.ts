@@ -16,6 +16,8 @@ import { TelegramAuthError, verifyInitData } from "./verifyInitData";
 const ACCESS_TTL = 15 * 60; // 15 минут: короткое окно компрометации, refresh transparent для UX
 const REFRESH_TTL = 30 * 24 * 60 * 60;
 
+const toIsoOrNull = (v: unknown): string | null => (v instanceof Date ? v.toISOString() : null);
+
 export function createAuthRouter(sql: postgres.Sql): Hono {
   const router = new Hono();
 
@@ -100,7 +102,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
           onboarded: Boolean(upserted?.onboarded),
           is_banned: Boolean(upserted?.is_banned),
           ban_reason: typeof upserted?.ban_reason === "string" ? upserted.ban_reason : null,
-          banned_at: typeof upserted?.banned_at === "string" ? upserted.banned_at : null,
+          banned_at: toIsoOrNull(upserted?.banned_at),
         };
         /* c8 ignore stop */
       });

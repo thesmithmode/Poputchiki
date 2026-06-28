@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, dehydrate, hydrate } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -8,6 +8,7 @@ import { useBootMe } from "./hooks/useMe";
 import { useRides } from "./hooks/useRides";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
+import { hydratePersistedQueryCache, persistQueryClientCache } from "./lib/queryCachePersistence";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 // RidesScreen не lazy — первый экран, должен быть доступен мгновенно без Suspense fallback
 import { RidesScreen } from "./screens/RidesScreen";
@@ -255,17 +256,8 @@ const queryClient = new QueryClient({
   },
 });
 
-const CACHE_KEY = "pp_qc_v1";
-const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
-
-// Восстанавливаем дегидрированный кэш из localStorage при старте
-try {
-  const raw = localStorage.getItem(CACHE_KEY);
-  if (raw) {
-    const { ts, state } = JSON.parse(raw) as { ts: number; state: unknown };
-    if (Date.now() - ts < CACHE_MAX_AGE) hydrate(queryClient, state);
-  }
-} catch {}
+// Восстанавливаем только публичный дегидрированный кэш из localStorage при старте
+hydratePersistedQueryCache(queryClient);
 
 // Сохраняем кэш в localStorage каждые 3 сек через throttle
 let _saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -274,10 +266,7 @@ queryClient.getQueryCache().subscribe(() => {
   _saveTimer = setTimeout(() => {
     _saveTimer = null;
     try {
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ ts: Date.now(), state: dehydrate(queryClient) }),
-      );
+      persistQueryClientCache(queryClient);
     } catch {}
   }, 3000);
 });

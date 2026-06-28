@@ -2,9 +2,7 @@
 
 **Your AI conversations compile themselves into a searchable knowledge base.**
 
-Adapted from [Karpathy's LLM Knowledge Base](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) architecture, but instead of clipping web articles, the raw data is your own conversations with Claude Code. When a session ends (or auto-compacts mid-session), Claude Code hooks capture the conversation transcript and spawn a background process that uses the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk) to extract the important stuff - decisions, lessons learned, patterns, gotchas - and appends it to a daily log. You then compile those daily logs into structured, cross-referenced knowledge articles organized by concept. Retrieval uses a simple index file instead of RAG - no vector database, no embeddings, just markdown.
-
-Anthropic has clarified that personal use of the Claude Agent SDK is covered under your existing Claude subscription (Max, Team, or Enterprise) - no separate API credits needed. Unlike OpenClaw, which requires API billing for its memory flush, this runs on your subscription.
+Adapted from [Karpathy's LLM Knowledge Base](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f) architecture, but instead of clipping web articles, the raw data is your own conversations with Claude Code. When a session ends (or auto-compacts mid-session), Codex hooks capture the conversation transcript and spawn a background process. Automatic hooks treat transcript text as untrusted: by default they will not start a tool-capable nested Codex agent for that text. Manually reviewed memory operations can opt in with `WIKI_ALLOW_CODEX_TOOLS=1`. You then compile those daily logs into structured, cross-referenced knowledge articles organized by concept. Retrieval uses a simple index file instead of RAG - no vector database, no embeddings, just markdown.
 
 ## Quick Start
 
@@ -28,7 +26,7 @@ Conversation -> SessionEnd/PreCompact hooks -> flush.py extracts knowledge
 ```
 
 - **Hooks** capture conversations automatically (session end + pre-compaction safety net)
-- **flush.py** calls the Claude Agent SDK to decide what's worth saving, and after 6 PM triggers end-of-day compilation automatically
+- **flush.py** refuses untrusted automatic nested-Codex execution unless `WIKI_ALLOW_CODEX_TOOLS=1` is set, and after 6 PM triggers end-of-day compilation automatically
 - **compile.py** turns daily logs into organized concept articles with cross-references (triggered automatically or run manually)
 - **query.py** answers questions using index-guided retrieval (no RAG needed at personal scale)
 - **lint.py** runs 7 health checks (broken links, orphans, contradictions, staleness)
@@ -36,9 +34,9 @@ Conversation -> SessionEnd/PreCompact hooks -> flush.py extracts knowledge
 ## Key Commands
 
 ```bash
-uv run python scripts/compile.py                    # compile new daily logs
-uv run python scripts/query.py "question"            # ask the knowledge base
-uv run python scripts/query.py "question" --file-back # ask + save answer back
+WIKI_ALLOW_CODEX_TOOLS=1 uv run python scripts/compile.py # compile reviewed daily logs
+WIKI_ALLOW_CODEX_TOOLS=1 uv run python scripts/query.py "question" # ask the knowledge base
+WIKI_ALLOW_CODEX_TOOLS=1 uv run python scripts/query.py "question" --file-back # ask + save answer back
 uv run python scripts/lint.py                        # run health checks
 uv run python scripts/lint.py --structural-only      # free structural checks only
 ```

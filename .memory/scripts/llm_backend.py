@@ -8,6 +8,11 @@ import tempfile
 from pathlib import Path
 
 DEFAULT_CODEX_TIMEOUT = 900
+CODEX_TOOL_OPT_IN_ENV = "WIKI_ALLOW_CODEX_TOOLS"
+
+
+class UntrustedCodexToolingError(RuntimeError):
+    """Raised when untrusted memory automation would start a tool-capable Codex agent."""
 
 
 def selected_backend() -> str:
@@ -21,7 +26,6 @@ def _codex_command(cwd: Path, sandbox: str, output_file: Path) -> list[str]:
         "exec",
         "--ephemeral",
         "--skip-git-repo-check",
-        "--ignore-rules",
         "-c",
         "features.hooks=false",
         "-s",
@@ -56,7 +60,17 @@ def find_codex_cli() -> str:
     return "codex"
 
 
+def _codex_tools_explicitly_allowed() -> bool:
+    return os.environ.get(CODEX_TOOL_OPT_IN_ENV) == "1"
+
+
 def _run_codex(prompt: str, cwd: Path, sandbox: str) -> str:
+    if not _codex_tools_explicitly_allowed():
+        raise UntrustedCodexToolingError(
+            "Refusing to run untrusted memory content through tool-capable `codex exec`. "
+            f"Set {CODEX_TOOL_OPT_IN_ENV}=1 only for manually reviewed local memory tasks."
+        )
+
     timeout = int(os.environ.get("WIKI_CODEX_TIMEOUT", str(DEFAULT_CODEX_TIMEOUT)))
     env = os.environ.copy()
     env["CODEX_INVOKED_BY"] = "wiki"

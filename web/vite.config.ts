@@ -21,12 +21,12 @@ export default defineConfig({
         navigateFallback: null,
         runtimeCaching: [
           {
-            // OSM тайлы: CacheFirst, 7 дней, до 1000 тайлов (~15 МБ)
+            // OSM тайлы: CacheFirst, 7 дней, до 1000 тайлов (~15 МБ); минимизируем retention z/x/y как location-history
             urlPattern: ({ url }: { url: URL }) => url.hostname.endsWith(".tile.openstreetmap.org"),
             handler: "CacheFirst" as const,
             options: {
               cacheName: "osm-tiles-v1",
-              expiration: { maxEntries: 3000, maxAgeSeconds: 365 * 24 * 60 * 60 },
+              expiration: { maxEntries: 1000, maxAgeSeconds: 7 * 24 * 60 * 60 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },

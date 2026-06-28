@@ -64,26 +64,26 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4-alpine
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: poputchiki_ci
+          POSTGRES_PASSWORD: poputchiki_ci_password
+          POSTGRES_DB: poputchiki_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres"
+          --health-cmd "pg_isready -U poputchiki_ci"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: poputchiki_ci
+      POSTGRES_PASSWORD: poputchiki_ci_password
+      POSTGRES_DB: poputchiki_ci
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
+      DATABASE_URL: postgres://poputchiki_ci:poputchiki_ci_password@localhost:5432/poputchiki_ci
+      JWT_SECRET: ci_jwt_secret_minimum_32_chars
+      BOT_TOKEN: ci_bot_token
+      PGCRYPTO_KEY: ci_pgcrypto_key_minimum_32_chars
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -92,9 +92,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Init Postgres roles
         env:
-          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PGPASSWORD: poputchiki_ci_password
         run: |
-          psql -h localhost -U "${{ secrets.POSTGRES_USER }}" -d "${{ secrets.POSTGRES_DB }}" -c "
+          psql -h localhost -U "poputchiki_ci" -d "poputchiki_ci" -c "
             DO \$\$ BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
                 CREATE ROLE poputchiki_service NOLOGIN;
@@ -117,26 +117,26 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4-alpine
         env:
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: poputchiki_ci
+          POSTGRES_PASSWORD: poputchiki_ci_password
+          POSTGRES_DB: poputchiki_ci
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres"
+          --health-cmd "pg_isready -U poputchiki_ci"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+      POSTGRES_USER: poputchiki_ci
+      POSTGRES_PASSWORD: poputchiki_ci_password
+      POSTGRES_DB: poputchiki_ci
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      DATABASE_URL: postgres://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
-      JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-      PGCRYPTO_KEY: ${{ secrets.PGCRYPTO_KEY }}
+      DATABASE_URL: postgres://poputchiki_ci:poputchiki_ci_password@localhost:5432/poputchiki_ci
+      JWT_SECRET: ci_jwt_secret_minimum_32_chars
+      BOT_TOKEN: ci_bot_token
+      PGCRYPTO_KEY: ci_pgcrypto_key_minimum_32_chars
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -145,9 +145,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - name: Init Postgres roles
         env:
-          PGPASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          PGPASSWORD: poputchiki_ci_password
         run: |
-          psql -h localhost -U "${{ secrets.POSTGRES_USER }}" -d "${{ secrets.POSTGRES_DB }}" -c "
+          psql -h localhost -U "poputchiki_ci" -d "poputchiki_ci" -c "
             DO \$\$ BEGIN
               IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
                 CREATE ROLE poputchiki_service NOLOGIN;

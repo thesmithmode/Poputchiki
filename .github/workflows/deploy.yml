@@ -86,6 +86,10 @@ jobs:
           for i in 1 2 3; do
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin \
               && break
+            if [[ "$i" -eq 3 ]]; then
+              echo "GHCR login failed after $i attempts" >&2
+              exit 1
+            fi
             echo "Attempt $i failed, retrying in 15s..."
             sleep 15
           done

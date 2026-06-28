@@ -185,14 +185,23 @@ export function getCurrentLocationFix(): Promise<LocationFix | null> {
       return;
     }
 
-    if (lm) {
+    if (lm?.isLocationAvailable && typeof lm.getLocation === "function") {
+      const getLocation = lm.getLocation.bind(lm);
       const doRequest = () => {
-        lm.getLocation((loc) => {
-          resolve(loc ? telegramLocationToFix(loc) : null);
-        });
+        try {
+          getLocation((loc) => {
+            resolve(loc ? telegramLocationToFix(loc) : null);
+          });
+        } catch {
+          resolve(null);
+        }
       };
       if (!lm.isInited) {
-        lm.init(doRequest);
+        try {
+          lm.init(doRequest);
+        } catch {
+          resolve(null);
+        }
       } else {
         doRequest();
       }

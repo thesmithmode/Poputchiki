@@ -820,9 +820,10 @@ export function MapScreen({
   function startContinuousLocationTracking(lm: TelegramLocationManager | undefined) {
     stopContinuousLocationTracking();
 
-    if (lm) {
+    if (lm?.isLocationAvailable && typeof lm.getLocation === "function") {
+      const getLocation = lm.getLocation.bind(lm);
       const pollTelegramLocation = () => {
-        lm.getLocation((loc) => {
+        getLocation((loc) => {
           if (!loc || locationModeRef.current !== "headingUp") return;
           applyLocationOnMap(telegramLocationToFix(loc));
         });
@@ -1058,24 +1059,35 @@ export function MapScreen({
 
     if (getCompassCapability().eligible) startCompassTracking();
 
-    if (lm) {
+    if (lm?.isLocationAvailable && typeof lm.getLocation === "function") {
+      const getLocation = lm.getLocation.bind(lm);
       // Telegram LocationManager API (Bot API 8.0+)
       const doRequest = () => {
-        lm.getLocation((loc) => {
-          if (loc) {
-            applyLocationOnMap(telegramLocationToFix(loc));
-          } else {
-            setLocating(false);
-            setLocateError(
-              lm.isAccessGranted
-                ? "Геолокация временно недоступна"
-                : "Разрешите геолокацию: Настройки Telegram → Конфиденциальность → Местоположение",
-            );
-          }
-        });
+        try {
+          getLocation((loc) => {
+            if (loc) {
+              applyLocationOnMap(telegramLocationToFix(loc));
+            } else {
+              setLocating(false);
+              setLocateError(
+                lm.isAccessGranted
+                  ? "Геолокация временно недоступна"
+                  : "Разрешите геолокацию: Настройки Telegram → Конфиденциальность → Местоположение",
+              );
+            }
+          });
+        } catch {
+          setLocating(false);
+          setLocateError("Геолокация временно недоступна");
+        }
       };
       if (!lm.isInited) {
-        lm.init(doRequest);
+        try {
+          lm.init(doRequest);
+        } catch {
+          setLocating(false);
+          setLocateError("Геолокация временно недоступна");
+        }
       } else {
         doRequest();
       }

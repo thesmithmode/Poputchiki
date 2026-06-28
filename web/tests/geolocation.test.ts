@@ -158,6 +158,45 @@ describe("geolocation sensor helpers", () => {
     });
   });
 
+  it("ignores unavailable Telegram LocationManager and falls back to browser geolocation", async () => {
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.802,
+            longitude: 49.124,
+            accuracy: 24,
+          },
+        }),
+      ),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      configurable: true,
+    });
+    telegramWebApp.current = {
+      colorScheme: "light",
+      LocationManager: {
+        isInited: true,
+        isLocationAvailable: false,
+        isAccessRequested: false,
+        isAccessGranted: false,
+        init: vi.fn(),
+        openSettings: vi.fn(),
+      },
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+
+    await expect(getCurrentLocationFix()).resolves.toEqual({
+      lat: 55.802,
+      lng: 49.124,
+      accuracyM: 24,
+      source: "browser",
+    });
+    expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled();
+  });
+
   it("preserves browser coordinates and accuracy", async () => {
     Object.defineProperty(navigator, "geolocation", {
       value: {

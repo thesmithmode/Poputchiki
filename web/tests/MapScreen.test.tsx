@@ -293,6 +293,48 @@ describe("MapScreen", () => {
     await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
   });
 
+  it("REGRESSION: LocationManager без доступного getLocation не ломает locate и использует browser fallback", async () => {
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+    };
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+      LocationManager: {
+        isInited: true,
+        isLocationAvailable: false,
+        isAccessRequested: false,
+        isAccessGranted: false,
+        init: vi.fn(),
+        openSettings: vi.fn(),
+      },
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    renderScreen();
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    expect(() => fireEvent.click(screen.getByTestId("locate-me"))).not.toThrow();
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+  });
+
   it("REGRESSION: locate draws the exact returned point and its accuracy radius", async () => {
     mockedApiFetch.mockReturnValue(new Promise(() => {}));
     const mockGeolocation = {

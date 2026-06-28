@@ -96,7 +96,7 @@ describe("respondToRideRequest — уведомление содержит им�
     );
   });
 
-  it("accept → pg_notify вызывается с ride_id для SSE-инвалидации", async () => {
+  it("accept → pg_notify не раскрывает ride_id для приватной SSE-инвалидации", async () => {
     mockTx
       .mockResolvedValueOnce([PENDING_ROW]) // SELECT ride_request
       .mockResolvedValueOnce([]) // advisory lock
@@ -113,9 +113,10 @@ describe("respondToRideRequest — уведомление содержит им�
       return Array.isArray(parts) && (parts as string[]).some((s) => s.includes("pg_notify"));
     });
     expect(notifyCall).toBeDefined();
-    // Второй аргумент — JSON payload, должен содержать ride_id
+    // Второй аргумент — JSON payload для глобальной SSE-шины; он не должен раскрывать private ride_id.
     const payload = notifyCall?.[1] as string;
-    expect(payload).toContain(RIDE_ID);
+    expect(JSON.parse(payload)).toEqual({ type: "request_updated" });
+    expect(payload).not.toContain(RIDE_ID);
   });
 
   it("display_name пустой → пустая строка в data, не падает", async () => {

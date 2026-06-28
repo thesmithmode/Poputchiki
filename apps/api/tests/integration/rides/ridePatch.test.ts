@@ -197,6 +197,30 @@ describe("PATCH /api/rides/:id", () => {
     expect(res.status).toBe(422);
   });
 
+  it("422 — departure_at нельзя перенести в прошлое", async () => {
+    const rideId = await seedRide();
+    const token = await makeToken(DRIVER);
+    const res = await makeApp().request(`/api/rides/${rideId}`, {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ departure_at: new Date(Date.now() - 60_000).toISOString() }),
+    });
+    expect(res.status).toBe(422);
+  });
+
+  it("422 — departure_at нельзя перенести дальше 30 дней", async () => {
+    const rideId = await seedRide();
+    const token = await makeToken(DRIVER);
+    const res = await makeApp().request(`/api/rides/${rideId}`, {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({
+        departure_at: new Date(Date.now() + 31 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
+    });
+    expect(res.status).toBe(422);
+  });
+
   it("422 — invalid lat", async () => {
     const rideId = await seedRide();
     const token = await makeToken(DRIVER);

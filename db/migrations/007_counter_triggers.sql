@@ -70,10 +70,18 @@ CREATE OR REPLACE FUNCTION app.trg_complaints_auto_ban()
 DECLARE
   v_distinct_reporters int;
 BEGIN
-  SELECT COUNT(DISTINCT reporter_id) INTO v_distinct_reporters
-  FROM complaints
-  WHERE target_id = NEW.target_id
-    AND created_at >= NOW() - INTERVAL '7 days';
+  SELECT COUNT(DISTINCT c.reporter_id) INTO v_distinct_reporters
+  FROM complaints c
+  JOIN rides r ON r.id = c.ride_id
+  JOIN ride_participation rp ON rp.ride_id = c.ride_id
+  WHERE c.target_id = NEW.target_id
+    AND c.created_at >= NOW() - INTERVAL '7 days'
+    AND rp.driver_marked = true
+    AND rp.passenger_confirmed = true
+    AND (
+      (rp.passenger_id = c.reporter_id AND r.driver_id = c.target_id)
+      OR (rp.passenger_id = c.target_id AND r.driver_id = c.reporter_id)
+    );
 
   IF v_distinct_reporters >= 5 THEN
     UPDATE users SET is_banned = true WHERE id = NEW.target_id AND is_banned = false;

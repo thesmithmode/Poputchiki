@@ -63,6 +63,26 @@ describe("formatMessage", () => {
     expect(msg).toContain("Мария Сидорова");
   });
 
+  it("экранирует HTML в именах пассажира и водителя", () => {
+    const passengerMsg = formatMessage(
+      "ride_request",
+      payload("ride_request", {
+        passenger_name: '<a href="https://evil.example">Иван</a> & broken',
+      }),
+    );
+    expect(passengerMsg).toContain(
+      "&lt;a href=&quot;https://evil.example&quot;&gt;Иван&lt;/a&gt; &amp; broken",
+    );
+    expect(passengerMsg).not.toContain('<a href="https://evil.example">');
+
+    const driverMsg = formatMessage(
+      "ride_request_accepted",
+      payload("ride_request_accepted", { driver_name: "<b>Алексей</b>" }),
+    );
+    expect(driverMsg).toContain("&lt;b&gt;Алексей&lt;/b&gt;");
+    expect(driverMsg).not.toContain("<b>Алексей</b>");
+  });
+
   it("ride_changed", () => {
     expect(formatMessage("ride_changed", payload("ride_changed"))).toContain("изменены");
   });

@@ -1,22 +1,33 @@
 import type { Category, NotifyPayload } from "./types.js";
 
+const HTML_ESCAPE_MAP: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+};
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"]/g, (char) => HTML_ESCAPE_MAP[char]);
+}
+
 export function formatMessage(category: Category, payload: NotifyPayload): string {
   switch (category) {
     case "ride_request":
       return payload.passenger_name
-        ? `${payload.passenger_name} хочет поехать с Вами`
+        ? `${escapeHtml(payload.passenger_name)} хочет поехать с Вами`
         : "У Вас новая заявка на поездку";
     case "ride_request_accepted":
       return payload.driver_name
-        ? `${payload.driver_name} принял Вашу заявку!`
+        ? `${escapeHtml(payload.driver_name)} принял Вашу заявку!`
         : "Водитель принял Вашу заявку на поездку!";
     case "ride_request_rejected":
       return payload.driver_name
-        ? `${payload.driver_name} отклонил Вашу заявку`
+        ? `${escapeHtml(payload.driver_name)} отклонил Вашу заявку`
         : "Водитель отклонил Вашу заявку на поездку";
     case "ride_request_cancelled":
       return payload.passenger_name
-        ? `${payload.passenger_name} отменил заявку на поездку`
+        ? `${escapeHtml(payload.passenger_name)} отменил заявку на поездку`
         : "Пассажир отменил заявку на поездку";
     case "ride_cancelled":
       return "Поездка была отменена";
@@ -34,13 +45,13 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
       return "Избранный пользователь добавил новую поездку";
     case "support_reply":
       return payload.message_id
-        ? `Получен ответ на обращение #${payload.message_id}`
+        ? `Получен ответ на обращение #${escapeHtml(payload.message_id)}`
         : "Получен ответ от поддержки";
     case "ride_changed":
       return "Параметры поездки изменены";
     case "template_subscription_request":
       return payload.passenger_name
-        ? `${payload.passenger_name} хочет ездить с Вами регулярно`
+        ? `${escapeHtml(payload.passenger_name)} хочет ездить с Вами регулярно`
         : "Пассажир хочет ездить с Вами регулярно";
     case "template_subscription_accepted":
       return "Водитель принял Вашу заявку на регулярные поездки!";

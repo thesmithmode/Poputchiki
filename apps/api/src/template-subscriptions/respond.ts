@@ -89,8 +89,17 @@ export async function respondToSubscription(
           ON CONFLICT (ride_id, passenger_id) DO NOTHING
           RETURNING id
         `;
-        if (inserted.length > 0) {
-          await tx`SELECT app.book_seat(${ride.id}::uuid)`;
+        const insertedRequest = inserted[0];
+        if (insertedRequest) {
+          const booked = await tx<{ id: string }[]>`
+            SELECT id FROM app.book_seat(${ride.id}::uuid)
+          `;
+          if (booked.length === 0) {
+            await tx`
+              UPDATE ride_requests SET status = 'pending'
+              WHERE id = ${insertedRequest.id}
+            `;
+          }
         }
       }
     }

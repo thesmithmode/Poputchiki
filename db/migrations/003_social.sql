@@ -192,8 +192,12 @@ CREATE INDEX idx_support_status ON support_messages (status, created_at DESC);
 ALTER TABLE support_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_messages FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY support_messages_own ON support_messages
-  USING (user_id = app.current_user_id())
+CREATE POLICY support_messages_own_select ON support_messages
+  FOR SELECT
+  USING (user_id = app.current_user_id());
+
+CREATE POLICY support_messages_own_insert ON support_messages
+  FOR INSERT
   WITH CHECK (user_id = app.current_user_id());
 
 CREATE POLICY support_messages_admin_read ON support_messages

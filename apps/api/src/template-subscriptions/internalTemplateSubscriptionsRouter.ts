@@ -39,10 +39,14 @@ export function createInternalTemplateSubscriptionsRouter(
         return c.json({ error: "tg_id required" }, 400);
       }
 
-      const [userRow] = await sql<{ id: string; role: string }[]>`
-        SELECT id, role FROM users WHERE tg_id = ${tgId}
+      const [userRow] = await sql<
+        { id: string; role: string; is_banned: boolean; deleted_at: string | null }[]
+      >`
+        SELECT id, role, is_banned, deleted_at FROM users WHERE tg_id = ${tgId}
       `;
       if (!userRow) return c.json({ error: "user_not_found" }, 404);
+      if (userRow.deleted_at) return c.json({ error: "unauthorized" }, 401);
+      if (userRow.is_banned) return c.json({ error: "banned" }, 403);
 
       try {
         const result = await respondToSubscription(

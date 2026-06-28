@@ -603,6 +603,22 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           const upserted: { ride_id: string; passenger_id: string; driver_marked: boolean }[] = [];
 
           for (const passengerId of passenger_ids) {
+            if (passengerId === ride.driver_id) {
+              throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+            }
+
+            const [acceptedRequest] = await tx<{ exists: number }[]>`
+              SELECT 1 AS exists
+              FROM ride_requests
+              WHERE ride_id = ${rideId}::uuid
+                AND passenger_id = ${passengerId}::uuid
+                AND status = 'accepted'
+              LIMIT 1
+            `;
+            if (!acceptedRequest) {
+              throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+            }
+
             const [row] = await tx<
               { ride_id: string; passenger_id: string; driver_marked: boolean }[]
             >`
@@ -656,11 +672,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
     try {
       const row = await withIdentity(sql, user, async (tx) => {
-        const [ride] = await tx<{ id: string; departure_at: Date }[]>`
-          SELECT id, departure_at FROM rides WHERE id = ${rideId}::uuid
+        const [ride] = await tx<{ id: string; driver_id: string; departure_at: Date }[]>`
+          SELECT id, driver_id, departure_at FROM rides WHERE id = ${rideId}::uuid
         `;
         /* c8 ignore next -- defensive: ride existence checked below via participation */
         if (!ride) throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+
+        if (ride.driver_id === user.id) {
+          throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
+        }
 
         if (Date.now() - ride.departure_at.getTime() > MS_48H) {
           throw Object.assign(new Error("expired"), { code: "EXPIRED" });
@@ -681,6 +701,18 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           `;
           if (other) throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
           throw Object.assign(new Error("not_found"), { code: "NOT_FOUND" });
+        }
+
+        const [acceptedRequest] = await tx<{ exists: number }[]>`
+          SELECT 1 AS exists
+          FROM ride_requests
+          WHERE ride_id = ${rideId}::uuid
+            AND passenger_id = ${user.id}::uuid
+            AND status = 'accepted'
+          LIMIT 1
+        `;
+        if (!acceptedRequest) {
+          throw Object.assign(new Error("forbidden"), { code: "FORBIDDEN" });
         }
         if (!participation.driver_marked) {
           throw Object.assign(new Error("not_marked"), { code: "NOT_MARKED" });

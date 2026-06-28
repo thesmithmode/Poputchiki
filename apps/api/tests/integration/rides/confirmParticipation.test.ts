@@ -50,6 +50,16 @@ function makeApp(): Hono {
   return app;
 }
 
+async function acceptPassenger(ride: string, passenger: string): Promise<void> {
+  await withSystem(sql, async (tx) => {
+    await tx`
+      INSERT INTO ride_requests (ride_id, passenger_id, status)
+      VALUES (${ride}, ${passenger}, 'accepted')
+      ON CONFLICT (ride_id, passenger_id) DO UPDATE SET status = 'accepted'
+    `;
+  });
+}
+
 beforeAll(async () => {
   sql = createPool(buildDsn());
   await withSystem(sql, async (tx) => {
@@ -82,6 +92,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await sql`DELETE FROM ride_participation WHERE ride_id IN (${rideId}, ${pastRideId})`;
+  await sql`DELETE FROM ride_requests WHERE ride_id IN (${rideId}, ${pastRideId})`;
   await sql`DELETE FROM rides WHERE id IN (${rideId}, ${pastRideId})`;
   await sql`DELETE FROM users WHERE id IN (${DRIVER.id}, ${PASSENGER.id}, ${OTHER.id})`;
   await sql.end();
@@ -89,6 +100,7 @@ afterAll(async () => {
 
 describe("POST /api/rides/:id/confirm-participation", () => {
   it("422 when driver_marked=false (not yet marked)", async () => {
+    await acceptPassenger(rideId, PASSENGER.id);
     // Insert ride_participation with driver_marked=false
     await sql`
       INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, passenger_confirmed)
@@ -109,6 +121,7 @@ describe("POST /api/rides/:id/confirm-participation", () => {
   });
 
   it("200 when driver_marked=true — sets passenger_confirmed=true, confirmed_at", async () => {
+    await acceptPassenger(rideId, PASSENGER.id);
     // Set driver_marked=true
     await sql`
       UPDATE ride_participation SET driver_marked = true
@@ -162,7 +175,48 @@ describe("POST /api/rides/:id/confirm-participation", () => {
     expect(res.status).toBe(403);
   });
 
+  it("403 when the ride driver tries to self-confirm a forged participation row", async () => {
+    await sql`
+      INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, passenger_confirmed)
+      VALUES (${rideId}, ${DRIVER.id}, true, false)
+      ON CONFLICT (ride_id, passenger_id) DO UPDATE
+        SET driver_marked = true, passenger_confirmed = false
+    `;
+
+    const app = makeApp();
+    const token = await makeToken(DRIVER);
+    const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("403 when caller has no accepted ride request", async () => {
+    await sql`
+      INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, passenger_confirmed)
+      VALUES (${rideId}, ${OTHER.id}, true, false)
+      ON CONFLICT (ride_id, passenger_id) DO UPDATE
+        SET driver_marked = true, passenger_confirmed = false
+    `;
+
+    const app = makeApp();
+    const token = await makeToken(OTHER);
+    const res = await app.request(`/api/rides/${rideId}/confirm-participation`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
+    });
+    expect(res.status).toBe(403);
+  });
+
   it("410 when 49 hours after departure_at", async () => {
+    await acceptPassenger(pastRideId, PASSENGER.id);
     await sql`
       INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, passenger_confirmed)
       VALUES (${pastRideId}, ${PASSENGER.id}, true, false)

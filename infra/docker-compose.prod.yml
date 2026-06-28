@@ -346,7 +346,7 @@ services:
           memory: 256m
 
   osrm-init:
-    image: ghcr.io/project-osrm/osrm-backend:latest
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1@sha256:855614a38f464b0558a2ad6eaa7cb8c139f39887da9b38b485ce453c6e6e6124
     restart: "no"
     volumes:
       - /opt/poputchiki/osrm-data:/data
@@ -360,7 +360,7 @@ services:
           memory: 2g
 
   osrm:
-    image: ghcr.io/project-osrm/osrm-backend:latest
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1@sha256:855614a38f464b0558a2ad6eaa7cb8c139f39887da9b38b485ce453c6e6e6124
     restart: unless-stopped
     command: osrm-routed --algorithm MLD /data/tatarstan.osrm
     volumes:

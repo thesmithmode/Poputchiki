@@ -7,7 +7,7 @@
 CREATE OR REPLACE FUNCTION app.encrypt_pii(plaintext text)
   RETURNS bytea
   LANGUAGE sql STABLE SECURITY DEFINER
-  SET search_path = pg_catalog, public, app AS $$
+  SET search_path = pg_catalog, public, app, pg_temp AS $$
     SELECT pgp_sym_encrypt(
       plaintext,
       current_setting('pgcrypto.key')
@@ -19,7 +19,7 @@ CREATE OR REPLACE FUNCTION app.encrypt_pii(plaintext text)
 CREATE OR REPLACE FUNCTION app.decrypt_user_pii(target_user_id uuid)
   RETURNS TABLE (phone text, apt_number text)
   LANGUAGE sql STABLE SECURITY DEFINER
-  SET search_path = pg_catalog, public, app AS $$
+  SET search_path = pg_catalog, public, app, pg_temp AS $$
     SELECT
       CASE WHEN u.phone_enc IS NOT NULL
         THEN pgp_sym_decrypt(u.phone_enc, current_setting('pgcrypto.key'))
@@ -29,7 +29,7 @@ CREATE OR REPLACE FUNCTION app.decrypt_user_pii(target_user_id uuid)
         THEN pgp_sym_decrypt(u.apt_number_enc, current_setting('pgcrypto.key'))
         ELSE NULL
       END AS apt_number
-    FROM users u
+    FROM public.users u
     WHERE u.id = target_user_id
       AND app.current_user_id() = target_user_id
       AND u.deleted_at IS NULL

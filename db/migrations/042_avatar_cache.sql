@@ -11,9 +11,9 @@ CREATE INDEX idx_users_avatar_checked_at
 
 CREATE OR REPLACE FUNCTION app.anonymize_user(p_user_id uuid)
 RETURNS void LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 BEGIN
-  UPDATE users SET
+  UPDATE public.users SET
     display_name           = 'Удалённый',
     avatar_url             = NULL,
     avatar_file_unique_id  = NULL,

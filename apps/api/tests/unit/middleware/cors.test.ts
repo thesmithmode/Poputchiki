@@ -31,7 +31,9 @@ describe("CORS middleware", () => {
     expect(res.status).toBe(204);
     expect(res.headers.get("access-control-allow-origin")).toBe(ALLOWED_ORIGIN);
     expect(res.headers.get("access-control-allow-credentials")).toBe("true");
-    expect(res.headers.get("access-control-allow-methods")).toContain("GET");
+    const allowedMethods = res.headers.get("access-control-allow-methods");
+    expect(allowedMethods).toContain("GET");
+    expect(allowedMethods).toContain("PUT");
     expect(res.headers.get("access-control-allow-headers")).toContain("Content-Type");
   });
 

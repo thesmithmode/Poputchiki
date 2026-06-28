@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { MeContext } from "../contexts/MeContext";
 import { ApiError, apiFetch } from "../lib/api";
 import { clearMeCache, readMeCache, writeMeCache } from "../lib/meCache";
+import { clearPersistedQueryCache } from "../lib/queryCachePersistence";
 import { getTelegramWebApp } from "../lib/telegram";
 import { clearTokens, decodeJwtSub, getTokens, setTokens } from "../lib/tokenStore";
 
@@ -130,6 +131,7 @@ export function useBootMe(): MeState {
           if (storedSub !== String(tgId)) {
             clearTokens();
             clearMeCache();
+            clearPersistedQueryCache();
           }
         }
       }

@@ -1,7 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 import { logger } from "../lib/logger";
 
-const ALLOWED_METHODS = "GET, POST, PATCH, DELETE, OPTIONS";
+const ALLOWED_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const ALLOWED_HEADERS = "Content-Type, Authorization, Idempotency-Key, X-CSRF-Token, X-Request-ID";
 
 // Fail-fast: если DOMAIN не задан, allowedOrigin = "https://app." — ни один origin не совпадёт,

@@ -53,8 +53,8 @@ END $$;
 GRANT USAGE ON SCHEMA public TO poputchiki_service;
 GRANT USAGE ON SCHEMA app TO poputchiki_service;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO poputchiki_service;
--- BYPASSRLS: withSystem bypasses RLS entirely (no app.is_admin() evaluation needed)
-ALTER ROLE poputchiki_service BYPASSRLS;
+-- Defense-in-depth: service role must remain bound by explicit RLS policies.
+ALTER ROLE poputchiki_service NOBYPASSRLS;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO poputchiki_service;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public

@@ -111,7 +111,7 @@ export async function cleanupNotificationLog(
  * максимум 10 батчей за прогон (50 000 строк), чтобы транзакция не висла
  * долго при большом backlog. Если остались строки — добиваются на следующем
  * прогоне cron. RLS на user_notifications: DELETE-политики нет, используем
- * SET LOCAL ROLE poputchiki_service (BYPASSRLS).
+ * SET LOCAL ROLE poputchiki_service (через явные RLS policies).
  */
 export async function cleanupUserNotifications(
   sql: postgres.Sql,

@@ -281,7 +281,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     // Атомарно: cancel rides + favorites + anonymize PII + revoke tokens.
     // ATOM-02: раньше были 3 отдельные транзакции — DB blip между ними оставлял
     // rides=cancelled но PII не анонимизированной (review 2026-05-20 apps-api C4).
-    // Единая sql.begin → либо всё, либо ничего. poputchiki_service BYPASSRLS
+    // Единая sql.begin → либо всё, либо ничего. poputchiki_service
     // нужно для UPDATE revoked_tokens (RLS deny-all для poputchiki_app).
     const affectedPassengers = await sql.begin(async (tx) => {
       await tx`SET LOCAL ROLE poputchiki_service`;

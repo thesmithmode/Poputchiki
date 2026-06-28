@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 /**
  * Integration: cleanupUserNotifications удаляет строки старше 90 дней,
  * пачками по 5000, не трогает свежие. RLS обходится через SET LOCAL ROLE
- * poputchiki_service (BYPASSRLS) внутри withLock(useServiceRole: true).
+ * poputchiki_service внутри withLock(useServiceRole: true).
  */
 import { cleanupUserNotifications } from "../../../../cron/src/cleanup";
 import { createPool } from "../../../src/db/pool";

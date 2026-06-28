@@ -6,7 +6,6 @@
 -- DB alongside the shared one.
 DO $$ BEGIN
   IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'poputchiki_service') THEN
-    -- BYPASSRLS — кластерный атрибут, не трогаем в per-DB rollback
     EXECUTE 'REVOKE USAGE ON SCHEMA public FROM poputchiki_service';
     EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT, INSERT, UPDATE, DELETE ON TABLES FROM poputchiki_service';
     EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE USAGE, SELECT ON SEQUENCES FROM poputchiki_service';

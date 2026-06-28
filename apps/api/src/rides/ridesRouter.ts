@@ -973,7 +973,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
           const dailyCancels = dailyResult[0]?.count ?? 0;
 
           // H4: audit_log INSERT внутри той же tx — атомарно с UPDATE rides.
-          // FORCE RLS на audit_log → эскалация до service (BYPASSRLS).
+          // FORCE RLS на audit_log → эскалация до service через явную RLS policy.
           await tx`SET LOCAL ROLE poputchiki_service`;
           await tx`
             INSERT INTO audit_log (user_id, action, entity, entity_id, meta)

@@ -170,16 +170,16 @@ CREATE POLICY ride_participation_update ON ride_participation
 -- enforces booking rules explicitly and runs as owner (superuser).
 -- ---------------------------------------------------------------------------
 CREATE FUNCTION app.book_seat(p_ride_id uuid)
-RETURNS SETOF rides
-LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
-  UPDATE rides
-     SET seats_taken = rides.seats_taken + 1
-   WHERE rides.id = p_ride_id
-     AND rides.status = 'active'
-     AND rides.seats_taken < rides.seats_total
+RETURNS SETOF public.rides
+LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
+  UPDATE public.rides
+     SET seats_taken = public.rides.seats_taken + 1
+   WHERE public.rides.id = p_ride_id
+     AND public.rides.status = 'active'
+     AND public.rides.seats_taken < public.rides.seats_total
      AND app.current_user_id() IS NOT NULL
-     AND rides.driver_id <> app.current_user_id()
-  RETURNING rides.*;
+     AND public.rides.driver_id <> app.current_user_id()
+  RETURNING public.rides.*;
 $$;
 
 REVOKE ALL ON FUNCTION app.book_seat(uuid) FROM PUBLIC;

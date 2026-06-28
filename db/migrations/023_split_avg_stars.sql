@@ -11,13 +11,13 @@ ALTER TABLE users
 -- Update trigger to compute split values
 CREATE OR REPLACE FUNCTION app.update_user_avg_stars()
 RETURNS trigger LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
   v_target_id uuid;
 BEGIN
   v_target_id := COALESCE(NEW.target_id, OLD.target_id);
 
-  UPDATE users
+  UPDATE public.users
   SET
     avg_stars              = sub.avg_all,
     reviews_count          = sub.cnt_all,
@@ -33,8 +33,8 @@ BEGIN
       AVG(r.stars) FILTER (WHERE ri.driver_id <> v_target_id)::numeric(3,2) AS avg_pax,
       COUNT(r.id) FILTER (WHERE ri.driver_id = v_target_id)::int         AS cnt_drv,
       COUNT(r.id) FILTER (WHERE ri.driver_id <> v_target_id)::int        AS cnt_pax
-    FROM reviews r
-    JOIN rides ri ON ri.id = r.ride_id
+    FROM public.reviews r
+    JOIN public.rides ri ON ri.id = r.ride_id
     WHERE r.target_id = v_target_id
   ) sub
   WHERE id = v_target_id;
@@ -63,7 +63,7 @@ LEFT JOIN rides r_drv           ON r_drv.driver_id = u.id
 LEFT JOIN ride_participation rp ON rp.passenger_id = u.id AND rp.passenger_confirmed
 LEFT JOIN likes l               ON l.target_id = u.id
 LEFT JOIN reviews rv            ON rv.target_id = u.id
-LEFT JOIN rides ri_rv           ON ri_rv.id = rv.ride_id
+LEFT JOIN public.rides ri_rv           ON ri_rv.id = rv.ride_id
 GROUP BY u.id;
 
 CREATE UNIQUE INDEX user_stats_user_id_uniq ON user_stats (user_id);
@@ -86,8 +86,8 @@ FROM (
     AVG(r.stars) FILTER (WHERE ri.driver_id <> r.target_id)::numeric(3,2)   AS avg_pax,
     COUNT(r.id) FILTER (WHERE ri.driver_id = r.target_id)::int              AS cnt_drv,
     COUNT(r.id) FILTER (WHERE ri.driver_id <> r.target_id)::int             AS cnt_pax
-  FROM reviews r
-  JOIN rides ri ON ri.id = r.ride_id
+  FROM public.reviews r
+  JOIN public.rides ri ON ri.id = r.ride_id
   GROUP BY r.target_id
 ) sub
 WHERE u.id = sub.target_id;

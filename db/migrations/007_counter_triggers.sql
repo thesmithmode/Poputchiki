@@ -8,13 +8,13 @@
 -- Under FORCE RLS the UPDATE would be filtered by users_update_self → 0 rows → counter drift.
 CREATE OR REPLACE FUNCTION app.trg_likes_update_count()
   RETURNS trigger LANGUAGE plpgsql
-  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    UPDATE users SET likes_received_count = likes_received_count + 1
+    UPDATE public.users SET likes_received_count = likes_received_count + 1
     WHERE id = NEW.target_id;
   ELSIF TG_OP = 'DELETE' THEN
-    UPDATE users SET likes_received_count = GREATEST(0, likes_received_count - 1)
+    UPDATE public.users SET likes_received_count = GREATEST(0, likes_received_count - 1)
     WHERE id = OLD.target_id;
   END IF;
   RETURN NULL;
@@ -30,9 +30,9 @@ CREATE TRIGGER trg_likes_count
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app.trg_rides_insert_count()
   RETURNS trigger LANGUAGE plpgsql
-  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 BEGIN
-  UPDATE users SET rides_total_count = rides_total_count + 1
+  UPDATE public.users SET rides_total_count = rides_total_count + 1
   WHERE id = NEW.driver_id;
   RETURN NULL;
 END;
@@ -47,10 +47,10 @@ CREATE TRIGGER trg_rides_insert
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app.trg_rides_completed_count()
   RETURNS trigger LANGUAGE plpgsql
-  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 BEGIN
   IF NEW.status = 'completed' AND OLD.status <> 'completed' THEN
-    UPDATE users SET rides_completed_count = rides_completed_count + 1
+    UPDATE public.users SET rides_completed_count = rides_completed_count + 1
     WHERE id = NEW.driver_id;
   END IF;
   RETURN NULL;
@@ -66,19 +66,19 @@ CREATE TRIGGER trg_rides_completed
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION app.trg_complaints_auto_ban()
   RETURNS trigger LANGUAGE plpgsql
-  SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
   v_distinct_reporters int;
 BEGIN
   SELECT COUNT(DISTINCT reporter_id) INTO v_distinct_reporters
-  FROM complaints
+  FROM public.complaints
   WHERE target_id = NEW.target_id
     AND created_at >= NOW() - INTERVAL '7 days';
 
   IF v_distinct_reporters >= 5 THEN
-    UPDATE users SET is_banned = true WHERE id = NEW.target_id AND is_banned = false;
+    UPDATE public.users SET is_banned = true WHERE id = NEW.target_id AND is_banned = false;
 
-    INSERT INTO audit_log (user_id, action, entity, entity_id, meta)
+    INSERT INTO public.audit_log (user_id, action, entity, entity_id, meta)
     VALUES (
       NEW.target_id, 'AUTO_BAN', 'users', NEW.target_id,
       jsonb_build_object('reason', 'auto_ban', 'complaint_count', v_distinct_reporters)

@@ -11,13 +11,13 @@ ALTER TABLE users
 -- Update trigger to compute split values
 CREATE OR REPLACE FUNCTION app.update_user_avg_stars()
 RETURNS trigger LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
   v_target_id uuid;
 BEGIN
   v_target_id := COALESCE(NEW.target_id, OLD.target_id);
 
-  UPDATE users
+  UPDATE public.users
   SET
     avg_stars              = sub.avg_all,
     reviews_count          = sub.cnt_all,
@@ -33,11 +33,11 @@ BEGIN
       AVG(r.stars) FILTER (WHERE ri.driver_id <> v_target_id)::numeric(3,2) AS avg_pax,
       COUNT(r.id) FILTER (WHERE ri.driver_id = v_target_id)::int         AS cnt_drv,
       COUNT(r.id) FILTER (WHERE ri.driver_id <> v_target_id)::int        AS cnt_pax
-    FROM reviews r
-    JOIN rides ri ON ri.id = r.ride_id
+    FROM public.reviews r
+    JOIN public.rides ri ON ri.id = r.ride_id
     WHERE r.target_id = v_target_id
   ) sub
-  WHERE id = v_target_id;
+  WHERE public.users.id = v_target_id;
 
   RETURN NULL;
 END;
@@ -86,8 +86,8 @@ FROM (
     AVG(r.stars) FILTER (WHERE ri.driver_id <> r.target_id)::numeric(3,2)   AS avg_pax,
     COUNT(r.id) FILTER (WHERE ri.driver_id = r.target_id)::int              AS cnt_drv,
     COUNT(r.id) FILTER (WHERE ri.driver_id <> r.target_id)::int             AS cnt_pax
-  FROM reviews r
-  JOIN rides ri ON ri.id = r.ride_id
+  FROM public.reviews r
+  JOIN public.rides ri ON ri.id = r.ride_id
   GROUP BY r.target_id
 ) sub
 WHERE u.id = sub.target_id;

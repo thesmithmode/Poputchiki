@@ -179,10 +179,22 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun audit --audit-level high
 
+  gitleaks:
+    name: Secrets scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: docker://zricethezav/gitleaks:v8.24.3
+        with:
+          args: detect --source=/github/workspace --config=/github/workspace/.gitleaks.toml --redact --verbose
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, unit, integration, security, web, audit]
+    needs: [lint, typecheck, unit, integration, security, web, audit, gitleaks]
     if: always()
     steps:
       - name: Aggregate
@@ -196,6 +208,7 @@ jobs:
             [Security]="${{ needs.security.result }}"
             [Web]="${{ needs.web.result }}"
             [Audit]="${{ needs.audit.result }}"
+            [Gitleaks]="${{ needs.gitleaks.result }}"
           )
           FAILED=()
           for k in "${!R[@]}"; do

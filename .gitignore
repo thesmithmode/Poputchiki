@@ -33,3 +33,7 @@ skills-lock.json
 # Отдельный проект, хранится только локально
 saas/
 
+
+# Internal agent memory can contain sensitive security notes
+.memory/daily/
+.memory/knowledge/

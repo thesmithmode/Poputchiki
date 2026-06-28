@@ -1,7 +1,15 @@
 {
-  "$ref": "#/definitions/UserProfileInput",
-  "definitions": {
-    "UserProfileInput": {}
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "notify_disabled": {
+      "type": "boolean"
+    }
   },
-  "$schema": "http://json-schema.org/draft-07/schema#"
+  "required": ["display_name"]
 }

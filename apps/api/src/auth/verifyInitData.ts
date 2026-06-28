@@ -26,7 +26,7 @@ export interface Clock {
 }
 
 const MAX_AGE_SECONDS = 60 * 60; // 1 hour — Telegram WebView can reuse initData within session
-const EXPECTED_HASH_LENGTH = 64; // SHA-256 → 32 bytes → 64 hex chars
+const EXPECTED_HASH_PATTERN = /^[0-9a-f]{64}$/i; // SHA-256 → 32 bytes → 64 hex chars
 
 export function verifyInitData(
   initData: string,
@@ -53,11 +53,11 @@ export function verifyInitData(
   const expectedHex = createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
 
   // Constant-time compare (timingSafeEqual requires equal-length buffers)
-  if (hash.length !== EXPECTED_HASH_LENGTH) {
+  if (!EXPECTED_HASH_PATTERN.test(hash)) {
     throw new TelegramAuthError("invalid hash");
   }
-  const expectedBuf = new Uint8Array(Buffer.from(expectedHex, "utf8"));
-  const providedBuf = new Uint8Array(Buffer.from(hash, "utf8"));
+  const expectedBuf = new Uint8Array(Buffer.from(expectedHex, "hex"));
+  const providedBuf = new Uint8Array(Buffer.from(hash, "hex"));
   if (!timingSafeEqual(expectedBuf, providedBuf)) {
     throw new TelegramAuthError("invalid hash");
   }

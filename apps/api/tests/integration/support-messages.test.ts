@@ -111,6 +111,47 @@ describe("support_messages RLS", () => {
     expect(rows[0]?.status).toBe("open");
   });
 
+  it("user cannot update own support workflow fields", async () => {
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
+      await tx`SELECT set_config('app.current_user_role', 'user', true)`;
+      return tx`
+        UPDATE support_messages
+        SET status = 'resolved', reply_text = 'forged admin reply', replied_at = now()
+        WHERE id = ${msgIdA}
+        RETURNING id
+      `;
+    });
+    expect(rows.length).toBe(0);
+
+    const stored = await sql`
+      SELECT status, reply_text, replied_at
+      FROM support_messages
+      WHERE id = ${msgIdA}
+    `;
+    expect(stored[0]?.status).toBe("open");
+    expect(stored[0]?.reply_text).toBeNull();
+    expect(stored[0]?.replied_at).toBeNull();
+  });
+
+  it("user cannot delete own support message", async () => {
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      await tx`SELECT set_config('app.current_user_id', ${USER_A}, true)`;
+      await tx`SELECT set_config('app.current_user_role', 'user', true)`;
+      return tx`
+        DELETE FROM support_messages
+        WHERE id = ${msgIdA}
+        RETURNING id
+      `;
+    });
+    expect(rows.length).toBe(0);
+
+    const stored = await sql`SELECT id FROM support_messages WHERE id = ${msgIdA}`;
+    expect(stored.length).toBe(1);
+  });
+
   it("rejects empty text", async () => {
     await expect(
       sql`INSERT INTO support_messages (user_id, text) VALUES (${USER_A}, '')`,

@@ -7,8 +7,10 @@ import { setupErrorReporting } from "./lib/error-reporter";
 
 setupErrorReporting();
 
-// Просим браузер не вычищать кэш тайлов при нехватке места
-navigator.storage?.persist?.().catch(() => {});
+// Удаляем legacy runtime-кэш OSM-тайлов: URL тайлов раскрывают просмотренные районы карты.
+if ("caches" in window) {
+  window.caches.delete("osm-tiles-v1").catch(() => {});
+}
 
 // Telegram Desktop appends #tgWebAppData=...&tgWebAppVersion=...&tgWebAppThemeParams=...
 // to the URL. HashRouter interprets this as a route path → shows NotFoundPage.

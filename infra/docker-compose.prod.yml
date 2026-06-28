@@ -148,9 +148,9 @@ services:
     restart: unless-stopped
     environment:
       # Через PgBouncer (tx pool) — query traffic.
-      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@pgbouncer:6432/${POSTGRES_DB}
+      DATABASE_URL: postgres://poputchiki_app:${APP_DB_PASSWORD}@${API_DATABASE_HOST:-pgbouncer}:${API_DATABASE_PORT:-6432}/${POSTGRES_DB}
       # Прямое соединение postgres для LISTEN/NOTIFY (SSE realtime).
-      DATABASE_URL_DIRECT: postgres://poputchiki_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      DATABASE_URL_DIRECT: postgres://poputchiki_app:${APP_DB_PASSWORD}@${API_DATABASE_DIRECT_HOST:-postgres}:${API_DATABASE_DIRECT_PORT:-5432}/${POSTGRES_DB}
       JWT_SECRET: ${JWT_SECRET}
       BOT_TOKEN: ${BOT_TOKEN}
       PGCRYPTO_KEY: ${PGCRYPTO_KEY}

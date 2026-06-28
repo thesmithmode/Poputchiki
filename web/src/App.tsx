@@ -8,6 +8,12 @@ import { useBootMe } from "./hooks/useMe";
 import { useRides } from "./hooks/useRides";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
+import {
+  QUERY_CACHE_KEY,
+  QUERY_CACHE_MAX_AGE,
+  filterPersistedQueryState,
+  shouldPersistQuery,
+} from "./lib/queryCache";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 // RidesScreen не lazy — первый экран, должен быть доступен мгновенно без Suspense fallback
 import { RidesScreen } from "./screens/RidesScreen";
@@ -255,15 +261,13 @@ const queryClient = new QueryClient({
   },
 });
 
-const CACHE_KEY = "pp_qc_v1";
-const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
-
 // Восстанавливаем дегидрированный кэш из localStorage при старте
 try {
-  const raw = localStorage.getItem(CACHE_KEY);
+  const raw = localStorage.getItem(QUERY_CACHE_KEY);
   if (raw) {
     const { ts, state } = JSON.parse(raw) as { ts: number; state: unknown };
-    if (Date.now() - ts < CACHE_MAX_AGE) hydrate(queryClient, state);
+    if (Date.now() - ts < QUERY_CACHE_MAX_AGE)
+      hydrate(queryClient, filterPersistedQueryState(state));
   }
 } catch {}
 
@@ -275,8 +279,11 @@ queryClient.getQueryCache().subscribe(() => {
     _saveTimer = null;
     try {
       localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ ts: Date.now(), state: dehydrate(queryClient) }),
+        QUERY_CACHE_KEY,
+        JSON.stringify({
+          ts: Date.now(),
+          state: dehydrate(queryClient, { shouldDehydrateQuery: shouldPersistQuery }),
+        }),
       );
     } catch {}
   }, 3000);

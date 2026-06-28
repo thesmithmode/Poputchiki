@@ -111,9 +111,48 @@ CREATE POLICY ride_requests_read ON ride_requests
   );
 
 CREATE POLICY ride_requests_insert ON ride_requests
-  FOR INSERT WITH CHECK (passenger_id = app.current_user_id());
+  FOR INSERT WITH CHECK (passenger_id = app.current_user_id() AND status = 'pending');
 
--- Пассажир может отозвать свою заявку; водитель может обновить статус
+CREATE FUNCTION app.enforce_ride_request_update()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_current_user_id uuid := app.current_user_id();
+  v_is_driver boolean;
+BEGIN
+  SELECT EXISTS (
+    SELECT 1 FROM rides WHERE id = OLD.ride_id AND driver_id = v_current_user_id
+  ) INTO v_is_driver;
+
+  IF NEW.id <> OLD.id
+     OR NEW.ride_id <> OLD.ride_id
+     OR NEW.passenger_id <> OLD.passenger_id
+     OR NEW.created_at <> OLD.created_at THEN
+    RAISE EXCEPTION 'ride request identity fields are immutable';
+  END IF;
+
+  IF OLD.passenger_id = v_current_user_id AND NOT v_is_driver THEN
+    IF OLD.status <> 'pending' OR NEW.status <> 'cancelled' THEN
+      RAISE EXCEPTION 'passengers may only cancel their own pending ride requests';
+    END IF;
+  ELSIF v_is_driver THEN
+    IF NEW.status NOT IN ('accepted', 'rejected', 'cancelled') THEN
+      RAISE EXCEPTION 'drivers may only resolve ride requests';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'not authorized to update ride request';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_enforce_ride_request_update
+  BEFORE UPDATE ON ride_requests
+  FOR EACH ROW EXECUTE FUNCTION app.enforce_ride_request_update();
+
+-- Пассажир может отозвать только свою pending-заявку; водитель может принять/отклонить
 CREATE POLICY ride_requests_update ON ride_requests
   FOR UPDATE
   USING (
@@ -147,10 +186,88 @@ CREATE POLICY ride_participation_read ON ride_participation
     OR ride_id IN (SELECT id FROM rides WHERE driver_id = app.current_user_id())
   );
 
+CREATE FUNCTION app.enforce_ride_participation_write()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_current_user_id uuid := app.current_user_id();
+  v_is_driver boolean;
+  v_has_accepted_request boolean;
+  v_ride_id uuid;
+  v_passenger_id uuid;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    v_ride_id := NEW.ride_id;
+    v_passenger_id := NEW.passenger_id;
+  ELSE
+    v_ride_id := OLD.ride_id;
+    v_passenger_id := OLD.passenger_id;
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM rides WHERE id = v_ride_id AND driver_id = v_current_user_id
+  ) INTO v_is_driver;
+
+  SELECT EXISTS (
+    SELECT 1
+      FROM ride_requests
+     WHERE ride_id = v_ride_id
+       AND passenger_id = v_passenger_id
+       AND status = 'accepted'
+  ) INTO v_has_accepted_request;
+
+  IF TG_OP = 'INSERT' THEN
+    IF NOT v_is_driver OR NOT v_has_accepted_request THEN
+      RAISE EXCEPTION 'only drivers may create participation for accepted requests';
+    END IF;
+    IF NEW.passenger_confirmed IS NOT FALSE OR NEW.confirmed_at IS NOT NULL THEN
+      RAISE EXCEPTION 'drivers cannot create passenger-confirmed participation';
+    END IF;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.ride_id <> OLD.ride_id OR NEW.passenger_id <> OLD.passenger_id THEN
+    RAISE EXCEPTION 'ride participation identity fields are immutable';
+  END IF;
+
+  IF v_is_driver THEN
+    IF NEW.passenger_confirmed IS DISTINCT FROM OLD.passenger_confirmed
+       OR NEW.confirmed_at IS DISTINCT FROM OLD.confirmed_at THEN
+      RAISE EXCEPTION 'drivers cannot change passenger confirmation';
+    END IF;
+  ELSIF OLD.passenger_id = v_current_user_id THEN
+    IF NOT OLD.driver_marked OR OLD.passenger_confirmed THEN
+      RAISE EXCEPTION 'passengers can confirm only unconfirmed driver-marked participation';
+    END IF;
+    IF NEW.driver_marked IS DISTINCT FROM OLD.driver_marked
+       OR NEW.marked_at IS DISTINCT FROM OLD.marked_at
+       OR NEW.passenger_confirmed IS NOT TRUE
+       OR NEW.confirmed_at IS NULL THEN
+      RAISE EXCEPTION 'passengers may only confirm their own participation';
+    END IF;
+  ELSE
+    RAISE EXCEPTION 'not authorized to update ride participation';
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_enforce_ride_participation_write
+  BEFORE INSERT OR UPDATE ON ride_participation
+  FOR EACH ROW EXECUTE FUNCTION app.enforce_ride_participation_write();
+
 CREATE POLICY ride_participation_insert ON ride_participation
   FOR INSERT WITH CHECK (
     ride_id IN (SELECT id FROM rides WHERE driver_id = app.current_user_id())
-    OR passenger_id = app.current_user_id()
+    AND EXISTS (
+      SELECT 1
+        FROM ride_requests
+       WHERE ride_requests.ride_id = ride_participation.ride_id
+         AND ride_requests.passenger_id = ride_participation.passenger_id
+         AND ride_requests.status = 'accepted'
+    )
   );
 
 CREATE POLICY ride_participation_update ON ride_participation

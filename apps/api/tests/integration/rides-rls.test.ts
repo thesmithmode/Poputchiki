@@ -151,4 +151,84 @@ describe("Ride requests RLS", () => {
       }),
     ).rejects.toThrow();
   });
+
+  it("passenger cannot self-accept own request", async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
+        return tx`
+          UPDATE ride_requests
+             SET status = 'accepted'
+           WHERE ride_id = ${rideId} AND passenger_id = ${PASSENGER_UUID}
+        `;
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("driver can accept passenger request", async () => {
+    const result = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
+      return tx`
+        UPDATE ride_requests
+           SET status = 'accepted'
+         WHERE ride_id = ${rideId} AND passenger_id = ${PASSENGER_UUID}
+      `;
+    });
+    expect(result.count).toBe(1);
+  });
+});
+
+describe("Ride participation RLS", () => {
+  it("passenger cannot forge participation", async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
+        return tx`
+          INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, passenger_confirmed)
+          VALUES (${rideId}, ${PASSENGER_UUID}, true, true)
+        `;
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("driver can create participation only for accepted request", async () => {
+    const rows = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      await tx`SELECT set_config('app.current_user_id', ${DRIVER_UUID}, true)`;
+      return tx`
+        INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, marked_at)
+        VALUES (${rideId}, ${PASSENGER_UUID}, true, now())
+        RETURNING ride_id
+      `;
+    });
+    expect(rows.length).toBe(1);
+  });
+
+  it("passenger can confirm driver-marked participation but cannot alter driver mark", async () => {
+    const confirm = await sql.begin(async (tx) => {
+      await tx`SET LOCAL ROLE poputchiki_app`;
+      await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
+      return tx`
+        UPDATE ride_participation
+           SET passenger_confirmed = true, confirmed_at = now()
+         WHERE ride_id = ${rideId} AND passenger_id = ${PASSENGER_UUID}
+      `;
+    });
+    expect(confirm.count).toBe(1);
+
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT set_config('app.current_user_id', ${PASSENGER_UUID}, true)`;
+        return tx`
+          UPDATE ride_participation
+             SET driver_marked = false
+           WHERE ride_id = ${rideId} AND passenger_id = ${PASSENGER_UUID}
+        `;
+      }),
+    ).rejects.toThrow();
+  });
 });

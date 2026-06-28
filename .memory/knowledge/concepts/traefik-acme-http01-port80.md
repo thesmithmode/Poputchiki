@@ -24,7 +24,7 @@ Let's Encrypt HTTP-01 challenge requires port 80 to be accessible from the inter
 
 Traefik's ACME resolver (Let's Encrypt integration) supports two challenge types: HTTP-01 and DNS-01. HTTP-01 is simpler (no DNS provider API needed) but requires that port 80 on the server is accessible from the public internet. Let's Encrypt's validation servers connect to `http://<domain>:80/.well-known/acme-challenge/<token>` to verify domain ownership.
 
-On the Poputchiki production server (192.3.12.148), the firewall configuration had a deceptive state:
+On the Poputchiki production server (<PROD_VPS_IP_REDACTED>), the firewall configuration had a deceptive state:
 ```bash
 $ ufw status
 Status: inactive

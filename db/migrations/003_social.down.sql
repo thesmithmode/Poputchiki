@@ -10,3 +10,5 @@ DROP TABLE IF EXISTS private_notes            CASCADE;
 DROP TABLE IF EXISTS favorites                CASCADE;
 DROP TABLE IF EXISTS reviews                  CASCADE;
 DROP TABLE IF EXISTS likes                    CASCADE;
+
+DROP FUNCTION IF EXISTS app.can_socially_rate_ride(uuid, uuid, uuid);

@@ -2,6 +2,28 @@
 --                complaints, audit_log, idempotency_keys,
 --                support_messages, notification_preferences
 
+-- A subject can socially rate only the driver/passenger they completed a ride with.
+-- The passenger side must be confirmed by both parties; this prevents forged
+-- likes/reviews for arbitrary rides or users when an app session sets its own GUC.
+CREATE FUNCTION app.can_socially_rate_ride(p_ride_id uuid, p_subject_id uuid, p_target_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM rides r
+    JOIN ride_participation rp ON rp.ride_id = r.id
+    WHERE r.id = p_ride_id
+      AND rp.driver_marked = true
+      AND rp.passenger_confirmed = true
+      AND (
+        (r.driver_id = p_subject_id AND rp.passenger_id = p_target_id)
+        OR (rp.passenger_id = p_subject_id AND r.driver_id = p_target_id)
+      )
+  );
+$$;
+
 -- ---------------------------------------------------------------------------
 -- likes: symmetric per-ride likes (subject → target)
 -- ---------------------------------------------------------------------------
@@ -26,7 +48,10 @@ CREATE POLICY likes_read ON likes
   FOR SELECT USING (app.current_user_id() IS NOT NULL);
 
 CREATE POLICY likes_insert ON likes
-  FOR INSERT WITH CHECK (subject_id = app.current_user_id());
+  FOR INSERT WITH CHECK (
+    subject_id = app.current_user_id()
+    AND app.can_socially_rate_ride(ride_id, subject_id, target_id)
+  );
 
 CREATE POLICY likes_delete ON likes
   FOR DELETE USING (subject_id = app.current_user_id());
@@ -57,7 +82,10 @@ CREATE POLICY reviews_read ON reviews
   FOR SELECT USING (app.current_user_id() IS NOT NULL);
 
 CREATE POLICY reviews_insert ON reviews
-  FOR INSERT WITH CHECK (subject_id = app.current_user_id());
+  FOR INSERT WITH CHECK (
+    subject_id = app.current_user_id()
+    AND app.can_socially_rate_ride(ride_id, subject_id, target_id)
+  );
 
 -- No UPDATE policy: reviews are immutable (FORCE RLS denies by default)
 

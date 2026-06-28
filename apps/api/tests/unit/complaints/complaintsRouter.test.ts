@@ -1,6 +1,9 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createComplaintsRouter } from "../../../src/complaints/complaintsRouter";
+import {
+  createAdminComplaintsRouter,
+  createComplaintsRouter,
+} from "../../../src/complaints/complaintsRouter";
 import type { AppUser } from "../../../src/middleware/identity-guard";
 
 vi.mock("../../../src/db/with-identity", () => ({
@@ -20,6 +23,12 @@ const USER: AppUser = {
   role: "user",
 };
 
+const ADMIN: AppUser = {
+  id: "00000000-0000-4000-a000-000000000004",
+  tgId: 1004,
+  role: "admin",
+};
+
 const TARGET_ID = "00000000-0000-4000-a000-000000000002";
 const RIDE_ID = "00000000-0000-4000-a000-000000000003";
 
@@ -32,7 +41,7 @@ function mockWithIdentityCallThrough() {
   vi.mocked(withIdentity).mockImplementation(async (_sql, _user, fn) => fn(mockTx));
 }
 
-function makeApp(user?: AppUser) {
+function makeApp(user?: AppUser, admin = false) {
   const app = new Hono();
   if (user) {
     app.use("/complaints/*", async (c, next) => {
@@ -44,7 +53,10 @@ function makeApp(user?: AppUser) {
       await next();
     });
   }
-  app.route("/complaints", createComplaintsRouter(mockSql));
+  app.route(
+    "/complaints",
+    admin ? createAdminComplaintsRouter(mockSql) : createComplaintsRouter(mockSql),
+  );
   return app;
 }
 
@@ -217,5 +229,89 @@ describe("POST /complaints", () => {
     expect(res.status).toBe(409);
     const body = await readJson(res);
     expect(body.error).toBe("already_reported_this_week");
+  });
+});
+
+describe("admin complaints routes", () => {
+  it("GET /complaints lists open complaints for admins", async () => {
+    const row = {
+      id: "00000000-0000-4000-a000-000000000099",
+      reporter_id: USER.id,
+      target_id: TARGET_ID,
+      ride_id: RIDE_ID,
+      reason: "spam",
+      status: "open",
+      created_at: new Date(),
+    };
+    mockWithIdentityCallThrough();
+    mockTx.mockReturnValueOnce("WHERE status = open");
+    mockTx.mockResolvedValueOnce([row]);
+
+    const app = makeApp(ADMIN, true);
+    const res = await app.request("/complaints?status=open");
+
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body).toHaveLength(1);
+    expect(body[0].id).toBe(row.id);
+    expect(mockTx).toHaveBeenCalledTimes(2);
+  });
+
+  it("GET /complaints validates status", async () => {
+    const app = makeApp(ADMIN, true);
+    const res = await app.request("/complaints?status=bad");
+
+    expect(res.status).toBe(422);
+  });
+
+  it("GET /complaints is forbidden for non-admins", async () => {
+    const app = makeApp(USER, true);
+    const res = await app.request("/complaints?status=open");
+
+    expect(res.status).toBe(403);
+  });
+
+  it("PATCH /complaints/:id updates complaint status for admins", async () => {
+    const row = {
+      id: "00000000-0000-4000-a000-000000000099",
+      reporter_id: USER.id,
+      target_id: TARGET_ID,
+      ride_id: null,
+      reason: "spam",
+      status: "resolved",
+      created_at: new Date(),
+    };
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([row]);
+
+    const app = makeApp(ADMIN, true);
+    const res = await app.request(`/complaints/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "resolved" }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(body.status).toBe("resolved");
+    expect(mockTx).toHaveBeenCalledTimes(1);
+  });
+
+  it("PATCH /complaints/:id validates id and status", async () => {
+    const app = makeApp(ADMIN, true);
+
+    const badId = await app.request("/complaints/bad-id", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "resolved" }),
+    });
+    expect(badId.status).toBe(400);
+
+    const badStatus = await app.request(`/complaints/${TARGET_ID}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "bad" }),
+    });
+    expect(badStatus.status).toBe(422);
   });
 });

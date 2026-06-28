@@ -3,7 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import type postgres from "postgres";
 import { createAuthRouter } from "./auth/authRouter";
 import { createClientErrorsRouter } from "./client-errors/clientErrorsRouter";
-import { createComplaintsRouter } from "./complaints/complaintsRouter";
+import { createAdminComplaintsRouter, createComplaintsRouter } from "./complaints/complaintsRouter";
 import { poolMetrics } from "./db/pool";
 import { createFavoritesRouter } from "./favorites/favoritesRouter";
 import { createGeocodeRouter } from "./geocode/geocodeRouter";
@@ -114,6 +114,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
       app.route("/api/likes", createLikesRouter(sql));
       app.route("/api/reviews", createReviewsRouter(sql));
       app.route("/api/complaints", createComplaintsRouter(sql));
+      app.route("/api/admin/complaints", createAdminComplaintsRouter(sql));
       app.route("/api/geocode", createGeocodeRouter());
       const { userRouter: supportUser, adminRouter: supportAdmin } = createSupportRouter(sql);
       app.route("/api/support", supportUser);

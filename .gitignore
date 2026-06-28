@@ -26,10 +26,17 @@ coverage-integration/
 __pycache__/
 *.pyc
 
+# Local AI memory runtime artifacts: logs/state/session transcript extracts may contain
+# developer-local paths, session ids, pasted secrets, PII, or production diagnostics.
+.memory/scripts/*.log
+.memory/scripts/flush-context-*.md
+.memory/scripts/session-flush-*.md
+.memory/scripts/last-flush.json
+.memory/scripts/state.json
+
 # Claude Code tool artifacts
 skills-lock.json
 .claude/scratch/
 
 # Отдельный проект, хранится только локально
 saas/
-

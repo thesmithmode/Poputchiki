@@ -61,13 +61,12 @@ async function telegramAuth(): Promise<TelegramAuthResult> {
   try {
     const auth = await apiFetch<{
       access_token: string;
-      refresh_token: string;
       user?: MeUser;
     }>("/auth/telegram", {
       method: "POST",
       body: JSON.stringify({ initData }),
     });
-    setTokens(auth.access_token, auth.refresh_token);
+    setTokens(auth.access_token);
     if (auth.user) return { user: auth.user };
     return { error: "no user in response" };
   } catch (err) {
@@ -134,20 +133,7 @@ export function useBootMe(): MeState {
         }
       }
 
-      if (!getTokens()) {
-        advancePhase("auth");
-        const result = await telegramAuth();
-        if (cancelled) return;
-        if ("error" in result) {
-          setState({ status: "error", message: result.error });
-          return;
-        }
-        if (tgId !== undefined) writeMeCache(result.user, tgId);
-        applyUserState(result.user, setState, advancePhase);
-        return;
-      }
-
-      advancePhase("profile");
+      advancePhase(getTokens() ? "profile" : "auth");
       try {
         const user = await apiFetch<MeUser>("/users/me");
         if (cancelled) return;

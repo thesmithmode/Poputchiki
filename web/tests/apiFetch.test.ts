@@ -38,7 +38,7 @@ describe("apiFetch", () => {
   });
 
   it("добавляет Authorization заголовок если токен есть", async () => {
-    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "acc", refresh: "ref" });
+    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "acc" });
     mockFetch(200, {});
     await apiFetch("/users/me");
     const [, init] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
@@ -149,7 +149,7 @@ describe("apiFetch", () => {
   });
 
   it("SENTINEL: 401 → tryRefresh → retry с новым токеном вернёт 200", async () => {
-    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "old", refresh: "ref" });
+    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "old" });
     const setTokensSpy = vi.spyOn(tokenStore, "setTokens").mockImplementation(() => {});
 
     const fetchMock = vi
@@ -177,11 +177,11 @@ describe("apiFetch", () => {
     const result = await apiFetch<{ id: string }>("/users/me");
     expect(result.id).toBe("u");
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(setTokensSpy).toHaveBeenCalledWith("new", "newref");
+    expect(setTokensSpy).toHaveBeenCalledWith("new");
   });
 
   it("SENTINEL: 401 → refresh тоже 401 → ApiError 401 (не зацикливается)", async () => {
-    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "old", refresh: "ref" });
+    vi.spyOn(tokenStore, "getTokens").mockReturnValue({ access: "old" });
 
     const fetchMock = vi.fn().mockResolvedValue({
       ok: false,

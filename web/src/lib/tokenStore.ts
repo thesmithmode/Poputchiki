@@ -1,25 +1,24 @@
-const KEY = "pp_tokens";
-
 interface Tokens {
   access: string;
-  refresh: string;
 }
+
+let accessToken: string | null = null;
 
 export function getTokens(): Tokens | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Tokens) : null;
-  } catch {
-    return null;
-  }
+  return accessToken ? { access: accessToken } : null;
 }
 
-export function setTokens(access: string, refresh: string): void {
-  localStorage.setItem(KEY, JSON.stringify({ access, refresh }));
+export function setTokens(access: string): void {
+  accessToken = access;
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem(KEY);
+  accessToken = null;
+  try {
+    localStorage.removeItem("pp_tokens");
+  } catch {
+    // localStorage can be unavailable in privacy modes; auth state is memory-only.
+  }
 }
 
 // Декодирует sub из JWT payload без верификации подписи.

@@ -34,22 +34,19 @@ export function _resetRefreshState(): void {
 async function tryRefresh(): Promise<boolean> {
   if (refreshInFlight) return refreshInFlight;
   const run = (async () => {
-    const tokens = getTokens();
-    if (!tokens) return false;
     try {
       const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: tokens.refresh }),
+        body: "{}",
       });
       if (!res.ok) return false;
       const body = (await res.json().catch(() => null)) as {
         access_token?: string;
-        refresh_token?: string;
       } | null;
-      if (!body?.access_token || !body?.refresh_token) return false;
-      setTokens(body.access_token, body.refresh_token);
+      if (!body?.access_token) return false;
+      setTokens(body.access_token);
       return true;
     } catch {
       return false;

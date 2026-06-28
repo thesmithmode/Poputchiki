@@ -14,6 +14,7 @@ vi.mock("../src/lib/telegram", () => ({
 import { createElement } from "react";
 import { MeContext, useBootMe, useMe } from "../src/hooks/useMe";
 import { apiFetch } from "../src/lib/api";
+import { clearTokens, setTokens } from "../src/lib/tokenStore";
 
 const mockedApiFetch = vi.mocked(apiFetch);
 
@@ -30,6 +31,7 @@ const MOCK_USER = {
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  clearTokens();
 });
 
 describe("useBootMe — boot-цикл", () => {
@@ -51,11 +53,8 @@ describe("useBootMe — boot-цикл", () => {
     expect(authCalls).toHaveLength(1);
   });
 
-  it("когда токены есть (localStorage) — вызывает только GET /users/me, не /auth/telegram", async () => {
-    localStorage.setItem(
-      "pp_tokens",
-      JSON.stringify({ access: "access.token.existing", refresh: "refresh.token.existing" }),
-    );
+  it("когда access-токен есть в памяти — вызывает только GET /users/me, не /auth/telegram", async () => {
+    setTokens("access.token.existing");
     mockedApiFetch.mockResolvedValueOnce(MOCK_USER);
 
     const { result } = renderHook(() => useBootMe());
@@ -137,10 +136,7 @@ describe("useBootMe — boot-цикл", () => {
       ready: vi.fn(),
     } as unknown as ReturnType<typeof getTelegramWebApp>);
 
-    localStorage.setItem(
-      "pp_tokens",
-      JSON.stringify({ access: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.s", refresh: "ref" }),
-    );
+    setTokens("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.s");
     localStorage.setItem(
       "pp_me_v1",
       JSON.stringify({ user: MOCK_USER, tgId: 123, at: Date.now() }),

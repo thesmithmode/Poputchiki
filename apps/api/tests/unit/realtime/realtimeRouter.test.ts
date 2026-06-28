@@ -3,7 +3,11 @@ import { sign } from "hono/jwt";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { identityGuard } from "../../../src/middleware/identity-guard";
 import type { Dispatcher } from "../../../src/realtime/dispatcher";
-import { createRealtimeRouter, createSSEErrorHandler } from "../../../src/realtime/realtimeRouter";
+import {
+  createRealtimeRouter,
+  createSSEErrorHandler,
+  shouldForwardRealtimePayload,
+} from "../../../src/realtime/realtimeRouter";
 /**
  * Unit tests for realtimeRouter — covers finally block (clearInterval + unsubscribe).
  * Uses a mock Dispatcher so no DB needed.
@@ -136,6 +140,32 @@ describe("realtimeRouter unit", () => {
     const heartbeatCall = setIntervalSpy.mock.calls.find((args) => args[1] === 77);
     expect(heartbeatCall).toBeDefined();
   }, 5000);
+
+  it("не отправляет request_updated пользователю вне target_user_ids", () => {
+    expect(
+      shouldForwardRealtimePayload(
+        JSON.stringify({
+          ride_id: "00000000-0000-4000-a000-000000000999",
+          type: "request_updated",
+          target_user_ids: ["00000000-0000-4000-a000-000000000888"],
+        }),
+        USER.id,
+      ),
+    ).toBe(false);
+  });
+
+  it("отправляет request_updated пользователю из target_user_ids", () => {
+    expect(
+      shouldForwardRealtimePayload(
+        JSON.stringify({
+          ride_id: "00000000-0000-4000-a000-000000000999",
+          type: "request_updated",
+          target_user_ids: [USER.id],
+        }),
+        USER.id,
+      ),
+    ).toBe(true);
+  });
 
   it("dispatcher.subscribe вызывается при подключении клиента", async () => {
     const { dispatcher } = makeMockDispatcher();

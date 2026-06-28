@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { logger } from "../lib/logger";
+import type { AppUser } from "../middleware/identity-guard";
 import type { Dispatcher } from "./dispatcher";
 
 interface RealtimeOptions {
@@ -28,11 +29,32 @@ export function createSSEErrorHandler(
   };
 }
 
+interface RealtimePayload {
+  type?: string;
+  target_user_ids?: unknown;
+}
+
+export function shouldForwardRealtimePayload(payload: string, userId: string): boolean {
+  let parsed: RealtimePayload;
+  try {
+    parsed = JSON.parse(payload) as RealtimePayload;
+  } catch {
+    return true;
+  }
+
+  if (parsed.type !== "request_updated") return true;
+  if (!Array.isArray(parsed.target_user_ids)) return false;
+
+  return parsed.target_user_ids.includes(userId);
+}
+
 export function createRealtimeRouter(dispatcher: Dispatcher, options: RealtimeOptions = {}): Hono {
   const { heartbeatMs = 15000 } = options;
   const app = new Hono();
 
   app.get("/rides", async (c) => {
+    const user = c.get("user" as never) as AppUser;
+
     c.header("Cache-Control", "no-cache");
     c.header("X-Accel-Buffering", "no");
 
@@ -49,6 +71,8 @@ export function createRealtimeRouter(dispatcher: Dispatcher, options: RealtimeOp
       const closeOnError = createSSEErrorHandler(stream, endResolve);
 
       const unsubscribe = dispatcher.subscribe((payload) => {
+        if (!shouldForwardRealtimePayload(payload, user.id)) return;
+
         /* c8 ignore next -- callback fires at runtime via pg_notify, not in unit tests */
         stream.writeSSE({ event: "ride_changed", data: payload }).catch(closeOnError);
       });

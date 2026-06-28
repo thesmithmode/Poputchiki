@@ -146,10 +146,15 @@ export async function respondToRideRequest(
     },
   }).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
-  // Инвалидируем SSE-подписчиков — кнопки accept/reject исчезнут у водителя без перезагрузки
-  sql`SELECT pg_notify('rides_changed', ${JSON.stringify({ ride_id: result.request.ride_id, type: "request_updated" })})`.catch(
-    /* c8 ignore next -- fire-and-forget */ () => {},
-  );
+  // Инвалидируем только SSE-подписчиков-участников заявки — request activity не должен утекать всем.
+  sql`SELECT pg_notify(
+    'rides_changed',
+    ${JSON.stringify({
+      ride_id: result.request.ride_id,
+      type: "request_updated",
+      target_user_ids: [result.request.driver_id, result.request.passenger_id],
+    })}
+  )`.catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
   // Пометить уведомление водителя как прочитанное — кнопки пропадут при следующем рефреше в web
   if (action !== "cancel") {

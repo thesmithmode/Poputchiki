@@ -113,9 +113,13 @@ describe("respondToRideRequest — уведомление содержит им�
       return Array.isArray(parts) && (parts as string[]).some((s) => s.includes("pg_notify"));
     });
     expect(notifyCall).toBeDefined();
-    // Второй аргумент — JSON payload, должен содержать ride_id
-    const payload = notifyCall?.[1] as string;
-    expect(payload).toContain(RIDE_ID);
+    // Второй аргумент — JSON payload, должен содержать ride_id и только участников заявки
+    const payload = JSON.parse(notifyCall?.[1] as string) as {
+      ride_id: string;
+      target_user_ids: string[];
+    };
+    expect(payload.ride_id).toBe(RIDE_ID);
+    expect(payload.target_user_ids).toEqual([DRIVER.id, PASSENGER.id]);
   });
 
   it("display_name пустой → пустая строка в data, не падает", async () => {

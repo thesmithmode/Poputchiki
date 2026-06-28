@@ -1,3 +1,31 @@
+const sensitiveQueryKeySalt =
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : String(Math.random());
+
+function sensitiveSpatialFingerprint(spatial: {
+  fromLat: number;
+  fromLng: number;
+  toLat?: number;
+  toLng?: number;
+  radiusKm?: number;
+}) {
+  const source = [
+    sensitiveQueryKeySalt,
+    spatial.fromLat,
+    spatial.fromLng,
+    spatial.toLat ?? "",
+    spatial.toLng ?? "",
+    spatial.radiusKm ?? "",
+  ].join(":");
+  let hash = 2166136261;
+  for (let i = 0; i < source.length; i += 1) {
+    hash ^= source.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 /**
  * Централизованный реестр query keys для TanStack Query.
  *
@@ -29,7 +57,10 @@ export const queryKeys = {
         | undefined,
     ) => {
       const base = ["rides", "list", preset, fromAt, toAt] as const;
-      return spatial ? ([...base, spatial] as const) : base;
+      if (!spatial) return base;
+      const spatialFingerprint = sensitiveSpatialFingerprint(spatial);
+      if ("toLat" in spatial) return [...base, "route", spatialFingerprint] as const;
+      return [...base, "nearby", spatial.radiusKm, spatialFingerprint] as const;
     },
     mine: (role: string, when: string) => ["rides", "mine", role, when] as const,
   },

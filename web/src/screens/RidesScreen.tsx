@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiltersPanel } from "../components/FiltersPanel";
 import { Icon } from "../components/Icon";
 import { useFilters } from "../hooks/useFilters";
-import { getCurrentLocation } from "../lib/geolocation";
 import { FeedView } from "../views/FeedView";
 import { MapScreen } from "./MapScreen";
 
@@ -35,8 +34,6 @@ export function RidesScreen() {
     dataUpdatedAt: number;
     refetch: () => void;
   } | null>(null);
-  const locationRequestedRef = useRef(false);
-
   const trustOn =
     filters.trustMinAccountAgeDays > 0 || filters.trustMinLikes > 0 || filters.verifiedOnly;
 
@@ -49,26 +46,6 @@ export function RidesScreen() {
     setDensity(next);
     localStorage.setItem(DENSITY_KEY, next);
   }
-
-  useEffect(() => {
-    if (import.meta.env.MODE === "test") return;
-    if (locationRequestedRef.current) return;
-    if (filters.fromLat !== null || filters.fromLng !== null || filters.fromLabel) return;
-    locationRequestedRef.current = true;
-    let cancelled = false;
-    getCurrentLocation().then((loc) => {
-      if (cancelled || !loc) return;
-      setFilters({
-        fromLabel: "Мое местоположение",
-        fromLat: loc.lat,
-        fromLng: loc.lng,
-        radiusKm: 2,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [filters.fromLat, filters.fromLng, filters.fromLabel, setFilters]);
 
   return (
     <div

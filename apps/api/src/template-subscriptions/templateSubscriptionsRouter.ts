@@ -5,6 +5,7 @@ import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
+import { ridesCache } from "../rides/ridesCache";
 import { isDomainError, respondToSubscription } from "./respond";
 
 const PostInput = z.object({
@@ -249,6 +250,8 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
       return c.json({ error: "invalid_state" }, 409);
     }
 
+    ridesCache.clear();
+
     enqueueNotification(sql, {
       userId: result.passengerId,
       category: "template_subscription_revoked",
@@ -303,6 +306,8 @@ export function createTemplateSubscriptionsRouter(sql: postgres.Sql): Hono {
       if (result.error === "forbidden") return c.json({ error: "forbidden" }, 403);
       return c.json({ error: "invalid_state" }, 409);
     }
+
+    ridesCache.clear();
 
     return c.json({ ok: true });
   });

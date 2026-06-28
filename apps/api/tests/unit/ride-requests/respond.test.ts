@@ -8,10 +8,14 @@ vi.mock("@poputchiki/shared", () => ({
 vi.mock("../../../src/db/with-identity", () => ({
   withIdentity: vi.fn(),
 }));
+vi.mock("../../../src/rides/ridesCache", () => ({
+  ridesCache: { clear: vi.fn() },
+}));
 
 import { enqueueNotification } from "@poputchiki/shared";
 import { withIdentity } from "../../../src/db/with-identity";
 import type { AppUser } from "../../../src/middleware/identity-guard";
+import { ridesCache } from "../../../src/rides/ridesCache";
 
 const DRIVER: AppUser = { id: "00000000-0000-4000-a000-000000000001", tgId: 11, role: "user" };
 const PASSENGER: AppUser = { id: "00000000-0000-4000-a000-000000000002", tgId: 22, role: "user" };
@@ -41,6 +45,32 @@ beforeEach(() => {
 });
 
 describe("respondToRideRequest — уведомление содержит имя актора", () => {
+  it("accept → очищает /rides cache, потому что seats_taken изменился", async () => {
+    mockTx
+      .mockResolvedValueOnce([PENDING_ROW]) // SELECT ride_request
+      .mockResolvedValueOnce([]) // advisory lock
+      .mockResolvedValueOnce([{ id: REQ_ID }]) // UPDATE
+      .mockResolvedValueOnce([{ id: RIDE_ID }]) // book_seat
+      .mockResolvedValueOnce([{ display_name: "Иван Водитель" }]); // SELECT display_name
+
+    await respondToRideRequest(mockSql, DRIVER, REQ_ID, "accept");
+
+    expect(vi.mocked(ridesCache.clear)).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancel accepted → очищает /rides cache, потому что unbook_seat меняет seats_taken", async () => {
+    mockTx
+      .mockResolvedValueOnce([{ ...PENDING_ROW, status: "accepted" }]) // SELECT ride_request
+      .mockResolvedValueOnce([]) // advisory lock
+      .mockResolvedValueOnce([{ id: REQ_ID }]) // UPDATE
+      .mockResolvedValueOnce([{ id: RIDE_ID }]) // unbook_seat
+      .mockResolvedValueOnce([{ display_name: "Мария Пассажир" }]); // SELECT display_name
+
+    await respondToRideRequest(mockSql, PASSENGER, REQ_ID, "cancel");
+
+    expect(vi.mocked(ridesCache.clear)).toHaveBeenCalledTimes(1);
+  });
+
   it("accept → enqueueNotification получает driver_name из display_name", async () => {
     mockTx
       .mockResolvedValueOnce([PENDING_ROW]) // SELECT ride_request

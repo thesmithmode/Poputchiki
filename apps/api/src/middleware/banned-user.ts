@@ -62,8 +62,9 @@ export function bannedUser(sql: postgres.Sql): MiddlewareHandler {
       return c.json({ error: "unauthorized" }, 401);
     }
 
-    // /api/users/me — banned user needs to see their ban reason
-    if (c.req.path === "/api/users/me") {
+    // GET /api/users/me — banned user needs to see their ban reason.
+    // Mutating methods on the same path (PATCH/DELETE) must remain blocked.
+    if (c.req.method === "GET" && c.req.path === "/api/users/me") {
       await next();
       return;
     }

@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useRealtime } from "../src/hooks/useRealtime";
+import { setTokens } from "../src/lib/tokenStore";
 
 function makeWrapper(client: QueryClient) {
   return ({ children }: { children: React.ReactNode }) =>
@@ -42,20 +43,31 @@ describe("useRealtime", () => {
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     MockEventSource.instances = [];
     vi.stubGlobal("EventSource", MockEventSource);
+    vi.stubGlobal("fetch", vi.fn());
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
+    localStorage.clear();
     client.clear();
   });
 
-  it("создаёт EventSource на /api/realtime/rides с credentials", () => {
+  it("подключается к /api/realtime/rides через fetch с Bearer токеном и cookies", async () => {
+    setTokens("access-token", "refresh-token");
+    const pending = new Promise<Response>(() => {});
+    vi.mocked(fetch).mockReturnValue(pending);
+
     renderHook(() => useRealtime(), { wrapper: makeWrapper(client) });
-    const es = MockEventSource.instances[0];
-    expect(es).toBeDefined();
-    expect(es?.url).toBe("/api/realtime/rides");
-    expect(es?.withCredentials).toBe(true);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/realtime/rides",
+      expect.objectContaining({
+        credentials: "include",
+        headers: { Authorization: "Bearer access-token" },
+      }),
+    );
+    expect(MockEventSource.instances).toHaveLength(0);
   });
 
   it("инвалидирует кэш rides и ride при событии ride_changed", async () => {

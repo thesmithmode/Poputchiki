@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { queryKeys } from "../lib/queryKeys";
+import { getTokens } from "../lib/tokenStore";
 
 const SSE_URL = "/api/realtime/rides";
 const FALLBACK_INTERVAL_MS = 30_000;
@@ -17,6 +18,7 @@ export function useRealtime() {
 
   useEffect(() => {
     let es: EventSource | null = null;
+    let sseAbortController: AbortController | null = null;
     let fallbackTimer: ReturnType<typeof setInterval> | null = null;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
     let retryAttempt = 0;
@@ -41,6 +43,13 @@ export function useRealtime() {
       }
     }
 
+    function stopFetchSSE() {
+      if (sseAbortController !== null) {
+        sseAbortController.abort();
+        sseAbortController = null;
+      }
+    }
+
     function startFallback() {
       if (fallbackTimer !== null) return;
       fallbackTimer = setInterval(invalidate, FALLBACK_INTERVAL_MS);
@@ -55,6 +64,47 @@ export function useRealtime() {
       }, delay);
     }
 
+    async function startFetchSSE(accessToken: string) {
+      stopFetchSSE();
+      const controller = new AbortController();
+      sseAbortController = controller;
+
+      try {
+        const response = await fetch(SSE_URL, {
+          credentials: "include",
+          headers: { Authorization: `Bearer ${accessToken}` },
+          signal: controller.signal,
+        });
+        if (!response.ok || !response.body) throw new Error("SSE connection failed");
+
+        stopFallback();
+        retryAttempt = 0;
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (!destroyed && !controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() ?? "";
+          for (const event of events) {
+            if (event.split("\n").some((line) => line.trim() === "event: ride_changed")) {
+              invalidate();
+            }
+          }
+        }
+        if (!destroyed && !controller.signal.aborted) throw new Error("SSE stream ended");
+      } catch {
+        if (destroyed || controller.signal.aborted) return;
+        startFallback();
+        scheduleRetry();
+      } finally {
+        if (sseAbortController === controller) sseAbortController = null;
+      }
+    }
+
     function startSSE() {
       if (destroyed) return;
 
@@ -62,6 +112,13 @@ export function useRealtime() {
       if (es !== null) {
         es.close();
         es = null;
+      }
+      stopFetchSSE();
+
+      const tokens = getTokens();
+      if (tokens?.access) {
+        void startFetchSSE(tokens.access);
+        return;
       }
 
       if (typeof EventSource === "undefined") {
@@ -104,6 +161,7 @@ export function useRealtime() {
     return () => {
       destroyed = true;
       es?.close();
+      stopFetchSSE();
       stopFallback();
       clearRetryTimer();
       window.removeEventListener("online", onOnline);

@@ -3,8 +3,10 @@ import { confirmParticipationPush } from "../../src/confirm-participation-push";
 
 type Row = Record<string, unknown>;
 
-function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
-  return {
+function makeSql(
+  txResponses: (Row[] | Error)[],
+): import("postgres").Sql & { txMock?: ReturnType<typeof vi.fn> } {
+  const sql = {
     begin: vi.fn().mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       let i = 0;
       const txFn = vi.fn().mockImplementation(() => {
@@ -15,9 +17,11 @@ function makeSql(txResponses: (Row[] | Error)[]): import("postgres").Sql {
       // biome-ignore lint/suspicious/noExplicitAny: postgres.js tx mock нужен any для .json
       const tx = txFn as any;
       tx.json = (v: unknown) => JSON.stringify(v);
+      sql.txMock = txFn;
       return fn(tx);
     }),
-  } as unknown as import("postgres").Sql;
+  } as unknown as import("postgres").Sql & { txMock?: ReturnType<typeof vi.fn> };
+  return sql;
 }
 
 describe("confirmParticipationPush", () => {
@@ -28,11 +32,16 @@ describe("confirmParticipationPush", () => {
     expect(await confirmParticipationPush(sql)).toBeNull();
   });
 
-  it("returns notified=0 when no rows to process", async () => {
-    // lock check, SELECT passengers (empty)
+  it("returns notified=0 when no accepted passengers need processing", async () => {
+    // lock check, SELECT accepted passengers (empty)
     const sql = makeSql([[{ acquired: true }], []]);
     const result = await confirmParticipationPush(sql);
     expect(result).toEqual({ notified: 0 });
+    const selectSql = String(sql.txMock?.mock.calls[1]?.[0] ?? "");
+    expect(selectSql).toContain("JOIN ride_requests");
+    expect(selectSql).toContain("rr.status = ");
+    expect(selectSql).toContain("JOIN users");
+    expect(selectSql).toContain("u.deleted_at IS NULL");
   });
 
   it("sends pg_notify and updates notified_at for each row", async () => {

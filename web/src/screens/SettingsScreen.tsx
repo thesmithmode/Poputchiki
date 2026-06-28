@@ -5,6 +5,7 @@ import { type RolePref, useRolePreference } from "../hooks/useRolePreference";
 import { type ThemePref, useThemePreference } from "../hooks/useThemePreference";
 import { useUser } from "../hooks/useUser";
 import { apiFetch } from "../lib/api";
+import { clearOsmTileCache } from "../lib/mapTileCache";
 import { clearTokens, getTokens } from "../lib/tokenStore";
 
 const APP_VERSION = "0.1.0";
@@ -41,6 +42,7 @@ export function SettingsScreen() {
       // logout always succeeds client-side
     }
     clearTokens();
+    await clearOsmTileCache();
     window.location.reload();
   }
 
@@ -59,6 +61,7 @@ export function SettingsScreen() {
       // proceed regardless
     }
     clearTokens();
+    await clearOsmTileCache();
     window.location.reload();
   }
 

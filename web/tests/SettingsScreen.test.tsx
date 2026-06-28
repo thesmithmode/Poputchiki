@@ -49,6 +49,11 @@ vi.mock("../src/hooks/useRolePreference", () => ({
   useRolePreference: () => ({ role: "passenger", setRole: vi.fn() }),
 }));
 
+const mockClearOsmTileCache = vi.fn();
+vi.mock("../src/lib/mapTileCache", () => ({
+  clearOsmTileCache: () => mockClearOsmTileCache(),
+}));
+
 import { SettingsScreen } from "../src/screens/SettingsScreen";
 
 const mockReload = vi.fn();
@@ -74,6 +79,8 @@ describe("SettingsScreen", () => {
     mockApiFetch.mockReset();
     mockNavigate.mockReset();
     mockReload.mockReset();
+    mockClearOsmTileCache.mockReset();
+    mockClearOsmTileCache.mockResolvedValue(undefined);
   });
 
   it("рендерит все основные элементы", () => {
@@ -86,7 +93,7 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("app-version")).toBeInTheDocument();
   });
 
-  it("logout вызывает POST /auth/logout и reload", async () => {
+  it("logout вызывает POST /auth/logout, очищает cache OSM тайлов и reload", async () => {
     mockApiFetch.mockResolvedValue({});
     renderSettings();
     fireEvent.click(screen.getByTestId("logout-btn"));
@@ -96,6 +103,7 @@ describe("SettingsScreen", () => {
         expect.objectContaining({ method: "POST" }),
       ),
     );
+    expect(mockClearOsmTileCache).toHaveBeenCalledTimes(1);
     expect(mockReload).toHaveBeenCalled();
   });
 
@@ -104,6 +112,7 @@ describe("SettingsScreen", () => {
     renderSettings();
     fireEvent.click(screen.getByTestId("logout-btn"));
     await waitFor(() => expect(mockReload).toHaveBeenCalled());
+    expect(mockClearOsmTileCache).toHaveBeenCalledTimes(1);
   });
 
   it("кнопка delete открывает модалку подтверждения", () => {
@@ -140,6 +149,7 @@ describe("SettingsScreen", () => {
     await waitFor(() =>
       expect(mockApiFetch).toHaveBeenCalledWith("/users/me", { method: "DELETE" }),
     );
+    expect(mockClearOsmTileCache).toHaveBeenCalledTimes(1);
     expect(mockReload).toHaveBeenCalled();
   });
 

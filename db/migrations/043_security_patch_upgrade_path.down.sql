@@ -1,0 +1,6 @@
+-- Intentionally empty.
+--
+-- This migration re-applies shared security controls whose canonical ownership
+-- remains in earlier migrations for fresh databases. Dropping them here would
+-- break objects owned by 002_rides.sql, 003_social.sql, 007_counter_triggers.sql,
+-- and the later 024_book_seat_fix.sql migration.

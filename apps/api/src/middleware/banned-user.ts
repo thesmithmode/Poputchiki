@@ -63,7 +63,7 @@ export function bannedUser(sql: postgres.Sql): MiddlewareHandler {
     }
 
     // /api/users/me — banned user needs to see their ban reason
-    if (c.req.path === "/api/users/me") {
+    if (c.req.path === "/api/users/me" && c.req.method === "GET") {
       await next();
       return;
     }

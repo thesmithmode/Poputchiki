@@ -34,6 +34,8 @@ function makeApp(sql: postgres.Sql, user?: AppUser) {
   }
   app.use("*", bannedUser(sql));
   app.get("*", (c) => c.json({ ok: true }));
+  app.patch("*", (c) => c.json({ ok: true }));
+  app.delete("*", (c) => c.json({ ok: true }));
   return app;
 }
 
@@ -52,6 +54,22 @@ describe("bannedUser middleware", () => {
     const res = await app.request("/api/users/me");
     expect(res.status).toBe(200);
     // DB still queried — deleted_at check happens before /me whitelist
+    expect(sql).toHaveBeenCalled();
+  });
+
+  it("banned user cannot PATCH /api/users/me", async () => {
+    const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/users/me", { method: "PATCH" });
+    expect(res.status).toBe(403);
+    expect(sql).toHaveBeenCalled();
+  });
+
+  it("banned user cannot DELETE /api/users/me", async () => {
+    const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/users/me", { method: "DELETE" });
+    expect(res.status).toBe(403);
     expect(sql).toHaveBeenCalled();
   });
 

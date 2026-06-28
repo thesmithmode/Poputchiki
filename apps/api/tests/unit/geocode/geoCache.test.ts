@@ -34,4 +34,18 @@ describe("GeoCache", () => {
     for (let i = 0; i < 10; i++) cache.set(`k${i}`, i);
     expect(cache.size()).toBeLessThanOrEqual(3);
   });
+
+  it("rejects keys over maxKeyBytes", () => {
+    const cache = new GeoCache(10, 60_000, { maxKeyBytes: 4 });
+    cache.set("12345", 1);
+    expect(cache.size()).toBe(0);
+    expect(cache.get("12345")).toBeUndefined();
+  });
+
+  it("rejects values over maxValueBytes", () => {
+    const cache = new GeoCache(10, 60_000, { maxValueBytes: 10 });
+    cache.set("q", { value: "x".repeat(20) });
+    expect(cache.size()).toBe(0);
+    expect(cache.get("q")).toBeUndefined();
+  });
 });

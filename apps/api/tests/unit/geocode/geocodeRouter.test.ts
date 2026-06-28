@@ -68,6 +68,52 @@ describe("GET /api/geocode/search", () => {
     expect(res.status).toBe(400);
   });
 
+  it("400 для слишком длинного q и не вызывает Nominatim", async () => {
+    const mockFetch = vi.fn();
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request(`/api/geocode/search?q=${"а".repeat(121)}`, {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(400);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("400 для q с управляющими символами и не вызывает Nominatim", async () => {
+    const mockFetch = vi.fn();
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request(`/api/geocode/search?q=${encodeURIComponent("Казань\nБаумана")}`, {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(400);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("503 если Nominatim вернул не JSON", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response("oops", {
+        headers: { "Content-Type": "text/plain" },
+      }),
+    );
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request("/api/geocode/search?q=Казань", {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it("503 если Nominatim объявил слишком большой ответ", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify([]), {
+        headers: { "Content-Type": "application/json", "Content-Length": "65537" },
+      }),
+    );
+    const app = makeApp(mockFetch as unknown as typeof fetch);
+    const res = await app.request("/api/geocode/search?q=Казань", {
+      headers: authH(token),
+    });
+    expect(res.status).toBe(503);
+  });
+
   it("200 — проксирует ответ Nominatim", async () => {
     const mockFetch = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(NOMINATIM_RESULT), {
@@ -335,7 +381,7 @@ describe("GET /api/geocode/search", () => {
     for (let i = 0; i < 1001; i++) map.set(`stale-${i}`, stale);
     expect(map.size).toBe(1001);
 
-    const mockFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(NOMINATIM_RESULT)));
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(NOMINATIM_RESULT), { headers: { "Content-Type": "application/json" } }));
     const app = makeApp(mockFetch as unknown as typeof fetch, undefined, map);
     const token = await makeToken();
     const res = await app.request("/api/geocode/search?q=test", { headers: authH(token) });
@@ -351,7 +397,7 @@ describe("GET /api/geocode/search", () => {
     const stale = Date.now() - 10 * 60_000;
     for (let i = 0; i < 5; i++) map.set(`stale-${i}`, stale);
 
-    const mockFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(NOMINATIM_RESULT)));
+    const mockFetch = vi.fn().mockResolvedValueOnce(new Response(JSON.stringify(NOMINATIM_RESULT), { headers: { "Content-Type": "application/json" } }));
     const app = makeApp(mockFetch as unknown as typeof fetch, undefined, map);
     const token = await makeToken();
     const res = await app.request("/api/geocode/search?q=test", { headers: authH(token) });

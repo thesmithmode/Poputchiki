@@ -46,6 +46,9 @@ function rateLimitIntervalMs(nominatimUrl: string): number {
 // Рабочая зона: Казань + ЖК Царёво + аэропорт + окрестности до Старо��о Шигалеево.
 // Nominatim viewbox формат: left(min_lon),top(max_lat),right(max_lon),bottom(min_lat)
 const BBOX_KAZAN_AREA = "48.5,56.2,50.0,55.3";
+const MAX_SEARCH_QUERY_CHARS = 120;
+const MAX_NOMINATIM_RESPONSE_BYTES = 64 * 1024;
+const CONTROL_CHARS_RE = /[\u0000-\u001f\u007f]/;
 
 // bounded=1 у Nominatim advisory — при пустом resultset он может вернуть
 // результаты за пределами viewbox (Москва, Питер итд.). Хард-фильтр гарантирует зону.
@@ -83,6 +86,53 @@ function parseQuery(q: string): ParsedQuery {
     };
   }
   return { structured: false, params: { q } };
+}
+
+async function readBoundedJson(resp: Response): Promise<unknown> {
+  if (!resp.ok) throw new Error(`nominatim_status_${resp.status}`);
+
+  const contentType = resp.headers.get("content-type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new Error("nominatim_bad_content_type");
+  }
+
+  const contentLength = resp.headers.get("content-length");
+  if (contentLength !== null) {
+    const declaredBytes = Number(contentLength);
+    if (!Number.isFinite(declaredBytes) || declaredBytes > MAX_NOMINATIM_RESPONSE_BYTES) {
+      throw new Error("nominatim_response_too_large");
+    }
+  }
+
+  if (!resp.body) {
+    const text = await resp.text();
+    if (new TextEncoder().encode(text).byteLength > MAX_NOMINATIM_RESPONSE_BYTES) {
+      throw new Error("nominatim_response_too_large");
+    }
+    return JSON.parse(text);
+  }
+
+  const reader = resp.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > MAX_NOMINATIM_RESPONSE_BYTES) {
+      await reader.cancel();
+      throw new Error("nominatim_response_too_large");
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(totalBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes));
 }
 
 function buildSearchUrl(nominatimUrl: string, q: string): URL {
@@ -130,7 +180,11 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     if (!user) return c.json({ error: "unauthorized" }, 401);
 
     const q = c.req.query("q");
-    if (!q?.trim()) return c.json({ error: "q is required" }, 400);
+    const normalizedQ = q?.trim();
+    if (!normalizedQ) return c.json({ error: "q is required" }, 400);
+    if (normalizedQ.length > MAX_SEARCH_QUERY_CHARS || CONTROL_CHARS_RE.test(normalizedQ)) {
+      return c.json({ error: "q is invalid" }, 400);
+    }
 
     const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
     const rateMs = rateLimitIntervalMs(nominatimUrl);
@@ -143,22 +197,21 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     }
     lastRequestAt.set(user.id, now);
 
-    const cacheKey = q.toLowerCase().trim();
+    const cacheKey = normalizedQ.toLowerCase();
     const cached = cache.get(cacheKey);
     if (cached !== undefined) {
       return c.json(cached);
     }
 
     try {
-      const url = buildSearchUrl(nominatimUrl, q);
+      const url = buildSearchUrl(nominatimUrl, normalizedQ);
 
       const resp = await fetchFn(url.toString(), {
         headers: { "Accept-Language": "ru", "User-Agent": "Poputchiki/1.0" },
         signal: AbortSignal.timeout(5000),
       });
 
-      if (!resp.ok) throw new Error(`nominatim_status_${resp.status}`);
-      const raw = await resp.json();
+      const raw = await readBoundedJson(resp);
       const parsed = NominatimSearchResponse.safeParse(raw);
       if (!parsed.success) throw new Error("nominatim_bad_shape");
       const results = parsed.data.filter((r) => {
@@ -217,8 +270,7 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
         headers: { "Accept-Language": "ru", "User-Agent": "Poputchiki/1.0" },
         signal: AbortSignal.timeout(5000),
       });
-      if (!resp.ok) throw new Error(`nominatim_status_${resp.status}`);
-      const raw = await resp.json();
+      const raw = await readBoundedJson(resp);
       const parsed = NominatimReverseResponse.safeParse(raw);
       if (!parsed.success) throw new Error("nominatim_bad_shape");
       const result = {

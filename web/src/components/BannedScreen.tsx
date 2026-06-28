@@ -9,17 +9,19 @@ interface Props {
 
 export const BannedScreen: FC<Props> = ({ reason, bannedAt }) => {
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleContact = async () => {
+    setError(null);
     try {
       await apiFetch("/support/messages", {
         method: "POST",
-        body: JSON.stringify({ message: "Прошу пересмотреть блокировку аккаунта" }),
+        body: JSON.stringify({ text: "Прошу пересмотреть блокировку аккаунта" }),
       });
+      setSent(true);
     } catch {
-      // disable button on error too
+      setError("Не удалось отправить обращение. Попробуйте ещё раз.");
     }
-    setSent(true);
   };
 
   return (
@@ -40,6 +42,7 @@ export const BannedScreen: FC<Props> = ({ reason, bannedAt }) => {
       <button type="button" onClick={handleContact} disabled={sent}>
         {sent ? "Обращение отправлено" : "Связаться с поддержкой"}
       </button>
+      {error && <p role="alert">{error}</p>}
     </div>
   );
 };

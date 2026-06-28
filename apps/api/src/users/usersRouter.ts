@@ -213,6 +213,13 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
 
     const user = c.get("user" as never) as AppUser;
     const rows = await withIdentity(sql, user, async (tx) => {
+      const visibleUsers = await tx<{ id: string }[]>`
+        SELECT id
+        FROM users
+        WHERE id = ${id} AND deleted_at IS NULL AND is_banned = false
+      `;
+      if (visibleUsers.length === 0) return null;
+
       return tx<
         {
           id: string;
@@ -237,6 +244,7 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
         ORDER BY departure_time ASC
       `;
     });
+    if (rows === null) return c.json({ error: "not found" }, 404);
     return c.json(rows);
   });
 

@@ -35,7 +35,12 @@ function makeApp(mockFetch: typeof fetch, cache?: GeoCache, lastRequestAt?: Map<
   app.use("/api/*", identityGuard(JWT_SECRET));
   app.route(
     "/api/geocode",
-    createGeocodeRouter({ _fetch: mockFetch, cache, _lastRequestAt: lastRequestAt ?? new Map() }),
+    createGeocodeRouter({
+      _fetch: mockFetch,
+      cache,
+      _lastRequestAt: lastRequestAt ?? new Map(),
+      _nominatimUrl: "http://nominatim:8080",
+    }),
   );
   return app;
 }
@@ -360,23 +365,28 @@ describe("GET /api/geocode/search", () => {
     expect(map.size).toBe(6);
   });
 
-  it("SENTINEL: дефолт NOMINATIM_URL — публичный nominatim.openstreetmap.org", async () => {
-    // Self-hosted Nominatim профиль в compose выключен. Если кто-то вернёт дефолт
-    // на 'http://nominatim:8080' — этот тест упадёт и поймает регрессию prod-инфры.
-    // _nominatimUrl не передаём → читается из process.env → fallback на NOMINATIM_DEFAULT.
+  it("SENTINEL: без NOMINATIM_URL fail-closed и не шлёт адрес на public Nominatim", async () => {
     const prev = process.env.NOMINATIM_URL;
-    // biome-ignore lint/performance/noDelete: нужно реально удалить env var, чтобы сработал ?? default
+    // biome-ignore lint/performance/noDelete: нужно реально удалить env var, чтобы проверить fail-closed
     delete process.env.NOMINATIM_URL;
     try {
-      const mockFetch = vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } }),
-        );
-      const app = makeApp(mockFetch as unknown as typeof fetch, undefined, new Map());
-      await app.request("/api/geocode/search?q=Казань", { headers: authH(token) });
-      const calledUrl = String(mockFetch.mock.calls[0]?.[0]);
-      expect(calledUrl).toMatch(/^https:\/\/nominatim\.openstreetmap\.org/);
+      const mockFetch = vi.fn();
+      const app = new Hono();
+      app.use("/api/*", identityGuard(JWT_SECRET));
+      app.route(
+        "/api/geocode",
+        createGeocodeRouter({
+          _fetch: mockFetch as unknown as typeof fetch,
+          _lastRequestAt: new Map(),
+        }),
+      );
+      const res = await app.request(
+        `/api/geocode/search?q=${encodeURIComponent("ул Пушкина 10 квартира 5, Казань")}`,
+        { headers: authH(token) },
+      );
+      expect(res.status).toBe(503);
+      expect(await readJson(res)).toEqual({ error: "geocoder_unconfigured", results: [] });
+      expect(mockFetch).not.toHaveBeenCalled();
     } finally {
       if (prev !== undefined) process.env.NOMINATIM_URL = prev;
     }

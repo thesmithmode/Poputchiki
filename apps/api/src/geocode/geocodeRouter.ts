@@ -26,14 +26,19 @@ const NominatimReverseResponse = z
   })
   .passthrough();
 
-// Public Nominatim by default — self-hosted профиль в compose отключён.
-// Policy public Nominatim: 1 req/sec per IP + обязательный User-Agent (ставим ниже).
-// Свой кэш + per-user rate-limit ниже снижают нагрузку на их инфру.
-const NOMINATIM_DEFAULT = "https://nominatim.openstreetmap.org";
+// Fail-closed: адреса пользователей — чувствительные данные. Не отправляем их
+// на сторонний public geocoder по умолчанию; оператор обязан явно настроить
+// privacy-approved/self-hosted NOMINATIM_URL (prod compose даёт внутренний default).
 
 // Public Nominatim: 1 req/sec policy. Self-hosted (например http://nominatim:8080 в compose) —
 // свой инстанс, безопасно держать ~10 rps на пользователя.
 const PUBLIC_NOMINATIM_HOST = "nominatim.openstreetmap.org";
+function resolveNominatimUrl(options: GeocodeRouterOptions): string | undefined {
+  const configured = options._nominatimUrl ?? process.env.NOMINATIM_URL;
+  const trimmed = configured?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
 function rateLimitIntervalMs(nominatimUrl: string): number {
   try {
     const host = new URL(nominatimUrl).host;
@@ -132,7 +137,12 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
     const q = c.req.query("q");
     if (!q?.trim()) return c.json({ error: "q is required" }, 400);
 
-    const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
+    const nominatimUrl = resolveNominatimUrl(options);
+    if (!nominatimUrl) {
+      c.header("Retry-After", "30");
+      return c.json({ error: "geocoder_unconfigured", results: [] }, 503);
+    }
+
     const rateMs = rateLimitIntervalMs(nominatimUrl);
     const now = Date.now();
     evictExpiredRateLimits(lastRequestAt, now, rateMs);
@@ -190,7 +200,12 @@ export function createGeocodeRouter(options: GeocodeRouterOptions = {}): Hono {
       return c.json({ error: "out_of_area" }, 400);
     }
 
-    const nominatimUrl = options._nominatimUrl ?? process.env.NOMINATIM_URL ?? NOMINATIM_DEFAULT;
+    const nominatimUrl = resolveNominatimUrl(options);
+    if (!nominatimUrl) {
+      c.header("Retry-After", "30");
+      return c.json({ error: "geocoder_unconfigured" }, 503);
+    }
+
     const rateMs = rateLimitIntervalMs(nominatimUrl);
     const now = Date.now();
     evictExpiredRateLimits(lastRequestAt, now, rateMs);

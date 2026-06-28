@@ -22,6 +22,30 @@
 		respond "ok" 200
 	}
 
+	handle_path /tiles/a/* {
+		reverse_proxy https://a.tile.openstreetmap.org {
+			header_up Host a.tile.openstreetmap.org
+			header_up User-Agent "PoputchikiApp/1.0 (https://app.{$DOMAIN}; thesmode@gmail.com)"
+			header_down -Set-Cookie
+		}
+	}
+
+	handle_path /tiles/b/* {
+		reverse_proxy https://b.tile.openstreetmap.org {
+			header_up Host b.tile.openstreetmap.org
+			header_up User-Agent "PoputchikiApp/1.0 (https://app.{$DOMAIN}; thesmode@gmail.com)"
+			header_down -Set-Cookie
+		}
+	}
+
+	handle_path /tiles/c/* {
+		reverse_proxy https://c.tile.openstreetmap.org {
+			header_up Host c.tile.openstreetmap.org
+			header_up User-Agent "PoputchikiApp/1.0 (https://app.{$DOMAIN}; thesmode@gmail.com)"
+			header_down -Set-Cookie
+		}
+	}
+
 	@noCache {
 		path /index.html
 	}

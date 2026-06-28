@@ -20,6 +20,7 @@ interface ReverseResult {
 
 // Центр ЖК Царёво Village. fallback если у пользователя нет initialCoords и нет permission на геолокацию.
 const TSAREVO_CENTER: Coords = { lat: 55.8112, lng: 49.4395 };
+const TILE_URL = "/tiles/{s}/{z}/{x}/{y}.png";
 
 export function MapPicker({
   open,
@@ -54,7 +55,7 @@ export function MapPicker({
       }).setView([start.lat, start.lng], initialCoords ? 16 : 13);
       mapRef.current = map;
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      L.tileLayer(TILE_URL, {
         maxZoom: 19,
         subdomains: "abc",
       }).addTo(map);

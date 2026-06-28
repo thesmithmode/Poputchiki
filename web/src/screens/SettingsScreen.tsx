@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMe } from "../hooks/useMe";
@@ -5,6 +6,7 @@ import { type RolePref, useRolePreference } from "../hooks/useRolePreference";
 import { type ThemePref, useThemePreference } from "../hooks/useThemePreference";
 import { useUser } from "../hooks/useUser";
 import { apiFetch } from "../lib/api";
+import { clearPersistedQueryCache } from "../lib/queryPersistence";
 import { clearTokens, getTokens } from "../lib/tokenStore";
 
 const APP_VERSION = "0.1.0";
@@ -18,6 +20,7 @@ function monthsInService(createdAt: string): number {
 
 export function SettingsScreen() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const me = useMe();
   const myId = me.status === "ok" ? me.user.id : "";
   const { data: user } = useUser(myId);
@@ -40,6 +43,8 @@ export function SettingsScreen() {
     } catch {
       // logout always succeeds client-side
     }
+    queryClient.clear();
+    clearPersistedQueryCache();
     clearTokens();
     window.location.reload();
   }
@@ -58,6 +63,8 @@ export function SettingsScreen() {
     } catch {
       // proceed regardless
     }
+    queryClient.clear();
+    clearPersistedQueryCache();
     clearTokens();
     window.location.reload();
   }

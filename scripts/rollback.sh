@@ -20,6 +20,16 @@ fi
 
 echo "=== rollback to $TARGET_TAG ==="
 
+# Previous API images may not be PgBouncer transaction-pool compatible:
+# they can use prepared statements and LISTEN/NOTIFY via DATABASE_URL.
+# During rollback force API DB traffic to direct Postgres while the current
+# compose file remains PgBouncer-enabled for normal forward deployments.
+API_DATABASE_HOST="postgres"
+API_DATABASE_PORT="5432"
+API_DATABASE_DIRECT_HOST="$API_DATABASE_HOST"
+API_DATABASE_DIRECT_PORT="$API_DATABASE_PORT"
+export API_DATABASE_HOST API_DATABASE_PORT API_DATABASE_DIRECT_HOST API_DATABASE_DIRECT_PORT
+
 # Restart services with old tag
 IMAGE_TAG="$TARGET_TAG" $COMPOSE up -d --no-deps api notifier cron webhook web
 

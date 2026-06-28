@@ -2,18 +2,40 @@
 -- См. SPEC §4.2
 
 CREATE MATERIALIZED VIEW user_stats AS
+WITH
+  driver_rides AS (
+    SELECT driver_id AS user_id, COUNT(*)::int AS rides_as_driver_completed
+    FROM rides
+    WHERE status = 'completed'
+    GROUP BY driver_id
+  ),
+  passenger_rides AS (
+    SELECT passenger_id AS user_id, COUNT(DISTINCT ride_id)::int AS rides_as_passenger
+    FROM ride_participation
+    WHERE passenger_confirmed
+    GROUP BY passenger_id
+  ),
+  likes_received AS (
+    SELECT target_id AS user_id, COUNT(*)::int AS likes_received
+    FROM likes
+    GROUP BY target_id
+  ),
+  review_stats AS (
+    SELECT target_id AS user_id, AVG(stars) AS avg_stars, COUNT(*)::int AS reviews_count
+    FROM reviews
+    GROUP BY target_id
+  )
 SELECT
   u.id AS user_id,
-  COUNT(DISTINCT r_drv.id) FILTER (WHERE r_drv.status='completed') AS rides_as_driver_completed,
-  COUNT(DISTINCT rp.ride_id)                                       AS rides_as_passenger,
-  COALESCE(SUM(CASE WHEN l.target_id = u.id THEN 1 ELSE 0 END), 0) AS likes_received,
-  AVG(rv.stars) FILTER (WHERE rv.target_id = u.id)                 AS avg_stars,
-  COUNT(rv.id) FILTER (WHERE rv.target_id = u.id)                  AS reviews_count
+  COALESCE(dr.rides_as_driver_completed, 0) AS rides_as_driver_completed,
+  COALESCE(pr.rides_as_passenger, 0)        AS rides_as_passenger,
+  COALESCE(lr.likes_received, 0)            AS likes_received,
+  rs.avg_stars                              AS avg_stars,
+  COALESCE(rs.reviews_count, 0)             AS reviews_count
 FROM users u
-LEFT JOIN rides r_drv               ON r_drv.driver_id = u.id
-LEFT JOIN ride_participation rp     ON rp.passenger_id = u.id AND rp.passenger_confirmed
-LEFT JOIN likes l                   ON l.target_id = u.id
-LEFT JOIN reviews rv                ON rv.target_id = u.id
-GROUP BY u.id;
+LEFT JOIN driver_rides dr    ON dr.user_id = u.id
+LEFT JOIN passenger_rides pr ON pr.user_id = u.id
+LEFT JOIN likes_received lr  ON lr.user_id = u.id
+LEFT JOIN review_stats rs    ON rs.user_id = u.id;
 
 CREATE UNIQUE INDEX user_stats_user_id_uniq ON user_stats (user_id);

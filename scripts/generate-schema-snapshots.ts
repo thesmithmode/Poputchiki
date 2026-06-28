@@ -12,7 +12,7 @@ import {
   UserDTO,
   UserProfileInput,
 } from "../packages/shared/src/index.js";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 
 const SCHEMAS = {
   UserDTO,
@@ -31,7 +31,7 @@ const OUT_DIR = join(import.meta.dir, "../packages/shared/src/schemas/__snapshot
 mkdirSync(OUT_DIR, { recursive: true });
 
 for (const [name, schema] of Object.entries(SCHEMAS)) {
-  const json = zodToJsonSchema(schema, { name, $refStrategy: "none" });
+  const json = z.toJSONSchema(schema, { io: "input", unrepresentable: "any" });
   writeFileSync(join(OUT_DIR, `${name}.json`), JSON.stringify(json, null, 2) + "\n");
   console.log(`✓ ${name}`);
 }

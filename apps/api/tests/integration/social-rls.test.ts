@@ -49,6 +49,12 @@ beforeAll(async () => {
     `;
   });
   rideId = rows[0]?.id as string;
+
+  // Confirm USER_B's participation with USER_A so likes/reviews are authorized.
+  await sql.begin(async (tx) => {
+    await tx`INSERT INTO ride_participation (ride_id, passenger_id, driver_marked, passenger_confirmed, marked_at, confirmed_at)
+      VALUES (${rideId}, ${USER_B}, true, true, now(), now())`;
+  });
 });
 
 afterAll(async () => {
@@ -62,6 +68,7 @@ afterAll(async () => {
     await tx`DELETE FROM favorites WHERE user_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM reviews WHERE subject_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
     await tx`DELETE FROM likes WHERE subject_id IN (${USER_A}, ${USER_B}, ${USER_C})`;
+    await tx`DELETE FROM ride_participation WHERE ride_id = ${rideId}`;
     await tx`DELETE FROM rides WHERE driver_id = ${USER_A}`;
     await tx`DELETE FROM users WHERE id IN (${USER_A}, ${USER_B}, ${USER_C})`;
   });
@@ -81,18 +88,31 @@ describe("likes RLS", () => {
     expect(rows.length).toBe(0);
   });
 
-  it("authenticated user can insert like with own subject_id", async () => {
+  it("confirmed passenger can insert like for ride driver", async () => {
     const rows = await sql.begin(async (tx) => {
       await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
       return tx`
         INSERT INTO likes (subject_id, target_id, ride_id)
-        VALUES (${USER_B}, ${USER_C}, ${rideId})
+        VALUES (${USER_B}, ${USER_A}, ${rideId})
         RETURNING id
       `;
     });
     expect(rows.length).toBe(1);
     expect(rows[0]?.id).toBeTruthy();
+  });
+
+  it("user cannot insert like without confirmed participation with target", async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
+        return tx`
+          INSERT INTO likes (subject_id, target_id, ride_id)
+          VALUES (${USER_C}, ${USER_A}, ${rideId})
+        `;
+      }),
+    ).rejects.toThrow();
   });
 
   it("authenticated user can read likes", async () => {
@@ -133,7 +153,7 @@ describe("likes RLS", () => {
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
       return tx`
         INSERT INTO likes (subject_id, target_id, ride_id)
-        VALUES (${USER_B}, ${USER_C}, ${rideId})
+        VALUES (${USER_B}, ${USER_A}, ${rideId})
         ON CONFLICT DO NOTHING
       `;
     });
@@ -160,7 +180,7 @@ describe("reviews RLS", () => {
     expect(rows.length).toBe(0);
   });
 
-  it("user can insert review with own subject_id", async () => {
+  it("confirmed passenger can insert review for ride driver", async () => {
     const rows = await sql.begin(async (tx) => {
       await tx`SET LOCAL ROLE poputchiki_app`;
       await tx`SELECT set_config('app.current_user_id', ${USER_B}, true)`;
@@ -172,6 +192,19 @@ describe("reviews RLS", () => {
     });
     expect(rows.length).toBe(1);
     expect(rows[0]?.id).toBeTruthy();
+  });
+
+  it("user cannot insert review without confirmed participation with target", async () => {
+    await expect(
+      sql.begin(async (tx) => {
+        await tx`SET LOCAL ROLE poputchiki_app`;
+        await tx`SELECT set_config('app.current_user_id', ${USER_C}, true)`;
+        return tx`
+          INSERT INTO reviews (ride_id, subject_id, target_id, stars)
+          VALUES (${rideId}, ${USER_C}, ${USER_A}, 4)
+        `;
+      }),
+    ).rejects.toThrow();
   });
 
   it("authenticated user can read reviews", async () => {

@@ -22,10 +22,11 @@ $$;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'poputchiki_service') THEN
-    CREATE ROLE poputchiki_service NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE;
+    CREATE ROLE poputchiki_service NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
   END IF;
 END
 $$;
+ALTER ROLE poputchiki_service NOBYPASSRLS;
 
 -- poputchiki_app может эскалировать до poputchiki_service через SET LOCAL ROLE
 GRANT poputchiki_service TO poputchiki_app;

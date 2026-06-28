@@ -32,7 +32,7 @@ export async function withIdentity<T>(
 // and for privileged system operations (cron cleanup, admin reads).
 // Эскалирует до роли poputchiki_service внутри транзакции.
 // После FIX-B2 runtime-коннект — poputchiki_app (не суперюзер).
-// SET LOCAL ROLE poputchiki_service даёт доступ к таблицам без RLS ограничений
+// SET LOCAL ROLE poputchiki_service даёт доступ только через явные RLS policies
 // (SELECT nonces для cleanup, SELECT error_log для admin, etc.).
 export async function withSystem<T>(
   sql: postgres.Sql,

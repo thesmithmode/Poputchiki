@@ -61,7 +61,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     };
     let authUser: AuthUserFull | null = null;
     try {
-      // withSystem uses SET LOCAL ROLE poputchiki_service (BYPASSRLS) — required because
+      // withSystem uses SET LOCAL ROLE poputchiki_service — required because
       // the connection pool connects as poputchiki_app which has RLS enabled. Auth bootstrap
       // must read/write users and nonces before a JWT identity exists.
       authUser = await withSystem(sql, async (tx) => {

@@ -17,7 +17,7 @@
 -- с проверкой ownership + публичных полей) — отдельный финдинг.
 --
 -- NOTE: cron REFRESH MATERIALIZED VIEW CONCURRENTLY user_stats работает через
--- poputchiki_service (BYPASSRLS), прямой доступ к MV для него сохраняется.
+-- poputchiki_service, прямой доступ к MV для него сохраняется.
 
 REVOKE SELECT ON user_stats FROM poputchiki_app;
 

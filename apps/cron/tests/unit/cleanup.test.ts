@@ -199,7 +199,7 @@ describe("cleanupErrorLog", () => {
 
 // ── cleanupUserNotifications ──────────────────────────────────────────────────
 // retention 90 дней, batch-delete 5000 за итерацию, max 10 итераций за прогон,
-// SET LOCAL ROLE poputchiki_service (BYPASSRLS) для обхода RLS policies.
+// SET LOCAL ROLE poputchiki_service для доступа через явные RLS policies.
 
 describe("cleanupUserNotifications", () => {
   it("returns null when lock not acquired", async () => {
@@ -260,7 +260,7 @@ describe("cleanupUserNotifications", () => {
     expect(del?.values).toContain(5000);
   });
 
-  it("uses SET LOCAL ROLE poputchiki_service (BYPASSRLS path)", async () => {
+  it("uses SET LOCAL ROLE poputchiki_service (explicit RLS policy path)", async () => {
     const captured: string[] = [];
     const tx = vi.fn().mockImplementation((strings: TemplateStringsArray, ...values: unknown[]) => {
       const q = strings.join("$?");

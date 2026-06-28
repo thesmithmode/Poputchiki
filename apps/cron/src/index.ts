@@ -13,6 +13,7 @@ import { cleanupNonces } from "./cleanup-nonces";
 import { confirmParticipationPush } from "./confirm-participation-push";
 import { expandTemplates } from "./expand-templates";
 import { finalizeRides } from "./finalize-rides";
+import { isAtOrAfterUtcTime } from "./lib/daily-window";
 import { oncePer } from "./lib/once-per";
 import { refreshUserStats } from "./refresh-user-stats";
 import { backfillRoutes } from "./route-backfill";
@@ -69,7 +70,7 @@ async function runErrorLogCleanup() {
 async function runUserNotificationsCleanup() {
   // 02:30 UTC daily — раньше остальных cleanup, чтобы не упёрлось в backup hour
   const now = new Date();
-  if (now.getUTCHours() !== 2 || now.getUTCMinutes() < 30) return;
+  if (!isAtOrAfterUtcTime(now, 2, 30)) return;
   await oncePer(sql, "user_notifications_cleanup", DAY_MS, () =>
     cleanupUserNotifications(sql),
   ).catch((err: unknown) =>

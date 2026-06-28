@@ -21,6 +21,8 @@ import { fetchRoute } from "../routing/osrmClient";
 import { saveRouteFields } from "../routing/routePersistence";
 import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const RIDE_SCHEDULE_WINDOW_DAYS = 30;
 
 // Зона обслуживания: те же константы что в geocodeRouter.ts — Казань + Царёво + окрестности.
 function inServiceArea(lat: number, lng: number): boolean {
@@ -73,7 +75,20 @@ const PatchInput = z
     seats_total: z.number().int().gte(1).lte(100).optional(),
     comment: z.string().max(200).nullable().optional(),
   })
-  .refine((v) => Object.keys(v).length > 0, { message: "empty body" });
+  .refine((v) => Object.keys(v).length > 0, { message: "empty body" })
+  .refine((v) => v.departure_at === undefined || new Date(v.departure_at) > new Date(), {
+    message: "departure_at must be in the future",
+    path: ["departure_at"],
+  })
+  .refine(
+    (v) =>
+      v.departure_at === undefined ||
+      new Date(v.departure_at) <= new Date(Date.now() + RIDE_SCHEDULE_WINDOW_DAYS * MS_PER_DAY),
+    {
+      message: "departure_at must be within 30 days",
+      path: ["departure_at"],
+    },
+  );
 
 const GetRidesQuery = z.object({
   fromLat: z.coerce.number().min(-90).max(90).optional(),

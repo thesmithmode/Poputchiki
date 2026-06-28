@@ -14,6 +14,7 @@ import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
 import type { GeoCache } from "../geocode/geoCache";
 import { isUniqueViolation } from "../lib/db-errors";
+import { SERVICE_AREA_ERROR, routeInServiceArea } from "../lib/service-area";
 import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
@@ -21,11 +22,6 @@ import { fetchRoute } from "../routing/osrmClient";
 import { saveRouteFields } from "../routing/routePersistence";
 import { ridesCache } from "./ridesCache";
 const PAGE_SIZE = 50;
-
-// Зона обслуживания: те же константы что в geocodeRouter.ts — Казань + Царёво + окрестности.
-function inServiceArea(lat: number, lng: number): boolean {
-  return lat >= 55.3 && lat <= 56.2 && lng >= 48.5 && lng <= 50.0;
-}
 
 function isNoSeatsError(err: unknown): boolean {
   return err instanceof Error && (err as Error & { code?: string }).code === "NO_SEATS";
@@ -393,11 +389,8 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     const user = c.get("user" as never) as AppUser;
 
     /* c8 ignore start -- service area rejection tested in unit, not integration */
-    if (
-      !inServiceArea(input.from_lat, input.from_lng) ||
-      !inServiceArea(input.to_lat, input.to_lng)
-    ) {
-      return c.json({ error: "Координаты за пределами зоны обслуживания" }, 422);
+    if (!routeInServiceArea(input.from_lat, input.from_lng, input.to_lat, input.to_lng)) {
+      return c.json({ error: SERVICE_AREA_ERROR }, 422);
     }
     /* c8 ignore stop */
 
@@ -833,6 +826,19 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             FROM rides WHERE id = ${rideId}
           `;
 
+          const updatedRow = updated ?? {};
+          if (
+            changedCoords &&
+            !routeInServiceArea(
+              updatedRow.from_lat as number,
+              updatedRow.from_lng as number,
+              updatedRow.to_lat as number,
+              updatedRow.to_lng as number,
+            )
+          ) {
+            throw Object.assign(new Error("service_area"), { code: "SERVICE_AREA" });
+          }
+
           // H4: audit_log INSERT внутри той же tx — атомарно с UPDATE.
           // FORCE RLS audit_log → эскалация service.
           await tx`SET LOCAL ROLE poputchiki_service`;
@@ -844,7 +850,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
 
           return {
             /* c8 ignore next -- defensive ?? {}; SELECT after UPDATE always returns row */
-            row: updated ?? {},
+            row: updatedRow,
             affectedPassengers: accepted.map((r) => r.passenger_id),
             changedKeyFields,
             patchedFields: Object.keys(p),
@@ -862,6 +868,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       if (code === "EXPIRED") return c.json({ error: "expired" }, 410);
       /* c8 ignore next */
       if (code === "SEATS_INVALID") return c.json({ error: "seats_total_below_taken" }, 422);
+      if (code === "SERVICE_AREA") return c.json({ error: SERVICE_AREA_ERROR }, 422);
       /* c8 ignore next -- defensive: re-throw unknown errors */
       throw err;
     }

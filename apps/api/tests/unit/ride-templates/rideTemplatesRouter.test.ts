@@ -58,10 +58,10 @@ function makeApp(user?: AppUser) {
 
 const VALID = {
   from_label: "A",
-  from_lat: 55.1,
+  from_lat: 55.8,
   from_lng: 49.1,
   to_label: "B",
-  to_lat: 55.2,
+  to_lat: 55.9,
   to_lng: 49.2,
   departure_time: "08:30",
   weekdays: [1, 2, 3],
@@ -79,10 +79,10 @@ const ROW = {
   id: TMPL_ID,
   driver_id: USER.id,
   from_label: "A",
-  from_lat: 55.1,
+  from_lat: 55.8,
   from_lng: 49.1,
   to_label: "B",
-  to_lat: 55.2,
+  to_lat: 55.9,
   to_lng: 49.2,
   departure_time: "08:30",
   weekdays: [1, 2, 3],
@@ -200,6 +200,19 @@ describe("POST /ride-templates", () => {
       body: JSON.stringify({ ...VALID, to_lng: 181 }),
     });
     expect(res.status).toBe(422);
+  });
+
+  it("coordinates outside service area → 422 and skips OSRM", async () => {
+    const app = makeApp(USER);
+    const res = await app.request("/ride-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...VALID, from_lat: 40.7128, from_lng: -74.006 }),
+    });
+    expect(res.status).toBe(422);
+    const body = await readJson(res);
+    expect(body.error).toBe("Координаты за пределами зоны обслуживания");
+    expect(fetchRoute).not.toHaveBeenCalled();
   });
 
   it("invalid time → 422", async () => {
@@ -333,10 +346,10 @@ describe("PATCH /ride-templates/:id", () => {
       body: JSON.stringify({
         from_label: "A2",
         from_lat: 56,
-        from_lng: 50,
+        from_lng: 49.5,
         to_label: "B2",
-        to_lat: 57,
-        to_lng: 51,
+        to_lat: 56.1,
+        to_lng: 49.6,
         departure_time: "09:00",
         weekdays: [0, 6],
         price_rub: 300,
@@ -347,6 +360,26 @@ describe("PATCH /ride-templates/:id", () => {
       }),
     });
     expect(res.status).toBe(200);
+  });
+
+  it("coords outside service area in PATCH → 422 and skips OSRM", async () => {
+    mockCallThrough();
+    mockTx.mockResolvedValueOnce([{ id: TMPL_ID }]); // exists
+    mockTx.mockResolvedValueOnce("HELPER_FRAGMENT"); // tx(updatable, ...keys) helper-call
+    mockTx.mockResolvedValueOnce([]); // combined UPDATE
+    mockTx.mockResolvedValueOnce([{ ...ROW, from_lat: 40.7128, from_lng: -74.006 }]); // final SELECT
+
+    const app = makeApp(USER);
+    const res = await app.request(`/ride-templates/${TMPL_ID}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ from_lat: 40.7128, from_lng: -74.006 }),
+    });
+
+    expect(res.status).toBe(422);
+    const body = await readJson(res);
+    expect(body.error).toBe("Координаты за пределами зоны обслуживания");
+    expect(fetchRoute).not.toHaveBeenCalled();
   });
 
   it("coords update with OSRM route → refreshes road route fields through system role", async () => {

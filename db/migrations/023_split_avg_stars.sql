@@ -53,11 +53,11 @@ SELECT
   COUNT(DISTINCT rp.ride_id)                                          AS rides_as_passenger,
   COALESCE(SUM(CASE WHEN l.target_id = u.id THEN 1 ELSE 0 END), 0)  AS likes_received,
   AVG(rv.stars) FILTER (WHERE rv.target_id = u.id)                   AS avg_stars,
-  COUNT(rv.id)  FILTER (WHERE rv.target_id = u.id)                   AS reviews_count,
+  COUNT(DISTINCT rv.id)  FILTER (WHERE rv.target_id = u.id)          AS reviews_count,
   AVG(rv.stars) FILTER (WHERE rv.target_id = u.id AND ri_rv.driver_id = u.id)  AS driver_avg_stars,
   AVG(rv.stars) FILTER (WHERE rv.target_id = u.id AND ri_rv.driver_id <> u.id) AS passenger_avg_stars,
-  COUNT(rv.id)  FILTER (WHERE rv.target_id = u.id AND ri_rv.driver_id = u.id)::int  AS driver_reviews_count,
-  COUNT(rv.id)  FILTER (WHERE rv.target_id = u.id AND ri_rv.driver_id <> u.id)::int AS passenger_reviews_count
+  COUNT(DISTINCT rv.id)  FILTER (WHERE rv.target_id = u.id AND ri_rv.driver_id = u.id)::int  AS driver_reviews_count,
+  COUNT(DISTINCT rv.id)  FILTER (WHERE rv.target_id = u.id AND ri_rv.driver_id <> u.id)::int AS passenger_reviews_count
 FROM users u
 LEFT JOIN rides r_drv           ON r_drv.driver_id = u.id
 LEFT JOIN ride_participation rp ON rp.passenger_id = u.id AND rp.passenger_confirmed

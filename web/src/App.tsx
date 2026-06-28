@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider, dehydrate, hydrate } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, hydrate } from "@tanstack/react-query";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { HashRouter, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -8,6 +8,12 @@ import { useBootMe } from "./hooks/useMe";
 import { useRides } from "./hooks/useRides";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
 import { apiFetch } from "./lib/api";
+import {
+  PERSISTED_QUERY_CACHE_KEY,
+  PERSISTED_QUERY_CACHE_MAX_AGE,
+  clearPersistedQueryCache,
+  dehydratePersistentQueryCache,
+} from "./lib/queryPersistence";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 // RidesScreen не lazy — первый экран, должен быть доступен мгновенно без Suspense fallback
 import { RidesScreen } from "./screens/RidesScreen";
@@ -255,15 +261,12 @@ const queryClient = new QueryClient({
   },
 });
 
-const CACHE_KEY = "pp_qc_v1";
-const CACHE_MAX_AGE = 24 * 60 * 60 * 1000;
-
 // Восстанавливаем дегидрированный кэш из localStorage при старте
 try {
-  const raw = localStorage.getItem(CACHE_KEY);
+  const raw = localStorage.getItem(PERSISTED_QUERY_CACHE_KEY);
   if (raw) {
     const { ts, state } = JSON.parse(raw) as { ts: number; state: unknown };
-    if (Date.now() - ts < CACHE_MAX_AGE) hydrate(queryClient, state);
+    if (Date.now() - ts < PERSISTED_QUERY_CACHE_MAX_AGE) hydrate(queryClient, state);
   }
 } catch {}
 
@@ -275,8 +278,8 @@ queryClient.getQueryCache().subscribe(() => {
     _saveTimer = null;
     try {
       localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({ ts: Date.now(), state: dehydrate(queryClient) }),
+        PERSISTED_QUERY_CACHE_KEY,
+        JSON.stringify({ ts: Date.now(), state: dehydratePersistentQueryCache(queryClient) }),
       );
     } catch {}
   }, 3000);
@@ -288,6 +291,17 @@ function AppRoutes() {
   const [feedGateOpen, setFeedGateOpen] = useState(false);
 
   const isReady = me.status === "ok" && me.user.onboarded;
+  useEffect(() => {
+    if (me.status !== "ok") return;
+    const key = "pp_current_user_id";
+    const previousUserId = localStorage.getItem(key);
+    if (previousUserId && previousUserId !== me.user.id) {
+      queryClient.clear();
+      clearPersistedQueryCache();
+    }
+    localStorage.setItem(key, me.user.id);
+  }, [me]);
+
   useEffect(() => {
     if (!isReady) return;
     const t = setTimeout(() => setFeedGateOpen(true), 2000);

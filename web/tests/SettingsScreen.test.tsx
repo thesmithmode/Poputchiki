@@ -86,8 +86,9 @@ describe("SettingsScreen", () => {
     expect(screen.getByTestId("app-version")).toBeInTheDocument();
   });
 
-  it("logout вызывает POST /auth/logout и reload", async () => {
+  it("logout вызывает POST /auth/logout, очищает persisted query cache и reload", async () => {
     mockApiFetch.mockResolvedValue({});
+    localStorage.setItem("pp_qc_v1", "cached-sensitive-data");
     renderSettings();
     fireEvent.click(screen.getByTestId("logout-btn"));
     await waitFor(() =>
@@ -96,6 +97,7 @@ describe("SettingsScreen", () => {
         expect.objectContaining({ method: "POST" }),
       ),
     );
+    expect(localStorage.getItem("pp_qc_v1")).toBeNull();
     expect(mockReload).toHaveBeenCalled();
   });
 

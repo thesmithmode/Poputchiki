@@ -65,5 +65,6 @@ export const queryKeys = {
   },
   savedAddresses: {
     all: ["saved-addresses"] as const,
+    byUser: (userId: string) => ["saved-addresses", userId] as const,
   },
 } as const;

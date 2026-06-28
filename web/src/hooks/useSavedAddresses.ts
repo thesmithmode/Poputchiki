@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { useMe } from "./useMe";
 
 export interface SavedAddress {
   id: string;
@@ -30,11 +31,15 @@ interface UpdateInput {
 
 export function useSavedAddresses() {
   const qc = useQueryClient();
+  const me = useMe();
+  const userId = me.status === "ok" ? me.user.id : "anonymous";
+  const queryKey = queryKeys.savedAddresses.byUser(userId);
 
   const query = useQuery({
-    queryKey: queryKeys.savedAddresses.all,
+    queryKey,
     queryFn: () => apiFetch<SavedAddress[]>("/saved-addresses"),
     staleTime: 5 * 60_000,
+    enabled: me.status === "ok",
   });
 
   const createMutation = useMutation({

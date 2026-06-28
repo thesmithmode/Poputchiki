@@ -2,6 +2,7 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { MeContext } from "../contexts/MeContext";
 import { ApiError, apiFetch } from "../lib/api";
 import { clearMeCache, readMeCache, writeMeCache } from "../lib/meCache";
+import { clearPersistedQueryCache } from "../lib/queryPersistence";
 import { getTelegramWebApp } from "../lib/telegram";
 import { clearTokens, decodeJwtSub, getTokens, setTokens } from "../lib/tokenStore";
 
@@ -130,6 +131,7 @@ export function useBootMe(): MeState {
           if (storedSub !== String(tgId)) {
             clearTokens();
             clearMeCache();
+            clearPersistedQueryCache();
           }
         }
       }
@@ -159,6 +161,7 @@ export function useBootMe(): MeState {
           // apiFetch уже пробовал refresh внутри — раз вернулся 401, refresh не помог.
           clearTokens();
           clearMeCache();
+          clearPersistedQueryCache();
           const result = await telegramAuth();
           if (cancelled) return;
           if ("error" in result) {

@@ -401,9 +401,22 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     }
     /* c8 ignore stop */
 
-    let ride: Record<string, unknown>;
+    let ride: Record<string, unknown> | null;
     try {
       ride = await withIdentity(sql, user, async (tx) => {
+        if (input.template_id) {
+          const templates = await tx<{ id: string }[]>`
+            SELECT id
+            FROM ride_templates
+            WHERE id = ${input.template_id}
+              AND driver_id = ${user.id}
+            LIMIT 1
+          `;
+          if (templates.length === 0) {
+            return null;
+          }
+        }
+
         const rows = await tx`
           INSERT INTO rides
             (driver_id, template_id, from_label, from_lat, from_lng,
@@ -422,6 +435,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
         `;
         return rows[0] as Record<string, unknown>;
       });
+      if (!ride) return c.json({ error: "template not found" }, 404);
     } catch (err) {
       /* c8 ignore start -- antibot error path tested in unit, not integration */
       const e = err as Error & { code?: string; antibot?: string };

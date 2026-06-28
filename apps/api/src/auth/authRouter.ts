@@ -59,22 +59,27 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       ban_reason: string | null;
       banned_at: string | null;
     };
-    let authUser: AuthUserFull | null = null;
+    type AuthResult = { status: "ok"; user: AuthUserFull } | { status: "replay" | "blocked" };
+    let authResult: AuthResult | null = null;
     try {
       // withSystem uses SET LOCAL ROLE poputchiki_service (BYPASSRLS) — required because
       // the connection pool connects as poputchiki_app which has RLS enabled. Auth bootstrap
       // must read/write users and nonces before a JWT identity exists.
-      authUser = await withSystem(sql, async (tx) => {
+      authResult = await withSystem(sql, async (tx) => {
         // Replay protection: insert once; conflict → replay attack
         const nonceResult = await tx`
           INSERT INTO nonces (hash) VALUES (${hash})
           ON CONFLICT DO NOTHING
         `;
-        if (nonceResult.count === 0) return null;
+        if (nonceResult.count === 0) return { status: "replay" };
 
         const [existing] = await tx`
-          SELECT id FROM users WHERE tg_id = ${tgUser.id} AND deleted_at IS NULL LIMIT 1
+          SELECT id, is_banned, deleted_at
+          FROM users
+          WHERE tg_id = ${tgUser.id}
+          LIMIT 1
         `;
+        if (existing?.is_banned || existing?.deleted_at) return { status: "blocked" };
         const existingId = existing?.id;
         const id = typeof existingId === "string" ? existingId : crypto.randomUUID();
 
@@ -86,21 +91,25 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
           ON CONFLICT (tg_id) DO UPDATE SET
             last_seen_at = NOW(),
             tg_username = EXCLUDED.tg_username
+          WHERE users.deleted_at IS NULL AND users.is_banned = false
           RETURNING id, role, display_name, onboarded, is_banned, ban_reason, banned_at
         `;
         /* c8 ignore start -- defensive: INSERT RETURNING always gives id+role string */
         const upsertedId = upserted?.id;
         const upsertedRole = typeof upserted?.role === "string" ? upserted.role : "user";
-        if (typeof upsertedId !== "string") return null;
+        if (typeof upsertedId !== "string") return { status: "blocked" };
         return {
-          id: upsertedId,
-          role: upsertedRole,
-          display_name:
-            typeof upserted?.display_name === "string" ? upserted.display_name : displayName,
-          onboarded: Boolean(upserted?.onboarded),
-          is_banned: Boolean(upserted?.is_banned),
-          ban_reason: typeof upserted?.ban_reason === "string" ? upserted.ban_reason : null,
-          banned_at: typeof upserted?.banned_at === "string" ? upserted.banned_at : null,
+          status: "ok",
+          user: {
+            id: upsertedId,
+            role: upsertedRole,
+            display_name:
+              typeof upserted?.display_name === "string" ? upserted.display_name : displayName,
+            onboarded: Boolean(upserted?.onboarded),
+            is_banned: Boolean(upserted?.is_banned),
+            ban_reason: typeof upserted?.ban_reason === "string" ? upserted.ban_reason : null,
+            banned_at: typeof upserted?.banned_at === "string" ? upserted.banned_at : null,
+          },
         };
         /* c8 ignore stop */
       });
@@ -109,9 +118,14 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       return c.json({ error: "auth failed" }, 401);
     }
 
-    if (!authUser) {
+    if (!authResult || authResult.status === "replay") {
       return c.json({ error: "replay" }, 401);
     }
+    if (authResult.status !== "ok") {
+      return c.json({ error: "account blocked" }, 403);
+    }
+
+    const authUser = authResult.user;
 
     await syncTelegramAvatar(sql, authUser.id, tgUser.id).catch((err) => {
       logger.warn({ event: "auth.avatar_sync_failed", uid: authUser?.id, err: String(err) });

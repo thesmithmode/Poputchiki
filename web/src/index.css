@@ -268,7 +268,11 @@ textarea:disabled {
   padding: 8px 16px;
   font-weight: 700;
   z-index: 10000;
+  border: 0;
   border-radius: 0 0 4px 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: inherit;
   text-decoration: none;
 }
 

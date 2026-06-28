@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom/vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App";
 
@@ -72,6 +72,7 @@ describe("App", () => {
     document.documentElement.className = "";
     localStorage.removeItem("pp_theme");
     w().Telegram = undefined;
+    window.history.replaceState(null, "", "/#/rides/123");
   });
 
   it("рендерит главный маршрут без ошибок", () => {
@@ -111,6 +112,17 @@ describe("App", () => {
 
   it("без window.Telegram не падает", () => {
     expect(() => render(<App />)).not.toThrow();
+  });
+
+  it("skip link focuses main content without changing HashRouter route", () => {
+    render(<App />);
+
+    const initialHash = window.location.hash;
+    const skipLink = screen.getByRole("button", { name: "Перейти к основному контенту" });
+    fireEvent.click(skipLink);
+
+    expect(window.location.hash).toBe(initialHash);
+    expect(document.getElementById("main-content")).toHaveFocus();
   });
 
   it("REGRESSION: loading screen НЕ показывается когда status=ok", () => {

@@ -196,12 +196,22 @@ function AppShell() {
   const location = useLocation();
   const showTabs = TAB_PATHS.has(location.pathname);
   const selfManaged = SELF_MANAGED_PATHS.has(location.pathname);
+  const skipToMainContent = () => {
+    const mainContent = document.getElementById("main-content");
+    mainContent?.focus({ preventScroll: true });
+    mainContent?.scrollIntoView?.({ block: "start" });
+  };
+
   return (
     <>
-      <a href="#main-content" className="skip-link">
+      <button type="button" className="skip-link" onClick={skipToMainContent}>
         Перейти к основному контенту
-      </a>
-      <main id="main-content" style={showTabs && !selfManaged ? { paddingBottom: 64 } : undefined}>
+      </button>
+      <main
+        id="main-content"
+        tabIndex={-1}
+        style={showTabs && !selfManaged ? { paddingBottom: 64 } : undefined}
+      >
         <Suspense
           fallback={
             <div

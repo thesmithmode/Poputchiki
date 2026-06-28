@@ -2,6 +2,7 @@ import { type NotificationCategory, enqueueNotification } from "@poputchiki/shar
 import type postgres from "postgres";
 import { withIdentity } from "../db/with-identity";
 import type { AppUser } from "../middleware/identity-guard";
+import { ridesCache } from "../rides/ridesCache";
 
 interface RequestRow {
   id: string;
@@ -132,6 +133,12 @@ export async function respondToRideRequest(
     },
     "repeatable read",
   );
+
+  // Любое успешное изменение ride_request меняет производные поля списка /rides:
+  // accept/book_seat и cancel accepted/unbook_seat меняют seats_taken, а статусы
+  // заявок влияют на доступность действий. Держим приватный список поездок
+  // консервативно свежим для всех HTTP/internal webhook путей.
+  ridesCache.clear();
 
   const notifyTo = action === "cancel" ? result.request.driver_id : result.request.passenger_id;
   const nameKey = action === "cancel" ? "passenger_name" : "driver_name";

@@ -8,6 +8,7 @@ import { withIdentity } from "../db/with-identity";
 import { UUID_RE } from "../lib/uuid";
 import { invalidateUserState } from "../middleware/banned-user";
 import type { AppUser } from "../middleware/identity-guard";
+import { ridesCache } from "../rides/ridesCache";
 import { deleteAvatarFiles } from "./avatarCache";
 
 const PatchMeInput = z.object({
@@ -320,6 +321,9 @@ export function createUsersRouter(sql: postgres.Sql): Hono {
     // Сбросить in-memory кэш состояния — anonymize выставил deleted_at, кэш TTL 30s
     // продолжал бы пропускать юзера. После invalidate следующий запрос с этим access
     // токеном попадёт в SELECT и вернёт 401.
+    // Также сбрасываем /rides cache: в транзакции выше active rides пользователя
+    // стали cancelled, и иначе другие пользователи могли бы видеть старые координаты.
+    ridesCache.clear();
     invalidateUserState(user.id);
     await deleteAvatarFiles(user.id);
 

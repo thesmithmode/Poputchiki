@@ -1,5 +1,13 @@
 import type { Category, NotifyPayload } from "./types.js";
 
+function escapeTelegramHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
 export function formatMessage(category: Category, payload: NotifyPayload): string {
   switch (category) {
     case "ride_request":
@@ -40,7 +48,7 @@ export function formatMessage(category: Category, payload: NotifyPayload): strin
       return "Параметры поездки изменены";
     case "template_subscription_request":
       return payload.passenger_name
-        ? `${payload.passenger_name} хочет ездить с Вами регулярно`
+        ? `${escapeTelegramHtml(payload.passenger_name)} хочет ездить с Вами регулярно`
         : "Пассажир хочет ездить с Вами регулярно";
     case "template_subscription_accepted":
       return "Водитель принял Вашу заявку на регулярные поездки!";

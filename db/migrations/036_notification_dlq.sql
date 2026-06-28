@@ -42,8 +42,8 @@ ALTER TABLE notification_dlq ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY dlq_service_all ON notification_dlq
   FOR ALL
-  USING (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'))
-  WITH CHECK (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'));
+  USING (current_role = 'poputchiki_service')
+  WITH CHECK (current_role = 'poputchiki_service');
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON notification_dlq TO poputchiki_service;
 GRANT USAGE, SELECT ON SEQUENCE notification_dlq_id_seq TO poputchiki_service;

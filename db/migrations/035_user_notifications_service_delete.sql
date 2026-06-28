@@ -12,4 +12,4 @@ GRANT DELETE ON user_notifications TO poputchiki_service;
 -- Это избыточно (BYPASSRLS на роли), но защита от регрессии "снимем BYPASSRLS".
 CREATE POLICY notif_service_delete ON user_notifications
   FOR DELETE
-  USING (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'));
+  USING (current_role = 'poputchiki_service');

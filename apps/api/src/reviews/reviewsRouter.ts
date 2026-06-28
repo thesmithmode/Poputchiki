@@ -6,6 +6,10 @@ import { isUniqueViolation } from "../lib/db-errors";
 import { UUID_RE } from "../lib/uuid";
 import type { AppUser } from "../middleware/identity-guard";
 
+const DEFAULT_REVIEW_LIMIT = 20;
+const MAX_REVIEW_LIMIT = 100;
+const MAX_REVIEW_OFFSET = 10000;
+
 interface ReviewRow {
   id: string;
   ride_id: string;
@@ -14,6 +18,19 @@ interface ReviewRow {
   stars: number;
   text: string | null;
   created_at: Date;
+}
+
+function parseReviewPaginationParam(
+  rawValue: string | undefined,
+  defaultValue: number,
+): { ok: true; value: number } | { ok: false } {
+  if (rawValue === undefined) return { ok: true, value: defaultValue };
+
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return { ok: true, value: defaultValue };
+  if (!Number.isSafeInteger(value)) return { ok: false };
+
+  return { ok: true, value };
 }
 
 export function createReviewsRouter(sql: postgres.Sql): Hono {
@@ -89,12 +106,12 @@ export function createReviewsRouter(sql: postgres.Sql): Hono {
     const driverId = c.req.query("driver_id");
     if (!driverId || !UUID_RE.test(driverId)) return c.json({ error: "invalid driver_id" }, 422);
 
-    const rawLimit = Number(c.req.query("limit") ?? "20");
-    /* c8 ignore next -- NaN branches for rawLimit/rawOffset are defensive; covered by tests */
-    const limit = Math.max(1, Math.min(100, Number.isFinite(rawLimit) ? rawLimit : 20));
-    const rawOffset = Number(c.req.query("offset") ?? "0");
-    /* c8 ignore next */
-    const offset = Math.max(0, Number.isFinite(rawOffset) ? rawOffset : 0);
+    const parsedLimit = parseReviewPaginationParam(c.req.query("limit"), DEFAULT_REVIEW_LIMIT);
+    const parsedOffset = parseReviewPaginationParam(c.req.query("offset"), 0);
+    if (!parsedLimit.ok || !parsedOffset.ok) return c.json({ error: "invalid pagination" }, 422);
+
+    const limit = Math.max(1, Math.min(MAX_REVIEW_LIMIT, parsedLimit.value));
+    const offset = Math.max(0, Math.min(MAX_REVIEW_OFFSET, parsedOffset.value));
 
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<ReviewRow[]>`

@@ -23,6 +23,7 @@ const USER: AppUser = {
 const TARGET_ID = "00000000-0000-4000-a000-000000000002";
 const RIDE_ID = "00000000-0000-4000-a000-000000000003";
 const REVIEW_ID = "00000000-0000-4000-a000-000000000004";
+const MAX_REVIEW_OFFSET = 10000;
 
 // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql
 const mockTx = vi.fn() as any;
@@ -327,5 +328,42 @@ describe("GET /reviews", () => {
     const app = makeApp(USER);
     const res = await app.request(`/reviews?driver_id=${TARGET_ID}&offset=-5`);
     expect(res.status).toBe(200);
+  });
+
+  it("fractional limit → 422 before DB", async () => {
+    const app = makeApp(USER);
+    const res = await app.request(`/reviews?driver_id=${TARGET_ID}&limit=1.5`);
+    expect(res.status).toBe(422);
+    expect(withIdentity).not.toHaveBeenCalled();
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid pagination");
+  });
+
+  it("fractional offset → 422 before DB", async () => {
+    const app = makeApp(USER);
+    const res = await app.request(`/reviews?driver_id=${TARGET_ID}&offset=1.5`);
+    expect(res.status).toBe(422);
+    expect(withIdentity).not.toHaveBeenCalled();
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid pagination");
+  });
+
+  it("unsafe offset → 422 before DB", async () => {
+    const app = makeApp(USER);
+    const res = await app.request(`/reviews?driver_id=${TARGET_ID}&offset=1e100`);
+    expect(res.status).toBe(422);
+    expect(withIdentity).not.toHaveBeenCalled();
+    const body = await readJson(res);
+    expect(body.error).toBe("invalid pagination");
+  });
+
+  it("large safe offset clamped to max before DB", async () => {
+    mockWithIdentityCallThrough();
+    mockTx.mockResolvedValueOnce([]);
+
+    const app = makeApp(USER);
+    const res = await app.request(`/reviews?driver_id=${TARGET_ID}&offset=1000000`);
+    expect(res.status).toBe(200);
+    expect(mockTx.mock.calls[0]?.[3]).toBe(MAX_REVIEW_OFFSET);
   });
 });

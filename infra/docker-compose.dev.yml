@@ -67,7 +67,7 @@ services:
       REPLICATION_URL: https://download.geofabrik.de/russia/volga-fed-district-updates/
       NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./.docker-data/nominatim:/var/lib/postgresql/14/main
     networks:

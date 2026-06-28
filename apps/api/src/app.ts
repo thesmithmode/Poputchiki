@@ -57,6 +57,14 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
     return c.json(poolMetrics.snapshot());
   });
   app.get("/readiness", async (c) => {
+    const token = process.env.READINESS_TOKEN;
+    if (!token && process.env.NODE_ENV === "production") {
+      return c.text("unauthorized", 401);
+    }
+    if (token) {
+      const auth = c.req.header("authorization") ?? "";
+      if (auth !== `Bearer ${token}`) return c.text("unauthorized", 401);
+    }
     if (!sql) return c.json({ status: "degraded", reason: "no_db" }, 503);
     try {
       await sql`SELECT 1`;

@@ -17,7 +17,15 @@ keywords = ["jwt_secret", "JWT_SECRET"]
 id = "postgres-password"
 description = "PostgreSQL password in URL or env"
 regex = '''postgres(?:ql)?://[^:]+:([^@]{8,})@'''
+secretGroup = 1
 keywords = ["POSTGRES_PASSWORD", "postgres"]
+
+[[rules.allowlists]]
+description = "Only allow explicit PostgreSQL password placeholders"
+regexes = [
+  '''^\$\{process\.env\.POSTGRES_PASSWORD\}$''',
+  '''^\$\{\{ secrets\.POSTGRES_PASSWORD \}\}$''',
+]
 
 [allowlist]
 description = "Global allowlist"
@@ -29,7 +37,6 @@ paths = [
   '''apps/api/tests/''',
 ]
 regexes = [
-  '''\$\{process\.env\.''',
-  '''postgres://[a-z]+/[a-z]+''',
+  '''^postgres://[a-z]+/[a-z]+$''',
   '''test-secret-''',
 ]

@@ -201,14 +201,21 @@ jobs:
 
       - name: GHCR login on server
         run: |
+          logged_in=false
           for i in 1 2 3; do
-            echo "${{ secrets.GITHUB_TOKEN }}" | \
-            ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
-              "docker login ghcr.io -u ${{ github.actor }} --password-stdin" \
-              && break
+            if echo "${{ secrets.GITHUB_TOKEN }}" | \
+              ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} \
+                "docker login ghcr.io -u ${{ github.actor }} --password-stdin"; then
+              logged_in=true
+              break
+            fi
             echo "Attempt $i failed, retrying in 15s..."
             sleep 15
           done
+          if [[ "$logged_in" != "true" ]]; then
+            echo "ERROR: GHCR login failed after 3 attempts" >&2
+            exit 1
+          fi
 
       - name: Copy scripts to server
         run: |

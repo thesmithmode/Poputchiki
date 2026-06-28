@@ -396,7 +396,7 @@ services:
       # Replication отключён — у openstreetmap.fr нет совместимого update-формата;
       # для MVP допустимо стейл-данные раз в месяц, обновляем через пере-импорт по cron.
       REPLICATION_URL: ""
-      NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}
+      NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:?NOMINATIM_PASSWORD required and must differ from POSTGRES_PASSWORD}
       IMPORT_STYLE: address
     volumes:
       - /opt/poputchiki/nominatim-data:/var/lib/postgresql/14/main

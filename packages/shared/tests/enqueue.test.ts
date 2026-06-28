@@ -10,7 +10,7 @@ const USER_ID = "00000000-0000-4000-a000-000000000001";
 const RIDE_ID = "aaaaaaaa-0000-4000-a000-000000000001";
 
 describe("enqueueNotification", () => {
-  it("inserts into user_notifications and pg_notify with canonical category", async () => {
+  it("calls RLS-safe enqueue DB function with canonical category", async () => {
     mockSql.mockReset();
     mockSql.mockResolvedValue([]);
 
@@ -21,26 +21,15 @@ describe("enqueueNotification", () => {
       data: { passenger_id: "p", passenger_name: "Антон" },
     });
 
-    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    expect(mockSql).toHaveBeenCalledTimes(1);
 
-    const countStrings: string[] = mockSql.mock.calls[0][0];
-    expect(countStrings.join("|")).toContain("COUNT(*)");
-
-    const insertStrings: string[] = mockSql.mock.calls[1][0];
-    expect(insertStrings.join("|")).toContain("INSERT INTO user_notifications");
-
-    const notifyStrings: string[] = mockSql.mock.calls[2][0];
-    const notifyJoined = notifyStrings.join("|");
-    expect(notifyJoined).toContain("pg_notify");
-    expect(notifyJoined).toContain("notify_user");
-
-    const payloadArg = mockSql.mock.calls[2][1];
-    const parsed = JSON.parse(payloadArg as string);
-    expect(parsed.category).toBe("ride_request");
-    expect(parsed.user_id).toBe(USER_ID);
-    expect(parsed.ride_id).toBe(RIDE_ID);
-    expect(parsed.passenger_name).toBe("Антон");
+    const functionStrings: string[] = mockSql.mock.calls[0][0];
+    expect(functionStrings.join("|")).toContain("app.enqueue_user_notification");
+    expect(mockSql.mock.calls[0][1]).toBe(USER_ID);
+    expect(mockSql.mock.calls[0][2]).toBe("ride_request");
+    expect(mockSql.mock.calls[0][3]).toBe(RIDE_ID);
+    expect(mockSql.mock.calls[0][4]).toEqual({ passenger_id: "p", passenger_name: "Антон" });
+    expect(mockSql.mock.calls[0][5]).toBe(50);
   });
 
   it("rejects invalid category (would silently drop in notifier whitelist)", async () => {
@@ -72,41 +61,28 @@ describe("enqueueNotification", () => {
       data: { message_id: "m1" },
     });
 
-    // calls: [0]=COUNT, [1]=INSERT, [2]=pg_notify
-    const payloadArg = mockSql.mock.calls[2][1];
-    const parsed = JSON.parse(payloadArg as string);
-    expect(parsed.ride_id).toBeUndefined();
-    expect(parsed.message_id).toBe("m1");
+    expect(mockSql.mock.calls[0][3]).toBeNull();
+    expect(mockSql.mock.calls[0][4]).toEqual({ message_id: "m1" });
   });
 
-  it("INSERT happens before pg_notify (ordering preserves feed-then-push semantics)", async () => {
+  it("delegates feed-then-push ordering to the RLS-safe DB function", async () => {
     mockSql.mockReset();
-    const order: string[] = [];
-    mockSql.mockImplementation((strings: TemplateStringsArray) => {
-      const joined = strings.join("");
-      if (joined.includes("COUNT(*)")) return Promise.resolve([{ c: "0" }]);
-      if (joined.includes("INSERT INTO user_notifications")) order.push("insert");
-      else if (joined.includes("pg_notify")) order.push("notify");
-      return Promise.resolve([]);
-    });
+    mockSql.mockResolvedValue([{ inserted: true }]);
 
     await enqueueNotification(mockSql, {
       userId: USER_ID,
       category: "like_received",
     });
 
-    expect(order).toEqual(["insert", "notify"]);
+    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect((mockSql.mock.calls[0][0] as string[]).join("")).toContain(
+      "app.enqueue_user_notification",
+    );
   });
 
-  it("throttle: ride_request свыше лимита → не INSERT, не pg_notify, return", async () => {
+  it("throttle: ride_request passes configured limit to DB function", async () => {
     mockSql.mockReset();
-    const calls: string[] = [];
-    mockSql.mockImplementation((strings: TemplateStringsArray) => {
-      const joined = strings.join("");
-      calls.push(joined);
-      if (joined.includes("COUNT(*)")) return Promise.resolve([{ c: "50" }]); // лимит = 50
-      return Promise.resolve([]);
-    });
+    mockSql.mockResolvedValue([{ inserted: false }]);
 
     await enqueueNotification(mockSql, {
       userId: USER_ID,
@@ -114,45 +90,21 @@ describe("enqueueNotification", () => {
       data: { passenger_name: "X" },
     });
 
-    expect(calls.some((c) => c.includes("INSERT INTO user_notifications"))).toBe(false);
-    expect(calls.some((c) => c.includes("pg_notify"))).toBe(false);
+    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect(mockSql.mock.calls[0][5]).toBe(50);
   });
 
-  it("throttle: ride_request под лимитом → INSERT + pg_notify происходят", async () => {
+  it("throttle: system категория без лимита — передаёт NULL limit", async () => {
     mockSql.mockReset();
-    const calls: string[] = [];
-    mockSql.mockImplementation((strings: TemplateStringsArray) => {
-      const joined = strings.join("");
-      calls.push(joined);
-      if (joined.includes("COUNT(*)")) return Promise.resolve([{ c: "10" }]); // под лимитом
-      return Promise.resolve([]);
-    });
-
-    await enqueueNotification(mockSql, {
-      userId: USER_ID,
-      category: "ride_request",
-    });
-
-    expect(calls.some((c) => c.includes("INSERT INTO user_notifications"))).toBe(true);
-    expect(calls.some((c) => c.includes("pg_notify"))).toBe(true);
-  });
-
-  it("throttle: system категория без лимита — COUNT не вызывается", async () => {
-    mockSql.mockReset();
-    const calls: string[] = [];
-    mockSql.mockImplementation((strings: TemplateStringsArray) => {
-      const joined = strings.join("");
-      calls.push(joined);
-      return Promise.resolve([]);
-    });
+    mockSql.mockResolvedValue([{ inserted: true }]);
 
     await enqueueNotification(mockSql, {
       userId: USER_ID,
       category: "system",
     });
 
-    expect(calls.some((c) => c.includes("COUNT(*)"))).toBe(false);
-    expect(calls.some((c) => c.includes("INSERT INTO user_notifications"))).toBe(true);
+    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect(mockSql.mock.calls[0][5]).toBeNull();
   });
 });
 
@@ -163,9 +115,9 @@ describe("enqueueNotificationBatch", () => {
     expect(mockSql).not.toHaveBeenCalled();
   });
 
-  it("2 items → 1 INSERT + 2 pg_notify (итого 3 вызова)", async () => {
+  it("2 items → 2 RLS-safe DB function calls with per-item throttle limits", async () => {
     mockSql.mockReset();
-    mockSql.mockResolvedValue([]);
+    mockSql.mockResolvedValue([{ inserted: true }]);
 
     const USER2 = "00000000-0000-4000-a000-000000000002";
     await enqueueNotificationBatch(mockSql, [
@@ -173,24 +125,20 @@ describe("enqueueNotificationBatch", () => {
       { userId: USER2, category: "ride_cancelled" },
     ]);
 
-    expect(mockSql).toHaveBeenCalledTimes(3);
+    expect(mockSql).toHaveBeenCalledTimes(2);
 
-    const insertStrings: string[] = mockSql.mock.calls[0][0];
-    expect(insertStrings.join("")).toContain("INSERT INTO user_notifications");
-    expect(insertStrings.join("")).toContain("unnest");
+    const firstStrings: string[] = mockSql.mock.calls[0][0];
+    expect(firstStrings.join("")).toContain("app.enqueue_user_notification");
+    expect(mockSql.mock.calls[0][1]).toBe(USER_ID);
+    expect(mockSql.mock.calls[0][2]).toBe("ride_request");
+    expect(mockSql.mock.calls[0][3]).toBe(RIDE_ID);
+    expect(mockSql.mock.calls[0][4]).toEqual({ x: 1 });
+    expect(mockSql.mock.calls[0][5]).toBe(50);
 
-    const notify1: string[] = mockSql.mock.calls[1][0];
-    expect(notify1.join("")).toContain("pg_notify");
-    const payload1 = JSON.parse(mockSql.mock.calls[1][1] as string);
-    expect(payload1.user_id).toBe(USER_ID);
-    expect(payload1.category).toBe("ride_request");
-    expect(payload1.ride_id).toBe(RIDE_ID);
-
-    const notify2: string[] = mockSql.mock.calls[2][0];
-    expect(notify2.join("")).toContain("pg_notify");
-    const payload2 = JSON.parse(mockSql.mock.calls[2][1] as string);
-    expect(payload2.user_id).toBe(USER2);
-    expect(payload2.ride_id).toBeUndefined();
+    expect(mockSql.mock.calls[1][1]).toBe(USER2);
+    expect(mockSql.mock.calls[1][2]).toBe("ride_cancelled");
+    expect(mockSql.mock.calls[1][3]).toBeNull();
+    expect(mockSql.mock.calls[1][5]).toBe(100);
   });
 
   it("невалидная category → throw до sql-вызова", async () => {
@@ -210,17 +158,16 @@ describe("enqueueNotificationBatch", () => {
     expect(mockSql).not.toHaveBeenCalled();
   });
 
-  it("INSERT происходит до pg_notify (feed-then-push семантика)", async () => {
+  it("batch also uses DB function so throttle is not bypassed", async () => {
     mockSql.mockReset();
-    const order: string[] = [];
-    mockSql.mockImplementation((strings: TemplateStringsArray) => {
-      const s = strings.join("");
-      if (s.includes("INSERT INTO user_notifications")) order.push("insert");
-      else if (s.includes("pg_notify")) order.push("notify");
-      return Promise.resolve([]);
-    });
+    mockSql.mockResolvedValue([{ inserted: true }]);
 
     await enqueueNotificationBatch(mockSql, [{ userId: USER_ID, category: "like_received" }]);
-    expect(order).toEqual(["insert", "notify"]);
+
+    expect(mockSql).toHaveBeenCalledTimes(1);
+    expect((mockSql.mock.calls[0][0] as string[]).join("")).toContain(
+      "app.enqueue_user_notification",
+    );
+    expect(mockSql.mock.calls[0][5]).toBe(100);
   });
 });

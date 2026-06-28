@@ -83,7 +83,7 @@ describe("POST /likes", () => {
     expect(body.subject_id).toBe(USER.id);
   });
 
-  it("on success → emits like_received via enqueueNotification (INSERT user_notifications + pg_notify)", async () => {
+  it("on success → emits like_received via enqueueNotification DB function", async () => {
     const likeRow = {
       id: LIKE_ID,
       subject_id: USER.id,
@@ -95,8 +95,7 @@ describe("POST /likes", () => {
     mockTx
       .mockResolvedValueOnce([{ ok: true }]) // confirmed check
       .mockResolvedValueOnce([likeRow]); // INSERT likes
-    // enqueueNotification fire-and-forget: INSERT user_notifications + pg_notify
-    mockSql.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    mockSql.mockResolvedValueOnce([{ inserted: true }]);
 
     const app = makeApp(USER);
     const res = await app.request("/likes", {
@@ -108,19 +107,13 @@ describe("POST /likes", () => {
     // Allow fire-and-forget enqueueNotification microtasks to flush
     await new Promise((r) => setTimeout(r, 0));
 
-    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
-    expect(mockSql).toHaveBeenCalledTimes(3);
-    const insertCall = mockSql.mock.calls[1];
-    expect(insertCall[1]).toBe(TARGET_ID); // userId (liked user)
-    expect(insertCall[2]).toBe("like_received");
-    expect(insertCall[3]).toBe(RIDE_ID);
-    const notifyCall = mockSql.mock.calls[2];
-    const payload = JSON.parse(notifyCall[1] as string);
-    expect(payload.category).toBe("like_received");
-    expect(payload.user_id).toBe(TARGET_ID);
-    expect(payload.ride_id).toBe(RIDE_ID);
-    expect(payload.from_user_id).toBe(USER.id);
-    expect(payload.like_id).toBe(LIKE_ID);
+    expect(mockSql).toHaveBeenCalledTimes(1);
+    const enqueueCall = mockSql.mock.calls[0];
+    expect((enqueueCall[0] as string[]).join("")).toContain("app.enqueue_user_notification");
+    expect(enqueueCall[1]).toBe(TARGET_ID); // userId (liked user)
+    expect(enqueueCall[2]).toBe("like_received");
+    expect(enqueueCall[3]).toBe(RIDE_ID);
+    expect(enqueueCall[4]).toMatchObject({ from_user_id: USER.id, like_id: LIKE_ID });
   });
 
   it("not confirmed → 403", async () => {

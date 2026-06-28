@@ -41,8 +41,7 @@ describe("POST /rides/:id/request", () => {
       driverId: DRIVER_ID,
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
-    mockSql.mockResolvedValueOnce([]); // user_notifications INSERT fire-and-forget
-    mockSql.mockResolvedValueOnce([]); // pg_notify fire-and-forget
+    mockSql.mockResolvedValueOnce([{ inserted: true }]); // enqueueNotification fire-and-forget
 
     const app = makeApp();
     const res = await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
@@ -132,27 +131,16 @@ describe("POST /rides/:id/request", () => {
       driverId: DRIVER_ID,
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
-    mockSql.mockResolvedValueOnce([{ c: "0" }]); // throttle COUNT under limit
-    mockSql.mockResolvedValueOnce([]); // user_notifications INSERT
-    mockSql.mockResolvedValueOnce([]); // pg_notify
+    mockSql.mockResolvedValueOnce([{ inserted: true }]);
 
     const app = makeApp();
     await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });
 
-    // calls: [0]=COUNT throttle, [1]=INSERT, [2]=pg_notify
-    const insertCall = mockSql.mock.calls[1];
-    expect(insertCall).toBeDefined();
-    const insertStrings: string[] = insertCall[0];
-    const insertJoined = insertStrings.join("|");
-    expect(insertJoined).toContain("INSERT INTO user_notifications");
-    // category is the 2nd interpolation (after userId::uuid)
-    expect(insertCall[2]).toBe("ride_request");
-    expect(insertCall[2]).not.toBe("notify_user");
-
-    const notifyCall = mockSql.mock.calls[2];
-    const payload = JSON.parse(notifyCall[1] as string);
-    expect(payload.category).toBe("ride_request");
-    expect(payload.category).not.toBe("notify_user");
+    const enqueueCall = mockSql.mock.calls[0];
+    expect(enqueueCall).toBeDefined();
+    expect((enqueueCall[0] as string[]).join("|")).toContain("app.enqueue_user_notification");
+    expect(enqueueCall[2]).toBe("ride_request");
+    expect(enqueueCall[2]).not.toBe("notify_user");
   });
 
   it("withIdentity called with 'repeatable read' isolation", async () => {
@@ -167,8 +155,7 @@ describe("POST /rides/:id/request", () => {
       driverId: DRIVER_ID,
       // biome-ignore lint/suspicious/noExplicitAny: mock
     } as any);
-    mockSql.mockResolvedValueOnce([]); // pg_notify
-    mockSql.mockResolvedValueOnce([]); // user_notifications INSERT fire-and-forget
+    mockSql.mockResolvedValueOnce([{ inserted: true }]); // enqueueNotification fire-and-forget
 
     const app = makeApp();
     await app.request(`/rides/${RIDE_ID}/request`, { method: "POST" });

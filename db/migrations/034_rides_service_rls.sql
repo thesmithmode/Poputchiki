@@ -4,13 +4,15 @@
 -- поэтому существующие RLS policies (rides_insert, rides_update) блокируют все операции.
 -- expand_templates: INSERT всегда 0 строк → поездки из шаблонов не создаются.
 -- finalize_rides: UPDATE всегда 0 строк → поездки не переходят в completed/archived.
--- Решение: отдельные политики для роли poputchiki_service (аналог 027_notifier_service_rls).
+-- Решение: отдельные политики только для активной роли poputchiki_service.
+-- Важно: проверяем current_user, а не membership, чтобы poputchiki_app
+-- (member of poputchiki_service для SET ROLE) не обходил ownership RLS.
 
 CREATE POLICY rides_service_insert ON rides
   FOR INSERT
-  WITH CHECK (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'));
+  WITH CHECK (current_user = 'poputchiki_service');
 
 CREATE POLICY rides_service_update ON rides
   FOR UPDATE
-  USING  (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'))
-  WITH CHECK (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'));
+  USING  (current_user = 'poputchiki_service')
+  WITH CHECK (current_user = 'poputchiki_service');

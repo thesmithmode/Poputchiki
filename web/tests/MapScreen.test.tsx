@@ -190,6 +190,26 @@ function findDivIconHtml(fragment: string): string | null {
 }
 
 describe("MapScreen", () => {
+  it("uses same-origin proxied map tiles instead of direct third-party OSM tiles", async () => {
+    mockedApiFetch.mockResolvedValue({ data: MOCK_RIDES });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <QueryClientProvider client={new QueryClient()}>
+            <MapScreen />
+          </QueryClientProvider>
+        </MemoryRouter>,
+      );
+    });
+
+    expect(L.tileLayer).toHaveBeenCalledWith(
+      `${window.location.origin}/tiles/{s}/{z}/{x}/{y}.png`,
+      expect.objectContaining({ subdomains: "abc" }),
+    );
+    expect(vi.mocked(L.tileLayer).mock.calls[0]?.[0]).not.toContain("tile.openstreetmap.org");
+  });
+
   beforeEach(() => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();

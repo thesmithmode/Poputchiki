@@ -486,7 +486,7 @@ export function MapScreen({
         }
       });
 
-      const tile = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      const tile = L.tileLayer(`${window.location.origin}/tiles/{s}/{z}/{x}/{y}.png`, {
         minZoom: 9,
         maxZoom: 17,
         subdomains: "abc",

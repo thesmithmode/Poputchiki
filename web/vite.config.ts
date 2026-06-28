@@ -19,18 +19,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,woff2,ico,png,svg}"],
         // API и Telegram JS — не кэшировать, данные должны быть свежими
         navigateFallback: null,
-        runtimeCaching: [
-          {
-            // OSM тайлы: CacheFirst, 7 дней, до 1000 тайлов (~15 МБ)
-            urlPattern: ({ url }: { url: URL }) => url.hostname.endsWith(".tile.openstreetmap.org"),
-            handler: "CacheFirst" as const,
-            options: {
-              cacheName: "osm-tiles-v1",
-              expiration: { maxEntries: 3000, maxAgeSeconds: 365 * 24 * 60 * 60 },
-              cacheableResponse: { statuses: [0, 200] },
-            },
-          },
-        ],
+        runtimeCaching: [],
       },
       manifest: {
         name: "Попутчики",

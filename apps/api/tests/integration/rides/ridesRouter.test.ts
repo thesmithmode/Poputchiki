@@ -124,12 +124,14 @@ beforeAll(async () => {
 afterEach(async () => {
   await sql`DELETE FROM audit_log WHERE user_id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
   await sql`DELETE FROM rides WHERE driver_id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
+  await sql`DELETE FROM ride_templates WHERE driver_id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
   await sql`DELETE FROM rate_limit_buckets WHERE key LIKE ${`ip:${TEST_IP}%`} OR key LIKE 'user:%rides%'`;
 });
 
 afterAll(async () => {
   await sql`DELETE FROM audit_log WHERE user_id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
   await sql`DELETE FROM rides WHERE driver_id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
+  await sql`DELETE FROM ride_templates WHERE driver_id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
   await sql`DELETE FROM users WHERE id IN (${USER_ESTABLISHED.id}, ${USER_NEW.id}, ${USER_NO_LIKES.id})`;
   await sql.end();
 });
@@ -171,6 +173,43 @@ describe("POST /api/rides — happy path", () => {
 });
 
 describe("POST /api/rides — validation errors", () => {
+  it("foreign template_id → 404 and no cross-user ride reference", async () => {
+    const app = makeApp();
+    const token = await makeToken(USER_ESTABLISHED);
+    const [{ id: victimTemplateId }] = await withSystem(sql, async (tx) => {
+      return tx<[{ id: string }]>`
+        INSERT INTO ride_templates
+          (driver_id, weekdays, departure_time, from_label, from_lat, from_lng,
+           to_label, to_lat, to_lng, seats_total)
+        VALUES
+          (${USER_NO_LIKES.id}, ARRAY[1,2,3]::smallint[], '08:00',
+           'Victim From', 55.811, 49.44, 'Victim To', 55.863, 49.099, 2)
+        RETURNING id
+      `;
+    });
+
+    const res = await app.request("/api/rides", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+      body: JSON.stringify({
+        ...BASE_BODY,
+        departure_at: futureDate(),
+        template_id: victimTemplateId,
+      }),
+    });
+
+    expect(res.status).toBe(404);
+    const rows = await sql`
+      SELECT id FROM rides
+      WHERE driver_id = ${USER_ESTABLISHED.id} AND template_id = ${victimTemplateId}
+    `;
+    expect(rows).toHaveLength(0);
+  });
   it("past departure_at → 422", async () => {
     const app = makeApp();
     const token = await makeToken(USER_ESTABLISHED);

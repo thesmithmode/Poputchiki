@@ -2,10 +2,10 @@
 # node_modules — исключение: платформо-специфичные бинарники (biome, bun) ломают Linux CI.
 # bun.lock обеспечивает reproducibility вместо коммита node_modules.
 node_modules/
-.env
-.env.local
-.env.*.local
-.env.prod
+# Любые dotenv-файлы могут содержать секреты (.env.deploy/.env.production/.env.staging и т.п.).
+.env*
+!.env.example
+!.env*.example
 *.pem
 *.key
 secrets/

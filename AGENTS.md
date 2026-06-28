@@ -41,7 +41,7 @@ RLS identity: НЕТ Supabase `auth.uid()`/`auth.jwt()`. GUC `app.current_user_i
 ## .gitignore — ТОЛЬКО для секретов
 
 Разрешено:
-- `.env`, `.env.local`, `.env.*.local`
+- `.env*` (включая `.env.deploy`, `.env.production`, `.env.staging`, `.env.development`), но шаблоны без секретов `.env.example` / `.env*.example` должны оставаться в git
 - `*.pem`, `*.key`, `secrets/`
 - runtime data volumes внутри проекта (например `.docker-data/`) — исключение, договорились 2026-05-01
 Всё остальное коммитится — `node_modules/`, артефакты сборки, логи, кэш. Репо приватный, история нужна полная.

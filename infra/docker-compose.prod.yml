@@ -157,6 +157,7 @@ services:
       ADMIN_TG_ID: ${ADMIN_TG_ID}
       ADMIN_TG_CHAT_ID: ${ADMIN_TG_CHAT_ID}
       METRICS_TOKEN: ${METRICS_TOKEN:-}
+      READINESS_TOKEN: ${READINESS_TOKEN:-}
       DOMAIN: ${DOMAIN}
       NODE_ENV: production
       PORT: 3000

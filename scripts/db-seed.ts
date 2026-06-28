@@ -29,64 +29,66 @@ export async function seed(sql: postgres.Sql): Promise<{
   likes: number;
   reviews: number;
 }> {
-  const userIds: string[] = [];
-  for (const u of SEED_USERS) {
-    const [row] = await sql<{ id: string }[]>`
-      INSERT INTO users (tg_id, display_name, tg_username, onboarded)
-      VALUES (${u.tg_id}, ${u.display_name}, ${u.tg_username}, true)
-      ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
-      RETURNING id
-    `;
-    userIds.push(row.id);
-  }
+  return sql.begin(async (tx) => {
+    const userIds: string[] = [];
+    for (const u of SEED_USERS) {
+      const [row] = await tx<{ id: string }[]>`
+        INSERT INTO users (tg_id, display_name, tg_username, onboarded)
+        VALUES (${u.tg_id}, ${u.display_name}, ${u.tg_username}, true)
+        ON CONFLICT (tg_id) DO UPDATE SET display_name = EXCLUDED.display_name
+        RETURNING id
+      `;
+      userIds.push(row.id);
+    }
 
-  const rideIds: string[] = [];
-  for (let i = 0; i < 10; i++) {
-    const driverId = userIds[i % 2];
-    const departure = new Date(Date.now() + (i + 1) * 86400000).toISOString();
-    const [row] = await sql<{ id: string }[]>`
-      INSERT INTO rides
-        (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
-         departure_at, price_rub, seats_total, comment)
-      VALUES
-        (${driverId}, 'ЖК Царёво', 55.751244, 49.198674,
-         'Казань Центр', 55.78874, 49.12214,
-         ${departure}::timestamptz, 200, 3, ${`Seed ride #${i + 1}`})
-      RETURNING id
-    `;
-    rideIds.push(row.id);
-  }
+    const rideIds: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const driverId = userIds[i % 2];
+      const departure = new Date(Date.now() + (i + 1) * 86400000).toISOString();
+      const [row] = await tx<{ id: string }[]>`
+        INSERT INTO rides
+          (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng,
+           departure_at, price_rub, seats_total, comment)
+        VALUES
+          (${driverId}, 'ЖК Царёво', 55.751244, 49.198674,
+           'Казань Центр', 55.78874, 49.12214,
+           ${departure}::timestamptz, 200, 3, ${`Seed ride #${i + 1}`})
+        RETURNING id
+      `;
+      rideIds.push(row.id);
+    }
 
-  // ride_participation для likes/reviews preconditions: пара marked + confirmed
-  let likes = 0;
-  let reviews = 0;
-  for (let i = 0; i < 4; i++) {
-    const driverId = userIds[i % 2];
-    const passengerId = userIds[2 + (i % 3)];
-    const rideId = rideIds[i];
-    await sql`
-      INSERT INTO ride_participation
-        (ride_id, passenger_id, driver_marked, marked_at, passenger_confirmed, confirmed_at)
-      VALUES (${rideId}, ${passengerId}, true, now(), true, now())
-      ON CONFLICT (ride_id, passenger_id) DO NOTHING
-    `;
-    const liked = await sql`
-      INSERT INTO likes (ride_id, liker_id, target_id)
-      VALUES (${rideId}, ${passengerId}, ${driverId})
-      ON CONFLICT DO NOTHING
-      RETURNING id
-    `;
-    if (liked.length > 0) likes++;
-    const reviewed = await sql`
-      INSERT INTO reviews (ride_id, subject_id, target_id, stars, body)
-      VALUES (${rideId}, ${passengerId}, ${driverId}, ${4 + (i % 2)}, ${`Seed review #${i + 1}`})
-      ON CONFLICT DO NOTHING
-      RETURNING id
-    `;
-    if (reviewed.length > 0) reviews++;
-  }
+    // ride_participation для likes/reviews preconditions: пара marked + confirmed
+    let likes = 0;
+    let reviews = 0;
+    for (let i = 0; i < 4; i++) {
+      const driverId = userIds[i % 2];
+      const passengerId = userIds[2 + (i % 3)];
+      const rideId = rideIds[i];
+      await tx`
+        INSERT INTO ride_participation
+          (ride_id, passenger_id, driver_marked, marked_at, passenger_confirmed, confirmed_at)
+        VALUES (${rideId}, ${passengerId}, true, now(), true, now())
+        ON CONFLICT (ride_id, passenger_id) DO NOTHING
+      `;
+      const liked = await tx`
+        INSERT INTO likes (ride_id, subject_id, target_id)
+        VALUES (${rideId}, ${passengerId}, ${driverId})
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `;
+      if (liked.length > 0) likes++;
+      const reviewed = await tx`
+        INSERT INTO reviews (ride_id, subject_id, target_id, stars, text)
+        VALUES (${rideId}, ${passengerId}, ${driverId}, ${4 + (i % 2)}, ${`Seed review #${i + 1}`})
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `;
+      if (reviewed.length > 0) reviews++;
+    }
 
-  return { users: userIds.length, rides: rideIds.length, likes, reviews };
+    return { users: userIds.length, rides: rideIds.length, likes, reviews };
+  });
 }
 
 export async function seedAdmin(

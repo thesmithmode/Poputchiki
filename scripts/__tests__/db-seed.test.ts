@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ProductionSeedError, SEED_USERS, assertNotProduction, seedAdmin } from "../db-seed";
+import { ProductionSeedError, SEED_USERS, assertNotProduction, seed, seedAdmin } from "../db-seed";
 
 describe("assertNotProduction", () => {
   it("NODE_ENV=production → ProductionSeedError", () => {
@@ -35,6 +35,39 @@ describe("SEED_USERS", () => {
 
   it("все display_name непустые", () => {
     for (const u of SEED_USERS) expect(u.display_name.length).toBeGreaterThan(0);
+  });
+});
+
+describe("seed", () => {
+  it("uses current social schema columns and wraps seed inserts in one transaction", async () => {
+    const queries: string[] = [];
+    let nextUser = 0;
+    let nextRide = 0;
+    // biome-ignore lint/suspicious/noExplicitAny: mock tagged-template sql transaction
+    const tx = vi.fn() as any;
+    tx.mockImplementation((strings: TemplateStringsArray) => {
+      const query = String(strings[0] ?? "");
+      queries.push(query);
+      if (query.includes("INSERT INTO users")) return [{ id: `user-${++nextUser}` }];
+      if (query.includes("INSERT INTO rides")) return [{ id: `ride-${++nextRide}` }];
+      if (query.includes("INSERT INTO likes")) return [{ id: "like-id" }];
+      if (query.includes("INSERT INTO reviews")) return [{ id: "review-id" }];
+      return [];
+    });
+
+    // biome-ignore lint/suspicious/noExplicitAny: mock postgres.Sql with begin
+    const sql = vi.fn() as any;
+    sql.begin = vi.fn((callback) => callback(tx));
+
+    const result = await seed(sql);
+
+    expect(result).toEqual({ users: 5, rides: 10, likes: 4, reviews: 4 });
+    expect(sql).not.toHaveBeenCalled();
+    expect(sql.begin).toHaveBeenCalledOnce();
+    expect(queries.join("\n")).toContain("INSERT INTO likes (ride_id, subject_id, target_id)");
+    expect(queries.join("\n")).toContain("INSERT INTO reviews (ride_id, subject_id, target_id, stars, text)");
+    expect(queries.join("\n")).not.toContain("liker_id");
+    expect(queries.join("\n")).not.toContain("body)");
   });
 });
 

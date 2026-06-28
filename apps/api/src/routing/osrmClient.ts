@@ -13,6 +13,8 @@ export interface FetchRouteOptions {
   timeoutMs?: number;
 }
 
+const MAX_ROUTE_POINTS = 10_000;
+
 export async function fetchRoute(
   fromLat: number,
   fromLng: number,
@@ -47,6 +49,7 @@ export async function fetchRoute(
 
   const encoded = route.geometry;
   const coords = polyline.decode(encoded);
+  if (coords.length === 0 || coords.length > MAX_ROUTE_POINTS) return null;
 
   const wktParts = coords.map(([lat, lng]) => `${lng} ${lat}`).join(",");
   const geometryWKT = `LINESTRING(${wktParts})`;

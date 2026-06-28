@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type postgres from "postgres";
 import { z } from "zod";
 import { withIdentity } from "../db/with-identity";
+import { SERVICE_AREA_ERROR, routeInServiceArea } from "../lib/service-area";
 import { UUID_RE } from "../lib/uuid";
 import { antiBot } from "../middleware/anti-bot";
 import type { AppUser } from "../middleware/identity-guard";
@@ -91,6 +92,9 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
     const parsed = PostInput.safeParse(body);
     if (!parsed.success) return c.json({ error: "invalid input" }, 422);
     const d = parsed.data;
+    if (!routeInServiceArea(d.from_lat, d.from_lng, d.to_lat, d.to_lng)) {
+      return c.json({ error: SERVICE_AREA_ERROR }, 422);
+    }
 
     const rows = await withIdentity(sql, user, async (tx) => {
       return tx<Row[]>`
@@ -195,6 +199,12 @@ export function createRideTemplatesRouter(sql: postgres.Sql): Hono {
       p.to_lng !== undefined;
 
     const tmpl = rows[0] as Row & Record<string, unknown>;
+    if (
+      coordsChanged &&
+      !routeInServiceArea(tmpl.from_lat, tmpl.from_lng, tmpl.to_lat, tmpl.to_lng)
+    ) {
+      return c.json({ error: SERVICE_AREA_ERROR }, 422);
+    }
     if (coordsChanged) {
       const routeData = await fetchRoute(tmpl.from_lat, tmpl.from_lng, tmpl.to_lat, tmpl.to_lng);
       if (routeData) {

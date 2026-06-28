@@ -111,6 +111,17 @@ describe("fetchRoute", () => {
     }
   });
 
+  it("returns null when decoded route has too many points", async () => {
+    const oversized = {
+      code: "Ok",
+      routes: [{ geometry: "??".repeat(10001), distance: 1, duration: 1 }],
+    };
+    const result = await fetchRoute(55.8, 49.1, 55.9, 49.2, {
+      _fetch: mockFetch(oversized),
+    });
+    expect(result).toBeNull();
+  });
+
   it("rounds distance and duration to integers", async () => {
     const result = await fetchRoute(55.8, 49.1, 55.9, 49.2, {
       _fetch: mockFetch(VALID_RESPONSE),

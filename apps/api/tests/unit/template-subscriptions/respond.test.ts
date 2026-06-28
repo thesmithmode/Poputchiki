@@ -82,12 +82,28 @@ describe("respondToSubscription", () => {
       .mockResolvedValueOnce([]) // UPDATE
       .mockResolvedValueOnce([{ id: RIDE_ID }]) // SELECT rides
       .mockResolvedValueOnce([{ id: "req-new" }]) // INSERT ride_requests → inserted
-      .mockResolvedValueOnce([]); // book_seat
+      .mockResolvedValueOnce([{ id: RIDE_ID }]); // book_seat → seat booked
 
     await respondToSubscription(mockSql, DRIVER, SUB_ID, "accept");
 
     // SELECT sub + UPDATE + SELECT rides + INSERT + book_seat = 5 вызовов
     expect(mockTx).toHaveBeenCalledTimes(5);
+  });
+
+  it("accept при заполненной поездке → понижает созданную заявку до pending", async () => {
+    mockTx
+      .mockResolvedValueOnce([PENDING_SUB]) // SELECT sub
+      .mockResolvedValueOnce([]) // UPDATE subscription
+      .mockResolvedValueOnce([{ id: RIDE_ID }]) // SELECT rides
+      .mockResolvedValueOnce([{ id: "req-new" }]) // INSERT ride_requests → inserted
+      .mockResolvedValueOnce([]) // book_seat → no capacity
+      .mockResolvedValueOnce([]); // UPDATE ride_requests status=pending
+
+    await respondToSubscription(mockSql, DRIVER, SUB_ID, "accept");
+
+    expect(mockTx).toHaveBeenCalledTimes(6);
+    const downgradeCall = mockTx.mock.calls[5][0] as TemplateStringsArray;
+    expect(downgradeCall.join(" ")).toContain("UPDATE ride_requests SET status = 'pending'");
   });
 
   it("accept с поездкой, INSERT DO NOTHING → book_seat не вызывается", async () => {

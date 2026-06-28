@@ -2,6 +2,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createApp } from "../../../src/app";
 import { createAvatarRouter } from "../../../src/users/avatarRouter";
 
 const USER_ID = "aaaaaaaa-0000-4000-a000-000000000001";
@@ -63,6 +64,17 @@ afterEach(async () => {
 });
 
 describe("GET /:id/avatar", () => {
+  it("requires the global /api authentication middleware when mounted in createApp", async () => {
+    const sql = vi.fn();
+    const app = createApp(sql as never, "test-secret-key");
+
+    const res = await app.request(`/api/users/${USER_ID}/avatar`);
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "unauthorized" });
+    expect(sql).not.toHaveBeenCalled();
+    expect(syncTelegramAvatarMock).not.toHaveBeenCalled();
+  });
   it("returns cached avatar file with image cache headers", async () => {
     await writeFile(join(dir, `${USER_ID}.jpg`), new Uint8Array([1, 2, 3]));
 

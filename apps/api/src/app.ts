@@ -74,7 +74,6 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
     app.route("/api/client-errors", createClientErrorsRouter(sql));
     app.use("/auth/*", authRateLimit(sql, { ipLimit: 10 }));
     app.route("/auth", createAuthRouter(sql));
-    app.route("/api/users", createAvatarRouter(sql));
 
     // Internal endpoint для webhook callback_query — НЕ под /api/* (минует JWT
     // identityGuard). Защита: X-Internal-Secret. Выставляется только внутри
@@ -107,6 +106,7 @@ export function createApp(sql?: postgres.Sql, jwtSecret?: string, dispatcher?: D
       }
       app.route("/api/ride-requests", createRideRequestsRouter(sql));
       app.route("/api/template-subscriptions", createTemplateSubscriptionsRouter(sql));
+      app.route("/api/users", createAvatarRouter(sql));
       app.route("/api/users", createUsersRouter(sql));
       app.route("/api/notifications", createNotificationsRouter(sql));
       app.route("/api/favorites", createFavoritesRouter(sql));

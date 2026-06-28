@@ -25,8 +25,14 @@ export function antiBot(sql: postgres.Sql): MiddlewareHandler {
 
     if (isNewAccount) {
       const [countRow] = await sql<{ count: number }[]>`
-        SELECT COUNT(*)::int AS count FROM rides
-        WHERE driver_id = ${user.id} AND status = 'active'
+        SELECT COALESCE(SUM(count), 0)::int AS count
+        FROM (
+          SELECT COUNT(*)::int AS count FROM rides
+          WHERE driver_id = ${user.id} AND status = 'active'
+          UNION ALL
+          SELECT COUNT(*)::int AS count FROM ride_templates
+          WHERE driver_id = ${user.id} AND is_active = true
+        ) anti_bot_active_items
       `;
       const activeCount = countRow?.count ?? 0;
       if (activeCount >= 1) {
@@ -37,9 +43,16 @@ export function antiBot(sql: postgres.Sql): MiddlewareHandler {
 
     if (row.likes_received_count === 0) {
       const [countRow] = await sql<{ count: number }[]>`
-        SELECT COUNT(*)::int AS count FROM rides
-        WHERE driver_id = ${user.id}
-          AND created_at >= date_trunc('day', NOW())
+        SELECT COALESCE(SUM(count), 0)::int AS count
+        FROM (
+          SELECT COUNT(*)::int AS count FROM rides
+          WHERE driver_id = ${user.id}
+            AND created_at >= date_trunc('day', NOW())
+          UNION ALL
+          SELECT COUNT(*)::int AS count FROM ride_templates
+          WHERE driver_id = ${user.id}
+            AND created_at >= date_trunc('day', NOW())
+        ) anti_bot_daily_items
       `;
       const dailyCount = countRow?.count ?? 0;
       if (dailyCount >= 3) {

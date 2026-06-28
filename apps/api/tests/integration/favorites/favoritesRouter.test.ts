@@ -18,6 +18,11 @@ const JWT_SECRET = "test-secret-favorites";
 const USER_A = { id: "00000000-0000-4000-f000-200000000001", tgId: 9500001, role: "user" as const };
 const USER_B = { id: "00000000-0000-4000-f000-200000000002", tgId: 9500002, role: "user" as const };
 const USER_C = { id: "00000000-0000-4000-f000-200000000003", tgId: 9500003, role: "user" as const };
+const USER_D_BANNED = {
+  id: "00000000-0000-4000-f000-200000000004",
+  tgId: 9500004,
+  role: "user" as const,
+};
 
 let sql: ReturnType<typeof createPool>;
 
@@ -52,16 +57,29 @@ beforeAll(async () => {
       VALUES
         (${USER_A.id}, ${USER_A.tgId}, 'Fav UserA'),
         (${USER_B.id}, ${USER_B.tgId}, 'Fav UserB'),
-        (${USER_C.id}, ${USER_C.tgId}, 'Fav UserC')
-      ON CONFLICT (tg_id) DO NOTHING
+        (${USER_C.id}, ${USER_C.tgId}, 'Fav UserC'),
+        (${USER_D_BANNED.id}, ${USER_D_BANNED.tgId}, 'Fav Banned User')
+      ON CONFLICT (tg_id) DO UPDATE SET
+        display_name = EXCLUDED.display_name,
+        is_banned = false,
+        deleted_at = NULL
     `;
-    await tx`DELETE FROM favorites WHERE user_id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id})`;
+    await tx`UPDATE users SET is_banned = true, deleted_at = NULL WHERE id = ${USER_D_BANNED.id}`;
+    await tx`
+      DELETE FROM favorites
+      WHERE user_id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id}, ${USER_D_BANNED.id})
+         OR target_id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id}, ${USER_D_BANNED.id})
+    `;
   });
 });
 
 afterAll(async () => {
-  await sql`DELETE FROM favorites WHERE user_id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id})`;
-  await sql`DELETE FROM users WHERE id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id})`;
+  await sql`
+    DELETE FROM favorites
+    WHERE user_id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id}, ${USER_D_BANNED.id})
+       OR target_id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id}, ${USER_D_BANNED.id})
+  `;
+  await sql`DELETE FROM users WHERE id IN (${USER_A.id}, ${USER_B.id}, ${USER_C.id}, ${USER_D_BANNED.id})`;
   await sql.end();
 });
 
@@ -130,6 +148,23 @@ describe("POST /api/favorites", () => {
     expect(res.status).toBe(422);
   });
 
+  it("404 — cannot favorite banned target", async () => {
+    const app = makeApp();
+    const token = await makeToken(USER_A);
+    const res = await app.request("/api/favorites", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ target_id: USER_D_BANNED.id }),
+    });
+    expect(res.status).toBe(404);
+    const body = await readJson(res);
+    expect(body.error).toBe("not_found");
+  });
+
   it("401 without auth", async () => {
     const app = makeApp();
     const res = await app.request("/api/favorites", { method: "POST" });
@@ -169,6 +204,29 @@ describe("GET /api/favorites/me", () => {
     const body = await readJson(res);
     expect(Array.isArray(body)).toBe(true);
     expect(body.length).toBe(0);
+  });
+
+  it("200 — hides already-saved banned targets", async () => {
+    await withSystem(sql, async (tx) => {
+      await tx`
+        INSERT INTO favorites (user_id, target_id)
+        VALUES (${USER_A.id}, ${USER_D_BANNED.id})
+        ON CONFLICT (user_id, target_id) DO NOTHING
+      `;
+    });
+
+    const app = makeApp();
+    const token = await makeToken(USER_A);
+    const res = await app.request("/api/favorites/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
+    });
+    expect(res.status).toBe(200);
+    const body = await readJson(res);
+    expect(Array.isArray(body)).toBe(true);
+    expect(body.some((f: { target_id: string }) => f.target_id === USER_D_BANNED.id)).toBe(false);
   });
 });
 

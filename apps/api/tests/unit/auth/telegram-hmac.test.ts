@@ -122,6 +122,16 @@ describe("verifyInitData — invalid hash", () => {
     );
   });
 
+  it("throws TelegramAuthError when hash contains 64 non-ASCII characters", () => {
+    const initData = buildInitData({}, encodeURIComponent("é".repeat(64)));
+    expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
+      TelegramAuthError,
+    );
+    expect(() => verifyInitData(initData, BOT_TOKEN, fixedClock(TEST_AUTH_DATE))).toThrow(
+      "invalid hash",
+    );
+  });
+
   it("throws TelegramAuthError when a data field was tampered after signing", () => {
     const initData = buildInitData();
     const tampered = initData.replace(

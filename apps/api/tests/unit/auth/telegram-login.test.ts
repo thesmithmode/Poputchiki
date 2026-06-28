@@ -52,6 +52,17 @@ const REQUEST_OPTS = {
 };
 
 describe("POST /auth/telegram — response body содержит профиль пользователя", () => {
+  it("валидный JSON null возвращает контролируемую ошибку missing initData", async () => {
+    const res = await createAuthRouter(makeSql()).request("/telegram", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "null",
+    });
+
+    expect(res.status).toBe(400);
+    await expect(readJson(res)).resolves.toEqual({ error: "missing initData" });
+  });
+
   it("возвращает access_token и refresh_token", async () => {
     const res = await createAuthRouter(makeSql()).request("/telegram", REQUEST_OPTS);
     expect(res.status).toBe(200);

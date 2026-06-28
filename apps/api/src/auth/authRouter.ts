@@ -23,7 +23,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     const body = await c.req
       .json<{ initData?: unknown }>()
       .catch((): { initData?: unknown } => ({}));
-    const initData = body.initData;
+    const initData = body?.initData;
 
     if (!initData || typeof initData !== "string") {
       return c.json({ error: "missing initData" }, 400);

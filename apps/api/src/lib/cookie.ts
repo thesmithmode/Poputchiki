@@ -13,6 +13,11 @@ export const AUTH_COOKIE_DEFAULTS: CookieOptions = {
   httpOnly: true,
 };
 
+export const REFRESH_COOKIE_DEFAULTS: CookieOptions = {
+  ...AUTH_COOKIE_DEFAULTS,
+  maxAge: 30 * 24 * 60 * 60,
+};
+
 // csrf_token: double-submit pattern требует чтения из JS → НЕ HttpOnly
 export const CSRF_COOKIE_DEFAULTS: CookieOptions = {
   ...BASE,

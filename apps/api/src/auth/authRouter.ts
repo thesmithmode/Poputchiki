@@ -6,6 +6,7 @@ import { withSystem } from "../db/with-identity";
 import {
   AUTH_COOKIE_DEFAULTS,
   CSRF_COOKIE_DEFAULTS,
+  REFRESH_COOKIE_DEFAULTS,
   signSessionBinding,
   verifySessionBinding,
 } from "../lib/cookie";
@@ -132,13 +133,13 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     ]);
 
     setCookie(c, "sess_bind", signSessionBinding(jwtSecret, accessJti), AUTH_COOKIE_DEFAULTS);
+    setCookie(c, "refresh_token", refreshToken, REFRESH_COOKIE_DEFAULTS);
     setCookie(c, "csrf_token", crypto.randomUUID(), CSRF_COOKIE_DEFAULTS);
 
     logger.info({ event: "auth.login", tg_id: tgUser.id, uid: authUser.id }, "user authenticated");
 
     return c.json({
       access_token: accessToken,
-      refresh_token: refreshToken,
       user: {
         id: authUser.id,
         display_name: authUser.display_name,
@@ -162,7 +163,8 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       .json<{ refresh_token?: unknown }>()
       .catch((): { refresh_token?: unknown } => ({}));
 
-    const refreshToken = body.refresh_token;
+    const refreshToken =
+      typeof body.refresh_token === "string" ? body.refresh_token : getCookie(c, "refresh_token");
     if (!refreshToken || typeof refreshToken !== "string") {
       return c.json({ error: "missing refresh_token" }, 400);
     }
@@ -240,11 +242,12 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     ]);
 
     setCookie(c, "sess_bind", signSessionBinding(jwtSecret, newAccessJti), AUTH_COOKIE_DEFAULTS);
+    setCookie(c, "refresh_token", newRefresh, REFRESH_COOKIE_DEFAULTS);
     setCookie(c, "csrf_token", crypto.randomUUID(), CSRF_COOKIE_DEFAULTS);
 
     logger.info({ event: "auth.refresh", tg_id: payload.sub, uid: userId }, "token refreshed");
 
-    return c.json({ access_token: newAccess, refresh_token: newRefresh });
+    return c.json({ access_token: newAccess });
   });
 
   router.post("/logout", async (c) => {
@@ -258,7 +261,8 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
       .json<{ refresh_token?: unknown; access_token?: unknown }>()
       .catch((): { refresh_token?: unknown; access_token?: unknown } => ({}));
 
-    const refreshToken = body.refresh_token;
+    const refreshToken =
+      typeof body.refresh_token === "string" ? body.refresh_token : getCookie(c, "refresh_token");
     if (!refreshToken || typeof refreshToken !== "string") {
       return c.json({ error: "missing refresh_token" }, 400);
     }
@@ -341,6 +345,7 @@ export function createAuthRouter(sql: postgres.Sql): Hono {
     }
 
     setCookie(c, "sess_bind", "", { ...AUTH_COOKIE_DEFAULTS, maxAge: 0 });
+    setCookie(c, "refresh_token", "", { ...REFRESH_COOKIE_DEFAULTS, maxAge: 0 });
     setCookie(c, "csrf_token", "", { ...CSRF_COOKIE_DEFAULTS, maxAge: 0 });
 
     logger.info({ event: "auth.logout", uid: userId }, "user logged out");

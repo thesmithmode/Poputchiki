@@ -52,12 +52,12 @@ const REQUEST_OPTS = {
 };
 
 describe("POST /auth/telegram — response body содержит профиль пользователя", () => {
-  it("возвращает access_token и refresh_token", async () => {
+  it("возвращает access_token без refresh_token в JSON body", async () => {
     const res = await createAuthRouter(makeSql()).request("/telegram", REQUEST_OPTS);
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(typeof body.access_token).toBe("string");
-    expect(typeof body.refresh_token).toBe("string");
+    expect(body.refresh_token).toBeUndefined();
   });
 
   it("возвращает user.id, user.display_name, user.onboarded, user.is_banned, user.role", async () => {

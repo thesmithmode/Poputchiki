@@ -33,9 +33,7 @@ export function SettingsScreen() {
     try {
       await apiFetch("/auth/logout", {
         method: "POST",
-        body: tokens
-          ? JSON.stringify({ access_token: tokens.access, refresh_token: tokens.refresh })
-          : "{}",
+        body: tokens ? JSON.stringify({ access_token: tokens.access }) : "{}",
       });
     } catch {
       // logout always succeeds client-side
@@ -51,9 +49,7 @@ export function SettingsScreen() {
       await apiFetch("/users/me", { method: "DELETE" });
       await apiFetch("/auth/logout", {
         method: "POST",
-        body: tokens
-          ? JSON.stringify({ access_token: tokens.access, refresh_token: tokens.refresh })
-          : "{}",
+        body: tokens ? JSON.stringify({ access_token: tokens.access }) : "{}",
       }).catch(() => {});
     } catch {
       // proceed regardless

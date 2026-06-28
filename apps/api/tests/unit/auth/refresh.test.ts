@@ -41,7 +41,7 @@ function makeSql(
 }
 
 describe("POST /auth/refresh", () => {
-  it("valid refresh_token → 200 with new access_token and refresh_token", async () => {
+  it("valid refresh_token → 200 with new access_token and HttpOnly refresh cookie", async () => {
     const router = createAuthRouter(makeSql());
     const refreshToken = await makeRefreshToken();
 
@@ -54,7 +54,7 @@ describe("POST /auth/refresh", () => {
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(typeof body.access_token).toBe("string");
-    expect(typeof body.refresh_token).toBe("string");
+    expect(body.refresh_token).toBeUndefined();
     expect(body.access_token).not.toBe(refreshToken);
   });
 
@@ -73,6 +73,8 @@ describe("POST /auth/refresh", () => {
     const joined = setCookies.join("; ");
     // sess_bind = HMAC(jwtSecret, accessJti) — точное значение не предсказать, проверяем наличие
     expect(joined).toMatch(/sess_bind=[0-9a-f]{32}/);
+    expect(joined).toContain("refresh_token=");
+    expect(joined).toContain("HttpOnly");
     expect(joined).toContain("csrf_token=");
   });
 

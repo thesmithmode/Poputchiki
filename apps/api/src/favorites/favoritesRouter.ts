@@ -35,10 +35,15 @@ export function createFavoritesRouter(sql: postgres.Sql): Hono {
       const rows = await withIdentity(sql, user, async (tx) => {
         return tx<{ user_id: string; target_id: string; notify: boolean; created_at: Date }[]>`
           INSERT INTO favorites (user_id, target_id)
-          VALUES (${user.id}, ${target_id})
+          SELECT ${user.id}, ${target_id}
+          WHERE EXISTS (
+            SELECT 1 FROM users
+            WHERE id = ${target_id} AND deleted_at IS NULL AND is_banned = false
+          )
           RETURNING user_id, target_id, notify, created_at
         `;
       });
+      if (rows.length === 0) return c.json({ error: "not_found" }, 404);
       return c.json(rows[0], 201);
     } catch (err) {
       if (isUniqueViolation(err)) return c.json({ error: "already_favorited" }, 409);
@@ -69,6 +74,8 @@ export function createFavoritesRouter(sql: postgres.Sql): Hono {
         FROM favorites f
         JOIN users u ON u.id = f.target_id
         WHERE f.user_id = ${user.id}
+          AND u.deleted_at IS NULL
+          AND u.is_banned = false
         ORDER BY f.created_at DESC
       `;
     });

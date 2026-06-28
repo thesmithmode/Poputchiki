@@ -24,7 +24,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from llm_backend import run_text_prompt, selected_backend
+from llm_backend import UntrustedCodexToolingError, run_text_prompt, selected_backend
 
 ROOT = Path(__file__).resolve().parent.parent
 DAILY_DIR = ROOT / "daily"
@@ -137,6 +137,9 @@ respond with exactly: FLUSH_OK
 
     try:
         return await run_text_prompt(prompt, ROOT)
+    except UntrustedCodexToolingError as e:
+        logging.warning("Skipping automatic LLM flush for untrusted context: %s", e)
+        return "FLUSH_OK"
     except Exception as e:
         import traceback
         logging.error("LLM backend error: %s\n%s", e, traceback.format_exc())

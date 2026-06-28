@@ -1,3 +1,5 @@
+import { clearPersistedQueryCache } from "./queryCachePersistence";
+
 const KEY = "pp_tokens";
 
 interface Tokens {
@@ -20,6 +22,7 @@ export function setTokens(access: string, refresh: string): void {
 
 export function clearTokens(): void {
   localStorage.removeItem(KEY);
+  clearPersistedQueryCache();
 }
 
 // Декодирует sub из JWT payload без верификации подписи.

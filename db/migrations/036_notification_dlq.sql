@@ -37,13 +37,19 @@ CREATE UNIQUE INDEX idx_notification_dlq_dedup
 
 CREATE INDEX idx_notification_dlq_user ON notification_dlq (user_id, created_at DESC);
 
--- RLS: только service / admin читают. Обычный пользователь не видит свои dropped уведомления.
+-- RLS: только явно активированная service-роль читает/пишет DLQ.
+-- poputchiki_app является MEMBER роли poputchiki_service для SET LOCAL ROLE,
+-- поэтому pg_has_role(..., 'MEMBER') здесь небезопасен: обычная app-сессия
+-- тоже прошла бы policy и получила бы cross-user payload.
 ALTER TABLE notification_dlq ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_dlq FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY dlq_service_all ON notification_dlq
   FOR ALL
-  USING (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'))
-  WITH CHECK (pg_has_role(current_user, 'poputchiki_service', 'MEMBER'));
+  USING (current_role = 'poputchiki_service')
+  WITH CHECK (current_role = 'poputchiki_service');
 
+REVOKE ALL ON notification_dlq FROM poputchiki_app;
+REVOKE ALL ON SEQUENCE notification_dlq_id_seq FROM poputchiki_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON notification_dlq TO poputchiki_service;
 GRANT USAGE, SELECT ON SEQUENCE notification_dlq_id_seq TO poputchiki_service;

@@ -239,7 +239,7 @@ infra/
   prometheus/prometheus.yml       — scrape конфиг
   grafana/provisioning/           — datasources (Prometheus, Loki)
   loki/config.yml                 — retention 30d
-  promtail/config.yml             — docker SD → loki
+  promtail/config.yml             — file-based Docker JSON log scrape → loki (без docker.sock)
 ```
 
 ---

@@ -147,9 +147,16 @@ services:
     image: grafana/promtail:2.9.8
     restart: unless-stopped
     networks: [poputchiki-internal]
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
     volumes:
+      # File-based Docker JSON log scraping only. Do not mount docker.sock: the
+      # Docker API socket is mutable even with a :ro bind and would allow host takeover.
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./infra/promtail/config.yml:/etc/promtail/config.yml:ro
     command: -config.file=/etc/promtail/config.yml
     logging:

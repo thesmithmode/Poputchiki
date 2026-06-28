@@ -128,7 +128,7 @@ export function applyFilters(
   return rides.filter((ride) => {
     if (filters.hideMyRides && myUserId && ride.driver_id === myUserId) return false;
 
-    if (filters.favoritesOnly && favoriteIds && !favoriteIds.has(ride.driver_id)) return false;
+    if (filters.favoritesOnly && !favoriteIds?.has(ride.driver_id)) return false;
 
     if (filters.direction) {
       const q = filters.direction.toLowerCase();

@@ -34,7 +34,7 @@ gpg --decrypt --output dump.zst poputchiki_YYYYMMDD_HHMMSS.dump.zst.gpg
 ### 2. Распаковать
 
 ```bash
-zstd -d dump.zst -o dump.sql
+zstd -d dump.zst -o dump.dump
 ```
 
 ### 3. Остановить API (чтобы не было новых записей)
@@ -46,8 +46,11 @@ docker compose -f /opt/poputchiki/infra/docker-compose.prod.yml stop api notifie
 ### 4. Восстановить БД
 
 ```bash
-docker exec -i poputchiki-postgres-1 psql -U postgres -c "DROP DATABASE IF EXISTS poputchiki; CREATE DATABASE poputchiki;"
-docker exec -i poputchiki-postgres-1 psql -U postgres -d poputchiki < dump.sql
+docker exec -i poputchiki-postgres-1 psql -U postgres -c "DROP DATABASE IF EXISTS poputchiki;"
+docker exec -i poputchiki-postgres-1 psql -U postgres -c "CREATE DATABASE poputchiki;"
+docker cp dump.dump poputchiki-postgres-1:/tmp/poputchiki-restore.dump
+docker exec -i poputchiki-postgres-1 pg_restore -U postgres -d poputchiki --no-owner --no-privileges -j 2 /tmp/poputchiki-restore.dump
+docker exec -i poputchiki-postgres-1 rm -f /tmp/poputchiki-restore.dump
 ```
 
 ### 5. Запустить сервисы

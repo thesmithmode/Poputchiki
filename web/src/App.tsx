@@ -7,7 +7,6 @@ import { MeContext } from "./contexts/MeContext";
 import { useBootMe } from "./hooks/useMe";
 import { useRides } from "./hooks/useRides";
 import { applyTheme, getStoredTheme } from "./hooks/useThemePreference";
-import { apiFetch } from "./lib/api";
 import { applyTelegramTheme, applyThemeParams, getTelegramWebApp } from "./lib/telegram";
 // RidesScreen не lazy — первый экран, должен быть доступен мгновенно без Suspense fallback
 import { RidesScreen } from "./screens/RidesScreen";
@@ -47,6 +46,9 @@ const NotificationPreferencesScreen = lazy(() =>
   import("./screens/NotificationPreferencesScreen").then((m) => ({
     default: m.NotificationPreferencesScreen,
   })),
+);
+const OnboardingScreen = lazy(() =>
+  import("./screens/OnboardingScreen").then((m) => ({ default: m.OnboardingScreen })),
 );
 const ProfileScreen = lazy(() =>
   import("./screens/ProfileScreen").then((m) => ({ default: m.ProfileScreen })),
@@ -121,63 +123,6 @@ function NotFoundPage() {
         На главную
       </button>
     </div>
-  );
-}
-
-function AutoOnboard() {
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiFetch("/users/me", { method: "PATCH", body: JSON.stringify({ onboarded: true }) })
-      .then(() => window.location.reload())
-      .catch((e) => setError(String(e)));
-  }, []);
-
-  if (error) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: "100vh",
-          gap: 16,
-          padding: 24,
-          background: "var(--brand-bg, #f4f5f4)",
-        }}
-      >
-        <p style={{ fontSize: 14, color: "var(--brand-danger)", textAlign: "center" }}>{error}</p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          style={{
-            background: "var(--brand-primary)",
-            color: "var(--brand-primary-ink)",
-            border: "none",
-            borderRadius: 10,
-            padding: "12px 24px",
-            fontSize: 15,
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          Повторить
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "var(--brand-bg, #f4f5f4)",
-      }}
-    />
   );
 }
 
@@ -314,7 +259,14 @@ function AppRoutes() {
   }
 
   if (me.status === "ok" && !me.user.onboarded) {
-    return <AutoOnboard />;
+    return (
+      <Suspense fallback={<LoadingScreen label="Загрузка онбординга…" pct={80} />}>
+        <OnboardingScreen
+          displayName={me.user.display_name}
+          onComplete={() => window.location.reload()}
+        />
+      </Suspense>
+    );
   }
 
   if (me.status === "error") {

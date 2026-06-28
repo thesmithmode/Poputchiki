@@ -165,6 +165,54 @@ describe("useBootMe — boot-цикл", () => {
     vi.mocked(getTelegramWebApp).mockReturnValue(undefined);
   });
 
+  it("SECURITY: clears persisted React Query cache when Telegram account changes", async () => {
+    const { getTelegramWebApp } = await import("../src/lib/telegram");
+    vi.mocked(getTelegramWebApp).mockReturnValue({
+      initData: "user-b-init-data",
+      initDataUnsafe: { user: { id: 456 } },
+      colorScheme: "light",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    } as unknown as ReturnType<typeof getTelegramWebApp>);
+
+    localStorage.setItem(
+      "pp_tokens",
+      JSON.stringify({
+        access: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.s",
+        refresh: "refresh-for-user-a",
+      }),
+    );
+    localStorage.setItem(
+      "pp_qc_v1",
+      JSON.stringify({
+        ts: Date.now(),
+        state: {
+          queries: [
+            {
+              queryKey: ["saved-addresses"],
+              state: { data: [{ name: "Дом Алисы", address_label: "Secret Victim Home" }] },
+            },
+          ],
+        },
+      }),
+    );
+
+    mockedApiFetch.mockResolvedValueOnce({
+      access_token: "new-access",
+      refresh_token: "new-refresh",
+      user: MOCK_USER,
+    });
+
+    const { result } = renderHook(() => useBootMe());
+
+    await waitFor(() => expect(result.current.status).toBe("ok"));
+
+    expect(localStorage.getItem("pp_tokens")).toContain("new-access");
+    expect(localStorage.getItem("pp_qc_v1")).toBeNull();
+
+    vi.mocked(getTelegramWebApp).mockReturnValue(undefined);
+  });
+
   it("REGRESSION: прогресс не идёт назад — фаза не откатывается после done", async () => {
     mockedApiFetch.mockResolvedValueOnce({
       access_token: "tok",

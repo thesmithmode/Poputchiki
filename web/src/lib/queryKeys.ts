@@ -65,5 +65,6 @@ export const queryKeys = {
   },
   savedAddresses: {
     all: ["saved-addresses"] as const,
+    byTelegramUser: (tgId: number | string) => ["saved-addresses", "tg", String(tgId)] as const,
   },
 } as const;

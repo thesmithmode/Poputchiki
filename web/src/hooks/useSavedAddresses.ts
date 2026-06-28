@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
+import { getTelegramWebApp } from "../lib/telegram";
+import { decodeJwtSub, getTokens } from "../lib/tokenStore";
 
 export interface SavedAddress {
   id: string;
@@ -31,8 +33,15 @@ interface UpdateInput {
 export function useSavedAddresses() {
   const qc = useQueryClient();
 
+  const tgUser = getTelegramWebApp()?.initDataUnsafe?.user as { id?: number } | undefined;
+  const tgId = tgUser?.id;
+  const accessToken = getTokens()?.access;
+  const tokenSub = accessToken ? decodeJwtSub(accessToken) : null;
+  const userScope = tgId ?? tokenSub ?? "anonymous";
+  const savedAddressesKey = queryKeys.savedAddresses.byTelegramUser(userScope);
+
   const query = useQuery({
-    queryKey: queryKeys.savedAddresses.all,
+    queryKey: savedAddressesKey,
     queryFn: () => apiFetch<SavedAddress[]>("/saved-addresses"),
     staleTime: 5 * 60_000,
   });
@@ -43,7 +52,7 @@ export function useSavedAddresses() {
         method: "POST",
         body: JSON.stringify(input),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedAddresses.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: savedAddressesKey }),
   });
 
   const updateMutation = useMutation({
@@ -52,12 +61,12 @@ export function useSavedAddresses() {
         method: "PATCH",
         body: JSON.stringify(input),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedAddresses.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: savedAddressesKey }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiFetch(`/saved-addresses/${id}`, { method: "DELETE" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.savedAddresses.all }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: savedAddressesKey }),
   });
 
   return {

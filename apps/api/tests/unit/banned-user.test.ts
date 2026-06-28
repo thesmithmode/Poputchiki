@@ -33,7 +33,7 @@ function makeApp(sql: postgres.Sql, user?: AppUser) {
     });
   }
   app.use("*", bannedUser(sql));
-  app.get("*", (c) => c.json({ ok: true }));
+  app.all("*", (c) => c.json({ ok: true }));
   return app;
 }
 
@@ -46,13 +46,34 @@ describe("bannedUser middleware", () => {
     _resetUserStateCache();
   });
 
-  it("/api/users/me bypasses ban check (banned user still sees own /me)", async () => {
+  it("GET /api/users/me bypasses ban check (banned user still sees own /me)", async () => {
     const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
     const app = makeApp(sql, testUser);
-    const res = await app.request("/api/users/me");
+    const res = await app.request("/api/users/me", { method: "GET" });
     expect(res.status).toBe(200);
     // DB still queried — deleted_at check happens before /me whitelist
     expect(sql).toHaveBeenCalled();
+  });
+
+  it("PATCH /api/users/me is blocked for banned users", async () => {
+    const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/users/me", { method: "PATCH" });
+    expect(res.status).toBe(403);
+    // biome-ignore lint/suspicious/noExplicitAny: test helper
+    const body = (await res.json()) as any;
+    expect(body.error).toBe("banned");
+    expect(body.reason).toBe("spam");
+  });
+
+  it("DELETE /api/users/me is blocked for banned users", async () => {
+    const sql = makeSql({ is_banned: true, ban_reason: "spam", banned_at: null });
+    const app = makeApp(sql, testUser);
+    const res = await app.request("/api/users/me", { method: "DELETE" });
+    expect(res.status).toBe(403);
+    // biome-ignore lint/suspicious/noExplicitAny: test helper
+    const body = (await res.json()) as any;
+    expect(body.error).toBe("banned");
   });
 
   it("SENTINEL: deleted (anonymized) user → 401 even on /api/users/me", async () => {

@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as L from "leaflet";
-import { MemoryRouter } from "react-router-dom";
+import { Link, MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { TelegramWebApp } from "../src/lib/telegram";
 import { MapScreen } from "../src/screens/MapScreen";
@@ -551,6 +551,67 @@ describe("MapScreen", () => {
       }).length;
       expect(richCardCalls).toBeGreaterThan(richCardCallsBeforeExit);
       expect(btn).toHaveAttribute("aria-pressed", "false");
+    });
+  });
+
+  it("SECURITY: stops heading-up location watch when hidden map leaves /map", async () => {
+    vi.stubGlobal("DeviceOrientationEvent", MockDeviceOrientationEvent);
+    telegramWebApp.current = {
+      colorScheme: "light",
+      platform: "ios",
+      onEvent: vi.fn(),
+      ready: vi.fn(),
+    };
+    mockedApiFetch.mockReturnValue(new Promise(() => {}));
+    const mockGeolocation = {
+      getCurrentPosition: vi.fn((success) =>
+        success({
+          coords: {
+            latitude: 55.801,
+            longitude: 49.123,
+            accuracy: 42,
+          },
+        }),
+      ),
+      watchPosition: vi.fn(() => 93),
+      clearWatch: vi.fn(),
+    };
+    Object.defineProperty(navigator, "geolocation", {
+      value: mockGeolocation,
+      writable: true,
+      configurable: true,
+    });
+
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <MemoryRouter initialEntries={["/map"]}>
+        <QueryClientProvider client={client}>
+          <Link to="/" data-testid="leave-map">
+            leave map
+          </Link>
+          <MapScreen />
+        </QueryClientProvider>
+      </MemoryRouter>,
+    );
+    await waitFor(() => expect(screen.queryByTestId("map-loading")).not.toBeInTheDocument(), {
+      timeout: 2000,
+    });
+
+    const btn = screen.getByTestId("locate-me");
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled());
+    window.dispatchEvent(
+      new MockDeviceOrientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    fireEvent.click(btn);
+    await waitFor(() => expect(mockGeolocation.watchPosition).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByTestId("leave-map"));
+
+    await waitFor(() => {
+      expect(mockGeolocation.clearWatch).toHaveBeenCalledWith(93);
+      expect(btn).toHaveAttribute("aria-pressed", "false");
+      expect(screen.getByTestId("leaflet-container").style.transform).toBe("rotate(0deg)");
     });
   });
 

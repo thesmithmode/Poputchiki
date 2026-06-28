@@ -246,8 +246,17 @@ export function MapScreen({
   }, []);
 
   // Карта живёт постоянно (не демонтируется). При возврате на /map — пересчитать размер.
+  // При уходе с /map выключаем heading-up, чтобы скрытая карта не держала live-geolocation.
   useEffect(() => {
-    if (location.pathname !== "/map" || !mapRef.current) return;
+    if (location.pathname !== "/map") {
+      if (locationModeRef.current === "headingUp") {
+        stopHeadingUpMode({ recenter: false });
+      } else {
+        stopContinuousLocationTracking();
+      }
+      return;
+    }
+    if (!mapRef.current) return;
     const t = setTimeout(() => {
       (mapRef.current as { invalidateSize: (o: unknown) => void } | null)?.invalidateSize({
         animate: false,

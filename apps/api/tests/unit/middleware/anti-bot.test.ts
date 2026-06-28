@@ -56,7 +56,7 @@ describe("antiBot middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("новый аккаунт (<24ч) + активный ride → 403 too_new", async () => {
+  it("новый аккаунт (<24ч) + активный ride/template → 403 too_new", async () => {
     const sql = vi.fn();
     const newCreatedAt = new Date(Date.now() - 1000 * 60 * 60); // 1 час назад
     sql
@@ -73,6 +73,9 @@ describe("antiBot middleware", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(403);
+    const activeLimitSql = String(sql.mock.calls[1]?.[0]?.join?.("") ?? "");
+    expect(activeLimitSql).toContain("FROM ride_templates");
+    expect(activeLimitSql).toContain("is_active = true");
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.error).toBe("too_new");
   });
@@ -96,7 +99,7 @@ describe("antiBot middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("likes_received_count=0 + дневной лимит ≥3 → 403 unverified_daily_limit", async () => {
+  it("likes_received_count=0 + дневной лимит rides/templates ≥3 → 403 unverified_daily_limit", async () => {
     const sql = vi.fn();
     const oldCreatedAt = new Date(Date.now() - 1000 * 60 * 60 * 48); // 2 дня
     sql
@@ -113,6 +116,9 @@ describe("antiBot middleware", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(403);
+    const dailyLimitSql = String(sql.mock.calls[1]?.[0]?.join?.("") ?? "");
+    expect(dailyLimitSql).toContain("FROM ride_templates");
+    expect(dailyLimitSql).toContain("created_at >= date_trunc('day', NOW())");
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.error).toBe("unverified_daily_limit");
   });

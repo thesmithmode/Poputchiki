@@ -113,7 +113,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: [api, notifier, cron, webhook, web]
+        include:
+          - service: api
+            trivyignore: .trivyignore.bun
+          - service: notifier
+            trivyignore: .trivyignore.bun
+          - service: cron
+            trivyignore: .trivyignore.bun
+          - service: webhook
+            trivyignore: .trivyignore.bun
+          - service: web
+            trivyignore: .trivyignore
     steps:
       - uses: actions/checkout@v6
 
@@ -138,7 +148,7 @@ jobs:
           ignore-unfixed: true
           vuln-type: os,library
           severity: CRITICAL,HIGH
-          trivyignores: .trivyignore
+          trivyignores: ${{ matrix.trivyignore }}
 
   deploy:
     needs: [build-and-push, trivy-scan]

@@ -20,7 +20,7 @@ vi.mock("../../../src/users/avatarCache", () => ({
 vi.stubEnv("BOT_TOKEN", "1234567890:ABCDEFGHIJKLMNabcdefghijklmn123456");
 vi.stubEnv("JWT_SECRET", "test-jwt-secret-at-least-32-chars!!");
 
-function makeSql(userRow?: Record<string, unknown>) {
+function makeSql(userRow?: Record<string, unknown>, existingRow?: Record<string, unknown> | null) {
   const row = userRow ?? {
     id: "aaaaaaaa-0000-4000-a000-000000000001",
     role: "user",
@@ -30,14 +30,14 @@ function makeSql(userRow?: Record<string, unknown>) {
     ban_reason: null,
     banned_at: null,
   };
+  const selectedRows: Record<string, unknown>[] = existingRow ? [existingRow] : [];
   const tx = vi
     .fn()
     // biome-ignore lint/suspicious/noExplicitAny: mock tx
     .mockResolvedValueOnce([] as any) // SET LOCAL ROLE (withSystem)
     // biome-ignore lint/suspicious/noExplicitAny: mock tx
     .mockResolvedValueOnce([] as any) // INSERT nonce
-    // biome-ignore lint/suspicious/noExplicitAny: mock tx
-    .mockResolvedValueOnce([] as any) // SELECT user (новый пользователь)
+    .mockResolvedValueOnce(selectedRows) // SELECT user by tg_id
     // biome-ignore lint/suspicious/noExplicitAny: mock tx
     .mockResolvedValueOnce([row] as any); // INSERT users RETURNING
 
@@ -86,6 +86,36 @@ describe("POST /auth/telegram — response body содержит профиль 
     expect(body.user.display_name.length).toBeGreaterThan(0);
     expect(body.user.is_banned).toBe(false);
     expect(body.user.onboarded).toBe(false);
+  });
+
+  it("SENTINEL: banned Telegram user is rejected before token minting", async () => {
+    const res = await createAuthRouter(
+      makeSql(undefined, {
+        id: "cccccccc-0000-4000-a000-000000000003",
+        role: "user",
+        is_banned: true,
+        deleted_at: null,
+      }),
+    ).request("/telegram", REQUEST_OPTS);
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("account blocked");
+  });
+
+  it("SENTINEL: soft-deleted Telegram user is rejected before conflict upsert", async () => {
+    const res = await createAuthRouter(
+      makeSql(undefined, {
+        id: "dddddddd-0000-4000-a000-000000000004",
+        role: "user",
+        is_banned: true,
+        deleted_at: "2026-01-02T03:04:05.000Z",
+      }),
+    ).request("/telegram", REQUEST_OPTS);
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("account blocked");
   });
 
   it("запускает best-effort синхронизацию Telegram-аватара при логине", async () => {

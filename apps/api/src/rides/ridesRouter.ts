@@ -600,6 +600,18 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
             throw Object.assign(new Error("before_departure"), { code: "BEFORE_DEPARTURE" });
           }
 
+          const [accepted] = await tx<{ count: string }[]>`
+            SELECT COUNT(*)::text AS count
+            FROM ride_requests rr
+            JOIN users u ON u.id = rr.passenger_id AND u.deleted_at IS NULL
+            WHERE rr.ride_id = ${rideId}::uuid
+              AND rr.status = 'accepted'
+              AND rr.passenger_id = ANY(${passenger_ids}::uuid[])
+          `;
+          if (Number(accepted?.count ?? 0) !== passenger_ids.length) {
+            throw Object.assign(new Error("invalid_passengers"), { code: "INVALID_PASSENGERS" });
+          }
+
           const upserted: { ride_id: string; passenger_id: string; driver_marked: boolean }[] = [];
 
           for (const passengerId of passenger_ids) {
@@ -624,6 +636,7 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
       const code = (err as Error & { code?: string }).code;
       if (code === "NOT_FOUND") return c.json({ error: "not_found" }, 404);
       if (code === "FORBIDDEN") return c.json({ error: "forbidden" }, 403);
+      if (code === "INVALID_PASSENGERS") return c.json({ error: "invalid_passengers" }, 422);
       /* c8 ignore next -- defensive: unknown error codes re-throw; all known codes return above */
       if (code === "BEFORE_DEPARTURE") return c.json({ error: "before_departure" }, 409);
       /* c8 ignore next -- defensive: re-throw unknown errors */
@@ -633,15 +646,15 @@ export function createRidesRouter(sql: postgres.Sql, cache: GeoCache = ridesCach
     // Notify passengers — feed row + TG push
     enqueueNotificationBatch(
       sql,
-      passenger_ids.map((pid) => ({
-        userId: pid,
+      rows.map((row) => ({
+        userId: row.passenger_id,
         category: "participation_request" as const,
         rideId,
         data: { driver_name: user.displayName ?? "" },
       })),
     ).catch(/* c8 ignore next -- fire-and-forget */ () => {});
 
-    return c.json({ marked_count: passenger_ids.length, passengers: rows }, 200);
+    return c.json({ marked_count: rows.length, passengers: rows }, 200);
   });
 
   app.post("/:id/confirm-participation", async (c) => {

@@ -14,14 +14,21 @@ export async function confirmParticipationPush(
   return withLock(sql, LOCK_ID, async (tx) => {
     // Passengers driver_marked=true, not yet confirmed, not yet notified (or re-notify after 24h)
     const rows = await tx<{ ride_id: string; passenger_id: string }[]>`
-      SELECT ride_id, passenger_id
-      FROM ride_participation
-      WHERE driver_marked = true
-        AND passenger_confirmed = false
-        AND marked_at > now() - INTERVAL '47 hours'
+      SELECT rp.ride_id, rp.passenger_id
+      FROM ride_participation rp
+      JOIN ride_requests rr
+        ON rr.ride_id = rp.ride_id
+       AND rr.passenger_id = rp.passenger_id
+       AND rr.status = 'accepted'
+      JOIN users u
+        ON u.id = rp.passenger_id
+       AND u.deleted_at IS NULL
+      WHERE rp.driver_marked = true
+        AND rp.passenger_confirmed = false
+        AND rp.marked_at > now() - INTERVAL '47 hours'
         AND (
-          notified_at IS NULL
-          OR notified_at < now() - INTERVAL '24 hours'
+          rp.notified_at IS NULL
+          OR rp.notified_at < now() - INTERVAL '24 hours'
         )
     `;
 

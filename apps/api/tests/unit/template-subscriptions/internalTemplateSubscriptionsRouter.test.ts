@@ -41,7 +41,7 @@ function post(path: string, body: unknown, secret = SECRET) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockSql.mockReset();
-  mockSql.mockResolvedValue([{ id: USER_ID, role: "user" }]);
+  mockSql.mockResolvedValue([{ id: USER_ID, role: "user", is_banned: false, deleted_at: null }]);
   vi.mocked(respondToSubscription).mockReset();
 });
 
@@ -99,6 +99,28 @@ describe("internalTemplateSubscriptionsRouter — input validation", () => {
     expect(res.status).toBe(404);
     const body = await readJson(res);
     expect(body.error).toBe("user_not_found");
+  });
+
+  it("403 — banned user cannot respond through Telegram callback", async () => {
+    mockSql.mockResolvedValueOnce([
+      { id: USER_ID, role: "user", is_banned: true, deleted_at: null },
+    ]);
+    const res = await post(`/${SUB_ID}/accept`, { tg_id: TG_ID });
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("banned");
+    expect(respondToSubscription).not.toHaveBeenCalled();
+  });
+
+  it("401 — deleted user cannot respond through Telegram callback", async () => {
+    mockSql.mockResolvedValueOnce([
+      { id: USER_ID, role: "user", is_banned: false, deleted_at: "2026-06-28T00:00:00.000Z" },
+    ]);
+    const res = await post(`/${SUB_ID}/accept`, { tg_id: TG_ID });
+    expect(res.status).toBe(401);
+    const body = await readJson(res);
+    expect(body.error).toBe("unauthorized");
+    expect(respondToSubscription).not.toHaveBeenCalled();
   });
 });
 

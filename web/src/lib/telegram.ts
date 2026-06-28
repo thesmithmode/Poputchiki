@@ -62,7 +62,9 @@ export interface TelegramLocationManager {
   isAccessRequested: boolean;
   isAccessGranted: boolean;
   init(callback?: () => void): void;
-  getLocation(callback: (location: TelegramLocationData | null) => void): TelegramLocationManager;
+  getLocation?: (
+    callback: (location: TelegramLocationData | null) => void,
+  ) => TelegramLocationManager;
   openSettings(): TelegramLocationManager;
 }
 

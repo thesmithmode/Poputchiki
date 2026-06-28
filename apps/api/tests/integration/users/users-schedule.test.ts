@@ -25,6 +25,16 @@ const VIEWER = {
   tgId: 7770002,
   role: "user" as const,
 };
+const BANNED_DRIVER = {
+  id: "00000000-0000-4000-d000-770000000003",
+  tgId: 7770003,
+  role: "user" as const,
+};
+const DELETED_DRIVER = {
+  id: "00000000-0000-4000-d000-770000000004",
+  tgId: 7770004,
+  role: "user" as const,
+};
 
 let sql: ReturnType<typeof createPool>;
 
@@ -58,10 +68,25 @@ beforeAll(async () => {
       INSERT INTO users (id, tg_id, display_name)
       VALUES
         (${DRIVER.id}, ${DRIVER.tgId}, 'Sched Driver'),
-        (${VIEWER.id}, ${VIEWER.tgId}, 'Sched Viewer')
+        (${VIEWER.id}, ${VIEWER.tgId}, 'Sched Viewer'),
+        (${BANNED_DRIVER.id}, ${BANNED_DRIVER.tgId}, 'Banned Sched Driver'),
+        (${DELETED_DRIVER.id}, ${DELETED_DRIVER.tgId}, 'Deleted Sched Driver')
       ON CONFLICT (tg_id) DO NOTHING
     `;
-    await tx`DELETE FROM ride_templates WHERE driver_id = ${DRIVER.id}`;
+    await tx`
+      UPDATE users
+      SET is_banned = true, banned_at = now(), deleted_at = NULL
+      WHERE id = ${BANNED_DRIVER.id}
+    `;
+    await tx`
+      UPDATE users
+      SET deleted_at = now(), is_banned = false
+      WHERE id = ${DELETED_DRIVER.id}
+    `;
+    await tx`
+      DELETE FROM ride_templates
+      WHERE driver_id IN (${DRIVER.id}, ${BANNED_DRIVER.id}, ${DELETED_DRIVER.id})
+    `;
     // 3 active templates
     await tx`
       INSERT INTO ride_templates (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng, departure_time, weekdays, seats_total)
@@ -82,12 +107,24 @@ beforeAll(async () => {
       VALUES
         (${DRIVER.id}, 'A', 55.1, 49.1, 'B', 55.2, 49.2, '23:00', ARRAY[6]::smallint[], 3, false)
     `;
+    await tx`
+      INSERT INTO ride_templates (driver_id, from_label, from_lat, from_lng, to_label, to_lat, to_lng, departure_time, weekdays, seats_total)
+      VALUES
+        (${BANNED_DRIVER.id}, 'Hidden Home', 55.1, 49.1, 'Hidden Office', 55.2, 49.2, '07:15', ARRAY[1,2]::smallint[], 3),
+        (${DELETED_DRIVER.id}, 'Deleted Home', 55.1, 49.1, 'Deleted Office', 55.2, 49.2, '07:45', ARRAY[3,4]::smallint[], 3)
+    `;
   });
 });
 
 afterAll(async () => {
-  await sql`DELETE FROM ride_templates WHERE driver_id = ${DRIVER.id}`;
-  await sql`DELETE FROM users WHERE id IN (${DRIVER.id}, ${VIEWER.id})`;
+  await sql`
+    DELETE FROM ride_templates
+    WHERE driver_id IN (${DRIVER.id}, ${BANNED_DRIVER.id}, ${DELETED_DRIVER.id})
+  `;
+  await sql`
+    DELETE FROM users
+    WHERE id IN (${DRIVER.id}, ${VIEWER.id}, ${BANNED_DRIVER.id}, ${DELETED_DRIVER.id})
+  `;
   await sql.end();
 });
 
@@ -139,6 +176,32 @@ describe("GET /api/users/:id/schedule", () => {
     expect(res.status).toBe(200);
     const body = await readJson(res);
     expect(body).toEqual([]);
+  });
+
+  it("404 — не раскрывает расписание забаненного юзера", async () => {
+    const app = makeApp();
+    const token = await makeToken(VIEWER);
+    const res = await app.request(`/api/users/${BANNED_DRIVER.id}/schedule`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
+    });
+    expect(res.status).toBe(404);
+    expect(await readJson(res)).toEqual({ error: "not found" });
+  });
+
+  it("404 — не раскрывает расписание soft-deleted юзера", async () => {
+    const app = makeApp();
+    const token = await makeToken(VIEWER);
+    const res = await app.request(`/api/users/${DELETED_DRIVER.id}/schedule`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+      },
+    });
+    expect(res.status).toBe(404);
+    expect(await readJson(res)).toEqual({ error: "not found" });
   });
 
   it("400 — invalid uuid", async () => {

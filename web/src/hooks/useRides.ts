@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { UseQueryOptions } from "@tanstack/react-query";
 import { apiFetch } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { Ride } from "../types/ride";
@@ -28,6 +29,7 @@ export function useRides(
   customFromAt: string | null = null,
   customToAt: string | null = null,
   spatialCoords: PassengerCoords | NearbyFromCoords | null = null,
+  options: Pick<UseQueryOptions<RidesResponse>, "enabled"> = {},
 ) {
   return useQuery({
     queryKey: queryKeys.rides.list(preset, customFromAt, customToAt, spatialCoords),
@@ -55,5 +57,6 @@ export function useRides(
       return apiFetch<RidesResponse>(`/rides?${params.toString()}`);
     },
     staleTime: 20_000,
+    enabled: options.enabled,
   });
 }

@@ -284,10 +284,9 @@ queryClient.getQueryCache().subscribe(() => {
 
 function AppRoutes() {
   const me = useBootMe();
-  const { isPending: feedPending } = useRides("24h", null, null);
-  const [feedGateOpen, setFeedGateOpen] = useState(false);
-
   const isReady = me.status === "ok" && me.user.onboarded;
+  const { isPending: feedPending } = useRides("24h", null, null, null, { enabled: isReady });
+  const [feedGateOpen, setFeedGateOpen] = useState(false);
   useEffect(() => {
     if (!isReady) return;
     const t = setTimeout(() => setFeedGateOpen(true), 2000);

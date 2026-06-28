@@ -24,6 +24,14 @@ describe("useRides", () => {
     mockedApiFetch.mockResolvedValue({ rides: [], nextCursor: null });
   });
 
+  it("SECURITY: does not fetch rides while auth/session gate is not ready", async () => {
+    renderHook(() => useRides("24h", null, null, null, { enabled: false }), { wrapper });
+
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    expect(mockedApiFetch).not.toHaveBeenCalled();
+  });
+
   it("passes nearby-from location and radius to GET /rides", async () => {
     renderHook(
       () =>

@@ -159,6 +159,12 @@ export function stripRideRequest(row: Record<string, unknown>): Record<string, u
 }
 
 export const MarkParticipantsInput = z.object({
-  passenger_ids: z.array(z.string().uuid()).min(1).max(50),
+  passenger_ids: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(50)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "passenger_ids must be unique",
+    }),
 });
 export type MarkParticipantsInput = z.infer<typeof MarkParticipantsInput>;

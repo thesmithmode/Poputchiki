@@ -4,13 +4,13 @@
 -- Under FORCE RLS the UPDATE would be filtered by users_update_self → 0 rows → counter drift.
 CREATE OR REPLACE FUNCTION app.update_user_avg_stars()
 RETURNS trigger LANGUAGE plpgsql
-SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+SECURITY DEFINER SET search_path = pg_catalog, public, pg_temp AS $$
 DECLARE
   v_target_id uuid;
 BEGIN
   v_target_id := COALESCE(NEW.target_id, OLD.target_id);
 
-  UPDATE users
+  UPDATE public.users
   SET
     avg_stars    = sub.avg_val,
     reviews_count = sub.cnt
@@ -18,10 +18,10 @@ BEGIN
     SELECT
       AVG(stars)::numeric(3,2) AS avg_val,
       COUNT(*)::int              AS cnt
-    FROM reviews
+    FROM public.reviews
     WHERE target_id = v_target_id
   ) sub
-  WHERE id = v_target_id;
+  WHERE public.users.id = v_target_id;
 
   RETURN NULL;
 END;

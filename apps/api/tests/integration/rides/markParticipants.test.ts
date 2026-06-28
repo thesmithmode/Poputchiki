@@ -87,6 +87,18 @@ async function seedRide(
   });
 }
 
+async function acceptPassengers(rideId: string, passengerIds: string[]): Promise<void> {
+  await withSystem(sql, async (tx) => {
+    for (const passengerId of passengerIds) {
+      await tx`
+        INSERT INTO ride_requests (ride_id, passenger_id, status)
+        VALUES (${rideId}, ${passengerId}, 'accepted')
+        ON CONFLICT (ride_id, passenger_id) DO UPDATE SET status = 'accepted'
+      `;
+    }
+  });
+}
+
 beforeAll(async () => {
   sql = createPool(buildDsn());
   await withSystem(sql, async (tx) => {
@@ -102,6 +114,7 @@ beforeAll(async () => {
 
 afterEach(async () => {
   await sql`DELETE FROM ride_participation WHERE ride_id IN (SELECT id FROM rides WHERE driver_id = ${DRIVER.id})`;
+  await sql`DELETE FROM ride_requests WHERE ride_id IN (SELECT id FROM rides WHERE driver_id = ${DRIVER.id})`;
   await sql`DELETE FROM rides WHERE driver_id = ${DRIVER.id}`;
   await sql`DELETE FROM audit_log WHERE user_id IN (${DRIVER.id}, ${PASSENGER_A.id}, ${PASSENGER_B.id}, ${OTHER_USER.id})`;
   await sql`DELETE FROM rate_limit_buckets WHERE key LIKE ${`ip:${TEST_IP}%`} OR key LIKE 'user:%'`;
@@ -115,6 +128,7 @@ afterAll(async () => {
 describe("POST /api/rides/:id/mark-participants — happy path", () => {
   it("driver marks passengers after departure → 200, ride_participation rows created with driver_marked=true", async () => {
     const rideId = await seedRide(new Date(Date.now() - 3600000)); // 1 hour ago
+    await acceptPassengers(rideId, [PASSENGER_A.id, PASSENGER_B.id]);
     const app = makeApp();
     const token = await makeToken(DRIVER);
 
@@ -154,6 +168,48 @@ describe("POST /api/rides/:id/mark-participants — happy path", () => {
 });
 
 describe("POST /api/rides/:id/mark-participants — error cases", () => {
+  it("driver cannot mark themself as a passenger → 403 forbidden", async () => {
+    const rideId = await seedRide(new Date(Date.now() - 3600000));
+    const app = makeApp();
+    const token = await makeToken(DRIVER);
+
+    const res = await app.request(`/api/rides/${rideId}/mark-participants`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+      body: JSON.stringify({ passenger_ids: [DRIVER.id] }),
+    });
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("forbidden");
+  });
+
+  it("passenger without accepted request cannot be marked → 403 forbidden", async () => {
+    const rideId = await seedRide(new Date(Date.now() - 3600000));
+    const app = makeApp();
+    const token = await makeToken(DRIVER);
+
+    const res = await app.request(`/api/rides/${rideId}/mark-participants`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        Cookie: `sess_bind=${sessBind(JWT_SECRET, token)}`,
+        "X-Forwarded-For": TEST_IP,
+      },
+      body: JSON.stringify({ passenger_ids: [PASSENGER_A.id] }),
+    });
+
+    expect(res.status).toBe(403);
+    const body = await readJson(res);
+    expect(body.error).toBe("forbidden");
+  });
+
   it("not driver → 403 forbidden", async () => {
     const rideId = await seedRide(new Date(Date.now() - 3600000));
     const app = makeApp();

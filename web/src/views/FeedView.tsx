@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { RideCard } from "../components/RideCard";
+import { useFavorites } from "../hooks/useFavorites";
 import type { Filters } from "../hooks/useFilters";
 import { applyFilters } from "../hooks/useFilters";
 import { useMe } from "../hooks/useMe";
@@ -84,16 +85,17 @@ export function FeedView({ filters, density, onRidesCount, onFeedMeta }: FeedVie
   const me = useMe();
   const myUserId = me.status === "ok" ? me.user.id : null;
   const requestMap = useMyRideRequests();
+  const { favoriteIds } = useFavorites();
   const [viewedRides, setViewedRides] = useState<Set<string>>(readViewedRideIds);
   const refetchRef = useRef(refetch);
   refetchRef.current = refetch;
 
   const filteredRides = useMemo(() => {
-    const base = applyFilters(data?.rides ?? [], filters, undefined, myUserId);
+    const base = applyFilters(data?.rides ?? [], filters, favoriteIds, myUserId);
     const groupIds = new Set(mapRideGroup?.rideIds ?? []);
     if (!groupIds.size) return base;
     return base.filter((ride) => groupIds.has(ride.id));
-  }, [data, filters, myUserId, mapRideGroup?.rideIds]);
+  }, [data, filters, favoriteIds, myUserId, mapRideGroup?.rideIds]);
 
   const rideGroups = useMemo(() => groupRidesByDepartureDay(filteredRides), [filteredRides]);
 

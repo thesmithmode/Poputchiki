@@ -57,7 +57,7 @@ function makeRide(overrides: Partial<Ride> = {}): Ride {
   };
 }
 
-function renderGroupedFeed(rides: Ride[], rideIds: string[]) {
+function renderGroupedFeed(rides: Ride[], rideIds: string[], filters = DEFAULT_FILTERS) {
   mockedApiFetch.mockImplementation(async (path) => {
     const url = String(path);
     if (url.startsWith("/ride-requests/mine")) return { requests: [] };
@@ -69,7 +69,7 @@ function renderGroupedFeed(rides: Ride[], rideIds: string[]) {
     <MemoryRouter initialEntries={[{ pathname: "/", state: { mapRideGroup: { rideIds } } }]}>
       <QueryClientProvider client={client}>
         <MeContext.Provider value={ME_STATE}>
-          <FeedView filters={DEFAULT_FILTERS} density="cozy" />
+          <FeedView filters={filters} density="cozy" />
         </MeContext.Provider>
       </QueryClientProvider>
     </MemoryRouter>,
@@ -92,6 +92,27 @@ describe("FeedView map group filter", () => {
       expect(screen.getByText("group-hit")).toBeInTheDocument();
     });
     expect(screen.queryByText("outside")).not.toBeInTheDocument();
+  });
+
+  it("REGRESSION: favorites-only filter uses stored favorite drivers in active feed", async () => {
+    const favorite = makeRide({
+      id: "ride-favorite",
+      driver_id: "favorite-driver",
+      from_label: "favorite-start",
+    });
+    const other = makeRide({
+      id: "ride-other",
+      driver_id: "other-driver",
+      from_label: "other-start",
+    });
+    localStorage.setItem("pp_favorites_v1", JSON.stringify([favorite.driver_id]));
+
+    renderGroupedFeed([favorite, other], [], { ...DEFAULT_FILTERS, favoritesOnly: true });
+
+    await waitFor(() => {
+      expect(screen.getByText("favorite-start")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("other-start")).not.toBeInTheDocument();
   });
 
   it("does not render quick destination chips or a second result count inside the feed", async () => {

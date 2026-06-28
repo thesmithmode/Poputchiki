@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getTelegramWebApp } from "../lib/telegram";
 import type { Filters } from "./useFilters";
 import { DEFAULT_FILTERS } from "./useFilters";
 
@@ -9,11 +10,19 @@ export interface FilterPreset {
   filters: Filters;
 }
 
-const STORAGE_KEY = "pp_filter_presets";
+const STORAGE_KEY_PREFIX = "pp_filter_presets";
 
-function loadPresets(): FilterPreset[] {
+function getCurrentStorageKey(): string {
+  const tgUser = getTelegramWebApp()?.initDataUnsafe?.user as { id?: number | string } | undefined;
+  const tgId = tgUser?.id;
+  return tgId === undefined || tgId === null
+    ? `${STORAGE_KEY_PREFIX}:anonymous`
+    : `${STORAGE_KEY_PREFIX}:tg:${tgId}`;
+}
+
+function loadPresets(storageKey: string): FilterPreset[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -26,9 +35,9 @@ function loadPresets(): FilterPreset[] {
   }
 }
 
-function savePresets(presets: FilterPreset[]): void {
+function savePresets(storageKey: string, presets: FilterPreset[]): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+    localStorage.setItem(storageKey, JSON.stringify(presets));
   } catch {
     // localStorage full or unavailable — ignore
   }
@@ -42,15 +51,18 @@ function genId(): string {
 }
 
 export function useFilterPresets() {
-  const [presets, setPresets] = useState<FilterPreset[]>(loadPresets);
+  const storageKey = useMemo(getCurrentStorageKey, []);
+  const [presets, setPresets] = useState<FilterPreset[]>(() => loadPresets(storageKey));
 
   useEffect(() => {
+    setPresets(loadPresets(storageKey));
+
     function onStorage(e: StorageEvent) {
-      if (e.key === STORAGE_KEY) setPresets(loadPresets());
+      if (e.key === storageKey) setPresets(loadPresets(storageKey));
     }
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [storageKey]);
 
   function addPreset(name: string, filters: Filters): FilterPreset {
     const preset: FilterPreset = {
@@ -61,20 +73,20 @@ export function useFilterPresets() {
     };
     const next = [...presets, preset];
     setPresets(next);
-    savePresets(next);
+    savePresets(storageKey, next);
     return preset;
   }
 
   function removePreset(id: string): void {
     const next = presets.filter((p) => p.id !== id);
     setPresets(next);
-    savePresets(next);
+    savePresets(storageKey, next);
   }
 
   function renamePreset(id: string, name: string): void {
     const next = presets.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p));
     setPresets(next);
-    savePresets(next);
+    savePresets(storageKey, next);
   }
 
   return { presets, addPreset, removePreset, renamePreset };

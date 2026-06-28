@@ -20,4 +20,11 @@ describe("infra/docker-compose.prod.yml — Nominatim PBF source", () => {
   it("nominatim сервис объявлен с image mediagis/nominatim:4.4", () => {
     expect(compose).toMatch(/nominatim:\s*\n[\s\S]*?image:\s*mediagis\/nominatim:4\.4/);
   });
+
+  it("SECURITY: Nominatim не получает пароль superuser основного Postgres", () => {
+    const nominatimBlock = compose.match(/(?:^|\n)  nominatim:\n[\s\S]*?(?=\n  [a-zA-Z0-9_-]+:|\nvolumes:|$)/)?.[0] ?? "";
+
+    expect(nominatimBlock).toContain("NOMINATIM_PASSWORD: ${NOMINATIM_PASSWORD:?");
+    expect(nominatimBlock).not.toContain("NOMINATIM_PASSWORD: ${POSTGRES_PASSWORD}");
+  });
 });

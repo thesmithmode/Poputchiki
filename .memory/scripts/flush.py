@@ -144,11 +144,27 @@ respond with exactly: FLUSH_OK
 
 
 COMPILE_AFTER_HOUR = 18  # 6 PM local time
+AUTO_COMPILE_ENV = "MEMORY_ENABLE_AUTO_COMPILE"
+
+
+def auto_compilation_enabled() -> bool:
+    """Return whether flush.py may automatically spawn compile.py.
+
+    Disabled by default because daily logs are derived from untrusted
+    conversation text. Compilation can edit memory files, so it must be an
+    explicit developer opt-in rather than a background hook side effect.
+    """
+    value = os.environ.get(AUTO_COMPILE_ENV, "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
 
 
 def maybe_trigger_compilation() -> None:
-    """If it's past the compile hour and today's log hasn't been compiled, run compile.py."""
+    """If explicitly enabled, run compile.py after the compile hour."""
     import subprocess as _sp
+
+    if not auto_compilation_enabled():
+        logging.info("Skipping compile trigger: set %s=1 to enable", AUTO_COMPILE_ENV)
+        return
 
     now = datetime.now(timezone.utc).astimezone()
     if now.hour < COMPILE_AFTER_HOUR:
@@ -290,8 +306,8 @@ def main():
     # Clean up context file
     context_file.unlink(missing_ok=True)
 
-    # End-of-day auto-compilation: if it's past the compile hour and today's
-    # log hasn't been compiled yet, trigger compile.py in the background.
+    # Compilation can edit memory files and must stay opt-in because daily
+    # logs are derived from untrusted conversation text.
     maybe_trigger_compilation()
 
     logging.info("Flush complete for session %s", session_id)

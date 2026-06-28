@@ -133,6 +133,16 @@ describe("App", () => {
 });
 
 describe("App — boot loading screen", () => {
+  it("SECURITY: не запускает предзагрузку ленты до успешного boot/auth gate", async () => {
+    const { useBootMe } = await import("../src/hooks/useMe");
+    const { useRides } = await import("../src/hooks/useRides");
+    vi.mocked(useBootMe).mockReturnValue({ status: "loading", phase: "auth" });
+
+    render(<App />);
+
+    expect(vi.mocked(useRides)).toHaveBeenCalledWith("24h", null, null, null, { enabled: false });
+  });
+
   it("REGRESSION: loading screen показывается только при status=loading", async () => {
     const { useBootMe } = await import("../src/hooks/useMe");
     vi.mocked(useBootMe).mockReturnValue({ status: "loading", phase: "auth" });
